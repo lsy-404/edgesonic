@@ -89,8 +89,13 @@ export const GUEST_ALLOWED_PERMS = new Set(["stream", "browse", "search"]);
 // User (level 1): may download/upload/scrobble-like actions, but never any
 // management/admin/maintenance surface. These would either escalate a user
 // into an admin-shaped role or expose destructive operations.
+// manage_credentials is deliberately NOT in this set: every endpoint it
+// gates (auth.ts /auth/credentials/*) scopes strictly to the caller's own
+// username, so it's a self-service "issue my own Subsonic app password"
+// toggle, not an admin capability. It can be enabled per-level via the
+// permissions matrix; it just defaults to off for level 1 in Schema.sql.
 export const USER_LOCKED_PERMS = new Set([
-  "manage_users", "manage_credentials", "manage_permissions", "manage_settings",
+  "manage_users", "manage_permissions", "manage_settings",
   "manage_cloudflare", "manage_sources", "maintenance_cleanup",
   "maintenance_reclaim", "maintenance_reset", "dispatch_work",
   "view_all_users_items",
