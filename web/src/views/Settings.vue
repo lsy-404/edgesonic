@@ -18,7 +18,8 @@ const router = useRouter();
 const { t, locale } = useI18n();
 const {
   isSuperAdmin, isGuest, hasPerm, edgesonicFetch, edgesonicPost, logout,
-  username, nickname, avatarKey, restUrl, updateNickname, changeOwnPassword, updateOwnAvatar, handleAuthError,
+  username, nickname, avatarKey, email, emailVerified, restUrl,
+  updateNickname, requestEmailChange, changeOwnPassword, updateOwnAvatar, handleAuthError,
 } = useAuth();
 const workerPool = useWorkerPool();
 
@@ -30,6 +31,13 @@ const canManageSettings = computed(() => hasPerm("manage_settings"));
 // ---- Self-service profile (avatar / nickname / password), non-guest ----
 const profileBusy = ref(false);
 const nicknameInput = ref(nickname.value);
+// Two-step email change — form fields for the request step, plus a
+// pending flag so the UI can show "check your new inbox" instead of
+// silently reverting to the (unchanged) current address.
+const emailChangeOpen = ref(false);
+const emailChangeCurrentPassword = ref("");
+const emailChangeNewEmail = ref("");
+const emailChangePending = ref(false);
 const pwNew = ref("");
 const pwConfirm = ref("");
 const avatarBust = ref(0);
@@ -108,6 +116,28 @@ async function saveNickname() {
   finally { profileBusy.value = false; }
 }
 
+async function submitEmailChangeRequest() {
+  if (profileBusy.value || !emailChangeCurrentPassword.value || !emailChangeNewEmail.value) return;
+  profileBusy.value = true;
+  try {
+    const result = await requestEmailChange(emailChangeCurrentPassword.value, emailChangeNewEmail.value);
+    if (!result.ok) throw new Error(result.error || "request failed");
+    emailChangePending.value = true;
+    emailChangeCurrentPassword.value = "";
+    showToast(t("settings.account.emailChangeRequested"));
+  } catch (e: unknown) {
+    showToast(`${t("settings.account.emailFailed")}: ${e instanceof Error ? e.message : String(e)}`, "error");
+  }
+  finally { profileBusy.value = false; }
+}
+
+function cancelEmailChange() {
+  emailChangeOpen.value = false;
+  emailChangePending.value = false;
+  emailChangeCurrentPassword.value = "";
+  emailChangeNewEmail.value = "";
+}
+
 async function saveSelfPassword() {
   if (profileBusy.value) return;
   if (!pwNew.value || pwNew.value.length < 4) { showToast(t("settings.account.passwordTooShort"), "error"); return; }
@@ -127,8 +157,8 @@ type SectionKey = "user" | "audioCache" | "system" | "sessions" | "clients" | "p
 const open = ref<Record<SectionKey, boolean>>({ user: true, audioCache: false, system: false, sessions: false, clients: false, permissions: false });
 function toggleSection(key: SectionKey) { open.value[key] = !open.value[key]; }
 
-type SubSectionKey = "media" | "integrations" | "lastfm" | "workers" | "featureFlags";
-const subOpen = ref<Record<SubSectionKey, boolean>>({ media: false, integrations: false, lastfm: false, workers: false, featureFlags: false });
+type SubSectionKey = "media" | "integrations" | "lastfm" | "email" | "workers" | "featureFlags";
+const subOpen = ref<Record<SubSectionKey, boolean>>({ media: false, integrations: false, lastfm: false, email: false, workers: false, featureFlags: false });
 function toggleSubSection(key: SubSectionKey) { subOpen.value[key] = !subOpen.value[key]; }
 
 const toast = ref({ show: false, msg: "", type: "success" });
@@ -186,6 +216,7 @@ function themeSwatchStyle(id: string): Record<string, string> {
     "color-sky": ["#f8fffa", "#65bd8c"], "sp-sky": ["#f8fffa", "#65bd8c"],
     "color-earth": ["#fff9e8", "#ffc45a"], "sp-earth": ["#fff9e8", "#ffc45a"],
     "color-crimson": ["#25183e", "#9b78e5"], "sp-crimson": ["#25183e", "#9b78e5"],
+    "sp-ark": ["#080a0b", "#18d1ff"], "sp-end": ["#191919", "#fffa00"],
   };
   const [base, accent] = visuals[id] ?? ["#111", "#fff"];
   const isNeutral = id === "black" || id === "white";
@@ -198,6 +229,8 @@ function themeShape(id: string): string {
   if (id.includes("scarlet")) return "tetrahedron";
   if (id.includes("sky")) return "octahedron";
   if (id.includes("earth")) return "cube";
+  if (id.includes("ark")) return "cube";
+  if (id.includes("end")) return "icosahedron";
   return "cube";
 }
 onMounted(() => {
@@ -301,6 +334,9 @@ async function loadFeatures() {
     // 091/092: hydrate presign toggles + probe R2 secrets presence.
     hydratePresignFromFeatures();
     loadR2PresignStatus();
+    // Hydrate Resend config + login page customization, probe key presence.
+    hydrateEmailFromFeatures();
+    loadResendKeyStatus();
     // 110: hydrate the metadata re-check cadence.
     hydrateMetadataRecheckFromFeatures();
     // 113: hydrate the LRC sidecar backfill cadence.
@@ -351,8 +387,9 @@ async function saveTranscode() {
   transcodeBusy.value = false;
 }
 
-type ScrapeSourceKey = "netease" | "qmusic" | "kugou" | "kuwo" | "migu";
+type ScrapeSourceKey = "lrc" | "netease" | "qmusic" | "kugou" | "kuwo" | "migu";
 const SCRAPE_ALL_SOURCES: { id: ScrapeSourceKey; label: string }[] = [
+  { id: "lrc", label: "LRC Albums" },
   { id: "netease", label: "NetEase" },
   { id: "qmusic", label: "QQ Music" },
   { id: "kugou", label: "Kugou" },
@@ -367,7 +404,7 @@ function hydrateScrapeFromFeatures() {
   // Order = whatever the JSON array stored; we render it in that order and
   // any source NOT in the array gets appended (disabled) so the UI shows all.
   try {
-    const raw = findFeatureString("scrape_enabled_sources", '["netease","qmusic","kugou"]');
+    const raw = findFeatureString("scrape_enabled_sources", '["lrc","netease","qmusic","kugou"]');
     const parsed = JSON.parse(raw) as string[];
     const validEnabled: ScrapeSourceKey[] = [];
     const knownIds = new Set(SCRAPE_ALL_SOURCES.map((s) => s.id));
@@ -381,7 +418,7 @@ function hydrateScrapeFromFeatures() {
     scrapeOrder.value = [...validEnabled, ...orderTail];
   } catch {
     scrapeOrder.value = SCRAPE_ALL_SOURCES.map((s) => s.id);
-    scrapeEnabledSet.value = new Set(["netease", "qmusic", "kugou"]);
+    scrapeEnabledSet.value = new Set(["lrc", "netease", "qmusic", "kugou"]);
   }
 }
 
@@ -726,6 +763,137 @@ async function saveWebdavPresign() {
   webdavPresignBusy.value = false;
 }
 
+// ---- Resend email integration + login page customization ----
+const resendFromEmail = ref("");
+const resendFromName = ref("");
+const resendKeyInput = ref("");
+const resendKeySet = ref(false);
+const resendBusy = ref(false);
+const resendTestEmail = ref("");
+const resendTestBusy = ref(false);
+const resendTestResult = ref("");
+const loginNoticeText = ref("");
+const loginBackgroundUrl = ref("");
+const loginConfigBusy = ref(false);
+
+// Email templates — super-admin only (enforced server-side too; see
+// features.ts SUPER_ADMIN_ONLY_STRING_KEYS). Defaults come from D1 seeding,
+// so these start non-empty on any deploy that has run Schema.sql.
+const emailTplVerifySubject = ref("");
+const emailTplVerifyBody = ref("");
+const emailTplResetSubject = ref("");
+const emailTplResetBody = ref("");
+const emailTplChangeSubject = ref("");
+const emailTplChangeBody = ref("");
+const emailTplBusy = ref(false);
+
+function hydrateEmailFromFeatures() {
+  resendFromEmail.value = findFeatureString("resend_from_email", "");
+  resendFromName.value = findFeatureString("resend_from_name", "EdgeSonic");
+  loginNoticeText.value = findFeatureString("login_notice_text", "");
+  loginBackgroundUrl.value = findFeatureString("login_background_url", "");
+  emailTplVerifySubject.value = findFeatureString("email_tpl_verify_subject", "");
+  emailTplVerifyBody.value = findFeatureString("email_tpl_verify_body", "");
+  emailTplResetSubject.value = findFeatureString("email_tpl_reset_subject", "");
+  emailTplResetBody.value = findFeatureString("email_tpl_reset_body", "");
+  emailTplChangeSubject.value = findFeatureString("email_tpl_change_subject", "");
+  emailTplChangeBody.value = findFeatureString("email_tpl_change_body", "");
+}
+
+async function saveEmailTemplate(kind: "verify" | "reset" | "change") {
+  emailTplBusy.value = true;
+  try {
+    const subjectValue = { verify: emailTplVerifySubject, reset: emailTplResetSubject, change: emailTplChangeSubject }[kind].value;
+    const bodyValue = { verify: emailTplVerifyBody, reset: emailTplResetBody, change: emailTplChangeBody }[kind].value;
+    const r1 = JSON.parse(await edgesonicPost("features/updateString", { key: `email_tpl_${kind}_subject`, value: subjectValue }));
+    if (!r1.ok) throw new Error(r1.error || `email_tpl_${kind}_subject`);
+    const r2 = JSON.parse(await edgesonicPost("features/updateString", { key: `email_tpl_${kind}_body`, value: bodyValue }));
+    if (!r2.ok) throw new Error(r2.error || `email_tpl_${kind}_body`);
+    showToast(t("settings.common.email.templateSaved"));
+  } catch (e: unknown) {
+    showToast(`${t("settings.common.email.saveFailed")}: ${e instanceof Error ? e.message : String(e)}`, "error");
+  }
+  emailTplBusy.value = false;
+}
+
+async function loadResendKeyStatus() {
+  if (!canManageSettings.value) return;
+  try {
+    const data = JSON.parse(await edgesonicFetch("features/secrets/get?key=resend_api_key"));
+    if (data?.ok) resendKeySet.value = !!data.set;
+  } catch { /* ignore — probe is best-effort */ }
+}
+
+async function saveResendKey() {
+  resendBusy.value = true;
+  try {
+    const data = JSON.parse(await edgesonicPost("features/secrets/set", { key: "resend_api_key", value: resendKeyInput.value }));
+    if (!data.ok) throw new Error(data.error || "resend_api_key");
+    resendKeySet.value = !!resendKeyInput.value;
+    resendKeyInput.value = "";
+    showToast(t("settings.common.email.keySaved"));
+  } catch (e: unknown) {
+    showToast(`${t("settings.common.email.saveFailed")}: ${e instanceof Error ? e.message : String(e)}`, "error");
+  }
+  resendBusy.value = false;
+}
+
+async function clearResendKey() {
+  resendBusy.value = true;
+  try {
+    const data = JSON.parse(await edgesonicPost("features/secrets/set", { key: "resend_api_key", value: "" }));
+    if (!data.ok) throw new Error(data.error || "resend_api_key");
+    resendKeySet.value = false;
+    resendKeyInput.value = "";
+    showToast(t("settings.common.email.keyCleared"));
+  } catch (e: unknown) {
+    showToast(`${t("settings.common.email.saveFailed")}: ${e instanceof Error ? e.message : String(e)}`, "error");
+  }
+  resendBusy.value = false;
+}
+
+async function saveResendFrom() {
+  resendBusy.value = true;
+  try {
+    const r1 = JSON.parse(await edgesonicPost("features/updateString", { key: "resend_from_email", value: resendFromEmail.value }));
+    if (!r1.ok) throw new Error(r1.error || "resend_from_email");
+    const r2 = JSON.parse(await edgesonicPost("features/updateString", { key: "resend_from_name", value: resendFromName.value }));
+    if (!r2.ok) throw new Error(r2.error || "resend_from_name");
+    showToast(t("settings.common.email.fromSaved"));
+  } catch (e: unknown) {
+    showToast(`${t("settings.common.email.saveFailed")}: ${e instanceof Error ? e.message : String(e)}`, "error");
+  }
+  resendBusy.value = false;
+}
+
+async function sendResendTest() {
+  if (!resendTestEmail.value || resendTestBusy.value) return;
+  resendTestBusy.value = true;
+  resendTestResult.value = "";
+  try {
+    const data = JSON.parse(await edgesonicPost("email/test", { to: resendTestEmail.value }));
+    if (!data.ok) throw new Error(data.error || "send failed");
+    resendTestResult.value = t("settings.common.email.testSent");
+  } catch (e: unknown) {
+    resendTestResult.value = `${t("settings.common.email.testFailed")}: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  resendTestBusy.value = false;
+}
+
+async function saveLoginConfig() {
+  loginConfigBusy.value = true;
+  try {
+    const r1 = JSON.parse(await edgesonicPost("features/updateString", { key: "login_notice_text", value: loginNoticeText.value }));
+    if (!r1.ok) throw new Error(r1.error || "login_notice_text");
+    const r2 = JSON.parse(await edgesonicPost("features/updateString", { key: "login_background_url", value: loginBackgroundUrl.value }));
+    if (!r2.ok) throw new Error(r2.error || "login_background_url");
+    showToast(t("settings.common.email.loginConfigSaved"));
+  } catch (e: unknown) {
+    showToast(`${t("settings.common.email.saveFailed")}: ${e instanceof Error ? e.message : String(e)}`, "error");
+  }
+  loginConfigBusy.value = false;
+}
+
 const metadataRecheckIntervalHours = ref<number>(24);
 const metadataRecheckIntervalBusy = ref(false);
 
@@ -826,6 +994,23 @@ interface CfAnalytics {
   cpuP99Ms?: number;
   error?: string;
 }
+interface CfReleaseOption {
+  tag: string;
+  version: string;
+  name: string;
+  publishedAt: string | null;
+  prerelease: boolean;
+  htmlUrl: string;
+  hasArtifact: boolean;
+  isMajor: boolean;
+  eligible: boolean;
+  reason: string;
+}
+interface CfUpdates {
+  currentVersion: string;
+  defaultTag: string | null;
+  releases: CfReleaseOption[];
+}
 const cfStatus = ref<CfStatus>({ configured: false, accountId: "", tokenLast4: "" });
 const cfAccountId = ref("");
 const cfToken = ref("");
@@ -836,6 +1021,28 @@ const cronBusy = ref(false);
 const cfAnalytics = ref<CfAnalytics | null>(null);
 const cfAnalyticsBusy = ref(false);
 const cfEnsureCronBusy = ref(false);
+const cfUpdates = ref<CfUpdates | null>(null);
+const cfUpdateTag = ref("");
+const cfUpdatesBusy = ref(false);
+const cfUpdateBusy = ref(false);
+const cfMajorConfirmed = ref(false);
+const selectedCfUpdate = computed(() => cfUpdates.value?.releases.find((release) => release.tag === cfUpdateTag.value) || null);
+const cfUpdateCanRun = computed(() => {
+  const release = selectedCfUpdate.value;
+  if (!release || !release.hasArtifact) return false;
+  return (release.eligible || release.isMajor) && (!release.isMajor || cfMajorConfirmed.value);
+});
+
+function cfUpdateReasonKey(reason: string): string {
+  switch (reason) {
+    case "artifact-missing": return "noArtifact";
+    case "not-newer": return "notNewer";
+    case "downgrade": return "downgrade";
+    case "major-confirmation-required": return "majorConfirmationRequired";
+    case "invalid-version": return "invalidVersion";
+    default: return "updateFailed";
+  }
+}
 
 async function loadCfStatus() {
   if (!canManageSettings.value) return;
@@ -848,6 +1055,41 @@ async function loadCfStatus() {
       if (data.accountId && !cfAccountId.value) cfAccountId.value = data.accountId;
     }
   } catch { /* status is best-effort */ }
+}
+
+async function loadCfUpdates() {
+  if (!hasPerm("manage_cloudflare")) return;
+  cfUpdatesBusy.value = true;
+  try {
+    const data = JSON.parse(await edgesonicFetch("cf/getUpdates")) as CfUpdates & { ok: boolean; error?: string };
+    if (!data.ok) throw new Error(data.error || "getUpdates");
+    cfUpdates.value = data;
+    if (!cfUpdateTag.value || !data.releases.some((release) => release.tag === cfUpdateTag.value)) {
+      cfUpdateTag.value = data.defaultTag || data.releases[0]?.tag || "";
+    }
+  } catch (e: unknown) {
+    showToast(`${t("settings.common.cf.updateFailed")}: ${e instanceof Error ? e.message : String(e)}`, "error");
+  }
+  cfUpdatesBusy.value = false;
+}
+
+async function runCfUpdate() {
+  const release = selectedCfUpdate.value;
+  if (!release || !cfUpdateCanRun.value || cfUpdateBusy.value) return;
+  cfUpdateBusy.value = true;
+  try {
+    const data = JSON.parse(await edgesonicPost("cf/update", {
+      tag: release.tag,
+      confirmMajor: release.isMajor && cfMajorConfirmed.value,
+    })) as { ok: boolean; version?: string; error?: string };
+    if (!data.ok) throw new Error(data.error || "update");
+    cfMajorConfirmed.value = false;
+    showToast(t("settings.common.cf.updateSuccess", { ver: data.version || release.version }));
+    await loadCfUpdates();
+  } catch (e: unknown) {
+    showToast(`${t("settings.common.cf.updateFailed")}: ${e instanceof Error ? e.message : String(e)}`, "error");
+  }
+  cfUpdateBusy.value = false;
 }
 
 async function loadCfCron() {
@@ -1322,6 +1564,7 @@ onMounted(() => {
     loadCfStatus();
     loadCfCron();
     loadCfAnalytics();
+    loadCfUpdates();
   }
 });
 </script>
@@ -1374,6 +1617,50 @@ onMounted(() => {
                   {{ t("settings.account.saveNickname") }}
                 </button>
               </div>
+
+              <label class="tc-row">
+                <span class="tc-key">
+                  {{ t("settings.account.email") }}
+                  <span v-if="email" class="status-badge" :class="emailVerified ? 'success' : 'muted'">
+                    {{ emailVerified ? t("settings.account.emailVerified") : t("settings.account.emailUnverified") }}
+                  </span>
+                </span>
+                <input :value="email || t('settings.account.emailNotSet')" type="text" class="form-input" disabled />
+              </label>
+              <div class="tc-actions">
+                <button v-if="!emailChangeOpen" class="btn-secondary btn-sm" :disabled="profileBusy" @click="emailChangeOpen = true">
+                  {{ t("settings.account.changeEmail") }}
+                </button>
+              </div>
+
+              <template v-if="emailChangeOpen">
+                <p v-if="emailChangePending" class="feature-desc tc-desc" style="margin-left:0">
+                  {{ t("settings.account.emailChangePendingHint") }}
+                </p>
+                <template v-else>
+                  <label class="tc-row">
+                    <span class="tc-key">{{ t("settings.account.currentPassword") }}</span>
+                    <input v-model="emailChangeCurrentPassword" type="password" maxlength="256" class="form-input" autocomplete="current-password" />
+                  </label>
+                  <label class="tc-row">
+                    <span class="tc-key">{{ t("settings.account.newEmail") }}</span>
+                    <input v-model="emailChangeNewEmail" type="email" maxlength="256" class="form-input" autocomplete="email" />
+                  </label>
+                </template>
+                <div class="tc-actions">
+                  <button
+                    v-if="!emailChangePending"
+                    class="btn-primary btn-sm"
+                    :disabled="profileBusy || !emailChangeCurrentPassword || !emailChangeNewEmail"
+                    @click="submitEmailChangeRequest"
+                  >
+                    {{ t("settings.account.requestEmailChange") }}
+                  </button>
+                  <button class="btn-secondary btn-sm" :disabled="profileBusy" @click="cancelEmailChange">
+                    {{ t("common.cancel") }}
+                  </button>
+                </div>
+              </template>
 
               <label class="tc-row">
                 <span class="tc-key">{{ t("settings.account.newPassword") }}</span>
@@ -1910,6 +2197,48 @@ onMounted(() => {
 
           <hr style="margin: 0.8rem 0; border: none; border-top: 1px dashed var(--color-border-subtle)" />
 
+          <!-- Worker updates -->
+          <div class="sub-header" style="margin-top: 0.3rem">
+            <span class="mono-label">{{ t("settings.common.cf.updatesTitle") }}</span>
+            <button class="btn-secondary btn-sm" :disabled="cfUpdatesBusy" @click="loadCfUpdates">
+              {{ t("settings.common.cf.refreshUpdates") }}
+            </button>
+          </div>
+          <p class="feature-desc tc-desc" style="margin-left:0">
+            {{ t("settings.common.cf.updatesDesc") }}
+          </p>
+          <div v-if="cfUpdates" class="transcode-grid">
+            <p class="feature-desc tc-desc">{{ t("settings.common.cf.currentVersion", { ver: cfUpdates.currentVersion }) }}</p>
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.cf.targetVersion") }}</span>
+              <select v-model="cfUpdateTag" class="form-input" :disabled="cfUpdateBusy || !cfUpdates.releases.length" @change="cfMajorConfirmed = false">
+                <option v-for="release in cfUpdates.releases" :key="release.tag" :value="release.tag">
+                  v{{ release.version }}{{ release.prerelease ? ` (${t("settings.common.cf.prerelease")})` : "" }}{{ release.tag === cfUpdates.defaultTag ? ` (${t("settings.common.cf.latest")})` : "" }}
+                </option>
+              </select>
+            </label>
+            <p v-if="selectedCfUpdate && !selectedCfUpdate.eligible && (!selectedCfUpdate.isMajor || !selectedCfUpdate.hasArtifact)" class="feature-desc tc-desc">
+              {{ t(`settings.common.cf.${cfUpdateReasonKey(selectedCfUpdate.reason)}`) }}
+            </p>
+            <p v-if="selectedCfUpdate?.isMajor" class="feature-desc tc-desc" style="color: var(--color-accent-primary)">
+              {{ t("settings.common.cf.majorWarning") }}
+            </p>
+            <label v-if="selectedCfUpdate?.isMajor" class="dry-run-row">
+              <label class="toggle">
+                <input type="checkbox" v-model="cfMajorConfirmed" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span>{{ t("settings.common.cf.confirmMajor") }}</span>
+            </label>
+            <div class="tc-actions">
+              <button class="btn-primary" :disabled="!cfStatus.configured || cfUpdateBusy || !cfUpdateCanRun" @click="runCfUpdate">
+                {{ cfUpdateBusy ? t("settings.common.cf.updating") : t("settings.common.cf.updateNow") }}
+              </button>
+            </div>
+          </div>
+
+          <hr style="margin: 0.8rem 0; border: none; border-top: 1px dashed var(--color-border-subtle)" />
+
           <!-- Cron -->
           <div class="transcode-grid">
             <label class="tc-row tc-row-block">
@@ -2180,6 +2509,149 @@ onMounted(() => {
               >
                 {{ t("settings.common.lastfm.save") }}
               </button>
+            </div>
+          </div>
+        </div>
+
+          </div>
+        </div>
+
+        <div class="sub-section" :class="{ open: subOpen.email }">
+          <button class="sub-section-header" @click="toggleSubSection('email')">
+            <span class="sub-section-title">{{ t("settings.system.subEmail") }}</span>
+            <span class="sub-section-caret">{{ subOpen.email ? '−' : '+' }}</span>
+          </button>
+          <div v-show="subOpen.email" class="sub-section-body">
+
+        <div class="sub-block">
+          <div class="sub-header">
+            <span class="mono-label">{{ t("settings.common.email.resendTitle") }}</span>
+            <span class="status-badge" :class="resendKeySet ? 'success' : 'muted'">
+              {{ resendKeySet ? t("settings.common.email.configured") : t("settings.common.email.unconfigured") }}
+            </span>
+          </div>
+          <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.email.resendDesc") }}</p>
+
+          <div class="transcode-grid">
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.apiKey") }}</span>
+              <input
+                v-model="resendKeyInput"
+                type="password"
+                maxlength="256"
+                class="form-input"
+                :placeholder="resendKeySet ? '••••••••' : t('settings.common.email.apiKeyPlaceholder')"
+                autocomplete="off"
+                :disabled="!canManageSettings"
+              />
+            </label>
+            <div class="tc-actions">
+              <button class="btn-secondary" :disabled="!canManageSettings || !resendKeySet || resendBusy" style="margin-right: 0.6rem" @click="clearResendKey">
+                {{ t("common.clear") }}
+              </button>
+              <button class="btn-primary" :disabled="!canManageSettings || !resendKeyInput || resendBusy" @click="saveResendKey">
+                {{ t("common.save") }}
+              </button>
+            </div>
+
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.fromEmail") }}</span>
+              <input v-model="resendFromEmail" type="email" maxlength="256" class="form-input" placeholder="noreply@example.com" :disabled="!canManageSettings" />
+            </label>
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.fromName") }}</span>
+              <input v-model="resendFromName" type="text" maxlength="128" class="form-input" :disabled="!canManageSettings" />
+            </label>
+            <div class="tc-actions">
+              <button class="btn-primary" :disabled="!canManageSettings || resendBusy" @click="saveResendFrom">
+                {{ t("common.save") }}
+              </button>
+            </div>
+
+            <hr style="margin: 0.4rem 0; border: none; border-top: 1px dashed var(--color-border-subtle)" />
+
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.testTo") }}</span>
+              <input v-model="resendTestEmail" type="email" maxlength="256" class="form-input" placeholder="you@example.com" :disabled="!canManageSettings" />
+            </label>
+            <div class="tc-actions">
+              <button class="btn-secondary" :disabled="!canManageSettings || !resendTestEmail || resendTestBusy" @click="sendResendTest">
+                {{ resendTestBusy ? t("common.loading") : t("settings.common.email.sendTest") }}
+              </button>
+            </div>
+            <p v-if="resendTestResult" class="feature-desc tc-desc">{{ resendTestResult }}</p>
+          </div>
+        </div>
+
+        <div class="sub-block">
+          <div class="sub-header"><span class="mono-label">{{ t("settings.common.email.loginPageTitle") }}</span></div>
+          <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.email.loginPageDesc") }}</p>
+          <div class="transcode-grid">
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.noticeText") }}</span>
+              <input v-model="loginNoticeText" type="text" maxlength="500" class="form-input" :disabled="!canManageSettings" />
+            </label>
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.backgroundUrl") }}</span>
+              <input v-model="loginBackgroundUrl" type="text" maxlength="2048" class="form-input" placeholder="https://…" :disabled="!canManageSettings" />
+            </label>
+            <div class="tc-actions">
+              <button class="btn-primary" :disabled="!canManageSettings || loginConfigBusy" @click="saveLoginConfig">
+                {{ t("common.save") }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sub-block">
+          <div class="sub-header">
+            <span class="mono-label">{{ t("settings.common.email.templatesTitle") }}</span>
+            <span v-if="!isSuperAdmin" class="status-badge muted">{{ t("settings.common.email.superAdminOnly") }}</span>
+          </div>
+          <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.email.templatesDesc") }}</p>
+
+          <div class="transcode-grid">
+            <span class="tc-key" style="grid-column: 1 / -1; font-weight: 600;">{{ t("settings.common.email.tplVerify") }}</span>
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.tplSubject") }}</span>
+              <input v-model="emailTplVerifySubject" type="text" maxlength="200" class="form-input" :disabled="!isSuperAdmin" />
+            </label>
+            <label class="tc-row tc-row-block">
+              <span class="tc-key">{{ t("settings.common.email.tplBody") }}</span>
+              <textarea v-model="emailTplVerifyBody" rows="6" maxlength="4000" class="form-input" style="resize: vertical; font-family: var(--font-mono);" :disabled="!isSuperAdmin"></textarea>
+            </label>
+            <div class="tc-actions">
+              <button class="btn-primary" :disabled="!isSuperAdmin || emailTplBusy" @click="saveEmailTemplate('verify')">{{ t("common.save") }}</button>
+            </div>
+
+            <hr style="grid-column: 1 / -1; margin: 0.4rem 0; border: none; border-top: 1px dashed var(--color-border-subtle)" />
+
+            <span class="tc-key" style="grid-column: 1 / -1; font-weight: 600;">{{ t("settings.common.email.tplReset") }}</span>
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.tplSubject") }}</span>
+              <input v-model="emailTplResetSubject" type="text" maxlength="200" class="form-input" :disabled="!isSuperAdmin" />
+            </label>
+            <label class="tc-row tc-row-block">
+              <span class="tc-key">{{ t("settings.common.email.tplBody") }}</span>
+              <textarea v-model="emailTplResetBody" rows="6" maxlength="4000" class="form-input" style="resize: vertical; font-family: var(--font-mono);" :disabled="!isSuperAdmin"></textarea>
+            </label>
+            <div class="tc-actions">
+              <button class="btn-primary" :disabled="!isSuperAdmin || emailTplBusy" @click="saveEmailTemplate('reset')">{{ t("common.save") }}</button>
+            </div>
+
+            <hr style="grid-column: 1 / -1; margin: 0.4rem 0; border: none; border-top: 1px dashed var(--color-border-subtle)" />
+
+            <span class="tc-key" style="grid-column: 1 / -1; font-weight: 600;">{{ t("settings.common.email.tplChange") }}</span>
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.tplSubject") }}</span>
+              <input v-model="emailTplChangeSubject" type="text" maxlength="200" class="form-input" :disabled="!isSuperAdmin" />
+            </label>
+            <label class="tc-row tc-row-block">
+              <span class="tc-key">{{ t("settings.common.email.tplBody") }}</span>
+              <textarea v-model="emailTplChangeBody" rows="6" maxlength="4000" class="form-input" style="resize: vertical; font-family: var(--font-mono);" :disabled="!isSuperAdmin"></textarea>
+            </label>
+            <div class="tc-actions">
+              <button class="btn-primary" :disabled="!isSuperAdmin || emailTplBusy" @click="saveEmailTemplate('change')">{{ t("common.save") }}</button>
             </div>
           </div>
         </div>
@@ -2474,7 +2946,7 @@ onMounted(() => {
         </div>
 
         <div v-else-if="!sessions.length" class="empty-state">
-          <div class="empty-state-icon">◌</div>
+          <div class="empty-state-icon"><Icon name="empty" /></div>
           <div>{{ t("settings.sessions.empty") }}</div>
         </div>
 
@@ -2550,7 +3022,7 @@ onMounted(() => {
         </div>
 
         <div v-else-if="!credentials.length" class="empty-state">
-          <div class="empty-state-icon">◌</div>
+          <div class="empty-state-icon"><Icon name="empty" /></div>
           <div>{{ t("settings.clients.empty") }}</div>
         </div>
 
