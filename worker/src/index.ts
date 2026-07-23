@@ -15,6 +15,7 @@
 
 import { Hono } from "hono";
 import { authMiddleware, subsonicError } from "./auth";
+import { replaceSubsonicServerVersion } from "./utils/xml";
 import { registerRoutes } from "./router";
 import { formPostMiddleware } from "./middleware/form_post";
 import { formatMiddleware, xmlToJson } from "./middleware/format";
@@ -41,6 +42,22 @@ const app = new Hono();
 // dragging in the @cloudflare/sandbox container binding from this file's
 // top-level re-export.
 app.use("*", crossOriginIsolationMiddleware);
+
+// Legacy management routes also return Subsonic XML but do not pass through
+// the /rest format middleware. Normalize their envelope version here.
+app.use("*", async (c, next) => {
+  await next();
+  if (!(c.res.headers.get("Content-Type") || "").includes("xml")) return;
+  const xml = await c.res.text();
+  if (!xml.includes("serverVersion=")) {
+    c.res = new Response(xml, { status: c.res.status, headers: c.res.headers });
+    return;
+  }
+  c.res = new Response(replaceSubsonicServerVersion(xml, (c.env as Env).EDGESONIC_VERSION), {
+    status: c.res.status,
+    headers: c.res.headers,
+  });
+});
 
 // has to run BEFORE any auth filter. Mounted on the bare app at
 // /edgesonic/auth/login + /logout.
@@ -94,7 +111,7 @@ app.onError((err, c) => {
   const isSubsonic = new URL(c.req.url).pathname.startsWith("/rest/");
   if (isSubsonic) {
     // rejects before it can transform), so honor f=json/jsonp here directly.
-    const xml = subsonicError(0, err.message);
+    const xml = replaceSubsonicServerVersion(subsonicError(0, err.message), (c.env as Env).EDGESONIC_VERSION);
     const format = (c.req.query("f") || "xml").toLowerCase();
     if (format === "json" || format === "jsonp") {
       const json = JSON.stringify(xmlToJson(xml));

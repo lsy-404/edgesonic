@@ -38,20 +38,28 @@
 //  * <versions> children of openSubsonicExtensions are arrays of ints.
 
 import type { Context } from "hono";
+import { replaceSubsonicServerVersion } from "../utils/xml";
 
-export async function formatMiddleware(c: Context, next: () => Promise<void>): Promise<void> {
+export async function formatMiddleware(c: Context<{ Bindings: Env }>, next: () => Promise<void>): Promise<void> {
   await next();
-
-  const format = (c.req.query("f") || "xml").toLowerCase();
-  if (format !== "json" && format !== "jsonp") return;
 
   const ct = c.res.headers.get("Content-Type") || "";
   if (!ct.includes("xml")) return;
 
   const xml = await c.res.text();
-  if (!xml || !xml.startsWith("<?xml")) return;
+  if (!xml || !xml.startsWith("<?xml")) {
+    c.res = new Response(xml, { status: c.res.status, headers: c.res.headers });
+    return;
+  }
+  const versionedXml = replaceSubsonicServerVersion(xml, c.env.EDGESONIC_VERSION);
 
-  const json = xmlToJson(xml);
+  const format = (c.req.query("f") || "xml").toLowerCase();
+  if (format !== "json" && format !== "jsonp") {
+    c.res = new Response(versionedXml, { status: c.res.status, headers: c.res.headers });
+    return;
+  }
+
+  const json = xmlToJson(versionedXml);
   const body = format === "jsonp"
     ? `${c.req.query("callback") || "cb"}(${JSON.stringify(json)});`
     : JSON.stringify(json);

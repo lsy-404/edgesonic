@@ -91,7 +91,19 @@ export function esc(s: string): string {
 // ---------------------------------------------------------------------------
 
 export const SERVER_TYPE = "edgeSonic";
-export const SERVER_VERSION = "1.0.0";
+export const SERVER_VERSION = "1.2.5";
+
+// Subsonic clients use this as a release identifier. Development revisions and
+// dirty-worktree markers remain available from /edgesonic/version, but are not
+// part of this client-compatibility field.
+export function subsonicServerVersion(version?: string): string {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)/.exec(version?.trim() || "");
+  return match ? `${match[1]}.${match[2]}.${match[3]}` : SERVER_VERSION;
+}
+
+export function replaceSubsonicServerVersion(xml: string, version?: string): string {
+  return xml.replace(/\bserverVersion="[^"]*"/, `serverVersion="${subsonicServerVersion(version)}"`);
+}
 
 export function subsonicOK(
   inner: Record<string, unknown>,

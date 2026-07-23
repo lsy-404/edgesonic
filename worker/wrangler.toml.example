@@ -28,7 +28,8 @@ routes = [
 # 每个实例应唯一，可用 `uuidgen` 生成
 INSTANCE_ID = "<GENERATE_A_UUID>"
 MAX_PROXY_DEPTH = "3"
-# 部署脚本会覆盖此值；保留 dev 以避免本地默认值被误认为 Unix 时间戳。
+# 部署脚本会覆盖此值；本地 dev 标记仅用于 `/edgesonic/version` 诊断，
+# Subsonic/OpenSubsonic serverVersion 会回退到发布版本且不会暴露 dev 标记。
 WORKER_VERSION = "dev"
 EDGESONIC_VERSION = "dev"
 # Optional cumulative R2 storage ceiling in bytes. When set, the Worker sums
