@@ -105,7 +105,7 @@ const dependencies: Array<{ name: string; version: string; license: string; url:
         </p>
         <p>
           <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener noreferrer">
-            {{ t('about.read_license') || 'Read the full AGPL-3.0 license →' }}
+            {{ t('about.read_license') || 'Read the full AGPL-3.0 license' }}
           </a>
         </p>
       </div>

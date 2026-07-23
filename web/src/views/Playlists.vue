@@ -342,7 +342,7 @@ onMounted(loadPlaylists);
       <div>
         <div class="mono-label">{{ t("playlists.label") }}</div>
         <h1 class="page-title">
-          <a v-if="currentPlaylist" class="back-link" @click="backToList">← {{ t("playlists.back") }}</a>
+          <a v-if="currentPlaylist" class="back-link" @click="backToList"><Icon name="left" /> {{ t("playlists.back") }}</a>
           <span v-else>{{ t("playlists.title") }}</span>
         </h1>
       </div>
@@ -359,11 +359,11 @@ onMounted(loadPlaylists);
          =========================================================== -->
     <template v-if="!currentPlaylist">
       <div v-if="loading && !playlists.length" class="empty-state">
-        <div class="empty-state-icon">◌</div>
+        <div class="empty-state-icon"><Icon name="empty" /></div>
         <div>{{ t("common.loading") }}</div>
       </div>
       <div v-else-if="!playlists.length" class="empty-state">
-        <div class="empty-state-icon">◌</div>
+        <div class="empty-state-icon"><Icon name="empty" /></div>
         <div>{{ t("playlists.empty") }}</div>
       </div>
       <div v-else class="playlist-list">
@@ -417,6 +417,7 @@ onMounted(loadPlaylists);
           </div>
           <div v-if="currentPlaylist.comment" class="detail-comment">{{ currentPlaylist.comment }}</div>
           <button v-if="entries.length" class="btn-primary" style="margin-top: 0.75rem" @click="playAll">
+            <Icon name="play" />
             {{ t("playlists.playAll") }}
           </button>
         </div>
@@ -425,7 +426,7 @@ onMounted(loadPlaylists);
       <h3 class="songs-title mono-label">{{ t("playlists.songsTitle") }}</h3>
 
       <div v-if="detailLoading && !entries.length" class="empty-state">
-        <div class="empty-state-icon">◌</div>
+        <div class="empty-state-icon"><Icon name="empty" /></div>
         <div>{{ t("common.loading") }}</div>
       </div>
       <div v-else-if="!entries.length" class="empty-state">
@@ -434,7 +435,7 @@ onMounted(loadPlaylists);
       </div>
       <div v-else class="entry-table">
         <div class="entry-row" v-for="(e, i) in entries" :key="`${e.id}-${i}`">
-          <span class="entry-num" @click="playFromEntry(i)">{{ player.current?.id === e.id && player.playing ? "▶" : i + 1 }}</span>
+          <span class="entry-num" @click="playFromEntry(i)"><Icon v-if="player.current?.id === e.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
           <span class="entry-title-cell" @click="playFromEntry(i)">{{ e.title }}</span>
           <span class="entry-artist" @click="playFromEntry(i)">{{ e.artist }}</span>
           <span class="entry-time" @click="playFromEntry(i)">{{ formatDuration(e.duration) }}</span>

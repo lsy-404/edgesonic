@@ -4,6 +4,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs } from "../api";
+import Icon from "../components/Icon.vue";
 
 const { t } = useI18n();
 const { authFetch, level } = useAuth();
@@ -193,7 +194,7 @@ onMounted(load);
     </div>
 
     <div v-if="loading && !stations.length" class="empty-state">
-      <div class="empty-state-icon">◌</div><div>{{ t("common.loading") }}</div>
+      <div class="empty-state-icon"><Icon name="empty" /></div><div>{{ t("common.loading") }}</div>
     </div>
 
     <div v-else class="grid grid-2">
@@ -221,7 +222,7 @@ onMounted(load);
         <div class="corner corner-bl"></div>
       </div>
       <div v-if="!stations.length && !loading" class="empty-state" style="grid-column:1/-1">
-        <div class="empty-state-icon">◌</div><div>{{ t("radio.empty") }}</div>
+        <div class="empty-state-icon"><Icon name="empty" /></div><div>{{ t("radio.empty") }}</div>
       </div>
     </div>
 

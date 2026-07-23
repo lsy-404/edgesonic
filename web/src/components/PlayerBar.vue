@@ -200,9 +200,9 @@ function removeFromQueue(i: number) {
         type="range" min="0" max="1" step="0.02"
         :value="player.volume"
         @input="onVolume"
-        title="音量"
+        :title="t('player.volume')"
       />
-      <button class="pb-queue-btn" :class="{ active: queueOpen }" @click="queueOpen = !queueOpen" title="播放列表">
+      <button class="pb-queue-btn" :class="{ active: queueOpen }" @click="queueOpen = !queueOpen" :title="t('player.queueTitle', { n: player.queue.length })">
         <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 6h13v2H3V6zm0 5h13v2H3v-2zm0 5h9v2H3v-2zm15 0v-6l5 3-5 3z"/></svg>
         <span class="pb-queue-count" v-if="player.queue.length">{{ player.queue.length }}</span>
       </button>
@@ -212,7 +212,7 @@ function removeFromQueue(i: number) {
     <transition name="queue-up">
       <div v-if="queueOpen" class="pb-queue-panel">
         <div class="pb-queue-header">
-          <span>播放列表 ({{ player.queue.length }})</span>
+          <span>{{ t("player.queueTitle", { n: player.queue.length }) }}</span>
           <button class="pb-queue-close" @click="queueOpen = false">
             <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
           </button>
@@ -235,7 +235,7 @@ function removeFromQueue(i: number) {
               <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
             </button>
           </div>
-          <div v-if="player.queue.length === 0" class="pb-queue-empty">播放列表为空</div>
+          <div v-if="player.queue.length === 0" class="pb-queue-empty">{{ t("player.queueEmpty") }}</div>
         </div>
       </div>
     </transition>

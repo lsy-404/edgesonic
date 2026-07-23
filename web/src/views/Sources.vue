@@ -566,7 +566,7 @@ onUnmounted(() => {
           <span class="field-hint">{{ t("sources.mode.hint") }}</span>
         </div>
         <div v-if="form.type === 'webdav'" class="form-group span-all">
-          <label class="form-label">{{ t("sources.presignCreds") }} <span class="field-hint-inline">({{ t("common.optional", "可选") }})</span></label>
+          <label class="form-label">{{ t("sources.presignCreds") }} <span class="field-hint-inline">({{ t("common.optional") }})</span></label>
           <input v-model="form.presign_username" maxlength="64" class="form-input" :placeholder="t('sources.presignUsername')" autocomplete="off" />
           <input v-model="form.presign_password" type="password" maxlength="256" class="form-input" style="margin-top:0.4rem" :placeholder="t('sources.presignPassword')" autocomplete="new-password" />
           <span class="field-hint">{{ t("sources.presignCredsHint") }}</span>
@@ -706,7 +706,7 @@ onUnmounted(() => {
       </div>
       <!-- P3: empty state only shown after loading completes -->
       <div v-if="!sources.length" class="empty-state" style="grid-column:1/-1">
-        <div class="empty-state-icon">◌</div><div>{{ t("sources.empty") }}</div>
+        <div class="empty-state-icon"><Icon name="empty" /></div><div>{{ t("sources.empty") }}</div>
       </div>
     </div>
 
@@ -780,7 +780,7 @@ onUnmounted(() => {
           </div>
           <div v-if="editing?.type === 'webdav'" class="presign-always-section span-all">
             <div class="form-group">
-              <label class="form-label">{{ t("sources.presignCreds") }} <span class="field-hint-inline">({{ t("common.optional", "可选") }})</span></label>
+              <label class="form-label">{{ t("sources.presignCreds") }} <span class="field-hint-inline">({{ t("common.optional") }})</span></label>
               <input v-model="editForm.presignUsername" maxlength="64" class="form-input" :placeholder="t('sources.presignUsername')" autocomplete="off" />
             </div>
             <div class="form-group">

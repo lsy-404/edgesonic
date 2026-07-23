@@ -2,11 +2,13 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ref, computed, watch, nextTick, onBeforeUnmount } from "vue";
+import { useI18n } from "vue-i18n";
 import { usePlayerStore } from "../stores/player";
 import { useAuth } from "../api";
 import { getTrackLyrics } from "../lib/trackPrefetch";
 
 const player = usePlayerStore();
+const { t } = useI18n();
 const { coverArtUrl, authFetch, username } = useAuth();
 
 // 0259 — lyrics model supports three layers:
@@ -241,7 +243,7 @@ watch(() => player.current?.id, async (id) => {
     } else if (payload.structured) lyrics.value = parseStructuredLines(payload.structured);
     else if (payload.lrc) lyrics.value = parseLrcDual(decodeEntities(payload.lrc));
   } catch {
-    if (request === lyricsRequest) lyricsError.value = "歌词加载失败";
+    if (request === lyricsRequest) lyricsError.value = t("nowPlaying.lyricsLoadFailed");
   } finally {
     if (request === lyricsRequest) lyricsLoading.value = false;
   }
@@ -364,9 +366,9 @@ watch(coverSrc, () => { coverFailed.value = false; });
 
     <!-- Right: lyrics with auto-scroll + translation + word karaoke -->
     <div class="np-right" :class="{ 'auto-scrolling': autoScrolling }" ref="lyricsScrollEl" @scroll.passive="onLyricsScroll">
-      <div v-if="lyricsLoading" class="np-lyrics-status">加载歌词中…</div>
+      <div v-if="lyricsLoading" class="np-lyrics-status">{{ t("nowPlaying.lyricsLoading") }}</div>
       <div v-else-if="lyricsError" class="np-lyrics-status">{{ lyricsError }}</div>
-      <div v-else-if="lyrics.length === 0" class="np-lyrics-status">暂无歌词</div>
+      <div v-else-if="lyrics.length === 0" class="np-lyrics-status">{{ t("nowPlaying.lyricsEmpty") }}</div>
       <div v-else class="np-lyrics-scroll">
         <div class="np-lyrics-spacer"></div>
         <div

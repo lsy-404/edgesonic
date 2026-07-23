@@ -4,6 +4,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
+import Icon from "../components/Icon.vue";
 
 const { t } = useI18n();
 const { username: currentUsername, isAdmin, isSuperAdmin, edgesonicFetch, edgesonicPost, restUrl } = useAuth();
@@ -267,7 +268,7 @@ onMounted(load);
       <div class="card avatar-modal">
         <div class="card-header">
           <span class="card-title">{{ t("users.avatar.title") }} — {{ avatarTarget?.username }}</span>
-          <button class="btn-icon" :aria-label="t('common.close')" @click="closeAvatarModal">×</button>
+          <button class="btn-icon" :aria-label="t('common.close')" @click="closeAvatarModal"><Icon name="cross" /></button>
         </div>
         <div class="avatar-modal-body">
           <div class="avatar-preview-wrap">

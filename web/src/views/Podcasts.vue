@@ -4,6 +4,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatDuration } from "../api";
+import Icon from "../components/Icon.vue";
 
 const { t } = useI18n();
 const { isAdmin, authFetch, coverArtUrl } = useAuth();
@@ -334,11 +335,11 @@ onUnmounted(() => {
 
     <!-- Channels grid -->
     <div v-if="loading && !channels.length" class="empty-state">
-      <div class="empty-state-icon">◌</div>
+      <div class="empty-state-icon"><Icon name="empty" /></div>
       <div>{{ t("common.loading") }}</div>
     </div>
     <div v-else-if="!channels.length" class="empty-state">
-      <div class="empty-state-icon">◌</div>
+      <div class="empty-state-icon"><Icon name="empty" /></div>
       <div>{{ t("podcasts.empty") }}</div>
     </div>
 

@@ -390,7 +390,7 @@ onUnmounted(() => {
         v-else-if="cronStatus === 'unconfigured'"
         class="cron-warning-card cron-warning-info"
       >
-       <div class="cron-warning-icon">ⓘ</div>
+        <div class="cron-warning-icon"><Icon name="info" /></div>
         <div class="cron-warning-body">
           <div class="cron-warning-title">{{ t("dashboard.cronWarning.unconfiguredTitle") }}</div>
           <p class="cron-warning-message">{{ t("dashboard.cronWarning.unconfiguredMessage") }}</p>
@@ -407,7 +407,7 @@ onUnmounted(() => {
         v-if="r2presignStatus === 'inactive'"
         class="cron-warning-card cron-warning-info"
       >
-       <div class="cron-warning-icon">ⓘ</div>
+        <div class="cron-warning-icon"><Icon name="info" /></div>
         <div class="cron-warning-body">
           <div class="cron-warning-title">{{ t("dashboard.r2Presign.title") }}</div>
           <p class="cron-warning-message">{{ t("dashboard.r2Presign.message") }}</p>
@@ -480,13 +480,13 @@ onUnmounted(() => {
           <div v-if="canManageUsers" class="info-row"><span class="info-key">{{ t("dashboard.infoUsers") }}</span><span class="info-val">{{ stats.users }}</span></div>
           <div v-if="canManageSources" class="info-row"><span class="info-key">{{ t("dashboard.infoSources") }}</span><span class="info-val">{{ stats.sources }}</span></div>
           <div class="info-row">
-            <span class="info-key">GitHub Latest</span>
+            <span class="info-key">{{ t("dashboard.githubLatest") }}</span>
             <span class="info-val">
               <a v-if="updateAvailable" href="https://github.com/wuyilingwei/edgesonic/releases/latest" target="_blank" rel="noopener" class="update-link">
-                v{{ latestVersion }} — 有新版本
+                {{ t("dashboard.updateAvailable", { ver: latestVersion }) }}
               </a>
-               <span v-else-if="latestVersion" class="update-current">v{{ latestVersion }} — {{ isDirtyBuild ? "当前工作区有未提交修改" : isDevelopmentBuild ? "当前开发构建" : "已是最新" }}</span>
-              <span v-else-if="updateChecking" class="muted">检查中…</span>
+               <span v-else-if="latestVersion" class="update-current">{{ t("dashboard.updateCurrent", { ver: latestVersion, state: isDirtyBuild ? t("dashboard.updateStateDirty") : isDevelopmentBuild ? t("dashboard.updateStateDev") : t("dashboard.updateStateLatest") }) }}</span>
+              <span v-else-if="updateChecking" class="muted">{{ t("dashboard.updateChecking") }}</span>
               <span v-else class="muted">—</span>
             </span>
           </div>

@@ -426,12 +426,12 @@ onMounted(load);
 
     <!-- Loading -->
     <div v-if="loading && !hasShares" class="empty-state">
-      <div class="empty-state-icon">◌</div><div>{{ t("shares.loading") }}</div>
+      <div class="empty-state-icon"><Icon name="empty" /></div><div>{{ t("shares.loading") }}</div>
     </div>
 
     <!-- Empty -->
     <div v-else-if="!hasShares" class="empty-state">
-      <div class="empty-state-icon">◌</div><div>{{ t("shares.empty") }}</div>
+      <div class="empty-state-icon"><Icon name="empty" /></div><div>{{ t("shares.empty") }}</div>
     </div>
 
     <!-- List -->

@@ -23,6 +23,14 @@ const ICONS: Record<string, () => ReturnType<typeof h>[]> = {
     h("circle", { cx: 8, cy: 8, r: 6.5, stroke: "currentColor", "stroke-width": 1.2, fill: "none" }),
     h("path", { d: "M8 7v4M8 5v0.4", stroke: "currentColor", "stroke-width": 1.2, "stroke-linecap": "round" }),
   ],
+  play: () => [h("path", { d: "M5 3v10l8-5-8-5z", fill: "currentColor" })],
+  left: () => [h("path", { d: "M10.5 3.5L6 8l4.5 4.5", stroke: "currentColor", "stroke-width": 1.4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" })],
+  right: () => [h("path", { d: "M5.5 3.5L10 8l-4.5 4.5", stroke: "currentColor", "stroke-width": 1.4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" })],
+  copy: () => [
+    h("rect", { x: 5, y: 5, width: 8, height: 8, rx: 1, stroke: "currentColor", "stroke-width": 1.2, fill: "none" }),
+    h("path", { d: "M3 10V3h7", stroke: "currentColor", "stroke-width": 1.2, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }),
+  ],
+  empty: () => [h("circle", { cx: 8, cy: 8, r: 5.5, stroke: "currentColor", "stroke-width": 1.1, fill: "none" })],
   ban: () => [
     h("circle", { cx: 8, cy: 8, r: 6.5, stroke: "currentColor", "stroke-width": 1.2, fill: "none" }),
     h("path", { d: "M3.5 3.5l9 9", stroke: "currentColor", "stroke-width": 1.2, "stroke-linecap": "round" }),
