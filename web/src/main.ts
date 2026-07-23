@@ -29,8 +29,16 @@ import Users from "./views/Users.vue";
 import Settings from "./views/Settings.vue";
 import { useUpdateBanner } from "./stores/updateBanner";
 import { useDemoMode } from "./stores/demoMode";
+import { initNetDiag } from "./lib/netDiag";
+
+initNetDiag();
 const routes = [
   { path: "/login", component: Login, meta: { title: "Login", public: true } },
+  { path: "/register", component: () => import("./views/Register.vue"), meta: { title: "Register", public: true } },
+  { path: "/forgot-password", component: () => import("./views/ForgotPassword.vue"), meta: { title: "Forgot Password", public: true } },
+  { path: "/reset-password", component: () => import("./views/ResetPassword.vue"), meta: { title: "Reset Password", public: true } },
+  { path: "/verify-email", component: () => import("./views/VerifyEmail.vue"), meta: { title: "Verify Email", public: true } },
+  { path: "/confirm-email-change", component: () => import("./views/ConfirmEmailChange.vue"), meta: { title: "Confirm Email Change", public: true } },
   { path: "/", component: Dashboard, meta: { title: "Dashboard" } },
   { path: "/library", component: Library, meta: { title: "Library" } },
   { path: "/starred", component: Library, props: { starredOnly: true }, meta: { title: "Liked" } },

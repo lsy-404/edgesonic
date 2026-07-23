@@ -54,7 +54,10 @@ self.addEventListener("activate", (event) => {
             .map((k) => caches.delete(k)),
         ),
       )
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
+      // Version marker so the controlling SW generation is visible in the
+      // page console at a glance when debugging request hangs.
+      .then(() => console.info(`[SW] v${SW_VERSION} active`)),
   );
 });
 
@@ -129,7 +132,11 @@ self.addEventListener("fetch", (event) => {
           const fresh = await fetchWithTimeout(req, NAV_TIMEOUT_MS);
           cache.put("./index.html", fresh.clone()).catch(() => {});
           return fresh;
-        } catch {
+        } catch (err) {
+          console.warn(
+            `[SW] navigation fell back to cached shell (network ${err && err.message === "timeout" ? "slow >" + NAV_TIMEOUT_MS + "ms" : "failed"}):`,
+            req.url,
+          );
           return (
             (await cache.match("./index.html")) ||
             (await cache.match("./")) ||

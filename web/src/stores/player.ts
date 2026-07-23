@@ -19,6 +19,7 @@ import { useAuth, parseXmlAttrs } from "../api";
 import { getTrackMetadataXml, preloadTrack } from "../lib/trackPrefetch";
 import { getCachedTrack, putCachedTrack, deleteCachedTrack } from "../lib/audioCache";
 import { setPlaybackActive } from "../lib/requestBudget";
+import { beginRequest, describeAudio } from "../lib/netDiag";
 import { i18n } from "../i18n";
 import { showError } from "./toast";
 
@@ -176,6 +177,24 @@ export const usePlayerStore = defineStore("player", () => {
   });
   window.addEventListener("pageshow", () => { _isUnloading = false; });
 
+  // Playback watchdog: "playing" state with a frozen clock and starved buffer
+  // means the element is waiting on a hung transfer — surface a snapshot so
+  // the hang is visible even when no stalled/error event ever fires.
+  const PLAYBACK_WATCHDOG_MS = 8_000;
+  let _watchdogLastTime = -1;
+  setInterval(() => {
+    const el = active;
+    if (!el || !playing.value || el.paused || el.ended || document.hidden) {
+      _watchdogLastTime = -1;
+      return;
+    }
+    const t = el.currentTime;
+    if (_watchdogLastTime >= 0 && t === _watchdogLastTime && el.readyState < 3) {
+      console.warn("[Player] watchdog: playback frozen with starved buffer", describeAudio(el));
+    }
+    _watchdogLastTime = t;
+  }, PLAYBACK_WATCHDOG_MS);
+
   function revokeBlobSrc(el: HTMLAudioElement) {
     const blobSrc = blobSrcByElement.get(el);
     if (blobSrc) {
@@ -259,23 +278,58 @@ export const usePlayerStore = defineStore("player", () => {
     const ATTEMPT_TIMEOUT_MS = 60_000;
     for (const [label, url] of [["stream-full", streamUrl(trackId)], ["download-full", downloadUrl(trackId)]] as const) {
       const attemptController = new AbortController();
-      const timer = setTimeout(() => attemptController.abort(), ATTEMPT_TIMEOUT_MS);
+      let timedOut = false;
+      const timer = setTimeout(() => { timedOut = true; attemptController.abort(); }, ATTEMPT_TIMEOUT_MS);
       // Tie the attempt to the caller's signal so a skip/track change still
       // cancels immediately, even mid-timeout.
       const onAbort = () => attemptController.abort();
       signal?.addEventListener("abort", onAbort, { once: true });
+      const diag = beginRequest(label, url);
       try {
+        const started = performance.now();
         const resp = await fetch(url, {
           credentials: "same-origin",
           signal: attemptController.signal,
           // Keep redirects followable so 302 to R2 still works; the timeout
           // above bounds the worst case.
         });
+        const ttfbMs = Math.round(performance.now() - started);
+        // resp.url is the post-redirect URL — it exposes whether the transfer
+        // went direct to object storage (presign 302) or through the Worker.
+        console.info("[Player] fallback response", {
+          label,
+          status: resp.status,
+          finalHost: (() => { try { return new URL(resp.url).host; } catch { return resp.url; } })(),
+          redirected: resp.redirected,
+          ttfbMs,
+          contentLength: resp.headers.get("Content-Length") || "",
+        });
         if (!resp.ok) throw new Error(`fallback fetch failed: ${resp.status}`);
-        const blob = await resp.blob();
+        let blob: Blob;
+        const reader = resp.body?.getReader();
+        if (reader) {
+          // Read the body in chunks so the diagnostics registry sees live
+          // progress — a transfer that stops mid-body is then distinguishable
+          // from one that never got its first byte.
+          const parts: BlobPart[] = [];
+          let received = 0;
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            parts.push(value);
+            received += value.byteLength;
+            diag.progress(received);
+          }
+          blob = new Blob(parts, { type: resp.headers.get("Content-Type") || "" });
+        } else {
+          blob = await resp.blob();
+          diag.progress(blob.size);
+        }
+        diag.end({ status: resp.status, redirected: resp.redirected });
         await logFallbackBlob(label, resp, blob);
         return blob;
       } catch (e) {
+        diag.fail(timedOut ? `attempt timeout ${ATTEMPT_TIMEOUT_MS} ms` : e);
         if (signal?.aborted) throw e;
         lastError = e;
       } finally {
@@ -373,14 +427,23 @@ export const usePlayerStore = defineStore("player", () => {
         // This runs only after playback already failed, so it deliberately
         // keeps no-store: recovery must never be served a cached copy of
         // whatever the browser could not play.
-        const resp = await fetch(state.sourceUrl, {
-          credentials: "same-origin",
-          cache: "no-store",
-          headers: { Range: `bytes=${state.downloaded}-${target - 1}` },
-        });
-        if (!resp.ok) throw new Error(`range fallback fetch failed: ${resp.status}`);
-
-        const chunk = await resp.blob();
+        const diag = beginRequest(`stream-range-${state.downloaded}-${target - 1}`, state.sourceUrl);
+        let resp!: Response;
+        let chunk!: Blob;
+        try {
+          resp = await fetch(state.sourceUrl, {
+            credentials: "same-origin",
+            cache: "no-store",
+            headers: { Range: `bytes=${state.downloaded}-${target - 1}` },
+          });
+          if (!resp.ok) throw new Error(`range fallback fetch failed: ${resp.status}`);
+          chunk = await resp.blob();
+          diag.progress(chunk.size);
+          diag.end({ status: resp.status });
+        } catch (e) {
+          diag.fail(e);
+          throw e;
+        }
         await logFallbackBlob(`stream-range-${state.downloaded}-${target - 1}`, resp, chunk);
         if (resp.status === 206) {
           state.chunks.push(chunk);
@@ -592,10 +655,10 @@ export const usePlayerStore = defineStore("player", () => {
       }
     });
     el.addEventListener("stalled", () => {
-      console.warn("[Player] stalled event (buffering stalled)");
+      console.warn("[Player] stalled event (buffering stalled)", describeAudio(el));
     });
     el.addEventListener("waiting", () => {
-      console.log("[Player] waiting event (waiting for data)");
+      console.log("[Player] waiting event (waiting for data)", describeAudio(el));
     });
     el.addEventListener("loadedmetadata", () => {
       console.log("[Player] loadedmetadata event, duration =", el.duration);
