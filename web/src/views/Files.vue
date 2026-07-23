@@ -736,12 +736,16 @@ function applyScrapeResult(
 ) {
   if (r.title) form.title = r.title;
   if (r.artist) form.artist = r.artist;
+  if (r.albumArtist) form.albumArtist = r.albumArtist;
   if (r.album) form.album = r.album;
   if (r.year) form.year = String(r.year);
+  if (r.lyrics) form.lyrics = r.lyrics;
   if (r.title) applyFlags.title = true;
   if (r.artist) applyFlags.artist = true;
+  if (r.albumArtist) applyFlags.albumArtist = true;
   if (r.album) applyFlags.album = true;
   if (r.year) applyFlags.year = true;
+  if (r.lyrics) applyFlags.lyrics = true;
 }
 
 const DEFAULT_TIDY_TEMPLATE = "{albumArtist}/{album}/{track:02d} - {title}";
@@ -1022,7 +1026,7 @@ onMounted(async () => {
               :title="t('files.crossCopySelectHint')"
               @click.stop="toggleCrossSelect(f)"
             />
-            <span class="entry-icon file-icon">▪</span>
+            <span class="entry-icon file-icon"><Icon name="dot" /></span>
             <!-- Rename: inline input -->
             <template v-if="renamingFile === f.name">
               <input
@@ -1051,12 +1055,12 @@ onMounted(async () => {
                 class="op-btn op-cross"
                 :title="t('files.crossCopyTo')"
                 @click.stop="openCrossModal(f)"
-              >⧉</button>
+              ><Icon name="copy" /></button>
               <!-- R2-only operations -->
               <template v-if="isR2 && canUpload">
                 <button class="op-btn op-rename" :title="t('files.rename')" @click.stop="startRename(f)"><Icon name="edit" /></button>
-                <button class="op-btn op-move" :title="t('files.moveTo')" @click.stop="openMoveModal(f, 'move')">→</button>
-                <button class="op-btn op-copy" :title="t('files.copyTo')" @click.stop="openMoveModal(f, 'copy')">⊕</button>
+                <button class="op-btn op-move" :title="t('files.moveTo')" @click.stop="openMoveModal(f, 'move')"><Icon name="right" /></button>
+                <button class="op-btn op-copy" :title="t('files.copyTo')" @click.stop="openMoveModal(f, 'copy')"><Icon name="copy" /></button>
                 <button class="op-btn op-delete" :title="t('files.deleteFile')" :disabled="opBusy" @click.stop="openDeleteConfirm(f)"><Icon name="cross" /></button>
               </template>
             </template>
@@ -1090,7 +1094,7 @@ onMounted(async () => {
               @click="opDestSelected = row.node.path"
             >
               <button class="dest-tree-caret" :disabled="opBusy" @click.stop="toggleDestNode(row.node)">
-                {{ row.node.loading ? "…" : row.node.expanded ? "▾" : "▸" }}
+                <Icon :name="row.node.loading ? 'refresh' : row.node.expanded ? 'down' : 'right'" />
               </button>
               <span class="dest-tree-name">{{ row.node.path === "" ? t("files.root") : row.node.name }}</span>
             </div>
@@ -1291,7 +1295,7 @@ onMounted(async () => {
           <div class="tidy-plan-list">
             <div v-for="(p, i) in tidyPlanned" :key="p.instanceId + i" class="tidy-row">
               <div class="tidy-from mono-label">{{ p.from }}</div>
-              <div class="tidy-arrow">→</div>
+              <div class="tidy-arrow"><Icon name="right" /></div>
               <div class="tidy-to mono-label">
                 <template v-if="p.skipped">{{ t("files.tidySkipped", { reason: p.skipped }) }}</template>
                 <template v-else>{{ p.to }}</template>

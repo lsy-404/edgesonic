@@ -110,7 +110,7 @@ function normalise(s: NonNullable<NonNullable<NetEaseSearchResp["result"]>["song
 // Direct→proxy fallback shared with sibling adapters
 // ===========================================================================
 export type ProxyFn = (req: {
-  source: typeof SOURCE | "qmusic" | "kugou" | "kuwo" | "migu";
+  source: typeof SOURCE | "lrc" | "qmusic" | "kugou" | "kuwo" | "migu";
   intent: "search" | "lyric" | "detail";
   query?: string;
   songId?: string;

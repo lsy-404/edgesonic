@@ -31,6 +31,7 @@
 import * as netease from "./netease";
 import * as qmusic from "./qmusic";
 import * as kugou from "./kugou";
+import * as lrc from "./lrc";
 import type {
   ScrapeResult,
   ScrapeSource,
@@ -44,7 +45,9 @@ export type { ProxyFn } from "./netease";
 const ADAPTERS: Record<ScrapeSource, {
   search: (q: string, p: ProxyFn) => Promise<ScrapeResult[]>;
   fetchLyric: (id: string, p: ProxyFn) => Promise<string>;
+  resolve?: (result: ScrapeResult, p: ProxyFn) => Promise<ScrapeResult>;
 } | undefined> = {
+  lrc: { search: lrc.search, fetchLyric: lrc.fetchLyric, resolve: lrc.resolve },
   netease: { search: netease.search, fetchLyric: netease.fetchLyric },
   qmusic: { search: qmusic.search, fetchLyric: qmusic.fetchLyric },
   kugou: { search: kugou.search, fetchLyric: kugou.fetchLyric },
@@ -94,6 +97,10 @@ export async function fetchLyric(opts: LyricOpts): Promise<string> {
   const ad = ADAPTERS[opts.source];
   if (!ad) throw new Error(`scrape source ${opts.source} not supported`);
   return ad.fetchLyric(opts.songId, opts.proxyFetch);
+}
+
+export async function resolveResult(result: ScrapeResult, proxyFetch: ProxyFn): Promise<ScrapeResult> {
+  return (await ADAPTERS[result.source]?.resolve?.(result, proxyFetch)) || result;
 }
 
 // ===========================================================================

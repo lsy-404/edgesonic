@@ -709,13 +709,17 @@ function applyScrapeResult(
 ) {
   if (r.title) form.title = r.title;
   if (r.artist) form.artist = r.artist;
+  if (r.albumArtist) form.albumArtist = r.albumArtist;
   if (r.album) form.album = r.album;
   if (r.year) form.year = String(r.year);
+  if (r.lyrics) form.lyrics = r.lyrics;
   // Touch the apply flags for batch mode UX parity (no-op in single mode).
   if (r.title) applyFlags.title = true;
   if (r.artist) applyFlags.artist = true;
+  if (r.albumArtist) applyFlags.albumArtist = true;
   if (r.album) applyFlags.album = true;
   if (r.year) applyFlags.year = true;
+  if (r.lyrics) applyFlags.lyrics = true;
 }
 
 async function onEditorSubmit(patch: Record<string, string | number>, cover?: { data: string; mime: string }) {
@@ -1059,7 +1063,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           @update:starred="onStarChanged('album', currentAlbum, $event)"
           @error="onStarError"
         />
-        <button v-if="currentAlbum && songs.length" class="btn-primary" @click="playAlbumFromStart">{{ t("library.playAlbum") }}</button>
+        <button v-if="currentAlbum && songs.length" class="btn-primary" @click="playAlbumFromStart"><Icon name="play" /> {{ t("library.playAlbum") }}</button>
       </div>
     </div>
 
@@ -1104,7 +1108,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         <span>#</span><span>{{ t("library.colTitle") }}</span><span>{{ t("library.colArtist") }}</span><span>{{ t("library.colTime") }}</span><span></span><span></span>
       </div>
       <!-- 061: album-level share affordance, sits above the track table. -->
-      <button v-if="currentAlbum" class="album-share-btn" :title="t('library.share')" @click.stop="openShare('album', currentAlbum.id, currentAlbum.name)">⤴ {{ t("library.share") }}</button>
+       <button v-if="currentAlbum" class="album-share-btn" :title="t('library.share')" @click.stop="openShare('album', currentAlbum.id, currentAlbum.name)"><Icon name="up" /> {{ t("library.share") }}</button>
       <div
         v-for="(s, i) in songs"
         :key="s.id"
@@ -1112,7 +1116,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         :class="{ playing: player.current?.id === s.id }"
         @click="playSong(i)"
       >
-       <span class="song-no">{{ player.current?.id === s.id && player.playing ? "▶" : i + 1 }}</span>
+       <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
         <span class="song-title">{{ s.title }}</span>
           <span class="song-artist-group">
             <template v-for="(artist, idx) in parseArtists(s.artist)" :key="idx">
@@ -1189,14 +1193,14 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
            @update:starred="onStarChanged('album', al, $event)"
            @error="onStarError"
          />
-         <button class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', al.id, al.name)">⤴</button>
+          <button class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', al.id, al.name)"><Icon name="up" /></button>
         <div class="corner corner-tr"></div>
         <div class="corner corner-bl"></div>
       </div>
     </div>
       <div v-if="loading" class="empty-state" style="grid-column: 1/-1">{{ t("common.loading") }}</div>
       <div v-else-if="!albums.length" class="empty-state" style="grid-column: 1/-1">
-        <div class="empty-state-icon">◌</div>
+        <div class="empty-state-icon"><Icon name="empty" /></div>
         <div>{{ t("library.noAlbums") }}</div>
       </div>
     </div>
@@ -1244,7 +1248,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           @update:starred="onStarChanged('album', al, $event)"
           @error="onStarError"
         />
-        <button class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', al.id, al.name)">⤴</button>
+        <button class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', al.id, al.name)"><Icon name="up" /></button>
         <div class="corner corner-tr"></div>
         <div class="corner corner-bl"></div>
       </div>
@@ -1268,7 +1272,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           :class="{ playing: player.current?.id === s.id }"
           @click="playFromStarred(i)"
         >
-          <span class="song-no">{{ player.current?.id === s.id && player.playing ? "▶" : i + 1 }}</span>
+          <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
           <span class="song-title">{{ s.title }}</span>
           <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
           <span class="song-artist-group">
@@ -1335,14 +1339,14 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               @update:starred="onStarChanged('album', al, $event)"
               @error="onStarError"
             />
-            <button class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', al.id, al.name)">⤴</button>
+            <button class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', al.id, al.name)"><Icon name="up" /></button>
             <div class="corner corner-tr"></div>
             <div class="corner corner-bl"></div>
           </div>
         </div>
       </div>
       <div v-if="!allAlbums.length && !loading" class="empty-state">
-        <div class="empty-state-icon">◌</div>
+        <div class="empty-state-icon"><Icon name="empty" /></div>
         <div>{{ t("library.noAlbums") }}</div>
       </div>
       <div class="load-more">
@@ -1366,7 +1370,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           @click="toggleEditMode"
         >{{ editMode ? t("library.editModeOff") : t("library.editModeOn") }}</button>
       </div>
-      <!-- 079: discoverability hint — explains the per-row ✎ and the batch
+      <!-- 079: discoverability hint — explains the per-row edit action and the batch
            workflow so admins don't have to hover-discover them. Fades to 50%
            opacity after 5s (see songsHintFaded) but stays visible. -->
       <div
@@ -1427,7 +1431,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
             :title="t('library.select')"
             @click.stop="toggleSelected(s.id)"
           />
-          <span class="song-no">{{ player.current?.id === s.id && player.playing ? "▶" : i + 1 }}</span>
+          <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
           <span class="song-title">{{ s.title }}</span>
           <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
             <span class="song-artist-group">
@@ -1529,7 +1533,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
                 @update:starred="onStarChanged('album', al, $event)"
                 @error="onStarError"
               />
-              <button class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', al.id, al.name)">⤴</button>
+              <button class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', al.id, al.name)"><Icon name="up" /></button>
               <div class="corner corner-tr"></div>
               <div class="corner corner-bl"></div>
             </div>
@@ -1549,7 +1553,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               :class="{ playing: player.current?.id === s.id }"
               @click="playFromSearch(i)"
             >
-              <span class="song-no">{{ player.current?.id === s.id && player.playing ? "▶" : i + 1 }}</span>
+              <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
               <span class="song-title">{{ s.title }}</span>
               <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
                <span class="song-artist-group">

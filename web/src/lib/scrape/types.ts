@@ -23,7 +23,7 @@
 // the raw upstream JSON; normalisation happens client-side so each provider
 // owns its own parsing rules and stays easy to debug in the browser console.
 
-export type ScrapeSource = "netease" | "qmusic" | "kugou" | "kuwo" | "migu";
+export type ScrapeSource = "lrc" | "netease" | "qmusic" | "kugou" | "kuwo" | "migu";
 
 export interface ScrapeResult {
   /** Which provider this row came from. */
@@ -33,6 +33,7 @@ export interface ScrapeResult {
   /** Display fields — the parts users actually want to apply. */
   title: string;
   artist: string;
+  albumArtist?: string;
   album?: string;
   year?: number;
   /** Optional remote cover URL. 040 only carries it; 042 will download + write. */

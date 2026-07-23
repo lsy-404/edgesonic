@@ -8,6 +8,7 @@ import { useAuth } from "../api";
 import Icon from "./Icon.vue";
 import {
   searchAll,
+  resolveResult,
   submitResult,
   makeProxyFetch,
   type ScrapeResult,
@@ -48,14 +49,14 @@ async function loadConfig() {
       try {
         const parsed = JSON.parse(list.value);
         if (Array.isArray(parsed)) enabledSources.value = parsed as ScrapeSource[];
-      } catch { enabledSources.value = ["netease", "qmusic", "kugou"]; }
+      } catch { enabledSources.value = ["lrc", "netease", "qmusic", "kugou"]; }
     } else {
-      enabledSources.value = ["netease", "qmusic", "kugou"];
+      enabledSources.value = ["lrc", "netease", "qmusic", "kugou"];
     }
   } catch {
     // Settings unreachable (perm denied for non-admin?) — fall back to defaults
     // so end users can still scrape; the proxy itself is session-only either way.
-    enabledSources.value = ["netease", "qmusic", "kugou"];
+    enabledSources.value = ["lrc", "netease", "qmusic", "kugou"];
     scrapeEnabled.value = true;
   }
   configReady.value = true;
@@ -72,6 +73,7 @@ watch(() => props.initialQuery, (v) => { query.value = v; });
 
 const hasResults = computed(() => results.value.length > 0);
 const sourceLabel: Record<ScrapeSource, string> = {
+  lrc: "LRC Albums",
   netease: "NetEase",
   qmusic: "QQ Music",
   kugou: "Kugou",
@@ -129,23 +131,33 @@ function closePanel() {
 }
 
 async function applyResult(r: ScrapeResult) {
-  emit("apply", r);
+  busy.value = true;
+  let resolved: ScrapeResult;
+  try {
+    resolved = await resolveResult(r, makeProxyFetch(tagPost));
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e);
+    busy.value = false;
+    return;
+  }
+  emit("apply", resolved);
   // Fire-and-forget audit row. Failure here doesn't block the apply (the user
   // already got their tags merged; the row is best-effort tracking).
   try {
     await submitResult(
       {
         songMasterId: props.songMasterId || undefined,
-        source: r.source,
-        songId: r.songId,
+        source: resolved.source,
+        songId: resolved.songId,
         query: query.value.trim(),
-        result: r,
+        result: resolved,
         mode: "tags",
       },
       tagPost,
     );
   } catch {/* swallow — caller already saw the merge */}
   closePanel();
+  busy.value = false;
 }
 </script>
 

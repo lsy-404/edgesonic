@@ -47,8 +47,9 @@ export const scrapeRoutes = new Hono<{
 // whole table in one shot.
 const HISTORY_PAGE_MAX = 200;
 
-type ScrapeSource = "netease" | "qmusic" | "kugou" | "kuwo" | "migu";
+type ScrapeSource = "lrc" | "netease" | "qmusic" | "kugou" | "kuwo" | "migu";
 const VALID_SOURCES: ReadonlySet<ScrapeSource> = new Set([
+  "lrc",
   "netease",
   "qmusic",
   "kugou",
@@ -260,6 +261,8 @@ async function proxyFetch(
   body: ProxyBody,
 ): Promise<unknown> {
   switch (source) {
+    case "lrc":
+      return intent === "search" ? fetchLrcAlbums() : fetchLrcAlbumDetail(body.songId!);
     case "netease":
       return intent === "search"
         ? fetchNetEaseSearch(body.query!)
@@ -279,6 +282,22 @@ async function proxyFetch(
 }
 
 // timedFetch / UA come from utils/scrapeFetch.ts (shared with artistScrape).
+
+// ---- LRC album catalog ----
+const LRC_API = "https://lrc.wuyilingwei.com/api";
+
+async function fetchLrcAlbums(): Promise<unknown> {
+  const resp = await timedFetch(`${LRC_API}/albums.json`, { headers: { Accept: "application/json" } });
+  if (!resp.ok) throw new Error(`lrc albums HTTP ${resp.status}`);
+  return await resp.json();
+}
+
+async function fetchLrcAlbumDetail(slug: string): Promise<unknown> {
+  if (!/^[A-Za-z0-9_-]{1,160}$/.test(slug)) throw new Error("lrc album slug invalid");
+  const resp = await timedFetch(`${LRC_API}/albums/${encodeURIComponent(slug)}.json`, { headers: { Accept: "application/json" } });
+  if (!resp.ok) throw new Error(`lrc album detail HTTP ${resp.status}`);
+  return await resp.json();
+}
 
 // ---- NetEase ----
 async function fetchNetEaseSearch(query: string): Promise<unknown> {
