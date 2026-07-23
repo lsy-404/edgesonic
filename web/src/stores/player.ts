@@ -850,6 +850,13 @@ export const usePlayerStore = defineStore("player", () => {
             if (active !== targetEl || current.value?.id !== trackId) return;
             const playableBlob = await normalizePlayableBlob(blob);
             void putCachedTrack(trackId, playableBlob, track.duration || 0);
+            // The whole file is local now — hand playback off from the live
+            // stream to the blob so it stops depending on the browser's own
+            // buffering (which only resumes fetching once the buffered edge
+            // is nearly exhausted, and can stall audibly when it does).
+            const resumeAt = Number.isFinite(targetEl.currentTime) ? targetEl.currentTime : 0;
+            const shouldPlay = playing.value || !targetEl.paused;
+            playPreparedBlob(targetEl, playableBlob, resumeAt, shouldPlay, "background");
           },
           (error) => {
             console.warn("[Player] complete current-track preload failed; native stream remains active:", error);
