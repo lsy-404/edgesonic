@@ -1,0 +1,10 @@
+name = "edgesonic"
+main = "src/index.ts"
+compatibility_date = "2025-05-24"
+compatibility_flags = ["nodejs_compat"]
+
+# This config is used only to produce a code-only bundle in CI. Deployment
+# bindings are supplied from the target Worker at update time.
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"

@@ -41,6 +41,7 @@ import { Hono } from "hono";
 import type { User } from "../../types/entities";
 import { permissionMiddleware } from "../../auth";
 import { persistCronState } from "../../utils/cronRecovery";
+import { executeUpdate, listUpdates, readUpdateState, UpdateError } from "../../utils/autoupdate";
 
 export const cfRoutes = new Hono<{
   Bindings: Env;
@@ -201,6 +202,54 @@ cfRoutes.get("/cf/getStatus", async (c) => {
     accountId: c.env.CF_ACCOUNT_ID || "",
     tokenLast4: token ? tokenLast4(token) : "",
   });
+});
+
+// ---------------------------------------------------------------------------
+// GET /edgesonic/cf/getUpdates
+// ---------------------------------------------------------------------------
+// Lists selectable GitHub releases. The newest stable API-ready release is
+// returned as defaultTag; the client may still choose another release explicitly.
+cfRoutes.get("/cf/getUpdates", async (c) => {
+  try {
+    return c.json(await listUpdates(c.env, c.req.url));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return c.json({ ok: false, error: msg }, 502);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /edgesonic/cf/getUpdateStatus
+// ---------------------------------------------------------------------------
+cfRoutes.get("/cf/getUpdateStatus", async (c) => {
+  try {
+    return c.json({ ok: true, state: await readUpdateState(c.env.DB) });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return c.json({ ok: false, error: msg }, 502);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /edgesonic/cf/update { tag?: string, confirmMajor?: boolean }
+// ---------------------------------------------------------------------------
+// The Worker downloads and verifies the selected release, applies its optional
+// D1 patch, uploads a new immutable Worker version, and switches deployment.
+// Omitting tag selects the newest stable release.
+cfRoutes.post("/cf/update", async (c) => {
+  const body = await readJsonBody<{ tag?: unknown; confirmMajor?: unknown }>(c.req.raw);
+  const tag = body && typeof body.tag === "string" ? body.tag : undefined;
+  const confirmMajor = body?.confirmMajor === true;
+  try {
+    return c.json(await executeUpdate(c.env, c.req.url, tag, confirmMajor));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (e instanceof UpdateError) {
+      const status = e.status === 400 ? 400 : e.status === 404 ? 404 : e.status === 409 ? 409 : 502;
+      return c.json({ ok: false, error: msg }, status);
+    }
+    return c.json({ ok: false, error: msg }, 502);
+  }
 });
 
 // ---------------------------------------------------------------------------

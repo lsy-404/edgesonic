@@ -4,6 +4,8 @@ The **recommended** way to deploy EdgeSonic: fork this repository and run the Gi
 
 > Deploying via an AI agent instead of a human? See [`DEPLOY_BY_AGENT.md`](DEPLOY_BY_AGENT.md) — it drives the same precompiled release package from a local `wrangler`, so the agent never has to run a build.
 
+The Cloudflare API token and in-app update options are documented in [`WORKER_SELF_UPDATE.md`](WORKER_SELF_UPDATE.md). The current release path remains the supported deployment path.
+
 ## CI/CD (GitHub Actions)
 
 The workflow at `.github/workflows/deploy.yml` is **manual-only** (no automatic push trigger). Instead of building from source, it **downloads a precompiled release package** (prebuilt `web/dist` + isolated `worker/node_modules`) published by `.github/workflows/release.yml`, then deploys it with `wrangler`. All credentials are supplied as workflow inputs each time — the repository itself stores nothing.
