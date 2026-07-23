@@ -15,6 +15,8 @@
 
 import type { CrystalBackgroundOptions, DriftMotion } from "../crystal/background";
 import type { ParticleConfig } from "./particles";
+import { mountContourField } from "./contourField";
+import { arkClickPing } from "./arkPing";
 
 type Rgb = [number, number, number];
 
@@ -22,15 +24,21 @@ type Rgb = [number, number, number];
 // backgrounds) and CrystalProgressThumb.vue (the player-bar marker), so the
 // progress "片" is the same WebGL tumbling solid as the drifting background
 // crystals and the click-drop pieces — never a CSS 3D fake.
+//
+// `color`/`halo`/`shape` always drive the progress-bar thumb marker. The
+// full-viewport background is the WebGL crystal drift + particle field
+// unless `customBackground` is set, in which case it replaces both — Endfield
+// uses this for its contour-line field instead (see contourField.ts).
 export interface ElementTheme {
   id: string;
   label: string;
   color: Rgb;
   halo: Rgb;
   shape: CrystalBackgroundOptions["shape"];
-  crystalOpacity: [number, number];
-  motion: DriftMotion;
-  particle: ParticleConfig;
+  crystalOpacity?: [number, number];
+  motion?: DriftMotion;
+  particle?: ParticleConfig;
+  customBackground?: (host: HTMLElement) => () => void;
 }
 
 export const ELEMENT_THEMES: ElementTheme[] = [
@@ -63,6 +71,27 @@ export const ELEMENT_THEMES: ElementTheme[] = [
     id: "crimson", label: "Night SP", color: [0.6, 0.42, 0.9], halo: [0.5, 0.16, 0.42],
     shape: "dodecahedron", crystalOpacity: [0.52, 0.74], motion: "rtl",
     particle: { kind: "orb", colors: ["#9b78e5", "#b98fe0", "#7a2a68"], density: 22 },
+  },
+  {
+    // Background is a monochrome contour field (no drifting cubes) with a
+    // white rhombus click-ping; color/halo/shape still drive the progress
+    // thumb marker, which keeps the cyan/lime cube identity.
+    id: "ark", label: "Ark SP", color: [0.094, 0.82, 1], halo: [0.784, 0.922, 0.129],
+    shape: "cube",
+    customBackground: (host) => {
+      const stopField = mountContourField(host, { colorLow: [1, 1, 1], colorHigh: [1, 1, 1], seed: 4242 });
+      const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reduce) window.addEventListener("click", arkClickPing);
+      return () => {
+        if (!reduce) window.removeEventListener("click", arkClickPing);
+        stopField();
+      };
+    },
+  },
+  {
+    id: "end", label: "Endfield SP", color: [1, 0.98, 0], halo: [0, 1, 0.635],
+    shape: "icosahedron",
+    customBackground: (host) => mountContourField(host, { colorLow: [1, 1, 1], colorHigh: [1, 1, 1] }),
   },
 ];
 

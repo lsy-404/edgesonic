@@ -18,7 +18,9 @@
 }
 /* Dark celestial elements (Star, Night) carry a deeper, higher-contrast sky. */
 :root[data-theme="sp-gold"] .el-bg,
-:root[data-theme="sp-crimson"] .el-bg {
+:root[data-theme="sp-crimson"] .el-bg,
+:root[data-theme="sp-ark"] .el-bg,
+:root[data-theme="sp-end"] .el-bg {
   background:
     radial-gradient(circle at 16% 20%, color-mix(in srgb, var(--deco-c) 42%, transparent), transparent 30rem),
     radial-gradient(circle at 84% 10%, color-mix(in srgb, var(--deco-b) 40%, transparent), transparent 30rem),
@@ -134,12 +136,62 @@
   50% { box-shadow: 0 0 22px color-mix(in srgb, var(--deco-a) 82%, transparent); }
 }
 
+/* Ark — hard-edged signal scanline sweeps the fill, HUD readout style.
+   --deco-a/b are the monochrome ambient wash here, not the signal colour, so
+   the fill itself is built from --color-accent-primary (cyan) + the state
+   lime directly rather than the deco triad. */
+:root[data-theme="sp-ark"] .pb-progress-fill {
+  background: linear-gradient(90deg, color-mix(in srgb, #c8eb21 30%, transparent), var(--color-accent-primary));
+}
+:root[data-theme="sp-ark"] .pb-progress-fill::before {
+  content: ""; position: absolute; inset: 0; border-radius: 999px; overflow: hidden;
+  background: linear-gradient(90deg, transparent 0%, transparent 46%, rgba(255,255,255,.9) 49%, rgba(255,255,255,.9) 51%, transparent 54%, transparent 100%);
+  background-size: 260% 100%; background-repeat: no-repeat;
+  animation: elScan 2.4s linear infinite;
+}
+@keyframes elScan {
+  0% { background-position: -60% 0; opacity: 0; }
+  8% { opacity: 1; }
+  50% { background-position: 160% 0; opacity: 1; }
+  58%, 100% { background-position: 160% 0; opacity: 0; }
+}
+
+/* Endfield — stepped calibration ticks, not a smooth scroll. Same note as
+   Ark above: --deco-a/b are monochrome here, so the fill uses
+   --color-accent-primary (signal yellow) + the state mint directly. */
+:root[data-theme="sp-end"] .pb-progress-fill {
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.14) 0 1px, transparent 1px 8px),
+    linear-gradient(90deg, color-mix(in srgb, #00ffa2 45%, transparent), var(--color-accent-primary));
+  animation: elCalibrate 1.8s steps(6) infinite;
+}
+@keyframes elCalibrate {
+  0%, 100% { box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent-primary) 35%, transparent); }
+  50% { box-shadow: 0 0 18px color-mix(in srgb, var(--color-accent-primary) 70%, transparent); }
+}
+
 /* SP progress marker wrapper (WebGL solid mounts inside — see CrystalProgressThumb). */
 :root[data-theme^="sp-"] .pb-progress-thumb {
   width: 20px; height: 20px; opacity: 1; border: none; background: transparent;
   top: 50%;
   transform: translate(-50%, -50%);
   overflow: visible;
+}
+
+/* Ark — click feedback is a white rhombus outline expanding from the
+   pointer, replacing the other SP themes' falling-crystal click-drop. */
+.ark-click-ping {
+  position: fixed; z-index: 260; pointer-events: none;
+  width: 10px; height: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.92);
+  transform: translate(-50%, -50%) rotate(45deg) scale(0.25);
+  opacity: 0;
+  animation: arkPing 0.5s cubic-bezier(0.16, 0.72, 0.28, 1) forwards;
+}
+@keyframes arkPing {
+  0% { transform: translate(-50%, -50%) rotate(45deg) scale(0.25); opacity: 0; }
+  16% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(45deg) scale(4.5); opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) { .el-particle-canvas { display: none; } }

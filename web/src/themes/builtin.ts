@@ -25,6 +25,7 @@ import { registerTheme, getTheme } from "./registry";
 export const THEME_PICKER_ROWS = [
   ["black", "color-gold", "color-ocean", "color-scarlet", "color-sky", "color-earth", "color-crimson"],
   ["white", "sp-gold", "sp-ocean", "sp-scarlet", "sp-sky", "sp-earth", "sp-crimson"],
+  ["sp-ark", "sp-end"],
 ] as const;
 export const BUILTIN_THEME_IDS = THEME_PICKER_ROWS.flat();
 
@@ -44,6 +45,8 @@ const lazyBuiltins: Record<string, () => Promise<unknown>> = {
   "sp-sky": () => import("./elements"),
   "sp-earth": () => import("./elements"),
   "sp-crimson": () => import("./elements"),
+  "sp-ark": () => import("./elements"),
+  "sp-end": () => import("./elements"),
 };
 
 /** No-ops once a theme is already registered (covers both "already lazy-loaded" and "not a lazy built-in"). */

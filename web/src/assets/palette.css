@@ -135,6 +135,15 @@
 :root[data-theme="color-earth"], :root[data-theme="sp-earth"] { --color-bg-primary: #fff9e8; --color-bg-secondary: #fffef9; --color-bg-tertiary: #fff0be; --color-bg-elevated: #ffffff; --color-text-primary: #403142; --color-text-secondary: #6e5364; --color-text-muted: #a78982; --color-text-inverse: #ffffff; --color-accent-primary: #ffc45a; --color-accent-dim: rgba(255,196,90,.2); --color-border-subtle: rgba(255,196,90,.28); --color-border-default: rgba(219,142,49,.48); --color-border-strong: rgba(65,48,67,.62); --deco-a: #ffc45a; --deco-b: #e0a233; --deco-c: #5a3a6e; }
 :root[data-theme="color-crimson"], :root[data-theme="sp-crimson"] { --color-bg-primary: #25183e; --color-bg-secondary: #332252; --color-bg-tertiary: #493168; --color-bg-elevated: #3b285c; --color-text-primary: #faf6ff; --color-text-secondary: #dacdf5; --color-text-muted: #ad9ace; --color-text-inverse: #181024; --color-accent-primary: #9b78e5; --color-accent-dim: rgba(155,120,229,.24); --color-border-subtle: rgba(155,120,229,.28); --color-border-default: rgba(155,120,229,.46); --color-border-strong: rgba(224,149,207,.64); --deco-a: #9b78e5; --deco-b: #7a2a68; --deco-c: #c9a8f0; }
 
+/* Ark / Endfield — evidence-based family palettes (ark-ui skill), added as
+   their own SP tier entries rather than a color-plain/sp- pair. Both are
+   dark, monochrome-wash themes (black background, white contour lines via
+   contourField.ts) with the family's signal colour reserved for functional
+   UI — accent, borders, progress fill — rather than the ambient artwork, so
+   --deco-a/b/c here are near-white/near-black instead of signal-tinted. */
+:root[data-theme="sp-ark"] { --color-bg-primary: #080a0b; --color-bg-secondary: #101315; --color-bg-tertiary: #161a1d; --color-bg-elevated: #1b1f23; --color-bg-overlay: rgba(8,10,11,.78); --color-text-primary: #f4f6f6; --color-text-secondary: #b7c0c2; --color-text-muted: #8d9396; --color-text-inverse: #080a0b; --color-accent-primary: #18d1ff; --color-accent-dim: rgba(24,209,255,.2); --color-border-subtle: rgba(24,209,255,.16); --color-border-default: rgba(24,209,255,.3); --color-border-strong: rgba(200,235,33,.55); --deco-a: #ffffff; --deco-b: #aab4b8; --deco-c: #0f1418; --glow: 0 0 20px rgba(24,209,255,.3); }
+:root[data-theme="sp-end"] { --color-bg-primary: #191919; --color-bg-secondary: #222222; --color-bg-tertiary: #2a2a2a; --color-bg-elevated: #262626; --color-bg-overlay: rgba(0,0,0,.6); --color-text-primary: #f2f2f0; --color-text-secondary: #b8b6ac; --color-text-muted: #83807a; --color-text-inverse: #191919; --color-accent-primary: #fffa00; --color-accent-dim: rgba(255,250,0,.18); --color-border-subtle: rgba(255,255,255,.1); --color-border-default: rgba(255,255,255,.18); --color-border-strong: rgba(0,255,162,.55); --deco-a: #ffffff; --deco-b: #cfcac0; --deco-c: #17130a; --glow: 0 0 20px rgba(255,250,0,.3); }
+
 /* .navbar/.player-bar paint hardcoded rgba() backgrounds, so non-default
    themes need explicit glass overrides. */
 :root[data-theme="red"] .navbar,
