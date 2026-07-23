@@ -18,6 +18,7 @@ import { invalidateFeature, invalidateFeatureString } from "../../utils/features
 import { permissionMiddleware } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
 import { isDemoMode, isDemoLockedFeature } from "../../utils/demoMode";
+import { sendEmail } from "../../utils/email";
 import type { User } from "../../types/entities";
 
 // System settings are gated on `manage_settings` (default L3, grantable to L2
@@ -165,7 +166,36 @@ const STRING_FEATURE_KEYS = new Set([
     // Whether /files/upload accepts any file type ("1") or only audio
     // extensions ("0"). Editable in normal mode; locked in demo mode.
     "allow_all_file_types",
+    // Resend "from" address parts (the API key itself is a secret —
+    // external_secrets.resend_api_key via /features/secrets/get|set, not
+    // here). Login page customization. All four locked in demo mode except
+    // the two login_* ones (cosmetic, see DEMO_LOCKED_FEATURE_KEYS).
+    "resend_from_email",
+    "resend_from_name",
+    "login_notice_text",
+    "login_background_url",
+    // Editable email templates — super-admin only, see
+    // SUPER_ADMIN_ONLY_STRING_KEYS below (manage_settings alone is not
+    // enough for these six).
+    "email_tpl_verify_subject",
+    "email_tpl_verify_body",
+    "email_tpl_reset_subject",
+    "email_tpl_reset_body",
+    "email_tpl_change_subject",
+    "email_tpl_change_body",
   ]);
+
+// A manage_settings admin (grantable down to level 2) may configure
+// Resend and toggle features, but editing what emails actually SAY is
+// reserved for a true super-admin (level 3) — checked in /features/updateString.
+const SUPER_ADMIN_ONLY_STRING_KEYS = new Set([
+  "email_tpl_verify_subject",
+  "email_tpl_verify_body",
+  "email_tpl_reset_subject",
+  "email_tpl_reset_body",
+  "email_tpl_change_subject",
+  "email_tpl_change_body",
+]);
 
 // Per-key validation. Returns null on success, error message otherwise.
 function validateFeatureString(key: string, value: string): string | null {
@@ -357,7 +387,7 @@ function validateFeatureString(key: string, value: string): string | null {
     }
     case "scrape_enabled_sources": {
       // JSON array of strings, each one a known scrape source.
-      const allowed = new Set(["netease", "qmusic", "kugou", "kuwo", "migu"]);
+      const allowed = new Set(["lrc", "netease", "qmusic", "kugou", "kuwo", "migu"]);
       try {
         const parsed = JSON.parse(value);
         if (!Array.isArray(parsed) || !parsed.every((v) => typeof v === "string")) {
@@ -371,6 +401,35 @@ function validateFeatureString(key: string, value: string): string | null {
       }
       return null;
     }
+    case "resend_from_email":
+      // Empty disables sending. Otherwise a loose shape check — Resend
+      // itself is the source of truth on whether the address is verified.
+      if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "resend_from_email must be a valid email address";
+      if (value.length > 256) return "resend_from_email is too long";
+      return null;
+    case "resend_from_name":
+      if (value.length > 128) return "resend_from_name is too long";
+      return null;
+    case "login_notice_text":
+      if (value.length > 500) return "login_notice_text is too long (max 500 chars)";
+      return null;
+    case "login_background_url":
+      if (value && !/^https?:\/\//.test(value)) return "login_background_url must start with http:// or https://";
+      if (value.length > 2048) return "login_background_url is too long";
+      return null;
+    case "email_tpl_verify_subject":
+    case "email_tpl_reset_subject":
+    case "email_tpl_change_subject":
+      if (!value.trim()) return `${key} cannot be empty`;
+      if (value.length > 200) return `${key} is too long (max 200 chars)`;
+      return null;
+    case "email_tpl_verify_body":
+    case "email_tpl_reset_body":
+    case "email_tpl_change_body":
+      if (!value.trim()) return `${key} cannot be empty`;
+      if (!value.includes("{{link}}")) return `${key} must contain the {{link}} placeholder`;
+      if (value.length > 4000) return `${key} is too long (max 4000 chars)`;
+      return null;
     default:
       return `Unknown string feature: ${key}`;
   }
@@ -394,6 +453,9 @@ featuresRoutes.post("/features/updateString", async (c) => {
   }
   if (isDemoMode(c.env) && isDemoLockedFeature(body.key)) {
     return c.json({ ok: false, error: "Feature is locked in demo mode" }, 403);
+  }
+  if (SUPER_ADMIN_ONLY_STRING_KEYS.has(body.key) && c.get("user").level < 3) {
+    return c.json({ ok: false, error: "Only a super-admin can edit email templates" }, 403);
   }
   const validation = validateFeatureString(body.key, body.value);
   if (validation) {
@@ -442,10 +504,43 @@ featuresRoutes.post("/features/secrets/set", async (c) => {
   if (typeof body.value !== "string") {
     return c.json({ ok: false, error: "value must be a string (use empty string to clear)" }, 400);
   }
+  // This endpoint is generic across every external_secrets row, so a
+  // key locked via DEMO_LOCKED_FEATURE_KEYS (e.g. resend_api_key) must be
+  // rejected here too — a demo visitor holding the public admin password
+  // must not be able to repoint a configured secret.
+  if (isDemoMode(c.env) && isDemoLockedFeature(key)) {
+    return c.json({ ok: false, error: "Secret is locked in demo mode" }, 403);
+  }
   const now = Math.floor(Date.now() / 1000);
   await c.env.DB.prepare(
     `INSERT INTO external_secrets (key, value, updated_at) VALUES (?, ?, ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
   ).bind(key, body.value, now).run();
   return c.json({ ok: true, key, set: !!body.value });
+});
+
+// Lets an admin confirm the Resend config actually works before relying
+// on it for registration/password-reset emails. Sends a plain confirmation
+// message to an address the admin supplies (not the caller's own — a fresh
+// deployment may not have any user.email set yet).
+featuresRoutes.post("/email/test", async (c) => {
+  const denied = await requireManageSettings(c);
+  if (denied) return denied;
+  let body: { to?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "Invalid JSON body" }, 400);
+  }
+  if (!body.to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.to)) {
+    return c.json({ ok: false, error: "Missing or invalid 'to' address" }, 400);
+  }
+  const result = await sendEmail(c.env, {
+    to: body.to,
+    subject: "EdgeSonic test email / EdgeSonic 测试邮件",
+    text: "This is a test email from your EdgeSonic instance's Resend configuration.\n\n这是来自你的 EdgeSonic 实例 Resend 配置的测试邮件。",
+    html: "<p>This is a test email from your EdgeSonic instance's Resend configuration.</p><p>这是来自你的 EdgeSonic 实例 Resend 配置的测试邮件。</p>",
+  });
+  if (!result.ok) return c.json({ ok: false, error: result.error || "Send failed" }, 502);
+  return c.json({ ok: true });
 });

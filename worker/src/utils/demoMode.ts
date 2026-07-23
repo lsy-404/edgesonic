@@ -49,6 +49,16 @@ export const DEMO_LOCKED_FEATURE_KEYS = new Set<string>([
   // File-type gate — locked in demo so a visitor can't switch to
   // "allow all" and upload arbitrary payloads.
   "allow_all_file_types",
+  // A visitor holding the public demo admin password must not be able
+  // to repoint the Resend sender, nor flip self-service registration on —
+  // both would turn the public demo into an open email-spam relay.
+  "open_registration",
+  "resend_api_key",
+  "resend_from_email",
+  "resend_from_name",
+  // Same reasoning — password reset also sends mail to an
+  // attacker-chosen address.
+  "allow_email_password_reset",
 ]);
 
 export function isDemoMode(env: { DEMO_MODE?: string }): boolean {

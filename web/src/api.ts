@@ -104,6 +104,8 @@ function readCachedPerms(): Record<string, boolean> {
 const permissions = ref<Record<string, boolean>>(readCachedPerms());
 const nickname = ref(localStorage.getItem("edgesonic_nickname") || "");
 const avatarKey = ref(localStorage.getItem("edgesonic_avatar_key") || "");
+const email = ref(localStorage.getItem("edgesonic_email") || "");
+const emailVerified = ref(localStorage.getItem("edgesonic_email_verified") === "1");
 const salt = ref("");
 let sessionCheckInFlight: Promise<void> | null = null;
 
@@ -176,15 +178,95 @@ export function useAuth() {
     return { ok: false, error: data.error || "Guest login failed" };
   }
 
+  interface LoginConfig {
+    noticeText: string; backgroundUrl: string; registrationEnabled: boolean;
+    // Password reset has its own switch on top of "is email configured
+    // at all" (emailEnabled) — Login.vue/ForgotPassword.vue gate on this one.
+    passwordResetEnabled: boolean;
+    emailEnabled: boolean; isDemo: boolean;
+  }
+
+  // Public — no session required. Drives Login.vue's notice line, optional
+  // background, and whether the register / forgot-password links render.
+  async function getLoginConfig(): Promise<LoginConfig> {
+    const fallback: LoginConfig = {
+      noticeText: "", backgroundUrl: "", registrationEnabled: false,
+      passwordResetEnabled: false, emailEnabled: false, isDemo: false,
+    };
+    try {
+      const resp = await fetch(`${EDGESONIC_BASE}/auth/loginConfig`, { credentials: "same-origin" });
+      const data = await resp.json();
+      if (!data.ok) return fallback;
+      return {
+        noticeText: data.noticeText || "",
+        backgroundUrl: data.backgroundUrl || "",
+        registrationEnabled: !!data.registrationEnabled,
+        passwordResetEnabled: !!data.passwordResetEnabled,
+        emailEnabled: !!data.emailEnabled,
+        isDemo: !!data.isDemo,
+      };
+    } catch { return fallback; }
+  }
+
+  async function register(u: string, e: string, p: string): Promise<LoginResult> {
+    const resp = await fetch(`${EDGESONIC_BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ username: u, email: e, password: p }),
+    });
+    const data = await resp.json();
+    if (!data.ok) return { ok: false, error: data.error || "Registration failed" };
+    // Registration doesn't itself open a session — reuse the normal login
+    // flow so App.vue/router hydrate exactly as they would for any sign-in.
+    return login(u, p);
+  }
+
+  async function requestPasswordReset(emailOrUsername: string): Promise<{ ok: boolean; error?: string }> {
+    const resp = await fetch(`${EDGESONIC_BASE}/auth/passwordReset/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ emailOrUsername }),
+    });
+    const data = await resp.json();
+    return { ok: !!data.ok, error: data.error };
+  }
+
+  async function confirmPasswordReset(token: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
+    const resp = await fetch(`${EDGESONIC_BASE}/auth/passwordReset/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ token, newPassword }),
+    });
+    const data = await resp.json();
+    return { ok: !!data.ok, error: data.error };
+  }
+
+  async function confirmEmailVerify(token: string): Promise<{ ok: boolean; error?: string }> {
+    const resp = await fetch(`${EDGESONIC_BASE}/auth/emailVerify/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ token }),
+    });
+    const data = await resp.json();
+    return { ok: !!data.ok, error: data.error };
+  }
+
   async function logout() {
     token.value = ""; username.value = ""; level.value = 0;
     permissions.value = {}; nickname.value = ""; avatarKey.value = "";
+    email.value = ""; emailVerified.value = false;
     localStorage.removeItem("edgesonic_logged_in");
     localStorage.removeItem("edgesonic_user");
     localStorage.removeItem("edgesonic_level");
     localStorage.removeItem("edgesonic_perms");
     localStorage.removeItem("edgesonic_nickname");
     localStorage.removeItem("edgesonic_avatar_key");
+    localStorage.removeItem("edgesonic_email");
+    localStorage.removeItem("edgesonic_email_verified");
     // Best-effort: clear the cookie + delete the session row server-side.
     // If the request fails (offline, worker down) the SPA-side state is
     // already cleared; the cookie will lapse at its natural 24h expiry
@@ -348,6 +430,7 @@ export function useAuth() {
     try {
       const data = JSON.parse(await edgesonicFetch("auth/me")) as {
         ok: boolean; level?: number; nickname?: string | null; avatarKey?: string | null;
+        email?: string | null; emailVerified?: boolean;
         permissions?: Record<string, boolean>;
       };
       if (!data.ok) return;
@@ -357,9 +440,13 @@ export function useAuth() {
       }
       nickname.value = data.nickname || "";
       avatarKey.value = data.avatarKey || "";
+      email.value = data.email || "";
+      emailVerified.value = !!data.emailVerified;
       permissions.value = data.permissions || {};
       localStorage.setItem("edgesonic_nickname", nickname.value);
       localStorage.setItem("edgesonic_avatar_key", avatarKey.value);
+      localStorage.setItem("edgesonic_email", email.value);
+      localStorage.setItem("edgesonic_email_verified", emailVerified.value ? "1" : "0");
       localStorage.setItem("edgesonic_perms", JSON.stringify(permissions.value));
     } catch (e) {
       handleAuthError(e);
@@ -375,6 +462,43 @@ export function useAuth() {
     if (!data.ok) throw new Error(data.error || "update failed");
     nickname.value = data.nickname || "";
     localStorage.setItem("edgesonic_nickname", nickname.value);
+  }
+
+  // Self-service email (Settings → account). Changing the address always
+  // resets emailVerified server-side (see users.ts updateSelf) — a new
+  // address hasn't proven ownership until the emailed link is clicked.
+  // Two-step — this only requests the change (verifies currentPassword
+  // server-side, mails a confirm link to newEmail). It does NOT update the
+  // local `email` state; the address only takes effect once the link in the
+  // new inbox is clicked (confirmEmailChange, below).
+  async function requestEmailChange(currentPassword: string, newEmail: string): Promise<{ ok: boolean; error?: string }> {
+    const data = JSON.parse(await edgesonicPost("auth/emailChange/request", { currentPassword, newEmail })) as {
+      ok: boolean; error?: string;
+    };
+    return { ok: !!data.ok, error: data.error };
+  }
+
+  // Public — no session required (the link is normally opened in a
+  // different browser/device than the one that requested the change).
+  async function confirmEmailChange(token: string): Promise<{ ok: boolean; error?: string; email?: string }> {
+    const resp = await fetch(`${EDGESONIC_BASE}/auth/emailChange/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ token }),
+    });
+    const data = await resp.json() as { ok: boolean; error?: string; username?: string; email?: string };
+    // Only refresh the cached profile if THIS browser's active session
+    // belongs to the same account — otherwise a logged-in browser confirming
+    // someone else's change link (or one that's logged into a different
+    // account) would overwrite its own Settings page with the wrong email.
+    if (data.ok && data.username === username.value) {
+      email.value = data.email || email.value;
+      localStorage.setItem("edgesonic_email", email.value);
+      emailVerified.value = true;
+      localStorage.setItem("edgesonic_email_verified", "1");
+    }
+    return { ok: !!data.ok, error: data.error, email: data.email };
   }
 
   async function changeOwnPassword(next: string): Promise<void> {
@@ -523,9 +647,10 @@ export function useAuth() {
   }
 
   return { token, username, level, salt, isLoggedIn, isAdmin, isSuperAdmin, isGuest, isUser,
-    permissions, hasPerm, nickname, avatarKey, displayName,
-    fetchMe, updateNickname, changeOwnPassword, updateOwnAvatar,
+    permissions, hasPerm, nickname, avatarKey, email, emailVerified, displayName,
+    fetchMe, updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
     login, guestLogin, logout, handleAuthError, authFetch, authPost, uploadFile, crossCopy, makeSalt, md5,
+    getLoginConfig, register, requestPasswordReset, confirmPasswordReset, confirmEmailVerify,
     tagFetch, tagPost, storageFetch, storagePost, edgesonicFetch, edgesonicPost,
     readTags, writeTags, batchWriteTags, rescanSongs, submitMetadata, tidyFolder,
     signedParams, restUrl, streamUrl, coverArtUrl, downloadUrl };

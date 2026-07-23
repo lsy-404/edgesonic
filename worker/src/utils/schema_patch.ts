@@ -73,6 +73,33 @@ export async function ensureRichLyricsColumn(env: { DB: D1Database }): Promise<v
   }
 }
 
+// users.email / users.email_verified for self-service password reset
+// and email registration. Same idempotent self-heal pattern: both columns
+// are declared in Schema.sql's CREATE TABLE for fresh installs; this
+// back-fills databases created before they existed. The partial unique
+// index is safe to (re-)run unconditionally since CREATE INDEX supports
+// IF NOT EXISTS natively.
+let emailColumnsEnsured = false;
+export async function ensureEmailColumns(env: { DB: D1Database }): Promise<void> {
+  if (emailColumnsEnsured) return;
+  const alters = [
+    "ALTER TABLE users ADD COLUMN email TEXT",
+    "ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0",
+  ];
+  let allDone = true;
+  for (const sql of alters) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch (e) {
+      if (!/duplicate column/i.test(e instanceof Error ? e.message : String(e))) allDone = false;
+    }
+  }
+  await env.DB.prepare(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL"
+  ).run();
+  if (allDone) emailColumnsEnsured = true;
+}
+
 // storage_sources.cache_tier (per-source hot-cache tier selector) and
 // song_instances.last_accessed_at (LRU key for evictForRoom). Same idempotent
 // self-heal pattern: both columns are declared in Schema.sql's CREATE TABLE

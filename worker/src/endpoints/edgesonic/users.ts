@@ -28,9 +28,12 @@
 import { Hono } from "hono";
 import { GUEST_USERNAME, permissionMiddleware, sha256 } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
-import { ensureNicknameColumn } from "../../utils/schema_patch";
+import { ensureNicknameColumn, ensureEmailColumns } from "../../utils/schema_patch";
 import { isDemoMode } from "../../utils/demoMode";
+import { normalizeEmail } from "../../utils/email";
 import type { User } from "../../types/entities";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Demo mode blocks superadmin-level user mutations (create/update/delete)
 // AND self-service profile edits (updateSelf/setAvatar) so a visitor
@@ -48,6 +51,11 @@ export const usersRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }
 // display name. Avatar (setAvatar) and password (subsonic changePassword)
 // already have self-service paths; this covers the nickname. An empty value
 // clears it, falling back to the username at read time.
+//
+// Email is NOT handled here — changing it requires confirming the
+// current password and proving ownership of the new mailbox first, so it
+// goes through the dedicated /edgesonic/auth/emailChange/request+confirm
+// pair (auth.ts) instead of this single-step endpoint.
 usersRoutes.post("/users/updateSelf", async (c) => {
   const blocked = demoBlockUserMutation(c);
   if (blocked) return blocked;
@@ -73,14 +81,17 @@ usersRoutes.post("/users/updateSelf", async (c) => {
 });
 
 usersRoutes.get("/users/list", permissionMiddleware("manage_users"), async (c) => {
+  await ensureEmailColumns(c.env);
   const db = c.env.DB;
-  const result = await db.prepare("SELECT username, level, enabled FROM users ORDER BY created_at ASC").all<{
-    username: string; level: number; enabled: number;
+  const result = await db.prepare("SELECT username, level, enabled, email, email_verified FROM users ORDER BY created_at ASC").all<{
+    username: string; level: number; enabled: number; email: string | null; email_verified: number;
   }>();
   const users = result.results.map((u) => ({
     username: u.username,
     level: u.level,
     enabled: !!u.enabled,
+    email: u.email,
+    emailVerified: !!u.email_verified,
   }));
   return c.json({ ok: true, users });
 });
@@ -98,7 +109,7 @@ usersRoutes.post("/users/create", permissionMiddleware("manage_users"), async (c
   if (caller.level < 2) {
     return c.json({ ok: false, error: "User creation requires admin privileges (level 2+)" }, 403);
   }
-  const body = await c.req.json<{ username: string; password: string; level?: number }>();
+  const body = await c.req.json<{ username: string; password: string; level?: number; email?: string }>();
   if (!body.username || !body.password) {
     return c.json({ ok: false, error: "Missing username or password" }, 400);
   }
@@ -113,10 +124,20 @@ usersRoutes.post("/users/create", permissionMiddleware("manage_users"), async (c
     return c.json({ ok: false, error: "Only a super-admin can create admin/super-admin accounts" }, 403);
   }
   const db = c.env.DB;
+  await ensureEmailColumns(c.env);
+  let email: string | null = null;
+  if (body.email) {
+    email = normalizeEmail(body.email);
+    if (!EMAIL_RE.test(email)) {
+      return c.json({ ok: false, error: "Invalid email address" }, 400);
+    }
+    const clash = await db.prepare("SELECT username FROM users WHERE email = ?").bind(email).first();
+    if (clash) return c.json({ ok: false, error: "Email already in use" }, 409);
+  }
   const now = Math.floor(Date.now() / 1000);
   await db.prepare(
-    "INSERT OR REPLACE INTO users (username, master_password, level, enabled, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)"
-  ).bind(body.username, await sha256(body.password), level, now, now).run();
+    "INSERT OR REPLACE INTO users (username, master_password, level, enabled, email, email_verified, created_at, updated_at) VALUES (?, ?, ?, 1, ?, 0, ?, ?)"
+  ).bind(body.username, await sha256(body.password), level, email, now, now).run();
   return c.json({ ok: true });
 });
 
@@ -125,10 +146,11 @@ usersRoutes.get("/users/get", async (c) => {
   if (!username) {
     return c.json({ ok: false, error: "Missing username" }, 400);
   }
+  await ensureEmailColumns(c.env);
   const db = c.env.DB;
   const user = await db.prepare(
-    "SELECT username, level, enabled FROM users WHERE username = ?"
-  ).bind(username).first<{ username: string; level: number; enabled: number }>();
+    "SELECT username, level, enabled, email, email_verified FROM users WHERE username = ?"
+  ).bind(username).first<{ username: string; level: number; enabled: number; email: string | null; email_verified: number }>();
   if (!user) {
     return c.json({ ok: false, error: "User not found" }, 404);
   }
@@ -138,6 +160,8 @@ usersRoutes.get("/users/get", async (c) => {
       username: user.username,
       level: user.level,
       enabled: !!user.enabled,
+      email: user.email,
+      emailVerified: !!user.email_verified,
     },
   });
 });
@@ -149,11 +173,12 @@ usersRoutes.post("/users/update", permissionMiddleware("manage_users"), async (c
   if (caller.level < 2) {
     return c.json({ ok: false, error: "User update requires admin privileges (level 2+)" }, 403);
   }
-  const body = await c.req.json<{ username: string; password?: string; level?: number; enabled?: number }>();
+  const body = await c.req.json<{ username: string; password?: string; level?: number; enabled?: number; email?: string | null }>();
   if (!body.username) {
     return c.json({ ok: false, error: "Missing username" }, 400);
   }
   const db = c.env.DB;
+  await ensureEmailColumns(c.env);
   const now = Math.floor(Date.now() / 1000);
 
   // Constraint B — an admin cannot promote themselves to superadmin.
@@ -222,6 +247,23 @@ usersRoutes.post("/users/update", permissionMiddleware("manage_users"), async (c
     await db.prepare(
       "UPDATE users SET enabled = ?, updated_at = ? WHERE username = ?"
     ).bind(body.enabled ? 1 : 0, now, body.username).run();
+  }
+  if (typeof body.email !== "undefined") {
+    let email: string | null = typeof body.email === "string" ? normalizeEmail(body.email) : null;
+    if (email !== null && email.length === 0) email = null;
+    if (email !== null && !EMAIL_RE.test(email)) {
+      return c.json({ ok: false, error: "Invalid email address" }, 400);
+    }
+    if (email !== null) {
+      const clash = await db.prepare("SELECT username FROM users WHERE email = ? AND username != ?")
+        .bind(email, body.username).first();
+      if (clash) return c.json({ ok: false, error: "Email already in use" }, 409);
+    }
+    // Admin-driven change: reset verification just like the self-service
+    // path — a new address hasn't proven ownership yet.
+    await db.prepare(
+      "UPDATE users SET email = ?, email_verified = 0, updated_at = ? WHERE username = ?"
+    ).bind(email, now, body.username).run();
   }
   return c.json({ ok: true });
 });

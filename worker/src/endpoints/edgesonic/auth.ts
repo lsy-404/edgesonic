@@ -21,7 +21,13 @@ import { permissionMiddleware, subsonicError, sha256, SESSION_TTL_SEC, buildSess
 import { subsonicOK } from "../../utils/xml";
 import { recoverCronIfStale } from "../../utils/cronRecovery";
 import { getEffectivePermissions, hasPermission } from "../../utils/permissions";
-import { ensureNicknameColumn } from "../../utils/schema_patch";
+import { ensureNicknameColumn, ensureEmailColumns } from "../../utils/schema_patch";
+import { getFeature, getFeatureString } from "../../utils/features";
+import { isDemoMode } from "../../utils/demoMode";
+import {
+  emailSendingConfigured, sendEmail, createEmailToken, consumeEmailToken, consumeEmailChangeToken,
+  verifyEmailTemplate, resetPasswordEmailTemplate, changeEmailTemplate, normalizeEmail,
+} from "../../utils/email";
 import type { User } from "../../types/entities";
 
 // only request that legitimately arrives without a session) and is exported
@@ -182,6 +188,222 @@ webLoginRoutes.post("/edgesonic/auth/logout", async (c) => {
   return c.json({ ok: true });
 });
 
+// ============================================================================
+// Public login-page config, self-service registration, email
+// verification and password reset. Same mount point as login/guest/logout
+// above (runs before the global authMiddleware) — a visitor without a
+// session must be able to reach all of these.
+// ============================================================================
+const USERNAME_RE = /^[a-zA-Z0-9_-]{3,32}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+webLoginRoutes.get("/edgesonic/auth/loginConfig", async (c) => {
+  const [noticeText, backgroundUrl, registrationEnabled, allowPasswordReset, emailEnabled] = await Promise.all([
+    getFeatureString(c.env, "login_notice_text", ""),
+    getFeatureString(c.env, "login_background_url", ""),
+    getFeature(c.env, "open_registration"),
+    getFeature(c.env, "allow_email_password_reset"),
+    emailSendingConfigured(c.env),
+  ]);
+  return c.json({
+    ok: true,
+    noticeText,
+    backgroundUrl,
+    // Self-service registration additionally requires email sending to be
+    // configured — an account created without a working verification email
+    // has no way to later prove ownership for a password reset.
+    registrationEnabled: registrationEnabled && emailEnabled,
+    // Password reset has its own independent toggle on top of "is
+    // email configured at all" — an operator may want registration without
+    // self-service reset, or vice versa.
+    passwordResetEnabled: allowPasswordReset && emailEnabled,
+    emailEnabled,
+    isDemo: isDemoMode(c.env),
+  });
+});
+
+webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
+  if (isDemoMode(c.env)) {
+    return c.json({ ok: false, error: "Registration is disabled in demo mode" }, 403);
+  }
+  if (!(await getFeature(c.env, "open_registration"))) {
+    return c.json({ ok: false, error: "Registration is disabled" }, 403);
+  }
+  if (!(await emailSendingConfigured(c.env))) {
+    return c.json({ ok: false, error: "Registration requires email to be configured" }, 403);
+  }
+
+  let body: { username?: string; email?: string; password?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "Invalid JSON body" }, 400);
+  }
+  const username = (body.username || "").trim();
+  const email = normalizeEmail(body.email || "");
+  const password = body.password || "";
+
+  if (!USERNAME_RE.test(username) || username === GUEST_USERNAME) {
+    return c.json({ ok: false, error: "Username must be 3-32 characters (letters, digits, _ or -)" }, 400);
+  }
+  if (!EMAIL_RE.test(email)) {
+    return c.json({ ok: false, error: "Invalid email address" }, 400);
+  }
+  if (password.length < 8 || password.length > 256) {
+    return c.json({ ok: false, error: "Password must be 8-256 characters" }, 400);
+  }
+
+  const db = c.env.DB;
+  await ensureEmailColumns(c.env);
+
+  const existingUser = await db.prepare("SELECT username FROM users WHERE username = ?").bind(username).first();
+  if (existingUser) {
+    return c.json({ ok: false, error: "Username already taken" }, 409);
+  }
+  const existingEmail = await db.prepare("SELECT username FROM users WHERE email = ?").bind(email).first();
+  if (existingEmail) {
+    return c.json({ ok: false, error: "Email already registered" }, 409);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  await db.prepare(
+    "INSERT INTO users (username, master_password, level, enabled, email, email_verified, created_at, updated_at) VALUES (?, ?, 1, 1, ?, 0, ?, ?)"
+  ).bind(username, await sha256(password), email, now, now).run();
+
+  // Best-effort verification email — registration succeeds regardless of
+  // whether sending works; the account is fully usable either way (email
+  // verification is informational, not a login gate).
+  const token = await createEmailToken(db, username, "verify", 24 * 60 * 60);
+  const origin = new URL(c.req.url).origin;
+  const tpl = await verifyEmailTemplate(c.env, origin, token);
+  sendEmail(c.env, { to: email, ...tpl }).catch(() => {});
+
+  return c.json({ ok: true, username });
+});
+
+webLoginRoutes.post("/edgesonic/auth/passwordReset/request", async (c) => {
+  let body: { emailOrUsername?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "Invalid JSON body" }, 400);
+  }
+  const query = (body.emailOrUsername || "").trim();
+  const db = c.env.DB;
+  await ensureEmailColumns(c.env);
+
+  // Always ok:true regardless of whether an account was found — avoids
+  // leaking which emails/usernames exist.
+  if (!query) return c.json({ ok: true });
+
+  // Independent on/off switch — off behaves exactly like "account not
+  // found" (still ok:true, never sends), same as the demo-mode guard below.
+  const allowReset = await getFeature(c.env, "allow_email_password_reset");
+
+  const user = EMAIL_RE.test(query)
+    ? await db.prepare("SELECT username, email FROM users WHERE email = ? AND enabled = 1")
+        .bind(normalizeEmail(query)).first<{ username: string; email: string }>()
+    : await db.prepare("SELECT username, email FROM users WHERE username = ? AND enabled = 1 AND email IS NOT NULL")
+        .bind(query).first<{ username: string; email: string }>();
+
+  // Demo mode: still succeed (no enumeration signal) but never actually
+  // send — a public demo's Resend quota/reputation must not be spendable
+  // by visitors.
+  if (user && user.email && allowReset && !isDemoMode(c.env)) {
+    const token = await createEmailToken(db, user.username, "reset", 60 * 60);
+    const origin = new URL(c.req.url).origin;
+    const tpl = await resetPasswordEmailTemplate(c.env, origin, token);
+    sendEmail(c.env, { to: user.email, ...tpl }).catch(() => {});
+  }
+  return c.json({ ok: true });
+});
+
+webLoginRoutes.post("/edgesonic/auth/passwordReset/confirm", async (c) => {
+  let body: { token?: string; newPassword?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "Invalid JSON body" }, 400);
+  }
+  if (!body.token) {
+    return c.json({ ok: false, error: "Missing token" }, 400);
+  }
+  const newPassword = body.newPassword || "";
+  if (newPassword.length < 8 || newPassword.length > 256) {
+    return c.json({ ok: false, error: "Password must be 8-256 characters" }, 400);
+  }
+
+  const db = c.env.DB;
+  const username = await consumeEmailToken(db, body.token, "reset");
+  if (!username) {
+    return c.json({ ok: false, error: "Invalid or expired token" }, 400);
+  }
+  const now = Math.floor(Date.now() / 1000);
+  await db.prepare("UPDATE users SET master_password = ?, updated_at = ? WHERE username = ?")
+    .bind(await sha256(newPassword), now, username).run();
+  // Invalidate every existing session so a leaked/compromised session can't
+  // outlive the password reset that was meant to shut it out.
+  await db.prepare("DELETE FROM sessions WHERE username = ?").bind(username).run();
+
+  return c.json({ ok: true, username });
+});
+
+webLoginRoutes.post("/edgesonic/auth/emailVerify/confirm", async (c) => {
+  let body: { token?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "Invalid JSON body" }, 400);
+  }
+  if (!body.token) {
+    return c.json({ ok: false, error: "Missing token" }, 400);
+  }
+  const db = c.env.DB;
+  await ensureEmailColumns(c.env);
+  const username = await consumeEmailToken(db, body.token, "verify");
+  if (!username) {
+    return c.json({ ok: false, error: "Invalid or expired token" }, 400);
+  }
+  await db.prepare("UPDATE users SET email_verified = 1, updated_at = ? WHERE username = ?")
+    .bind(Math.floor(Date.now() / 1000), username).run();
+  return c.json({ ok: true, username });
+});
+
+// Confirming a pending email change. Public (no session required) since
+// the link is opened from an email client that may not carry the caller's
+// cookie — mirrors emailVerify/confirm above. The request side
+// (emailChange/request, below in edgesonicAuthRoutes) never writes
+// users.email itself; this confirm step is the only place that does, and it
+// sets email_verified=1 in the same statement since clicking the link IS the
+// proof the caller controls the new mailbox.
+webLoginRoutes.post("/edgesonic/auth/emailChange/confirm", async (c) => {
+  let body: { token?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "Invalid JSON body" }, 400);
+  }
+  if (!body.token) {
+    return c.json({ ok: false, error: "Missing token" }, 400);
+  }
+  const db = c.env.DB;
+  await ensureEmailColumns(c.env);
+  const result = await consumeEmailChangeToken(db, body.token);
+  if (!result) {
+    return c.json({ ok: false, error: "Invalid or expired token" }, 400);
+  }
+  // Re-check uniqueness at confirm time — the address could have been
+  // claimed by someone else in the window between request and confirm.
+  const clash = await db.prepare("SELECT username FROM users WHERE email = ? AND username != ?")
+    .bind(result.newEmail, result.username).first();
+  if (clash) {
+    return c.json({ ok: false, error: "Email already in use" }, 409);
+  }
+  await db.prepare("UPDATE users SET email = ?, email_verified = 1, updated_at = ? WHERE username = ?")
+    .bind(result.newEmail, Math.floor(Date.now() / 1000), result.username).run();
+  return c.json({ ok: true, username: result.username, email: result.newEmail });
+});
+
 function parseSessionCookie(cookieHeader: string): string | null {
   for (const part of cookieHeader.split(";")) {
     const eq = part.indexOf("=");
@@ -204,22 +426,82 @@ const XML = { "Content-Type": "application/xml; charset=UTF-8" } as const;
 edgesonicAuthRoutes.get("/auth/me", async (c) => {
   const user = c.get("user");
   await ensureNicknameColumn(c.env);
+  await ensureEmailColumns(c.env);
   const permissions = await getEffectivePermissions(c.env, user);
 
   let nickname: string | null = null;
   let avatarKey: string | null = null;
+  let email: string | null = null;
+  let emailVerified = false;
   try {
     const row = await c.env.DB
-      .prepare("SELECT nickname, avatar_r2_key FROM users WHERE username = ?")
+      .prepare("SELECT nickname, avatar_r2_key, email, email_verified FROM users WHERE username = ?")
       .bind(user.username)
-      .first<{ nickname: string | null; avatar_r2_key: string | null }>();
+      .first<{ nickname: string | null; avatar_r2_key: string | null; email: string | null; email_verified: number }>();
     nickname = row?.nickname ?? null;
     avatarKey = row?.avatar_r2_key ?? null;
+    email = row?.email ?? null;
+    emailVerified = !!row?.email_verified;
   } catch {
-    // nickname column may be absent on a database not yet back-filled.
+    // nickname/email columns may be absent on a database not yet back-filled.
   }
 
-  return c.json({ ok: true, username: user.username, level: user.level, nickname, avatarKey, permissions });
+  return c.json({ ok: true, username: user.username, level: user.level, nickname, avatarKey, email, emailVerified, permissions });
+});
+
+// ─── Email change ─────────────────────────────────────────────────────────
+// Two-step, unlike the old updateSelf path it replaces: this endpoint
+// never writes users.email. It only verifies the caller's CURRENT password
+// (so a hijacked-but-not-yet-expired session can't silently redirect
+// password-reset mail to an attacker's inbox) and mails a confirmation link
+// to the NEW address; /auth/emailChange/confirm (public, above) is what
+// actually writes the row, once the caller has proven they control the new
+// mailbox too.
+edgesonicAuthRoutes.post("/auth/emailChange/request", async (c) => {
+  const caller = c.get("user");
+  if (caller.level < 1) {
+    return c.json({ ok: false, error: "Guests cannot edit their profile" }, 403);
+  }
+  if (isDemoMode(c.env)) {
+    // Same spam-relay concern as registration: a demo visitor could otherwise
+    // mail an arbitrary address using the operator's Resend quota.
+    return c.json({ ok: false, error: "Email change is disabled in demo mode" }, 403);
+  }
+  if (!(await emailSendingConfigured(c.env))) {
+    return c.json({ ok: false, error: "Email is not configured on this server" }, 403);
+  }
+
+  let body: { currentPassword?: string; newEmail?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "Invalid JSON body" }, 400);
+  }
+  const newEmail = normalizeEmail(body.newEmail || "");
+  if (!EMAIL_RE.test(newEmail)) {
+    return c.json({ ok: false, error: "Invalid email address" }, 400);
+  }
+
+  const db = c.env.DB;
+  await ensureEmailColumns(c.env);
+  const row = await db.prepare("SELECT master_password FROM users WHERE username = ?")
+    .bind(caller.username).first<{ master_password: string }>();
+  if (!row || (await sha256(body.currentPassword || "")) !== row.master_password) {
+    return c.json({ ok: false, error: "Current password is incorrect" }, 401);
+  }
+
+  const clash = await db.prepare("SELECT username FROM users WHERE email = ? AND username != ?")
+    .bind(newEmail, caller.username).first();
+  if (clash) {
+    return c.json({ ok: false, error: "Email already in use" }, 409);
+  }
+
+  const token = await createEmailToken(db, caller.username, "change_email", 24 * 60 * 60, newEmail);
+  const origin = new URL(c.req.url).origin;
+  const tpl = await changeEmailTemplate(c.env, origin, token);
+  sendEmail(c.env, { to: newEmail, ...tpl }).catch(() => {});
+
+  return c.json({ ok: true });
 });
 
 // ─── Sessions ───────────────────────────────────────────────────────────────

@@ -14,8 +14,8 @@
 -- INSERT OR IGNORE / INSERT OR REPLACE so re-running on an existing DB is
 -- safe. The individual migration files (0001_initial.sql …
 -- 0039_clone_id_map.sql) have been removed; their content is folded into
--- this file. Fresh deployments execute this file once; no incremental
--- patches are shipped.
+-- this file. Fresh deployments execute this file once; release-specific
+-- additive patches, when needed by the in-app updater, live under worker/updates.
 -- ============================================================================
 
 -- ============================================================================
@@ -74,9 +74,12 @@ CREATE TABLE IF NOT EXISTS users (
   enabled INTEGER DEFAULT 1,
   avatar_r2_key TEXT,                                -- 014/035: R2 key for getAvatar (NULL → no avatar)
   nickname TEXT,                                      -- EdgeSonic display name (NULL → fall back to username)
+  email TEXT,                                        -- self-service password reset + email registration (NULL → not set)
+  email_verified INTEGER NOT NULL DEFAULT 0,          -- informational only, not a login/reset gate
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch())
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL;
 
 -- ============================================================================
 -- 3. Sessions (web login → temporary session, dual-use as Subsonic password)
@@ -677,7 +680,8 @@ INSERT OR IGNORE INTO features (key, value, description) VALUES
   ('allow_being_proxied',     1, '允许本服务器被其他 EdgeSonic 作为上游二次代理'),
   ('enable_subsonic_upstream', 1, '本服务器是否启用 Subsonic 类型存储源（出站代理）'),
   ('guest_browse',            0, '允许 guest 级别浏览音乐库'),
-  ('open_registration',       0, '开放用户自助注册');
+  ('open_registration',       0, '开放用户自助注册'),
+  ('allow_email_password_reset', 0, '允许通过邮箱自助重置密码（独立于自助注册开关）');
 
 -- 0011: scrape_enabled master switch
 INSERT OR IGNORE INTO features (key, value, description, updated_at) VALUES
@@ -707,7 +711,7 @@ INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
 
 -- 0011: scrape source priority
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
-  ('scrape_enabled_sources', '["netease","qmusic","kugou"]', 'Enabled scrape sources in priority order (JSON array)', unixepoch());
+  ('scrape_enabled_sources', '["lrc","netease","qmusic","kugou"]', 'Enabled scrape sources in priority order (JSON array)', unixepoch());
 
 -- 0016: lastfm api key (empty = off)
 INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
@@ -809,6 +813,58 @@ INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALU
    'Allow level 1+ users to generate their own API credentials (0=disabled, 1=enabled)',
    unixepoch());
 
+-- Resend email integration (from-address parts; the API key itself is a
+-- secret and lives in external_secrets below, not here). open_registration
+-- (features table, seeded above with the default flag set) is the master
+-- switch for self-service email signup.
+INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
+  ('resend_from_email', '', 'Resend verified "from" email address (empty = email sending disabled)', unixepoch()),
+  ('resend_from_name',  'EdgeSonic', 'Resend "from" display name', unixepoch()),
+  ('login_notice_text', '', 'Optional line of text shown on the login page (empty = none, or demo hint in DEMO_MODE)', unixepoch()),
+  ('login_background_url', '', 'Optional login page background image URL (empty = default grid background)', unixepoch());
+
+-- Editable email templates (super-admin only, enforced in
+-- features.ts /features/updateString — not just manage_settings). Plain
+-- text with a {{link}} placeholder; the server escapes + wraps it into a
+-- simple HTML/text pair at send time (see utils/email.ts renderTemplate).
+INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
+  ('email_tpl_verify_subject', 'Verify your EdgeSonic email / 验证你的 EdgeSonic 邮箱',
+   'Email verification subject (super-admin only)', unixepoch()),
+  ('email_tpl_verify_body', 'Confirm your email address by visiting the link below:
+
+{{link}}
+
+请访问以下链接验证邮箱：
+
+{{link}}
+
+This link expires in 24 hours / 链接 24 小时后失效。',
+   'Email verification body — plain text, {{link}} is replaced with the verification URL (super-admin only)', unixepoch()),
+  ('email_tpl_reset_subject', 'Reset your EdgeSonic password / 重置你的 EdgeSonic 密码',
+   'Password reset email subject (super-admin only)', unixepoch()),
+  ('email_tpl_reset_body', 'Reset your password by visiting the link below:
+
+{{link}}
+
+请访问以下链接重置密码：
+
+{{link}}
+
+If you did not request this, ignore this email. This link expires in 1 hour / 若非本人操作请忽略，链接 1 小时后失效。',
+   'Password reset email body — plain text, {{link}} is replaced with the reset URL (super-admin only)', unixepoch()),
+  ('email_tpl_change_subject', 'Confirm your new EdgeSonic email / 确认你的新 EdgeSonic 邮箱',
+   'Email-change confirmation subject (super-admin only)', unixepoch()),
+  ('email_tpl_change_body', 'Confirm your new email address by visiting the link below:
+
+{{link}}
+
+请访问以下链接确认新邮箱：
+
+{{link}}
+
+This link expires in 24 hours / 链接 24 小时后失效。',
+   'Email-change confirmation body — plain text, {{link}} is replaced with the confirmation URL (super-admin only)', unixepoch());
+
 -- ============================================================================
 -- ============================================================================
 -- Stored as plain TEXT for now; admin-gated endpoints read/write only.
@@ -820,7 +876,8 @@ CREATE TABLE IF NOT EXISTS external_secrets (
 
 -- A single empty placeholder so admin UI can GET it without 404.
 INSERT OR IGNORE INTO external_secrets (key, value) VALUES
-  ('external_transcoder_key', '');
+  ('external_transcoder_key', ''),
+  ('resend_api_key', '');
 
 -- ============================================================================
 -- 24. KV→D1 migration (090, migration 0027)
@@ -848,6 +905,45 @@ CREATE TABLE IF NOT EXISTS kv_store (
   value TEXT NOT NULL,
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
+
+-- Auto-update control state and idempotent database patch receipts. Existing
+-- deployments create these tables lazily when the update endpoint is called.
+CREATE TABLE IF NOT EXISTS autoupdate_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  status TEXT NOT NULL,
+  operation_id TEXT,
+  target_tag TEXT,
+  target_version TEXT,
+  version_id TEXT,
+  error TEXT,
+  started_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS autoupdate_patches (
+  patch_id TEXT PRIMARY KEY,
+  release_version TEXT NOT NULL,
+  sha256 TEXT NOT NULL,
+  applied_at INTEGER NOT NULL
+);
+
+-- Single-use email tokens (verify / reset / change_email).
+-- Existing deployments create this table lazily on first use, self-healing
+-- across the change_email shape change (new_email column + change_email purpose) by
+-- detecting and rebuilding the old shape — see ensureEmailTokensTable in
+-- utils/email.ts. Tokens are short-lived (1-24h) and purely transactional,
+-- so a one-time drop-and-recreate on upgrade is cheaper and safer than an
+-- in-place CHECK-constraint rewrite (SQLite can't ALTER a CHECK constraint).
+CREATE TABLE IF NOT EXISTS email_tokens (
+  token TEXT PRIMARY KEY,
+  username TEXT NOT NULL,
+  purpose TEXT NOT NULL CHECK (purpose IN ('verify', 'reset', 'change_email')),
+  new_email TEXT,                                    -- pending address for purpose='change_email' only
+  expires_at INTEGER NOT NULL,
+  used_at INTEGER,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_email_tokens_username ON email_tokens(username, purpose);
 
 -- now_playing — Active stream registry (formerly KV `now_playing:{username}`, 300s TTL)
 CREATE TABLE IF NOT EXISTS now_playing (
