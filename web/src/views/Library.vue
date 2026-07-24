@@ -9,9 +9,11 @@ import TagEditor from "../components/TagEditor.vue";
 import Icon from "../components/Icon.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
 import SongRowMenu from "../components/SongRowMenu.vue";
+import ListOptionsMenu from "../components/ListOptionsMenu.vue";
 import StarButton from "../components/StarButton.vue";
 import BudgetedImage from "../components/BudgetedImage.vue";
 import { showInfo } from "../stores/toast";
+import { isInstrumentalTitle } from "../lib/instrumental";
 import type { ScrapeResult } from "../lib/scrape";
 
 const { t } = useI18n();
@@ -190,9 +192,20 @@ let songLoadPromise: Promise<void> | null = null;
 let locateRetryId: string | null = null;
 const locatingCurrent = ref(false);
 
+// Backing tracks are only distinguishable by their title suffix, so the filter
+// runs client-side over whatever pages have been fetched.
+const HIDE_INSTRUMENTAL_KEY = "edgesonic_hide_instrumental";
+const hideInstrumental = ref(localStorage.getItem(HIDE_INSTRUMENTAL_KEY) === "1");
+watch(hideInstrumental, (on) => localStorage.setItem(HIDE_INSTRUMENTAL_KEY, on ? "1" : "0"));
+
+function dropInstrumentals(items: Track[]): Track[] {
+  return hideInstrumental.value ? items.filter((s) => !isInstrumentalTitle(s.title)) : items;
+}
+
 const displayArtists = computed(() => sortArtists(starredOnly ? starredLists.value.artists : artists.value));
 const displayAlbums = computed(() => starredOnly ? sortAlbums(starredLists.value.albums) : allAlbums.value);
-const displaySongs = computed(() => starredOnly ? sortSongs(starredLists.value.songs) : allSongs.value);
+const displaySongs = computed(() => dropInstrumentals(starredOnly ? sortSongs(starredLists.value.songs) : allSongs.value));
+const albumSongs = computed(() => dropInstrumentals(songs.value));
 
 const songListEnd = ref<HTMLElement | null>(null);
 const albumListEnd = ref<HTMLElement | null>(null);
@@ -558,7 +571,7 @@ async function openAlbum(album: Album) {
 }
 
 function playSong(i: number) {
-  player.setQueue(songs.value, i);
+  player.setQueue(albumSongs.value, i);
 }
 
 function playFromAll(i: number) {
@@ -570,7 +583,7 @@ function playFromStarred(i: number) {
 }
 
 function playAlbumFromStart() {
-  if (songs.value.length) player.setQueue(songs.value, 0);
+  if (albumSongs.value.length) player.setQueue(albumSongs.value, 0);
 }
 
 async function openAlbumById(albumId: string, albumName: string) {
@@ -1027,9 +1040,14 @@ function toggleRowMenu(id: string) {
 function closeRowMenu() {
   openMenuId.value = null;
 }
+const optionsOpen = ref(false);
+function toggleOptions() {
+  optionsOpen.value = !optionsOpen.value;
+}
 function onWindowClick(e: MouseEvent) {
-  if (!openMenuId.value) return;
-  if (!(e.target as HTMLElement).closest(".row-menu-wrap")) closeRowMenu();
+  const target = e.target as HTMLElement;
+  if (openMenuId.value && !target.closest(".row-menu-wrap")) closeRowMenu();
+  if (optionsOpen.value && !target.closest(".list-options-wrap")) optionsOpen.value = false;
 }
 onMounted(() => window.addEventListener("click", onWindowClick));
 onUnmounted(() => window.removeEventListener("click", onWindowClick));
@@ -1063,7 +1081,13 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           @update:starred="onStarChanged('album', currentAlbum, $event)"
           @error="onStarError"
         />
-        <button v-if="currentAlbum && songs.length" class="btn-primary" @click="playAlbumFromStart"><Icon name="play" /> {{ t("library.playAlbum") }}</button>
+        <button v-if="currentAlbum && albumSongs.length" class="btn-primary" @click="playAlbumFromStart"><Icon name="play" /> {{ t("library.playAlbum") }}</button>
+        <ListOptionsMenu
+          v-if="currentAlbum"
+          :open="optionsOpen"
+          v-model:hide-instrumental="hideInstrumental"
+          @toggle="toggleOptions"
+        />
       </div>
     </div>
 
@@ -1095,6 +1119,12 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       <button class="btn-secondary btn-sm locate-current-btn" :disabled="locatingCurrent" @click="locateCurrentSong">
         {{ locatingCurrent ? t("library.locatingCurrent") : t("library.locateCurrent") }}
       </button>
+      <ListOptionsMenu
+        v-if="tab === 'songs'"
+        :open="optionsOpen"
+        v-model:hide-instrumental="hideInstrumental"
+        @toggle="toggleOptions"
+      />
     </div>
 
     <div v-if="error" class="status-badge error">{{ error }}</div>
@@ -1107,10 +1137,10 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       <div class="table-header">
         <span>#</span><span>{{ t("library.colTitle") }}</span><span>{{ t("library.colArtist") }}</span><span>{{ t("library.colTime") }}</span><span></span><span></span>
       </div>
-      <!-- 061: album-level share affordance, sits above the track table. -->
+      <!-- Album-level share affordance, sits above the track table. -->
        <button v-if="currentAlbum" class="album-share-btn" :title="t('library.share')" @click.stop="openShare('album', currentAlbum.id, currentAlbum.name)"><Icon name="up" /> {{ t("library.share") }}</button>
       <div
-        v-for="(s, i) in songs"
+        v-for="(s, i) in albumSongs"
         :key="s.id"
         class="table-row song-row"
         :class="{ playing: player.current?.id === s.id }"
@@ -1149,7 +1179,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
          />
       </div>
       <div v-if="loading" class="empty-state">{{ t("common.loading") }}</div>
-      <div v-else-if="!songs.length" class="empty-state">{{ t("library.noTracks") }}</div>
+      <div v-else-if="!albumSongs.length" class="empty-state">{{ t("library.noTracks") }}</div>
     </div>
 
     <!-- Drill-down: albums of an artist -->
@@ -1184,7 +1214,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           <div class="album-name">{{ al.name }}</div>
           <div class="mono-label">{{ al.year || "—" }}<template v-if="al.songCount"> · {{ t("library.trackCount", { n: al.songCount }) }}</template></div>
          </div>
-         <!-- 061: per-album share. -->
+         <!-- Per-album share. -->
          <StarButton
            class="card-like-btn"
            :id="al.id"
@@ -1314,7 +1344,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
     </div>
 
     <!-- Tab: all albums -->
-    <!-- 154: waterfall grid — allAlbums is pre-split into fixed column
+    <!-- waterfall grid — allAlbums is pre-split into fixed column
          buckets (round-robin by index, see albumWaterfallCols) so on-screen
          order always matches fetch/alphabetical order and a late-loading
          cover only grows its own column, never reflows the whole grid. -->
@@ -1330,7 +1360,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               <div class="album-name">{{ al.name }}</div>
               <div class="mono-label">{{ al.artist || "—" }}<template v-if="al.songCount"> · {{ t("library.trackCount", { n: al.songCount }) }}</template></div>
             </div>
-            <!-- 061: per-album share. -->
+            <!-- Per-album share. -->
             <StarButton
               class="card-like-btn"
               :id="al.id"
@@ -1361,7 +1391,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 
     <!-- Tab: all songs -->
     <div v-else-if="!starredOnly && tab === 'songs'">
-      <!-- 101: edit mode toggle. Admins default to browse mode; click to reveal
+      <!-- edit mode toggle. Admins default to browse mode; click to reveal
            checkboxes / batch toolbar. The button lives at the top-right of the
            songs tab so it's discoverable without cluttering the song list. -->
       <div v-if="isAdmin" class="songs-tab-toolbar">
@@ -1370,7 +1400,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           @click="toggleEditMode"
         >{{ editMode ? t("library.editModeOff") : t("library.editModeOn") }}</button>
       </div>
-      <!-- 079: discoverability hint — explains the per-row edit action and the batch
+      <!-- Discoverability hint — explains the per-row edit action and the batch
            workflow so admins don't have to hover-discover them. Fades to 50%
            opacity after 5s (see songsHintFaded) but stays visible. -->
       <div
@@ -1378,7 +1408,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         class="songs-hint"
         :class="{ faded: songsHintFaded }"
       >{{ t("library.songsHint") }}</div>
-      <!-- 079: batch-edit preview row. Shown only when nothing is selected;
+      <!-- Batch-edit preview row. Shown only when nothing is selected;
            swaps out for the active batch-toolbar below as soon as the user
            ticks a row. -->
       <div v-if="isAdmin && editMode && !selectedIds.length" class="batch-preview">
@@ -1408,7 +1438,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         >{{ t("library.batchShare") }}</button>
         <span v-if="rescanMsg" class="mono-label">{{ rescanMsg }}</span>
       </div>
-      <!-- 102: no `auto` tracks (per-row grids misalign); artist/time get
+      <!-- no `auto` tracks (per-row grids misalign); artist/time get
            fixed-share tracks so columns line up across every row. -->
       <div class="table-wrap song-table" :style="`--grid-cols: ${isAdmin && editMode ? '24px ' : ''}36px 2fr 1.5fr 1fr 64px 32px 32px`">
         <div class="table-header">
@@ -1604,7 +1634,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       @submit="onEditorSubmit"
       @close="closeEditor"
     >
-     <!-- 040: scrape button in extras slot. Single-mode only; batch UX has no
+     <!-- Scrape button in extras slot. Single-mode only; batch UX has no
            obvious "one master query" so we hide the button there. -->
       <template v-if="editorMode === 'single'" #extras="{ form, apply }">
         <ScrapeButton
@@ -1615,7 +1645,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       </template>
     </TagEditor>
 
-    <!-- 061: Share modal. Lightweight standalone (no extra component) — opens
+    <!-- Share modal. Lightweight standalone (no extra component) — opens
          on row/card share button click; on success, shows the public URL with
          a copy button. -->
     <div v-if="shareOpen" class="modal-backdrop" @click.self="closeShare">
@@ -1657,7 +1687,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       </div>
     </div>
 
-    <!-- 069: Add-to-playlist modal. Singleton at root, mirrors the share-modal
+    <!-- Add-to-playlist modal. Singleton at root, mirrors the share-modal
          pattern — opens on the per-song [＋] button. Lists existing playlists
          and exposes a "create new" sentinel that round-trips through
          createPlaylist with the seed song. -->
@@ -1837,7 +1867,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 .album-card:hover .album-cover img { transform: scale(1.05); }
 .album-cover-placeholder { font-size: 2rem; color: var(--color-text-muted); }
 
-/* 154: waterfall grid for the full-library albums tab. allAlbums is
+/* Waterfall grid for the full-library albums tab. allAlbums is
    pre-split into fixed column buckets in script (round-robin by index, see
    albumWaterfallCols) and each bucket renders as its own independent
    vertical flex stack — that's what makes it a waterfall rather than a
@@ -1889,7 +1919,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 .song-artist.clickable:hover { text-decoration: underline; }
 .song-time { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--color-text-muted); }
 
-/* 079: songs-tab discoverability hint. Sits above the song table on admins
+/* Songs-tab discoverability hint. Sits above the song table on admins
    only; auto-fades to 50% opacity after 5s (see songsHintFaded). */
 .songs-hint {
   color: var(--color-text-muted);
@@ -1903,7 +1933,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 }
 .songs-hint.faded { opacity: 0.5; }
 
-/* 101: songs-tab edit mode toggle. Aligns to the right so it doesn't steal
+/* Songs-tab edit mode toggle. Aligns to the right so it doesn't steal
    attention from the song list; turns accent-colored when edit mode is on. */
 .songs-tab-toolbar {
   display: flex;
@@ -1916,7 +1946,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
   color: var(--color-accent-primary, #6366f1);
 }
 
-/* 079: batch-edit preview row. Displaces itself in favour of batch-toolbar
+/* batch-edit preview row. Displaces itself in favour of batch-toolbar
    the moment a row is ticked, so the two never stack. */
 .batch-preview {
   display: flex; align-items: center;

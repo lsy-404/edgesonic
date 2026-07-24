@@ -19,7 +19,6 @@
 /* Dark celestial elements (Star, Night) carry a deeper, higher-contrast sky. */
 :root[data-theme="sp-gold"] .el-bg,
 :root[data-theme="sp-crimson"] .el-bg,
-:root[data-theme="sp-ark"] .el-bg,
 :root[data-theme="sp-end"] .el-bg {
   background:
     radial-gradient(circle at 16% 20%, color-mix(in srgb, var(--deco-c) 42%, transparent), transparent 30rem),
@@ -32,6 +31,23 @@
 .el-bg .crystal-canvas, .el-fall-layer .crystal-canvas { display: block; width: 100%; height: 100%; }
 /* 2D element particle field — sits above the gradient/crystal, below content. */
 .el-particle-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+/* Endfield's contour field — an oversized square (well beyond the viewport
+   diagonal to leave margin for the perspective tilt below) that slowly spins
+   like a real rotating survey table, not a flat top-down blueprint or a
+   static line drawing. .el-bg's own overflow:hidden clips it back down to
+   the viewport rect. Composition order matters: rotate() spins the plane in
+   its own local space first, then rotateX() tilts that spinning plane back
+   to a low viewing angle, then perspective() projects it. */
+.contour-canvas {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%) perspective(1400px) rotateX(52deg) rotate(0deg);
+}
+.contour-canvas.is-spinning { animation-name: contourSpin; animation-timing-function: linear; animation-iteration-count: infinite; }
+@keyframes contourSpin {
+  from { transform: translate(-50%, -50%) perspective(1400px) rotateX(52deg) rotate(0deg); }
+  to { transform: translate(-50%, -50%) perspective(1400px) rotateX(52deg) rotate(360deg); }
+}
 
 :root[data-theme^="sp-"] .sidebar { background: linear-gradient(to bottom, var(--color-bg-secondary) 0%, var(--color-bg-secondary) calc(100% - 84px), transparent 100%); }
 

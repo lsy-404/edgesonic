@@ -114,17 +114,27 @@ const REVEAL_MS = 520;
 const REVEAL_STAGGER_MS = 90;
 const BREATHE_S = 6.4;
 
+// Full revolution period for the slow ambient rotation — a real contour/
+// terrain map, not a static line drawing (see .contour-canvas in
+// elements.css). Pure CSS animation: cheap, GPU-composited, independent of
+// the JS reveal/breathe draw loop below.
+const ROTATE_PERIOD_S = 200;
+
 export function mountContourField(host: HTMLElement, options: ContourFieldOptions): () => void {
   const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // Reuses .el-bg (atmospheric --deco-a/b/c gradient wash, shared by every SP
-  // theme) and .crystal-canvas (full-bleed sizing) so this layers the same
-  // way the WebGL crystal background does, without duplicating that CSS.
+  // theme) — its own `overflow: hidden` is what clips the oversized rotating
+  // square below back down to the viewport rect.
   const wrap = document.createElement("div");
   wrap.className = "el-bg";
   wrap.setAttribute("aria-hidden", "true");
   const canvas = document.createElement("canvas");
-  canvas.className = "crystal-canvas";
+  canvas.className = "contour-canvas";
+  if (!reduce) {
+    canvas.classList.add("is-spinning");
+    canvas.style.animationDuration = `${ROTATE_PERIOD_S}s`;
+  }
   wrap.appendChild(canvas);
   host.appendChild(wrap);
   const remove = () => wrap.remove();
@@ -161,18 +171,28 @@ export function mountContourField(host: HTMLElement, options: ContourFieldOption
     bands.push({ segs, strokeStyle: `rgb(${rgb(blended)})`, delayMs: (levels - 1 - li) * REVEAL_STAGGER_MS });
   }
 
-  let w = 0, h = 0;
+  // Square, sized well past the viewport's diagonal and centered by CSS: at
+  // any rotation angle the square still fully covers the rectangular
+  // viewport. The extra margin (beyond a flat top-down field's plain
+  // diagonal) covers the perspective tilt's foreshortening — the CSS
+  // rotateX(52deg) compresses the plane's reach along one axis, and
+  // perspective projection compresses it non-uniformly toward the horizon,
+  // so a pure cos(tilt) correction is only an approximation.
+  const TILT_OVERSIZE = 1.9;
+  let side = 0;
   function resize() {
-    w = window.innerWidth; h = window.innerHeight;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
+    side = Math.ceil(Math.hypot(window.innerWidth, window.innerHeight) * TILT_OVERSIZE);
+    canvas.style.width = `${side}px`;
+    canvas.style.height = `${side}px`;
+    canvas.width = Math.round(side * dpr);
+    canvas.height = Math.round(side * dpr);
     ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   resize();
   window.addEventListener("resize", resize);
 
   function draw(revealFrac: number, breathe: number) {
-    ctx!.clearRect(0, 0, w, h);
+    ctx!.clearRect(0, 0, side, side);
     ctx!.lineWidth = 1;
     for (const band of bands) {
       const local = Math.max(0, Math.min(1, (revealFrac - band.delayMs) / REVEAL_MS));
@@ -181,8 +201,8 @@ export function mountContourField(host: HTMLElement, options: ContourFieldOption
       ctx!.strokeStyle = band.strokeStyle;
       ctx!.beginPath();
       for (const [[ax, ay], [bx, by]] of band.segs) {
-        ctx!.moveTo((ax / N) * w, (ay / N) * h);
-        ctx!.lineTo((bx / N) * w, (by / N) * h);
+        ctx!.moveTo((ax / N) * side, (ay / N) * side);
+        ctx!.lineTo((bx / N) * side, (by / N) * side);
       }
       ctx!.stroke();
     }

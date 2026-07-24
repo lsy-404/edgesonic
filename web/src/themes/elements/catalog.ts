@@ -73,19 +73,16 @@ export const ELEMENT_THEMES: ElementTheme[] = [
     particle: { kind: "orb", colors: ["#9b78e5", "#b98fe0", "#7a2a68"], density: 22 },
   },
   {
-    // Background is a monochrome contour field (no drifting cubes) with a
-    // white rhombus click-ping; color/halo/shape still drive the progress
-    // thumb marker, which keeps the cyan/lime cube identity.
+    // No decorative background at all — the rotating contour field is
+    // Endfield's motif specifically, not Ark's. color/halo/shape still drive
+    // the progress thumb marker (cyan/lime cube); customBackground here is
+    // purely a mount-lifecycle hook for the white rhombus click-ping.
     id: "ark", label: "Ark SP", color: [0.094, 0.82, 1], halo: [0.784, 0.922, 0.129],
     shape: "cube",
-    customBackground: (host) => {
-      const stopField = mountContourField(host, { colorLow: [1, 1, 1], colorHigh: [1, 1, 1], seed: 4242 });
+    customBackground: () => {
       const reduce = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (!reduce) window.addEventListener("click", arkClickPing);
-      return () => {
-        if (!reduce) window.removeEventListener("click", arkClickPing);
-        stopField();
-      };
+      return () => { if (!reduce) window.removeEventListener("click", arkClickPing); };
     },
   },
   {
