@@ -10,7 +10,7 @@
 //   - Cross-origin (fonts, covers, etc.): opaque CORS, cache 1h, no revalidate.
 //   - Media / Range / streaming: never intercepted (see fetch handler).
 
-const SW_VERSION = "2";
+const SW_VERSION = "4";
 const PRECACHE = `edgesonic-shell-v${SW_VERSION}`;
 const RUNTIME = `edgesonic-runtime-v${SW_VERSION}`;
 const OPAQUE = `edgesonic-opaque-v${SW_VERSION}`;
@@ -121,10 +121,20 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(req.url);
 
+  // Server-rendered public pages (/share/:id landing + its ?stream audio)
+  // live outside the SPA shell. Falling back to the cached shell for them
+  // would hand an anonymous share visitor the SPA login screen; let the
+  // browser talk to the network directly, no SW involvement at all.
+  if (url.origin === self.location.origin && url.pathname.startsWith("/share/")) return;
+
   // Navigation: network-first, but fall back to the cached shell when the
   // network is merely slow (not only on error) so a saturated connection can
-  // never hang a reload.
+  // never hang a reload. The SPA uses hash routing, so every genuine shell
+  // navigation lands on "/" — any other pathname is NOT the SPA (share pages,
+  // future server-rendered pages) and must not be answered with (or cached
+  // as) the shell.
   if (req.mode === "navigate") {
+    if (url.pathname !== "/" && url.pathname !== "/index.html") return; // default fetch
     event.respondWith(
       (async () => {
         const cache = await caches.open(PRECACHE);
@@ -137,11 +147,11 @@ self.addEventListener("fetch", (event) => {
             `[SW] navigation fell back to cached shell (network ${err && err.message === "timeout" ? "slow >" + NAV_TIMEOUT_MS + "ms" : "failed"}):`,
             req.url,
           );
-          return (
-            (await cache.match("./index.html")) ||
-            (await cache.match("./")) ||
-            Response.error()
-          );
+          let cached;
+          try {
+            cached = (await cache.match("./index.html")) || (await cache.match("./"));
+          } catch { /* storage errors must still produce a Response below */ }
+          return cached || Response.error();
         }
       })(),
     );
@@ -149,20 +159,25 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (url.origin !== self.location.origin) {
-    // CORS-enabled APIs (e.g. api.github.com for the update check) must go
-    // through the normal browser fetch — wrapping them in no-cors yields an
-    // opaque response the page cannot read, silently breaking the feature.
-    if (url.hostname === "api.github.com") return; // default fetch
+    // Only genuine no-cors subresources may be answered from the opaque
+    // cache. Re-issuing a CORS request as no-cors returns an opaque response
+    // the browser rejects ("opaque response used for a request whose type is
+    // not no-cors") — that killed @font-face woff2 loads from fonts.gstatic.
+    // CORS requests (fonts, api.github.com, analytics beacons) go straight
+    // to the network; the HTTP cache covers repeat loads.
+    if (req.mode !== "no-cors") return; // default fetch
     // Object storage: large presigned blobs, never cache. Default fetch.
     if (isStorageHost(url.hostname)) return;
-    // Cross-origin: cache opaque responses briefly (fonts, images).
+    // Analytics: let failures (adblock, offline) surface natively.
+    if (url.hostname === "static.cloudflareinsights.com") return;
+    // Cross-origin no-cors: cache opaque responses briefly (images etc.).
     event.respondWith(
       (async () => {
         const cache = await caches.open(OPAQUE);
         const cached = await cache.match(req);
         if (cached) return cached;
         try {
-          const res = await fetch(req, { mode: "no-cors" });
+          const res = await fetch(req);
           if (res.type === "opaque" || res.ok) cache.put(req, res.clone()).catch(() => {});
           return res;
         } catch {
@@ -190,7 +205,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Other same-origin static GET: stale-while-revalidate.
+  // Other same-origin static GET: stale-while-revalidate. The failure path
+  // must still resolve to a Response — resolving undefined makes respondWith
+  // throw "Failed to convert value to 'Response'" and the request dies.
   event.respondWith(
     (async () => {
       const cache = await caches.open(RUNTIME);
@@ -200,7 +217,7 @@ self.addEventListener("fetch", (event) => {
           if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
           return res;
         })
-        .catch(() => cached);
+        .catch(() => cached || Response.error());
       return cached || network;
     })(),
   );
