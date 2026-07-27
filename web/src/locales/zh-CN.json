@@ -73,7 +73,44 @@
     "failed": "注册失败",
     "disabled": "此服务器当前未开放自助注册。",
     "backToLogin": "返回登录",
-    "passwordMismatch": "两次输入的密码不一致"
+    "passwordMismatch": "两次输入的密码不一致",
+    "inviteCode": "邀请码",
+    "inviteCodePlaceholder": "INV-XXXXXXXXXXXX",
+    "gate": {
+      "invite": "注册需要邀请码。",
+      "email": "注册需要完成邮箱验证。",
+      "allOf": "注册需要完成邮箱验证并提供邀请码。",
+      "anyOf": "注册需要完成邮箱验证或提供邀请码（满足其一即可）。"
+    }
+  },
+  "activation": {
+    "label": "// 账户",
+    "title": "账户激活",
+    "statusTitle": "激活状态",
+    "state": {
+      "permanent": "永久有效",
+      "until": "有效期至 {date}",
+      "expired": "已过期",
+      "disabled": "已禁用"
+    },
+    "notEnabled": "此服务器未启用激活体系。",
+    "requiredHint": "你的账户当前未激活，请输入激活码以继续使用。",
+    "codeLabel": "激活码",
+    "codePlaceholder": "INV-XXXXXXXXXXXX",
+    "redeem": "兑换",
+    "redeeming": "兑换中…",
+    "redeemSuccess": "激活状态已更新",
+    "redeemFailed": "兑换失败",
+    "banner": "账户激活已过期 — 点击续期",
+    "errors": {
+      "inviteRequired": "需要邀请码才能继续",
+      "inviteInvalid": "邀请码无效",
+      "inviteRevoked": "邀请码已被撤销",
+      "inviteExhausted": "邀请码使用次数已用完",
+      "inviteExpired": "邀请码已过期",
+      "emailVerificationRequired": "需要完成邮箱验证才能继续",
+      "alreadyPermanent": "该账户已是永久激活，无需兑换"
+    }
   },
   "forgotPassword": {
     "intro": "输入你的邮箱或用户名，我们会发送重置密码的链接。",
@@ -266,12 +303,6 @@
     "locateLoadMore": "当前歌曲不在已加载范围内，再次点击将查找剩余媒体库。",
     "locateNotFound": "未在当前媒体库中找到播放歌曲",
     "locateNotLiked": "当前播放歌曲不在我喜欢中"
-    ,"locateCurrent": "定位当前播放"
-    ,"locatingCurrent": "正在查找当前播放…"
-    ,"locateNoCurrent": "当前没有选中的歌曲"
-    ,"locateLoadMore": "当前歌曲不在已加载范围内，再次点击将查找剩余媒体库。"
-    ,"locateNotFound": "未在当前媒体库中找到播放歌曲"
-    ,"locateNotLiked": "当前播放歌曲不在我喜欢中"
   },
   "tagEditor": {
     "singleTitle": "编辑歌曲信息",
@@ -463,6 +494,55 @@
       "uploadFailed": "头像上传失败",
       "noAvatar": "未设置",
       "open": "管理头像"
+    },
+    "colActivation": "激活",
+    "activation": {
+      "title": "激活状态",
+      "edit": "编辑激活状态",
+      "mode": "模式",
+      "modePermanent": "永久",
+      "modeUntil": "限期",
+      "modeDisabled": "禁用",
+      "untilLabel": "有效期至",
+      "badDate": "请输入有效的到期时间",
+      "saved": "激活状态已更新",
+      "saveFailed": "更新激活状态失败"
+    },
+    "invites": {
+      "title": "邀请码",
+      "open": "邀请码管理",
+      "hide": "收起邀请码",
+      "create": "+ 新建邀请码",
+      "createSubmit": "创建邀请码",
+      "kind": "类型",
+      "kindDuration": "时长",
+      "kindWindow": "固定时间段",
+      "kindPermanent": "永久",
+      "durationDays": "时长（天）",
+      "durationSummary": "{n} 天",
+      "windowStart": "时间段开始",
+      "windowEnd": "时间段结束",
+      "maxUses": "最大使用次数",
+      "note": "备注",
+      "created": "邀请码已创建",
+      "createFailed": "创建邀请码失败",
+      "createdCode": "新邀请码",
+      "badWindow": "请输入有效的时间段",
+      "badDuration": "请输入有效的天数",
+      "empty": "暂无邀请码",
+      "colCode": "邀请码",
+      "colKind": "授予",
+      "colUses": "使用",
+      "colNote": "备注",
+      "colStatus": "状态",
+      "statusActive": "可用",
+      "statusRevoked": "已撤销",
+      "statusExhausted": "已用完",
+      "revoke": "撤销",
+      "revokeConfirm": "撤销邀请码 {code}？",
+      "revoked": "邀请码已撤销",
+      "revokeFailed": "撤销邀请码失败",
+      "copyFailed": "复制失败"
     }
   },
   "player": {
@@ -1090,6 +1170,18 @@
       "strategyR2Only": "仅 R2 直连",
       "strategyWebdavOnly": "仅 WebDAV 直连",
       "strategySaved": "302 策略已更新"
+    },
+    "activation": {
+      "title": "激活",
+      "current": "当前状态",
+      "redeemTitle": "兑换激活码",
+      "redeemDesc": "随时兑换激活码以延长或恢复账户有效期。",
+      "adminTitle": "激活体系与注册门槛",
+      "enableDesc": "启用账户激活体系。关闭时所有账户视为永久激活。",
+      "gateModeDesc": "注册创建选项模式：ALL = 需满足全部已启用选项，ANY = 满足任一即可。",
+      "gateModeAll": "ALL",
+      "gateModeAny": "ANY",
+      "unavailable": "后端尚未支持"
     }
   },
   "sources": {

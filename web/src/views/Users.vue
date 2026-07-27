@@ -4,11 +4,19 @@
 import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
+import { activationDisplay, toDatetimeLocal, fromDatetimeLocal, type ActivationStatus } from "../lib/activation";
 import Icon from "../components/Icon.vue";
 
-const { t } = useI18n();
-const { username: currentUsername, isAdmin, isSuperAdmin, edgesonicFetch, edgesonicPost, restUrl } = useAuth();
-const users = ref<Array<{ username: string; level: number; enabled: boolean }>>([]);
+const { t, locale } = useI18n();
+const { username: currentUsername, isAdmin, isSuperAdmin, hasPerm, edgesonicFetch, edgesonicPost, restUrl } = useAuth();
+interface UserRow {
+  username: string; level: number; enabled: boolean;
+  // Activation columns are optional until the backend ships them; rows
+  // without the field render "—" and stay read-only.
+  activationStatus: ActivationStatus | null;
+  activatedUntil: number | null;
+}
+const users = ref<UserRow[]>([]);
 const loading = ref(true);
 const showForm = ref(false);
 const form = ref({ username: "", password: "", level: 1 });
@@ -140,10 +148,19 @@ async function submitAvatar() {
 }
 
 interface OkJson { ok: boolean; error?: string }
-interface UsersListJson extends OkJson { users?: Array<{ username: string; level: number; enabled: boolean }> }
+interface UsersListJson extends OkJson {
+  users?: Array<{
+    username: string; level: number; enabled: boolean;
+    activationStatus?: string; activatedUntil?: number | null;
+  }>;
+}
 
 function safeParse<T extends OkJson>(raw: string): T {
   try { return JSON.parse(raw) as T; } catch { return { ok: false, error: "bad_json" } as T; }
+}
+
+function asActivationStatus(v: unknown): ActivationStatus | null {
+  return v === "permanent" || v === "active_until" || v === "disabled" ? v : null;
 }
 
 async function load() {
@@ -156,6 +173,8 @@ async function load() {
       username: u.username || "",
       level: typeof u.level === "number" ? u.level : parseInt(String(u.level ?? "1")),
       enabled: !!u.enabled,
+      activationStatus: asActivationStatus(u.activationStatus),
+      activatedUntil: typeof u.activatedUntil === "number" ? u.activatedUntil : null,
     }));
   } catch { users.value = []; } finally {
     loading.value = false;
@@ -201,6 +220,171 @@ const canEditAvatar = (u: { username: string }) =>
 
 const canSubmitAvatar = computed(() => !!avatarBase64.value && !avatarUploading.value);
 
+// ---- Activation status column + editor ----
+const canManageActivation = computed(() => hasPerm("manage_users") && hasPerm("manage_activation"));
+
+function formatTs(sec: number | null): string {
+  return sec ? new Date(sec * 1000).toLocaleString(locale.value) : "—";
+}
+
+function activationCell(u: UserRow): { text: string; cls: string } | null {
+  if (u.activationStatus === null) return null;
+  const display = activationDisplay(u.activationStatus, u.activatedUntil);
+  switch (display) {
+    case "permanent": return { text: t("activation.state.permanent"), cls: "success" };
+    case "until": return { text: t("activation.state.until", { date: formatTs(u.activatedUntil) }), cls: "info" };
+    case "expired": return { text: t("activation.state.expired"), cls: "error" };
+    case "disabled": return { text: t("activation.state.disabled"), cls: "error" };
+  }
+}
+
+// Targets must be non-admin and not the current account (server enforces too).
+const canEditActivation = (u: UserRow) =>
+  canManageActivation.value && u.level < 3 && u.username !== currentUsername.value && u.activationStatus !== null;
+
+const showActModal = ref(false);
+const actTarget = ref<UserRow | null>(null);
+const actMode = ref<"permanent" | "until" | "disabled">("permanent");
+const actUntilInput = ref("");
+const actSaving = ref(false);
+
+function openActModal(u: UserRow) {
+  actTarget.value = u;
+  const display = u.activationStatus ? activationDisplay(u.activationStatus, u.activatedUntil) : "permanent";
+  actMode.value = display === "permanent" ? "permanent" : display === "disabled" ? "disabled" : "until";
+  actUntilInput.value = toDatetimeLocal(u.activatedUntil);
+  showActModal.value = true;
+}
+function closeActModal() {
+  showActModal.value = false;
+  actTarget.value = null;
+}
+
+async function saveActivation() {
+  if (!actTarget.value || actSaving.value) return;
+  const body: { username: string; mode: string; until?: number } = {
+    username: actTarget.value.username, mode: actMode.value,
+  };
+  if (actMode.value === "until") {
+    const until = fromDatetimeLocal(actUntilInput.value);
+    if (until === null) { showToast(t("users.activation.badDate"), "error"); return; }
+    body.until = until;
+  }
+  actSaving.value = true;
+  try {
+    const resp = safeParse<OkJson>(await edgesonicPost("activation/set", body));
+    if (!resp.ok) throw new Error(resp.error || "set failed");
+    showToast(t("users.activation.saved"));
+    closeActModal();
+    load();
+  } catch { showToast(t("users.activation.saveFailed"), "error"); }
+  finally { actSaving.value = false; }
+}
+
+// ---- Invite codes panel ----
+interface InviteCode {
+  code: string; kind: "window" | "duration" | "permanent";
+  windowStart: number | null; windowEnd: number | null; durationDays: number | null;
+  maxUses: number; usedCount: number; note: string;
+  revoked: boolean; createdBy: string; createdAt: number;
+}
+const showInvites = ref(false);
+const codes = ref<InviteCode[]>([]);
+const codesLoading = ref(false);
+const showCodeForm = ref(false);
+const codeForm = ref({
+  kind: "duration" as "window" | "duration" | "permanent",
+  windowStart: "", windowEnd: "", durationDays: 30, maxUses: 1, note: "",
+});
+const codeCreating = ref(false);
+const createdCode = ref("");
+
+function toggleInvites() {
+  showInvites.value = !showInvites.value;
+  if (showInvites.value && !codes.value.length) void loadCodes();
+}
+
+async function loadCodes() {
+  codesLoading.value = true;
+  try {
+    const resp = safeParse<OkJson & { codes?: Array<Partial<InviteCode>> }>(
+      await edgesonicFetch("activation/codes"));
+    if (!resp.ok || !Array.isArray(resp.codes)) { codes.value = []; return; }
+    codes.value = resp.codes.map((c) => ({
+      code: c.code || "",
+      kind: c.kind === "window" || c.kind === "permanent" ? c.kind : "duration",
+      windowStart: typeof c.windowStart === "number" ? c.windowStart : null,
+      windowEnd: typeof c.windowEnd === "number" ? c.windowEnd : null,
+      durationDays: typeof c.durationDays === "number" ? c.durationDays : null,
+      maxUses: typeof c.maxUses === "number" ? c.maxUses : 1,
+      usedCount: typeof c.usedCount === "number" ? c.usedCount : 0,
+      note: typeof c.note === "string" ? c.note : "",
+      revoked: !!c.revoked,
+      createdBy: c.createdBy || "",
+      createdAt: typeof c.createdAt === "number" ? c.createdAt : 0,
+    }));
+  } catch { codes.value = []; }
+  finally { codesLoading.value = false; }
+}
+
+function codeKindSummary(c: InviteCode): string {
+  if (c.kind === "permanent") return t("users.invites.kindPermanent");
+  if (c.kind === "window") return `${formatTs(c.windowStart)} → ${formatTs(c.windowEnd)}`;
+  return t("users.invites.durationSummary", { n: c.durationDays ?? 0 });
+}
+
+function codeStatus(c: InviteCode): { text: string; cls: string } {
+  if (c.revoked) return { text: t("users.invites.statusRevoked"), cls: "error" };
+  if (c.usedCount >= c.maxUses) return { text: t("users.invites.statusExhausted"), cls: "muted" };
+  return { text: t("users.invites.statusActive"), cls: "success" };
+}
+
+async function createCode() {
+  if (codeCreating.value) return;
+  const f = codeForm.value;
+  const body: Record<string, unknown> = { kind: f.kind, maxUses: f.maxUses, note: f.note.trim() };
+  if (f.kind === "window") {
+    const start = fromDatetimeLocal(f.windowStart);
+    const end = fromDatetimeLocal(f.windowEnd);
+    if (start === null || end === null || end <= start) {
+      showToast(t("users.invites.badWindow"), "error");
+      return;
+    }
+    body.windowStart = start;
+    body.windowEnd = end;
+  } else if (f.kind === "duration") {
+    if (!Number.isFinite(f.durationDays) || f.durationDays < 1) {
+      showToast(t("users.invites.badDuration"), "error");
+      return;
+    }
+    body.durationDays = Math.floor(f.durationDays);
+  }
+  codeCreating.value = true;
+  try {
+    const resp = safeParse<OkJson & { code?: string }>(await edgesonicPost("activation/codes", body));
+    if (!resp.ok || !resp.code) throw new Error(resp.error || "create failed");
+    createdCode.value = resp.code;
+    showToast(t("users.invites.created"));
+    void loadCodes();
+  } catch { showToast(t("users.invites.createFailed"), "error"); }
+  finally { codeCreating.value = false; }
+}
+
+async function revokeCode(code: string) {
+  if (!confirm(t("users.invites.revokeConfirm", { code }))) return;
+  try {
+    const resp = safeParse<OkJson>(await edgesonicPost("activation/codes/revoke", { code }));
+    if (!resp.ok) throw new Error(resp.error || "revoke failed");
+    showToast(t("users.invites.revoked"));
+    void loadCodes();
+  } catch { showToast(t("users.invites.revokeFailed"), "error"); }
+}
+
+async function copyCode(code: string) {
+  try { await navigator.clipboard.writeText(code); showToast(t("common.copied")); }
+  catch { showToast(t("users.invites.copyFailed"), "error"); }
+}
+
 onMounted(load);
 </script>
 
@@ -211,7 +395,12 @@ onMounted(load);
         <div class="mono-label">{{ t("users.label") }}</div>
         <h1 class="page-title">{{ t("users.title") }}</h1>
       </div>
-      <button v-if="isAdmin" :class="showForm ? 'btn-secondary' : 'btn-primary'" @click="showForm = !showForm">{{ showForm ? t("common.cancel") : t("users.add") }}</button>
+      <div class="header-actions">
+        <button v-if="canManageActivation" class="btn-secondary" @click="toggleInvites">
+          {{ showInvites ? t("users.invites.hide") : t("users.invites.open") }}
+        </button>
+        <button v-if="isAdmin" :class="showForm ? 'btn-secondary' : 'btn-primary'" @click="showForm = !showForm">{{ showForm ? t("common.cancel") : t("users.add") }}</button>
+      </div>
     </div>
 
     <div v-if="showForm" class="card" style="margin-bottom:1.25rem; max-width:450px">
@@ -234,12 +423,92 @@ onMounted(load);
       <div class="corner corner-br"></div>
     </div>
 
+    <!-- Invite codes management -->
+    <div v-if="showInvites && canManageActivation" class="card invites-card">
+      <div class="card-header">
+        <span class="card-title">{{ t("users.invites.title") }}</span>
+        <button class="btn-secondary btn-sm" @click="showCodeForm = !showCodeForm; createdCode = ''">
+          {{ showCodeForm ? t("common.cancel") : t("users.invites.create") }}
+        </button>
+      </div>
+
+      <div v-if="showCodeForm" class="invite-form">
+        <div class="form-group">
+          <label class="form-label">{{ t("users.invites.kind") }}</label>
+          <div class="seg">
+            <button type="button" :class="['seg-btn', { active: codeForm.kind === 'duration' }]" @click="codeForm.kind = 'duration'">{{ t("users.invites.kindDuration") }}</button>
+            <button type="button" :class="['seg-btn', { active: codeForm.kind === 'window' }]" @click="codeForm.kind = 'window'">{{ t("users.invites.kindWindow") }}</button>
+            <button type="button" :class="['seg-btn', { active: codeForm.kind === 'permanent' }]" @click="codeForm.kind = 'permanent'">{{ t("users.invites.kindPermanent") }}</button>
+          </div>
+        </div>
+        <div v-if="codeForm.kind === 'duration'" class="form-group">
+          <label class="form-label">{{ t("users.invites.durationDays") }}</label>
+          <input v-model.number="codeForm.durationDays" type="number" min="1" max="36500" class="form-input invite-num" />
+        </div>
+        <template v-if="codeForm.kind === 'window'">
+          <div class="form-group">
+            <label class="form-label">{{ t("users.invites.windowStart") }}</label>
+            <input v-model="codeForm.windowStart" type="datetime-local" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ t("users.invites.windowEnd") }}</label>
+            <input v-model="codeForm.windowEnd" type="datetime-local" class="form-input" />
+          </div>
+        </template>
+        <div class="form-group">
+          <label class="form-label">{{ t("users.invites.maxUses") }}</label>
+          <input v-model.number="codeForm.maxUses" type="number" min="1" max="100000" class="form-input invite-num" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">{{ t("users.invites.note") }} <span class="act-none">({{ t("common.optional") }})</span></label>
+          <input v-model="codeForm.note" maxlength="200" class="form-input" />
+        </div>
+        <button class="btn-primary" :disabled="codeCreating" @click="createCode">
+          {{ codeCreating ? t("common.loading") : t("users.invites.createSubmit") }}
+        </button>
+        <div v-if="createdCode" class="invite-created">
+          <span class="mono-label">{{ t("users.invites.createdCode") }}</span>
+          <code class="invite-code">{{ createdCode }}</code>
+          <button class="btn-secondary btn-sm" @click="copyCode(createdCode)">{{ t("common.copy") }}</button>
+        </div>
+      </div>
+
+      <div v-if="codesLoading" class="empty-state">{{ t("common.loading") }}</div>
+      <div v-else-if="!codes.length" class="empty-state">{{ t("users.invites.empty") }}</div>
+      <div v-else class="table-wrap" style="--grid-cols: 1.4fr 1.4fr 0.6fr 1fr 0.8fr auto">
+        <div class="table-header">
+          <span>{{ t("users.invites.colCode") }}</span>
+          <span>{{ t("users.invites.colKind") }}</span>
+          <span>{{ t("users.invites.colUses") }}</span>
+          <span>{{ t("users.invites.colNote") }}</span>
+          <span>{{ t("users.invites.colStatus") }}</span>
+          <span>{{ t("users.colActions") }}</span>
+        </div>
+        <div v-for="c in codes" :key="c.code" class="table-row">
+          <span class="invite-code-cell">
+            <code class="invite-code">{{ c.code }}</code>
+            <button class="btn-icon" :title="t('common.copy')" @click="copyCode(c.code)"><Icon name="copy" /></button>
+          </span>
+          <span class="invite-kind">{{ codeKindSummary(c) }}</span>
+          <span>{{ c.usedCount }}/{{ c.maxUses }}</span>
+          <span class="invite-note">{{ c.note || "—" }}</span>
+          <span><span :class="['status-badge', codeStatus(c).cls]">{{ codeStatus(c).text }}</span></span>
+          <span class="row-actions">
+            <button v-if="!c.revoked" class="btn-danger btn-sm" @click="revokeCode(c.code)">{{ t("users.invites.revoke") }}</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-br"></div>
+    </div>
+
     <div v-if="loading" class="empty-state">{{ t("common.loading") }}</div>
 
-    <div v-else class="table-wrap" style="--grid-cols: 56px 1.5fr 1fr 1fr auto">
+    <div v-else class="table-wrap" style="--grid-cols: 56px 1.4fr 0.9fr 0.9fr 1.2fr auto">
       <div class="table-header">
         <span></span>
-        <span>{{ t("users.colUsername") }}</span><span>{{ t("users.colLevel") }}</span><span>{{ t("users.colStatus") }}</span><span>{{ t("users.colActions") }}</span>
+        <span>{{ t("users.colUsername") }}</span><span>{{ t("users.colLevel") }}</span><span>{{ t("users.colStatus") }}</span><span>{{ t("users.colActivation") }}</span><span>{{ t("users.colActions") }}</span>
       </div>
       <div v-for="u in users" :key="u.username" class="table-row">
         <span class="avatar-cell">
@@ -255,6 +524,17 @@ onMounted(load);
         </span>
         <span>
           <span :class="['status-badge', u.enabled ? 'success' : 'error']" style="cursor:pointer" @click="toggleEnabled(u)">{{ u.enabled ? t("users.active") : t("users.disabled") }}</span>
+        </span>
+        <span>
+          <template v-if="activationCell(u)">
+            <span
+              :class="['status-badge', activationCell(u)!.cls]"
+              :style="canEditActivation(u) ? 'cursor:pointer' : ''"
+              :title="canEditActivation(u) ? t('users.activation.edit') : ''"
+              @click="canEditActivation(u) && openActModal(u)"
+            >{{ activationCell(u)!.text }}</span>
+          </template>
+          <span v-else class="act-none">—</span>
         </span>
         <span class="row-actions">
           <button v-if="canEditAvatar(u)" class="btn-secondary btn-sm" :title="t('users.avatar.open')" @click="openAvatarModal(u)">{{ t("users.avatar.title") }}</button>
@@ -291,6 +571,37 @@ onMounted(load);
           <button v-if="avatarPreview" class="btn-secondary" @click="clearAvatarSelection">{{ t("users.avatar.clear") }}</button>
           <button class="btn-primary" :disabled="!canSubmitAvatar" @click="submitAvatar">
             {{ avatarUploading ? t("common.loading") : t("users.avatar.change") }}
+          </button>
+        </div>
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-br"></div>
+      </div>
+    </div>
+
+    <div v-if="showActModal && actTarget" class="modal-backdrop" @click.self="closeActModal">
+      <div class="card act-modal">
+        <div class="card-header">
+          <span class="card-title">{{ t("users.activation.title") }} — {{ actTarget.username }}</span>
+          <button class="btn-icon" :aria-label="t('common.close')" @click="closeActModal"><Icon name="cross" /></button>
+        </div>
+        <div class="act-modal-body">
+          <div class="form-group">
+            <label class="form-label">{{ t("users.activation.mode") }}</label>
+            <div class="seg">
+              <button type="button" :class="['seg-btn', { active: actMode === 'permanent' }]" @click="actMode = 'permanent'">{{ t("users.activation.modePermanent") }}</button>
+              <button type="button" :class="['seg-btn', { active: actMode === 'until' }]" @click="actMode = 'until'">{{ t("users.activation.modeUntil") }}</button>
+              <button type="button" :class="['seg-btn', { active: actMode === 'disabled' }]" @click="actMode = 'disabled'">{{ t("users.activation.modeDisabled") }}</button>
+            </div>
+          </div>
+          <div v-if="actMode === 'until'" class="form-group">
+            <label class="form-label">{{ t("users.activation.untilLabel") }}</label>
+            <input v-model="actUntilInput" type="datetime-local" class="form-input" />
+          </div>
+        </div>
+        <div class="act-modal-actions">
+          <button class="btn-secondary" @click="closeActModal">{{ t("common.cancel") }}</button>
+          <button class="btn-primary" :disabled="actSaving || (actMode === 'until' && !actUntilInput)" @click="saveActivation">
+            {{ actSaving ? t("common.loading") : t("common.save") }}
           </button>
         </div>
         <div class="corner corner-tl"></div>
@@ -418,4 +729,30 @@ onMounted(load);
   color: var(--color-text-muted, #888);
 }
 .btn-icon:hover { color: var(--color-text-primary, #111); }
+
+/* Header buttons */
+.header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* Activation column / modal */
+.act-none { color: var(--color-text-muted); }
+.act-modal { position: relative; width: min(480px, 92vw); padding: 1.25rem; }
+.act-modal-body { display: flex; flex-direction: column; gap: 0.9rem; margin: 0.75rem 0 1rem; }
+.act-modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+/* Invite codes */
+.invites-card { position: relative; margin-bottom: 1.25rem; }
+.invite-form { display: flex; flex-direction: column; gap: 0.8rem; max-width: 460px; margin-bottom: 1rem; }
+.invite-num { max-width: 140px; }
+.invite-code { font-family: var(--font-mono); letter-spacing: 0.06em; color: var(--color-accent-primary); }
+.invite-code-cell { display: inline-flex; align-items: center; gap: 0.3rem; overflow: hidden; }
+.invite-kind, .invite-note {
+  font-size: var(--fs-sm); color: var(--color-text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.invite-created {
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  border: 1px solid var(--color-status-success);
+  box-shadow: inset 3px 0 var(--color-status-success);
+  padding: 0.6rem 0.8rem;
+}
 </style>

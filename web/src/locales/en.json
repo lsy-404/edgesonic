@@ -72,7 +72,44 @@
     "failed": "Registration failed",
     "disabled": "Self-service registration is currently disabled on this server.",
     "backToLogin": "Back to login",
-    "passwordMismatch": "Passwords do not match"
+    "passwordMismatch": "Passwords do not match",
+    "inviteCode": "Invite code",
+    "inviteCodePlaceholder": "INV-XXXXXXXXXXXX",
+    "gate": {
+      "invite": "Registration requires an invite code.",
+      "email": "Registration requires a verified email address.",
+      "allOf": "Registration requires a verified email address and an invite code.",
+      "anyOf": "Registration requires a verified email address or an invite code."
+    }
+  },
+  "activation": {
+    "label": "// ACCOUNT",
+    "title": "Account activation",
+    "statusTitle": "Activation status",
+    "state": {
+      "permanent": "PERMANENT",
+      "until": "Active until {date}",
+      "expired": "EXPIRED",
+      "disabled": "DISABLED"
+    },
+    "notEnabled": "Activation is not enforced on this server.",
+    "requiredHint": "Your account is not active. Redeem an activation code to continue.",
+    "codeLabel": "Activation code",
+    "codePlaceholder": "INV-XXXXXXXXXXXX",
+    "redeem": "REDEEM",
+    "redeeming": "REDEEMING…",
+    "redeemSuccess": "Activation updated",
+    "redeemFailed": "Redeem failed",
+    "banner": "Account activation expired — click to renew",
+    "errors": {
+      "inviteRequired": "An invite code is required to continue",
+      "inviteInvalid": "This invite code is invalid",
+      "inviteRevoked": "This invite code has been revoked",
+      "inviteExhausted": "This invite code has no uses left",
+      "inviteExpired": "This invite code has expired",
+      "emailVerificationRequired": "Email verification is required to continue",
+      "alreadyPermanent": "This account is already permanently active"
+    }
   },
   "forgotPassword": {
     "intro": "Enter your email or username and we'll send you a link to reset your password.",
@@ -265,12 +302,6 @@
     "locateLoadMore": "The current track is not loaded. Click again to search the remaining library.",
     "locateNotFound": "Current track was not found in this library",
     "locateNotLiked": "Current track is not in your liked songs"
-    ,"locateCurrent": "Locate current track"
-    ,"locatingCurrent": "Finding current track…"
-    ,"locateNoCurrent": "No track is currently selected"
-    ,"locateLoadMore": "The current track is not loaded. Click again to search the remaining library."
-    ,"locateNotFound": "Current track was not found in this library"
-    ,"locateNotLiked": "Current track is not in your liked songs"
   },
   "tagEditor": {
     "singleTitle": "Edit Track Info",
@@ -466,6 +497,55 @@
       "uploadFailed": "Avatar upload failed",
       "noAvatar": "Not set",
       "open": "Manage avatar"
+    },
+    "colActivation": "Activation",
+    "activation": {
+      "title": "Activation",
+      "edit": "Edit activation",
+      "mode": "Mode",
+      "modePermanent": "Permanent",
+      "modeUntil": "Until",
+      "modeDisabled": "Disabled",
+      "untilLabel": "Active until",
+      "badDate": "Enter a valid expiry time",
+      "saved": "Activation updated",
+      "saveFailed": "Failed to update activation"
+    },
+    "invites": {
+      "title": "Invite codes",
+      "open": "INVITE CODES",
+      "hide": "HIDE INVITES",
+      "create": "+ NEW CODE",
+      "createSubmit": "CREATE CODE",
+      "kind": "Type",
+      "kindDuration": "Duration",
+      "kindWindow": "Fixed window",
+      "kindPermanent": "Permanent",
+      "durationDays": "Duration (days)",
+      "durationSummary": "{n} days",
+      "windowStart": "Window start",
+      "windowEnd": "Window end",
+      "maxUses": "Max uses",
+      "note": "Note",
+      "created": "Invite code created",
+      "createFailed": "Failed to create invite code",
+      "createdCode": "New code",
+      "badWindow": "Enter a valid time window",
+      "badDuration": "Enter a valid duration in days",
+      "empty": "NO INVITE CODES",
+      "colCode": "Code",
+      "colKind": "Grants",
+      "colUses": "Uses",
+      "colNote": "Note",
+      "colStatus": "Status",
+      "statusActive": "ACTIVE",
+      "statusRevoked": "REVOKED",
+      "statusExhausted": "EXHAUSTED",
+      "revoke": "REVOKE",
+      "revokeConfirm": "Revoke invite code {code}?",
+      "revoked": "Invite code revoked",
+      "revokeFailed": "Failed to revoke invite code",
+      "copyFailed": "Copy failed"
     }
   },
   "player": {
@@ -1107,6 +1187,18 @@
       "strategyR2Only": "R2 direct only",
       "strategyWebdavOnly": "WebDAV direct only",
       "strategySaved": "302 strategy updated"
+    },
+    "activation": {
+      "title": "Activation",
+      "current": "Current status",
+      "redeemTitle": "Redeem a code",
+      "redeemDesc": "Redeem an activation code at any time to extend or restore your account.",
+      "adminTitle": "Activation & registration gate",
+      "enableDesc": "Enforce account activation. When off, every account behaves as permanently active.",
+      "gateModeDesc": "Registration requirements: ALL = every enabled option must be met, ANY = one is enough.",
+      "gateModeAll": "ALL",
+      "gateModeAny": "ANY",
+      "unavailable": "Not available on this backend yet"
     }
   },
   "sources": {

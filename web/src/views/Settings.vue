@@ -2,9 +2,10 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ref, computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatSize } from "../api";
+import { activationDisplay, mapActivationError } from "../lib/activation";
 import { setLocale, SUPPORTED_LOCALES, type AppLocale } from "../i18n";
 import { setTheme, activeTheme, SUPPORTED_THEMES, type AppTheme } from "../theme";
 import { ensureBuiltinThemeLoaded } from "../themes/builtin";
@@ -23,11 +24,13 @@ import {
 } from "../../../shared/autoupdate";
 
 const router = useRouter();
+const route = useRoute();
 const { t, locale } = useI18n();
 const {
   isSuperAdmin, isGuest, hasPerm, edgesonicFetch, edgesonicPost, logout,
   username, nickname, avatarKey, email, emailVerified, restUrl,
   updateNickname, requestEmailChange, changeOwnPassword, updateOwnAvatar, handleAuthError,
+  activation, fetchActivationStatus, redeemActivationCode,
 } = useAuth();
 const workerPool = useWorkerPool();
 
@@ -181,9 +184,11 @@ async function saveSelfPassword() {
 
 // ---- Peer sync moved to Tools.vue (252 Phase 8) ----
 
-type SectionKey = "user" | "audioCache" | "system" | "sessions" | "clients" | "permissions";
-const open = ref<Record<SectionKey, boolean>>({ user: true, audioCache: false, system: false, sessions: false, clients: false, permissions: false });
+type SectionKey = "user" | "activation" | "audioCache" | "system" | "sessions" | "clients" | "permissions";
+const open = ref<Record<SectionKey, boolean>>({ user: true, activation: false, audioCache: false, system: false, sessions: false, clients: false, permissions: false });
 function toggleSection(key: SectionKey) { open.value[key] = !open.value[key]; }
+// The expired-activation banner deep-links here with ?section=activation.
+if (route.query.section === "activation") { open.value.user = false; open.value.activation = true; }
 
 type SubSectionKey = "media" | "integrations" | "lastfm" | "email" | "workers" | "featureFlags";
 const subOpen = ref<Record<SubSectionKey, boolean>>({ media: false, integrations: false, lastfm: false, email: false, workers: false, featureFlags: false });
@@ -193,6 +198,36 @@ const toast = ref({ show: false, msg: "", type: "success" });
 function showToast(msg: string, type = "success") {
   toast.value = { show: true, msg, type };
   setTimeout(() => { toast.value.show = false; }, 3000);
+}
+
+// ---- Account activation (status + redeem-anytime) ----
+const actCode = ref("");
+const actBusy = ref(false);
+const actDisplay = computed(() => activationDisplay(activation.value.status, activation.value.until));
+const actUntilText = computed(() => activation.value.until
+  ? new Date(activation.value.until * 1000).toLocaleString(locale.value)
+  : "");
+const actBadgeClass = computed(() => ({
+  permanent: "success", until: "info", expired: "error", disabled: "error",
+}[actDisplay.value]));
+const actStatusText = computed(() => actDisplay.value === "until"
+  ? t("activation.state.until", { date: actUntilText.value })
+  : t(`activation.state.${actDisplay.value}`));
+onMounted(() => { if (!isGuest.value) void fetchActivationStatus(); });
+
+async function redeemActivation() {
+  if (actBusy.value || !actCode.value.trim()) return;
+  actBusy.value = true;
+  try {
+    const result = await redeemActivationCode(actCode.value.trim());
+    if (result.ok) {
+      actCode.value = "";
+      showToast(t("activation.redeemSuccess"));
+    } else {
+      const key = result.error ? mapActivationError(result.error) : null;
+      showToast(key ? t(key) : (result.error || t("activation.redeemFailed")), "error");
+    }
+  } finally { actBusy.value = false; }
 }
 
 // ---- Browser audio cache (IndexedDB) ----
@@ -369,6 +404,8 @@ async function loadFeatures() {
     hydrateMetadataRecheckFromFeatures();
     // 113: hydrate the LRC sidecar backfill cadence.
     hydrateLrcBackfillFromFeatures();
+    // Hydrate the registration gate mode for the activation controls.
+    gateMode.value = findFeatureString("registration_gate_mode", "all") === "any" ? "any" : "all";
   } catch (e: unknown) {
     // 后端契约可能尚未部署 —— 优雅降级显示错误（非 JSON 响应一律视为 API 不可用）
     error.value = e instanceof SyntaxError || !(e instanceof Error)
@@ -1389,6 +1426,32 @@ async function onResetFailedWork() {
    resetFailedBusy.value = false;
 }
 
+// ---- Activation admin controls (super-admin, features area) ----
+// enable_activation gets a dedicated toggle next to the gate-mode picker, so
+// it is filtered out of the generic flag list below.
+const activationFeature = computed(() => features.value.find((f) => f.key === "enable_activation") ?? null);
+const genericFeatures = computed(() => features.value.filter((f) => f.key !== "enable_activation"));
+const gateMode = ref<"all" | "any">("all");
+const gateModeBusy = ref(false);
+
+async function saveGateMode(next: "all" | "any") {
+  if (gateModeBusy.value || next === gateMode.value) return;
+  const prev = gateMode.value;
+  gateMode.value = next; // optimistic
+  gateModeBusy.value = true;
+  try {
+    const data = JSON.parse(await edgesonicPost("features/updateString", {
+      key: "registration_gate_mode", value: next,
+    }));
+    if (!data.ok) throw new Error(data.error || "rejected");
+    showToast(`registration_gate_mode → ${next}`);
+  } catch {
+    gateMode.value = prev;
+    showToast(t("settings.common.updateFailed", { key: "registration_gate_mode" }), "error");
+  }
+  gateModeBusy.value = false;
+}
+
 async function toggleFeature(f: Feature, checked: boolean) {
   const newValue = checked ? 1 : 0;
   const oldValue = f.value;
@@ -1837,6 +1900,47 @@ onMounted(() => {
           </div>
         </div>
 
+      </div>
+
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-br"></div>
+    </section>
+
+    <!-- ============ ACTIVATION ============ -->
+    <section v-if="!isGuest" class="settings-section card" :class="{ open: open.activation }">
+      <button class="section-header" @click="toggleSection('activation')">
+        <span class="section-title">{{ t("settings.activation.title") }}</span>
+        <span class="section-caret">{{ open.activation ? "−" : "+" }}</span>
+      </button>
+
+      <div v-show="open.activation" class="section-body">
+        <div class="sub-block">
+          <div class="sub-header"><span class="mono-label">{{ t("settings.activation.current") }}</span></div>
+          <div class="act-status-row">
+            <span :class="['status-badge', actBadgeClass]">{{ actStatusText }}</span>
+            <span v-if="!activation.enabled" class="feature-desc">{{ t("activation.notEnabled") }}</span>
+          </div>
+        </div>
+
+        <div class="sub-block">
+          <div class="sub-header"><span class="mono-label">{{ t("settings.activation.redeemTitle") }}</span></div>
+          <p class="feature-desc section-desc">{{ t("settings.activation.redeemDesc") }}</p>
+          <div class="act-redeem-row">
+            <input
+              v-model="actCode"
+              class="form-input act-code-input"
+              maxlength="64"
+              :placeholder="t('activation.codePlaceholder')"
+              autocomplete="off"
+              spellcheck="false"
+              :disabled="actBusy"
+              @keydown.enter.prevent="redeemActivation"
+            />
+            <button class="btn-primary" :disabled="actBusy || !actCode.trim()" @click="redeemActivation">
+              {{ actBusy ? t("activation.redeeming") : t("activation.redeem") }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="corner corner-tl"></div>
@@ -2918,7 +3022,7 @@ onMounted(() => {
           </div>
 
           <div v-else class="feature-list">
-            <div v-for="f in features" :key="f.key" class="feature-row">
+            <div v-for="f in genericFeatures" :key="f.key" class="feature-row">
               <div class="feature-info">
                 <code class="feature-key">{{ f.key }}</code>
                 <span class="feature-desc">{{ f.description }}</span>
@@ -2932,6 +3036,48 @@ onMounted(() => {
                 />
                 <span class="toggle-slider"></span>
               </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activation system: master switch + registration gate mode -->
+        <div v-if="!loading && !error" class="sub-block">
+          <div class="sub-header"><span class="mono-label">{{ t("settings.activation.adminTitle") }}</span></div>
+          <div class="feature-list">
+            <div class="feature-row">
+              <div class="feature-info">
+                <code class="feature-key">enable_activation</code>
+                <span class="feature-desc">{{ t("settings.activation.enableDesc") }}</span>
+              </div>
+              <label class="toggle" :title="activationFeature ? '' : t('settings.activation.unavailable')">
+                <input
+                  type="checkbox"
+                  :checked="activationFeature?.value === 1"
+                  :disabled="!canManageSettings || !activationFeature"
+                  @change="activationFeature && toggleFeature(activationFeature, ($event.target as HTMLInputElement).checked)"
+                />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="feature-row">
+              <div class="feature-info">
+                <code class="feature-key">registration_gate_mode</code>
+                <span class="feature-desc">{{ t("settings.activation.gateModeDesc") }}</span>
+              </div>
+              <div class="seg">
+                <button
+                  type="button"
+                  :class="['seg-btn', { active: gateMode === 'all' }]"
+                  :disabled="!canManageSettings || gateModeBusy"
+                  @click="saveGateMode('all')"
+                >{{ t("settings.activation.gateModeAll") }}</button>
+                <button
+                  type="button"
+                  :class="['seg-btn', { active: gateMode === 'any' }]"
+                  :disabled="!canManageSettings || gateModeBusy"
+                  @click="saveGateMode('any')"
+                >{{ t("settings.activation.gateModeAny") }}</button>
+              </div>
             </div>
           </div>
         </div>
@@ -3453,4 +3599,9 @@ onMounted(() => {
 }
 .account-avatar-actions { display: flex; flex-direction: column; gap: 0.4rem; align-items: stretch; }
 .account-fields { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 0.6rem; }
+
+/* Activation section */
+.act-status-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.act-redeem-row { display: flex; gap: 0.5rem; max-width: 420px; }
+.act-code-input { font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
 </style>

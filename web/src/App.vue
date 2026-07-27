@@ -19,10 +19,35 @@ import { activeToast, dismissToast } from "./stores/toast";
 const router = useRouter();
 const route = useRoute();
 const { t } = useI18n();
-const { isLoggedIn, level, logout, hasPerm, fetchMe, displayName } = useAuth();
+const { isLoggedIn, level, logout, hasPerm, fetchMe, displayName, activation, probeGuestEnabled } = useAuth();
 const player = usePlayerStore();
 const workerPool = useWorkerPool();
 const demoMode = useDemoMode();
+
+// Inactive-session handling: with guest access on, the account degrades to
+// guest caps and we show a persistent "activation expired" banner; with guest
+// off, every non-public route is confined to /activation (mirrors the router
+// guard, which only sees cached state — this watcher covers fresh /auth/me
+// results and the async guest probe).
+const guestEnabled = ref<boolean | null>(
+  localStorage.getItem("edgesonic_guest_enabled") === "1" ? true
+    : localStorage.getItem("edgesonic_guest_enabled") === "0" ? false : null,
+);
+const activationExpired = computed(() =>
+  isLoggedIn.value && activation.value.enabled && !activation.value.active);
+const showActivationBanner = computed(() => activationExpired.value && guestEnabled.value === true);
+watch(activationExpired, (now) => {
+  if (!now) return;
+  void probeGuestEnabled().then((enabled) => {
+    guestEnabled.value = enabled;
+    if (!enabled && !route.meta.public && route.path !== "/activation") {
+      void router.replace("/activation");
+    }
+  });
+}, { immediate: true });
+function goRenewActivation() {
+  void router.push({ path: "/settings", query: { section: "activation" } });
+}
 watch(isLoggedIn, (now) => {
   if (now) {
     // Refresh real effective permissions so nav gates by capability, not just
@@ -155,6 +180,17 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
   <div v-if="demoMode.enabled" class="demo-badge" role="status" aria-live="polite">
     <span class="demo-badge-text">{{ t("demo.badge") }}</span>
   </div>
+
+  <button
+    v-if="showActivationBanner"
+    type="button"
+    class="activation-banner"
+    role="alert"
+    @click="goRenewActivation"
+  >
+    <span aria-hidden="true"><Icon name="info" /></span>
+    <span>{{ t("activation.banner") }}</span>
+  </button>
 
   <Transition name="toast">
     <button
@@ -503,6 +539,32 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
   .main { margin-left: 0; padding-left: 1rem; padding-right: 1rem; }
   .now-playing-collapse { display: inline-flex; left: 1rem; }
 }
+
+/* --- Activation expired banner (persistent, click → Settings) --- */
+.activation-banner {
+  position: fixed;
+  top: calc(var(--nav-h) + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1900;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-status-warning);
+  box-shadow: inset 3px 0 var(--color-status-warning), 0 8px 18px rgba(0, 0, 0, 0.3);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: calc(100vw - 2rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.activation-banner:hover { border-color: var(--color-status-error); }
 
 /* --- Demo mode badge --- */
 .demo-badge {
