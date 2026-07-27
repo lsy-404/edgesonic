@@ -135,6 +135,7 @@ CREATE TABLE IF NOT EXISTS subsonic_credentials (
   password TEXT NOT NULL,                            -- plaintext (Subsonic protocol requirement)
   label TEXT DEFAULT '',                             -- user label e.g. "My Phone", "Desktop"
   stream_proxy_strategy TEXT NOT NULL DEFAULT 'always', -- 092: 'always'|'never'|'r2_only'|'webdav_only'
+  expires_at INTEGER,                                -- activation horizon at issue time; NULL = unbounded
   last_used INTEGER,                                 -- unix timestamp of last auth
   created_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE

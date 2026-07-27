@@ -110,6 +110,9 @@ export async function ensureActivationSchema(env: { DB: D1Database }): Promise<v
   const alters = [
     "ALTER TABLE users ADD COLUMN activation_status TEXT NOT NULL DEFAULT 'permanent'",
     "ALTER TABLE users ADD COLUMN activated_until INTEGER",
+    // Long-lived client credentials carry the activation horizon they were
+    // issued under; NULL means no ceiling (permanent activation).
+    "ALTER TABLE subsonic_credentials ADD COLUMN expires_at INTEGER",
   ];
   let allDone = true;
   for (const sql of alters) {

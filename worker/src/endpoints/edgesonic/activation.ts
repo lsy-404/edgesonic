@@ -22,7 +22,7 @@ import { hasPermission } from "../../utils/permissions";
 import { isDemoMode } from "../../utils/demoMode";
 import { ensureActivationSchema } from "../../utils/schema_patch";
 import {
-  resolveActivation, redeemCode, generateInviteCode, type InviteCodeRow,
+  resolveActivation, redeemCode, generateInviteCode, restampCredentials, type InviteCodeRow,
 } from "../../utils/activation";
 import type { User } from "../../types/entities";
 
@@ -116,6 +116,10 @@ activationRoutes.post("/activation/set", async (c) => {
   const status = mode === "until" ? "active_until" : mode;
   await db.prepare("UPDATE users SET activation_status = ?, activated_until = ?, updated_at = ? WHERE username = ?")
     .bind(status, until, Math.floor(Date.now() / 1000), username).run();
+  // Issued clients follow the new horizon: extended, cut short, or expired.
+  await restampCredentials(c.env, username, {
+    enabled: true, active: status !== "disabled", status, until,
+  });
   return c.json({ ok: true });
 });
 

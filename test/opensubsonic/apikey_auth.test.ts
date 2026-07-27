@@ -86,7 +86,7 @@ function buildDb(): DatabaseSync {
       api_key TEXT PRIMARY KEY, username TEXT NOT NULL, created_at INTEGER DEFAULT 0
     );
     CREATE TABLE subsonic_credentials (
-      username TEXT NOT NULL, password TEXT NOT NULL, stream_proxy_strategy TEXT, last_used INTEGER
+      username TEXT NOT NULL, password TEXT NOT NULL, stream_proxy_strategy TEXT, last_used INTEGER, expires_at INTEGER
     );
     CREATE TABLE user_permissions (
       level INTEGER NOT NULL, permission TEXT NOT NULL, enabled INTEGER DEFAULT 0, max_rph INTEGER DEFAULT 0,

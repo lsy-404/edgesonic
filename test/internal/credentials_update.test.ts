@@ -81,7 +81,8 @@ function buildDb(): DatabaseSync {
       password TEXT NOT NULL,
       label TEXT DEFAULT '',
       last_used INTEGER,
-      created_at INTEGER DEFAULT 0
+      created_at INTEGER DEFAULT 0,
+      expires_at INTEGER
     );
     CREATE TABLE user_permissions (
       level INTEGER NOT NULL,

@@ -25,7 +25,7 @@ import { ensureNicknameColumn, ensureEmailColumns, ensureActivationSchema } from
 import { getFeature, getFeatureString } from "../../utils/features";
 import {
   resolveActivation, clampTtlToActivation, checkInviteCode, redeemCode,
-  evaluateRegistrationGate, getRegistrationGateMode,
+  evaluateRegistrationGate, getRegistrationGateMode, credentialExpiryFor,
 } from "../../utils/activation";
 import { isDemoMode } from "../../utils/demoMode";
 import {
@@ -672,9 +672,13 @@ edgesonicAuthRoutes.post("/auth/credentials/create", permissionMiddleware("manag
 
   const id = crypto.randomUUID().substring(0, 12);
   const now = Math.floor(Date.now() / 1000);
+  // Issued against the account's current activation horizon; a later change
+  // re-stamps it rather than requiring a new credential.
+  await ensureActivationSchema(c.env);
+  const expiresAt = credentialExpiryFor(await resolveActivation(c.env, user));
   await db.prepare(
-    "INSERT INTO subsonic_credentials (id, username, password, label, stream_proxy_strategy, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).bind(id, user.username, body.password, body.label || "", strategy, now).run();
+    "INSERT INTO subsonic_credentials (id, username, password, label, stream_proxy_strategy, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).bind(id, user.username, body.password, body.label || "", strategy, now, expiresAt).run();
 
   return c.text(
     subsonicOK({

@@ -24,6 +24,7 @@ import { DatabaseSync } from "node:sqlite";
 import {
   resolveActivation, redeemCode, checkInviteCode, clampExpiryToActivation,
   clampTtlToActivation, generateInviteCode, evaluateRegistrationGate,
+  credentialExpiryFor, restampCredentials,
   type ActivationState,
 } from "../../worker/src/utils/activation";
 
@@ -133,6 +134,16 @@ function setupSchema(sqlite: DatabaseSync): void {
       username TEXT NOT NULL,
       redeemed_at INTEGER NOT NULL,
       PRIMARY KEY (code, username)
+    );
+    CREATE TABLE subsonic_credentials (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      password TEXT NOT NULL,
+      label TEXT DEFAULT '',
+      stream_proxy_strategy TEXT NOT NULL DEFAULT 'always',
+      last_used INTEGER,
+      created_at INTEGER DEFAULT 0,
+      expires_at INTEGER
     );
     INSERT INTO features (key, value) VALUES ('enable_activation', 1);
   `);
@@ -354,6 +365,61 @@ async function main() {
       }
       if (i === 19) assert(true, "20 generated codes all match INV- + 12 unambiguous base32 chars");
     }
+  }
+
+  console.log("credential horizon follows the account:");
+  {
+    const now = Math.floor(Date.now() / 1000);
+    assert(credentialExpiryFor({ enabled: false, active: true, status: "permanent", until: null }) === null,
+      "activation off → no ceiling");
+    assert(credentialExpiryFor({ enabled: true, active: true, status: "permanent", until: null }) === null,
+      "permanent → no ceiling");
+    assert(credentialExpiryFor({ enabled: true, active: true, status: "active_until", until: now + 500 }) === now + 500,
+      "windowed → window end");
+    const disabledAt = credentialExpiryFor({ enabled: true, active: false, status: "disabled", until: null });
+    assert(disabledAt !== null && disabledAt <= now + 1, "disabled → expires immediately");
+
+    const { env, sqlite } = makeEnv();
+    sqlite.exec(`
+      INSERT INTO users (username, activation_status, activated_until) VALUES ('u1', 'active_until', ${now + 100});
+      INSERT INTO subsonic_credentials (id, username, password, expires_at) VALUES ('c1', 'u1', 'p1', ${now + 100});
+      INSERT INTO subsonic_credentials (id, username, password, expires_at) VALUES ('c2', 'u1', 'p2', ${now + 100});
+      INSERT INTO subsonic_credentials (id, username, password, expires_at) VALUES ('c3', 'other', 'p3', ${now + 100});
+    `);
+    const readExpiry = (id: string) =>
+      (sqlite.prepare("SELECT expires_at FROM subsonic_credentials WHERE id = ?").get(id) as { expires_at: number | null }).expires_at;
+
+    // Extending the account revives every issued client…
+    await restampCredentials(env, "u1", { enabled: true, active: true, status: "active_until", until: now + 9000 });
+    assert(readExpiry("c1") === now + 9000 && readExpiry("c2") === now + 9000, "extension re-stamps all of the user's clients");
+    assert(readExpiry("c3") === now + 100, "another account's clients are untouched");
+
+    // …a permanent grant lifts the ceiling entirely…
+    await restampCredentials(env, "u1", { enabled: true, active: true, status: "permanent", until: null });
+    assert(readExpiry("c1") === null, "permanent grant clears the ceiling");
+
+    // …and freezing cuts them off now.
+    await restampCredentials(env, "u1", { enabled: true, active: false, status: "disabled", until: null });
+    const frozen = readExpiry("c1");
+    assert(frozen !== null && frozen <= Math.floor(Date.now() / 1000), "freeze expires clients immediately");
+  }
+
+  console.log("redeeming a code re-stamps issued clients:");
+  {
+    const now = Math.floor(Date.now() / 1000);
+    const { env, sqlite } = makeEnv();
+    sqlite.exec(`
+      INSERT INTO users (username, activation_status, activated_until) VALUES ('u2', 'disabled', NULL);
+      INSERT INTO subsonic_credentials (id, username, password, expires_at) VALUES ('c9', 'u2', 'p9', ${now - 10});
+      INSERT INTO invite_codes (code, kind, duration_days, max_uses, created_by, created_at)
+        VALUES ('INV-TESTDURATION', 'duration', 30, 1, 'admin', ${now});
+    `);
+    const result = await redeemCode(env, "u2", "INV-TESTDURATION");
+    assert(result.ok, "redeem succeeded");
+    const stamped = (sqlite.prepare("SELECT expires_at FROM subsonic_credentials WHERE id = 'c9'")
+      .get() as { expires_at: number | null }).expires_at;
+    assert(result.ok && stamped === result.until, "client now carries the freshly redeemed horizon");
+    assert(stamped !== null && stamped > now, "previously lapsed client is live again");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

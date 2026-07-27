@@ -114,7 +114,7 @@ function setupSchema(sqlite: DatabaseSync, opts: { guestEnabled: boolean }): voi
     CREATE TABLE subsonic_credentials (
       id TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL,
       label TEXT DEFAULT '', stream_proxy_strategy TEXT NOT NULL DEFAULT 'always',
-      last_used INTEGER, created_at INTEGER DEFAULT 0
+      last_used INTEGER, created_at INTEGER DEFAULT 0, expires_at INTEGER
     );
     CREATE TABLE api_keys (api_key TEXT PRIMARY KEY, username TEXT NOT NULL, created_at INTEGER DEFAULT 0);
     CREATE TABLE guest_tokens (token TEXT PRIMARY KEY, created_by TEXT, expires_at INTEGER, created_at INTEGER DEFAULT 0);

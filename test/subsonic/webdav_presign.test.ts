@@ -370,7 +370,8 @@ async function main() {
         id TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL,
         label TEXT DEFAULT '', last_used INTEGER,
         stream_proxy_strategy TEXT NOT NULL DEFAULT 'always',
-        created_at INTEGER DEFAULT (unixepoch())
+        created_at INTEGER DEFAULT (unixepoch()),
+        expires_at INTEGER
       );
       CREATE TABLE user_permissions (
         level INTEGER NOT NULL, permission TEXT NOT NULL,

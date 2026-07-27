@@ -79,6 +79,28 @@ export function clampTtlToActivation(activation: ActivationState, ttlSec: number
   return Math.max(1, clamped);
 }
 
+// The activation horizon a long-lived client credential should carry:
+// the end of the current window, or NULL when nothing bounds it.
+export function credentialExpiryFor(activation: ActivationState): number | null {
+  if (!activation.enabled) return null;
+  if (activation.status === "active_until") return activation.until;
+  if (activation.status === "disabled") return Math.floor(Date.now() / 1000);
+  return null;
+}
+
+// Re-stamp every issued credential of a user after their activation changed,
+// so extending an account revives its clients and shortening it cuts them off
+// without anyone having to re-issue by hand.
+export async function restampCredentials(
+  env: { DB: D1Database },
+  username: string,
+  activation: ActivationState,
+): Promise<void> {
+  await env.DB.prepare("UPDATE subsonic_credentials SET expires_at = ? WHERE username = ?")
+    .bind(credentialExpiryFor(activation), username)
+    .run();
+}
+
 // ============================================================================
 // Invite codes
 // ============================================================================
@@ -179,6 +201,8 @@ export async function redeemCode(env: ActivationEnv, username: string, code: str
     }
     throw e;
   }
+  // Clients issued under the previous horizon follow the account forward.
+  await restampCredentials(env, username, { enabled: true, active: true, status, until });
   return { ok: true, status, until };
 }
 

@@ -137,7 +137,7 @@ function buildDb() {
     );
     CREATE TABLE subsonic_credentials (
       username TEXT NOT NULL, password TEXT NOT NULL, stream_proxy_strategy TEXT,
-      last_used INTEGER, created_at INTEGER DEFAULT 0
+      last_used INTEGER, created_at INTEGER DEFAULT 0, expires_at INTEGER
     );
     CREATE TABLE api_keys (api_key TEXT PRIMARY KEY, username TEXT NOT NULL, created_at INTEGER DEFAULT 0);
     CREATE TABLE guest_tokens (token TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);

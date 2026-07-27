@@ -199,7 +199,10 @@ async function findSubsonicCredential(
   salt: string,
 ): Promise<{ credential: string; kind: "subsonic_cred"; streamProxyStrategy: string } | null> {
   const creds = await db
-    .prepare("SELECT password, stream_proxy_strategy FROM subsonic_credentials WHERE username = ?")
+    // expires_at carries the activation horizon the credential was issued
+    // under (NULL = unbounded); a lapsed one stops matching until the account
+    // is re-activated, which re-stamps it.
+    .prepare("SELECT password, stream_proxy_strategy FROM subsonic_credentials WHERE username = ? AND (expires_at IS NULL OR expires_at > unixepoch())")
     .bind(username)
     .all<{ password: string; stream_proxy_strategy: string | null }>();
 
@@ -253,7 +256,10 @@ async function findSubsonicCredentialByPassword(
   }
 
   const creds = await db
-    .prepare("SELECT password, stream_proxy_strategy FROM subsonic_credentials WHERE username = ?")
+    // expires_at carries the activation horizon the credential was issued
+    // under (NULL = unbounded); a lapsed one stops matching until the account
+    // is re-activated, which re-stamps it.
+    .prepare("SELECT password, stream_proxy_strategy FROM subsonic_credentials WHERE username = ? AND (expires_at IS NULL OR expires_at > unixepoch())")
     .bind(username)
     .all<{ password: string; stream_proxy_strategy: string | null }>();
   for (const cred of creds.results) {
