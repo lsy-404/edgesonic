@@ -716,13 +716,13 @@
         "backgroundUrl": "Background image URL",
         "loginConfigSaved": "Login page settings saved",
         "templatesTitle": "Email Templates",
-        "templatesDesc": "Wording sent for email verification, password reset, and email-change confirmation. Plain text — {{link}} is replaced with the actual link. Super-admin only.",
+        "templatesDesc": "Wording sent for email verification, password reset, and email-change confirmation. Plain text — {'{{link}}'} is replaced with the actual link. Super-admin only.",
         "superAdminOnly": "Super-admin only",
         "tplVerify": "Email verification",
         "tplReset": "Password reset",
         "tplChange": "Email change confirmation",
         "tplSubject": "Subject",
-        "tplBody": "Body ({{link}} required)",
+        "tplBody": "Body ({'{{link}}'} required)",
         "templateSaved": "Template saved"
       },
       "sync": {

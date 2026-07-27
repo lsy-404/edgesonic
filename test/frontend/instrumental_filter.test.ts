@@ -43,6 +43,11 @@ const instrumentals = [
   "曲名（カラオケ）",
   "曲名 (インスト)",
   "Instrumental",
+  // Real library titles: the marker sits flush against a CJK full stop.
+  "请不要带我走。INST.",
+  "底色theory。INST.",
+  "完？美？友！人！INST.",
+  "我？爱？你？INST.",
 ];
 
 const keepers = [
@@ -52,6 +57,9 @@ const keepers = [
   "Karaoke Night in Shibuya",
   "伴奏者的独白",
   "Off Vocal Training Manual",
+  "Fight Against",
+  "请不要带我走。",
+  "完？美？友！人！",
   "Song Name (Live)",
   "Song Name (2023 Remaster)",
   "Song Name (Instrumental) [2023 Remaster]",

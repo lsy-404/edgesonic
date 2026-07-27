@@ -17,29 +17,35 @@
 //
 // Releases mark backing tracks with a suffix on the title rather than a tag,
 // so the only signal available client-side is the trailing marker: bracketed
-// ("(Instrumental)", "【伴奏】"), separated ("- inst.", "／伴奏") or simply
-// appended (" off vocal"). Anchoring to the end of the string keeps titles
-// that merely contain a marker word ("Instrumental Analysis") in the list.
+// ("(Instrumental)", "【伴奏】") or appended ("- inst.", "曲名。INST.", "／伴奏").
+// Anchoring to the end of the string keeps titles that merely contain a marker
+// word ("Instrumental Analysis", "伴奏者的独白") in the list.
 
-const MARKER =
-  String.raw`(?:instrumentals?|insts?|off[\s-]*vocals?|no[\s-]*vocals?|vocals?[\s-]*off|karaoke` +
-  String.raw`|カラオケ|オフ[\s-]*ボーカル|インスト(?:ゥルメンタル)?` +
-  String.raw`|伴奏|去人[声聲]|[无無]人[声聲]|消音)`;
+const LATIN_MARKER =
+  String.raw`(?:instrumentals?|insts?|off[\s-]*vocals?|no[\s-]*vocals?|vocals?[\s-]*off|karaoke)`;
+
+const CJK_MARKER =
+  String.raw`(?:カラオケ|オフ[\s-]*ボーカル|インスト(?:ゥルメンタル)?|伴奏|去人[声聲]|[无無]人[声聲]|消音)`;
+
+const MARKER = `(?:${LATIN_MARKER}|${CJK_MARKER})`;
 
 // Optional trailing qualifier: "(Instrumental Version)", "伴奏版", "inst mix".
 const QUALIFIER = String.raw`(?:\s*(?:ver\.?|version|mix|edit|track|版|バージョン))?`;
 
 const OPEN = String.raw`[(（\[［【{｛「]`;
 const CLOSE = String.raw`[)）\]］】}｝」]`;
-const SEPARATOR = String.raw`[-–—_~～/／|｜·・:：]`;
 
+// A latin marker needs a non-alphanumeric char in front of it so that a title
+// merely ending in those letters ("Fight Against" contains "inst") is left
+// alone; any punctuation counts, including CJK ("曲名。INST."). CJK markers
+// carry no such ambiguity and may sit flush against the title.
 const TRAILING_MARKER = new RegExp(
   "(?:" +
     `${OPEN}\\s*${MARKER}${QUALIFIER}\\s*\\.?\\s*${CLOSE}` +
     "|" +
-    `${SEPARATOR}\\s*${MARKER}${QUALIFIER}\\.?` +
+    `(?:^|[^A-Za-z0-9])${LATIN_MARKER}${QUALIFIER}\\.?` +
     "|" +
-    `(?:^|\\s)${MARKER}${QUALIFIER}\\.?` +
+    `${CJK_MARKER}${QUALIFIER}\\.?` +
   ")\\s*$",
   "i",
 );
