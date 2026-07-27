@@ -17,6 +17,7 @@ import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { i18n } from "./i18n";
 import { showError } from "./stores/toast";
+import { parseActivation, DEFAULT_ACTIVATION, type ActivationInfo } from "./lib/activation";
 
 // management-shaped moved to /tag, /storage, /edgesonic.
 const REST_BASE = "/rest";
@@ -106,6 +107,17 @@ const nickname = ref(localStorage.getItem("edgesonic_nickname") || "");
 const avatarKey = ref(localStorage.getItem("edgesonic_avatar_key") || "");
 const email = ref(localStorage.getItem("edgesonic_email") || "");
 const emailVerified = ref(localStorage.getItem("edgesonic_email_verified") === "1");
+// Activation state from /auth/me (cached so the router guard can decide
+// synchronously on reload, same pattern as edgesonic_perms).
+function readCachedActivation(): ActivationInfo {
+  try { return parseActivation(JSON.parse(localStorage.getItem("edgesonic_activation") || "null")); }
+  catch { return { ...DEFAULT_ACTIVATION }; }
+}
+const activation = ref<ActivationInfo>(readCachedActivation());
+function storeActivation(next: ActivationInfo) {
+  activation.value = next;
+  localStorage.setItem("edgesonic_activation", JSON.stringify(next));
+}
 const salt = ref("");
 let sessionCheckInFlight: Promise<void> | null = null;
 
@@ -184,6 +196,10 @@ export function useAuth() {
     // at all" (emailEnabled) — Login.vue/ForgotPassword.vue gate on this one.
     passwordResetEnabled: boolean;
     emailEnabled: boolean; isDemo: boolean;
+    // Activation gate — optional on older backends. When activationEnabled
+    // is true Register.vue shows the invite-code field and gate-mode hint.
+    activationEnabled: boolean;
+    registrationGateMode: "all" | "any";
   }
 
   // Public — no session required. Drives Login.vue's notice line, optional
@@ -192,6 +208,7 @@ export function useAuth() {
     const fallback: LoginConfig = {
       noticeText: "", backgroundUrl: "", registrationEnabled: false,
       passwordResetEnabled: false, emailEnabled: false, isDemo: false,
+      activationEnabled: false, registrationGateMode: "all",
     };
     try {
       const resp = await fetch(`${EDGESONIC_BASE}/auth/loginConfig`, { credentials: "same-origin" });
@@ -204,16 +221,18 @@ export function useAuth() {
         passwordResetEnabled: !!data.passwordResetEnabled,
         emailEnabled: !!data.emailEnabled,
         isDemo: !!data.isDemo,
+        activationEnabled: !!data.activationEnabled,
+        registrationGateMode: data.registrationGateMode === "any" ? "any" : "all",
       };
     } catch { return fallback; }
   }
 
-  async function register(u: string, e: string, p: string): Promise<LoginResult> {
+  async function register(u: string, e: string, p: string, inviteCode?: string): Promise<LoginResult> {
     const resp = await fetch(`${EDGESONIC_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({ username: u, email: e, password: p }),
+      body: JSON.stringify({ username: u, email: e, password: p, ...(inviteCode ? { inviteCode } : {}) }),
     });
     const data = await resp.json();
     if (!data.ok) return { ok: false, error: data.error || "Registration failed" };
@@ -267,6 +286,8 @@ export function useAuth() {
     localStorage.removeItem("edgesonic_avatar_key");
     localStorage.removeItem("edgesonic_email");
     localStorage.removeItem("edgesonic_email_verified");
+    activation.value = { ...DEFAULT_ACTIVATION };
+    localStorage.removeItem("edgesonic_activation");
     // Best-effort: clear the cookie + delete the session row server-side.
     // If the request fails (offline, worker down) the SPA-side state is
     // already cleared; the cookie will lapse at its natural 24h expiry
@@ -432,8 +453,12 @@ export function useAuth() {
         ok: boolean; level?: number; nickname?: string | null; avatarKey?: string | null;
         email?: string | null; emailVerified?: boolean;
         permissions?: Record<string, boolean>;
+        activation?: unknown;
       };
       if (!data.ok) return;
+      // Absent on older backends → parseActivation degrades to "everyone
+      // active", so the guard/banner stay dormant until the field ships.
+      storeActivation(parseActivation(data.activation));
       if (typeof data.level === "number") {
         level.value = data.level;
         localStorage.setItem("edgesonic_level", String(data.level));
@@ -499,6 +524,54 @@ export function useAuth() {
       localStorage.setItem("edgesonic_email_verified", "1");
     }
     return { ok: !!data.ok, error: data.error, email: data.email };
+  }
+
+  // GET /edgesonic/activation/me — refresh the activation state (also open to
+  // inactive sessions). Returns the fresh info, or null on failure.
+  async function fetchActivationStatus(): Promise<ActivationInfo | null> {
+    try {
+      const data = JSON.parse(await edgesonicFetch("activation/me")) as {
+        ok: boolean; enabled?: boolean; status?: string; until?: number | null; active?: boolean;
+      };
+      if (!data.ok) return null;
+      const info = parseActivation(data);
+      storeActivation(info);
+      return info;
+    } catch (e) {
+      handleAuthError(e);
+      return null;
+    }
+  }
+
+  // POST /edgesonic/activation/redeem — redeem an activation/invite code for
+  // the current account, then refresh the cached activation state.
+  async function redeemActivationCode(code: string): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const data = JSON.parse(await edgesonicPost("activation/redeem", { code })) as {
+        ok: boolean; error?: string;
+      };
+      if (!data.ok) return { ok: false, error: data.error };
+      await fetchActivationStatus();
+      return { ok: true };
+    } catch (e) {
+      handleAuthError(e);
+      return { ok: false };
+    }
+  }
+
+  // Public probe — is guest access enabled? Drives the inactive-session
+  // behaviour (banner vs. hard redirect to /activation). Cached so the router
+  // guard can consult it synchronously.
+  async function probeGuestEnabled(): Promise<boolean> {
+    try {
+      const resp = await fetch(`${EDGESONIC_BASE}/auth/guest`, { credentials: "same-origin" });
+      const data = await resp.json() as { ok?: boolean; enabled?: boolean };
+      const enabled = data.ok === true && data.enabled === true;
+      localStorage.setItem("edgesonic_guest_enabled", enabled ? "1" : "0");
+      return enabled;
+    } catch {
+      return localStorage.getItem("edgesonic_guest_enabled") === "1";
+    }
   }
 
   async function changeOwnPassword(next: string): Promise<void> {
@@ -648,6 +721,7 @@ export function useAuth() {
 
   return { token, username, level, salt, isLoggedIn, isAdmin, isSuperAdmin, isGuest, isUser,
     permissions, hasPerm, nickname, avatarKey, email, emailVerified, displayName,
+    activation, fetchActivationStatus, redeemActivationCode, probeGuestEnabled,
     fetchMe, updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
     login, guestLogin, logout, handleAuthError, authFetch, authPost, uploadFile, crossCopy, makeSalt, md5,
     getLoginConfig, register, requestPasswordReset, confirmPasswordReset, confirmEmailVerify,
