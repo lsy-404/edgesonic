@@ -13,6 +13,14 @@ import { audioCacheStats, clearAudioCache, audioCacheMaxMb, setAudioCacheMaxMb }
 import PermissionsMatrix from "../components/PermissionsMatrix.vue";
 import Icon from "../components/Icon.vue";
 import { useWorkerPool } from "../stores/workerPool";
+import {
+  buildReleaseOptions,
+  GITHUB_API,
+  parseSemver,
+  ZERO_VERSION,
+  type GithubRelease,
+  type ReleaseListing,
+} from "../../../shared/autoupdate";
 
 const router = useRouter();
 const { t, locale } = useI18n();
@@ -22,6 +30,26 @@ const {
   updateNickname, requestEmailChange, changeOwnPassword, updateOwnAvatar, handleAuthError,
 } = useAuth();
 const workerPool = useWorkerPool();
+
+// Release listing runs in the browser: GitHub's unauthenticated API budget is
+// per source IP, and the Worker's is a Cloudflare egress address shared with
+// unrelated tenants, so server-side lookups get 403'd on a spent limit. The
+// Worker endpoint stays as the fallback for browsers that can't reach GitHub.
+// The list is display-only — running an update still posts just a tag, which
+// the Worker re-resolves and verifies itself.
+async function githubReleaseListing(): Promise<CfUpdates | null> {
+  try {
+    const response = await fetch(`${GITHUB_API}/releases?per_page=50`, {
+      headers: { Accept: "application/vnd.github+json" },
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const releases = await response.json() as GithubRelease[];
+    return buildReleaseOptions(releases, parseSemver(__EDGESONIC_VERSION__) || ZERO_VERSION);
+  } catch {
+    return null;
+  }
+}
 
 // Advanced/system settings gate. Defaults to super-admin only (manage_settings
 // is seeded L3=1), but a super-admin can grant it to an admin via the
@@ -994,23 +1022,7 @@ interface CfAnalytics {
   cpuP99Ms?: number;
   error?: string;
 }
-interface CfReleaseOption {
-  tag: string;
-  version: string;
-  name: string;
-  publishedAt: string | null;
-  prerelease: boolean;
-  htmlUrl: string;
-  hasArtifact: boolean;
-  isMajor: boolean;
-  eligible: boolean;
-  reason: string;
-}
-interface CfUpdates {
-  currentVersion: string;
-  defaultTag: string | null;
-  releases: CfReleaseOption[];
-}
+type CfUpdates = Omit<ReleaseListing, "ok">;
 const cfStatus = ref<CfStatus>({ configured: false, accountId: "", tokenLast4: "" });
 const cfAccountId = ref("");
 const cfToken = ref("");
@@ -1061,11 +1073,15 @@ async function loadCfUpdates() {
   if (!hasPerm("manage_cloudflare")) return;
   cfUpdatesBusy.value = true;
   try {
-    const data = JSON.parse(await edgesonicFetch("cf/getUpdates")) as CfUpdates & { ok: boolean; error?: string };
-    if (!data.ok) throw new Error(data.error || "getUpdates");
-    cfUpdates.value = data;
-    if (!cfUpdateTag.value || !data.releases.some((release) => release.tag === cfUpdateTag.value)) {
-      cfUpdateTag.value = data.defaultTag || data.releases[0]?.tag || "";
+    let listing = await githubReleaseListing();
+    if (!listing) {
+      const fallback = JSON.parse(await edgesonicFetch("cf/getUpdates")) as CfUpdates & { ok: boolean; error?: string };
+      if (!fallback.ok) throw new Error(fallback.error || "getUpdates");
+      listing = fallback;
+    }
+    cfUpdates.value = listing;
+    if (!cfUpdateTag.value || !listing.releases.some((release) => release.tag === cfUpdateTag.value)) {
+      cfUpdateTag.value = listing.defaultTag || listing.releases[0]?.tag || "";
     }
   } catch (e: unknown) {
     showToast(`${t("settings.common.cf.updateFailed")}: ${e instanceof Error ? e.message : String(e)}`, "error");

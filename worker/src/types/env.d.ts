@@ -30,6 +30,13 @@ interface Env {
   // (≥32 random bytes, e.g. `openssl rand -base64 48`). Unset → falls back
   // to INSTANCE_ID + static salt; see worker/src/utils/workUploadToken.ts.
   WORK_UPLOAD_HMAC_KEY?: string;
+  // Optional GitHub token for the self-update release lookup:
+  //  wrangler secret put GITHUB_TOKEN
+  // Unset → unauthenticated calls, capped at 60/hour per source IP and shared
+  // with every other tenant on the same Cloudflare egress address, which
+  // GitHub reports as HTTP 403. A fine-grained token with no scopes (public
+  // repo read is enough) raises the cap to 5000/hour. See utils/autoupdate.ts.
+  GITHUB_TOKEN?: string;
   // can detect a deploy without a hard refresh. Bump per deploy via either:
   //  - wrangler.toml [vars] WORKER_VERSION = "<label>" (default; bump before deploy)
   //  - `wrangler deploy --var WORKER_VERSION:$(date +%s)` (one-shot override)
@@ -44,7 +51,7 @@ interface Env {
   // 302-redirects the browser to a short-lived presigned R2 S3 URL,
   // bypassing the Worker sub-request bandwidth pool. The R2 account id
   // is read from `CF_ACCOUNT_ID` (already pushed as a Workers Secret by
-  // the Settings → Cloudflare integration sub-block, task 054) — no
+  // the Settings → Cloudflare integration sub-block) — no
   // separate R2_ACCOUNT_ID secret is needed. Push via:
   //  wrangler secret put R2_ACCESS_KEY_ID
   //  wrangler secret put R2_SECRET_ACCESS_KEY
@@ -53,7 +60,7 @@ interface Env {
   R2_SECRET_ACCESS_KEY?: string;
   // Permission matrix cache, pushed dynamically via
   // POST /edgesonic/permissions/save using the same CF-API-secret-write
-  // pattern as CF_API_TOKEN (054/cf.ts:setToken) — no redeploy needed. JSON
+  // pattern as CF_API_TOKEN (cf.ts:setToken) — no redeploy needed. JSON
   // shape: `{ [level: string]: { [permission: string]: boolean } }`.
   // Read before D1 in permissionMiddleware/hasPermission (utils/
   // permissions.ts); D1's user_permissions.enabled column is the fallback

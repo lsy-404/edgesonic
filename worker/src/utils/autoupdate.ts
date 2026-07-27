@@ -1,7 +1,31 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-const GITHUB_REPO = "wuyilingwei/edgesonic";
-const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}`;
+import {
+  assetOf,
+  buildReleaseOptions,
+  classifyVersionUpdate,
+  compareSemver,
+  GITHUB_API,
+  GITHUB_REPO,
+  hasUpdateArtifact,
+  normalizeTag,
+  parseSemver,
+  UPDATE_ARTIFACT_NAME,
+  UPDATE_MANIFEST_NAME,
+  ZERO_VERSION,
+  type GithubAsset,
+  type GithubRelease,
+  type ReleaseListing,
+  type ReleaseOption,
+  type Semver,
+} from "../../../shared/autoupdate";
+
+// Version maths and release eligibility are shared with the SPA, which lists
+// releases straight from the browser; re-exported so existing importers and
+// tests keep a single entry point.
+export { classifyVersionUpdate, compareSemver, normalizeTag, parseSemver };
+export type { ReleaseOption, Semver };
+
 const CF_API = "https://api.cloudflare.com/client/v4";
 const LOCK_TTL_SEC = 15 * 60;
 const MAX_ARTIFACT_BYTES = 24 * 1024 * 1024;
@@ -11,27 +35,6 @@ const MAX_ASSET_BYTES = 16 * 1024 * 1024;
 const MAX_PATCH_BYTES = 512 * 1024;
 
 const ACTIVE_UPDATE_STATUSES = ["resolving", "downloading", "patching", "uploading", "deploying"];
-
-export interface Semver {
-  major: number;
-  minor: number;
-  patch: number;
-  prerelease: string;
-  raw: string;
-}
-
-export interface ReleaseOption {
-  tag: string;
-  version: string;
-  name: string;
-  publishedAt: string | null;
-  prerelease: boolean;
-  htmlUrl: string;
-  hasArtifact: boolean;
-  isMajor: boolean;
-  eligible: boolean;
-  reason: "ok" | "not-newer" | "downgrade" | "major-confirmation-required" | "artifact-missing" | "invalid-version";
-}
 
 export interface UpdateManifest {
   schema: 1;
@@ -64,22 +67,6 @@ export interface UpdateState {
   updated_at: number;
 }
 
-interface GithubAsset {
-  name?: string;
-  browser_download_url?: string;
-  size?: number;
-}
-
-interface GithubRelease {
-  tag_name?: string;
-  name?: string;
-  prerelease?: boolean;
-  draft?: boolean;
-  published_at?: string | null;
-  html_url?: string;
-  assets?: GithubAsset[];
-}
-
 interface AssetEntry {
   hash: string;
   size: number;
@@ -94,72 +81,37 @@ export class UpdateError extends Error {
   }
 }
 
-export function parseSemver(value: string): Semver | null {
-  const raw = value.trim().replace(/^v/, "");
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(raw);
-  if (!match) return null;
-  const normalized = `${match[1]}.${match[2]}.${match[3]}${match[4] ? `-${match[4]}` : ""}`;
-  return {
-    major: Number(match[1]),
-    minor: Number(match[2]),
-    patch: Number(match[3]),
-    prerelease: match[4] || "",
-    raw: normalized,
-  };
-}
-
-function comparePrerelease(a: string, b: string): number {
-  const aParts = a.split(".");
-  const bParts = b.split(".");
-  for (let index = 0; index < Math.max(aParts.length, bParts.length); index++) {
-    if (index >= aParts.length) return -1;
-    if (index >= bParts.length) return 1;
-    const left = aParts[index];
-    const right = bParts[index];
-    const leftNumeric = /^\d+$/.test(left);
-    const rightNumeric = /^\d+$/.test(right);
-    if (leftNumeric && rightNumeric) {
-      const numericComparison = Number(left) - Number(right);
-      if (numericComparison !== 0) return numericComparison;
-    } else if (leftNumeric !== rightNumeric) {
-      return leftNumeric ? -1 : 1;
-    } else if (left !== right) {
-      return left.localeCompare(right);
-    }
+// GitHub answers a spent rate limit with 403, not 429, so the status alone
+// can't be told apart from a genuine permission failure. Pull the reason out
+// of the headers/body and put it in the error the operator sees.
+async function githubFailureDetail(response: Response): Promise<string> {
+  if (response.headers.get("x-ratelimit-remaining") === "0") {
+    const reset = Number(response.headers.get("x-ratelimit-reset"));
+    const when = Number.isFinite(reset) && reset > 0 ? new Date(reset * 1000).toISOString() : "unknown";
+    return `: GitHub API rate limit exhausted (resets ${when}); configure a GITHUB_TOKEN secret to raise it`;
   }
-  return 0;
+  try {
+    const body = await response.json() as { message?: string };
+    return body?.message ? `: ${body.message.slice(0, 200)}` : "";
+  } catch {
+    return "";
+  }
 }
 
-export function compareSemver(a: Semver, b: Semver): number {
-  if (a.major !== b.major) return a.major - b.major;
-  if (a.minor !== b.minor) return a.minor - b.minor;
-  if (a.patch !== b.patch) return a.patch - b.patch;
-  if (!a.prerelease && b.prerelease) return 1;
-  if (a.prerelease && !b.prerelease) return -1;
-  return comparePrerelease(a.prerelease, b.prerelease);
-}
-
-export function normalizeTag(tag: string): string {
-  const trimmed = tag.trim();
-  return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
-}
-
-export function classifyVersionUpdate(current: Semver, target: Semver, majorDeclared: boolean, majorConfirmed: boolean): ReleaseOption["reason"] {
-  if (target.major < current.major) return "downgrade";
-  const comparison = compareSemver(target, current);
-  if (comparison <= 0) return "not-newer";
-  if (target.major > current.major && (!majorDeclared || !majorConfirmed)) return "major-confirmation-required";
-  return "ok";
-}
-
-async function githubJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      "User-Agent": "EdgeSonic-AutoUpdate",
-    },
-  });
-  if (!response.ok) throw new UpdateError(`GitHub release lookup failed (HTTP ${response.status})`, 502);
+async function githubJson<T>(env: Env, url: string): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github+json",
+    "User-Agent": "EdgeSonic-AutoUpdate",
+  };
+  // Unauthenticated calls are capped at 60/hour per source IP. Workers egress
+  // from shared Cloudflare addresses, so that budget is spent by unrelated
+  // tenants and lookups fail even on a first attempt. A token lifts the cap to
+  // 5000/hour and scopes it to this deployment; public repos need no scopes.
+  if (env.GITHUB_TOKEN) headers.Authorization = `Bearer ${env.GITHUB_TOKEN}`;
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    throw new UpdateError(`GitHub release lookup failed (HTTP ${response.status})${await githubFailureDetail(response)}`, 502);
+  }
   try {
     return await response.json() as T;
   } catch {
@@ -167,35 +119,15 @@ async function githubJson<T>(url: string): Promise<T> {
   }
 }
 
-async function githubReleases(): Promise<GithubRelease[]> {
-  const releases = await githubJson<GithubRelease[]>(`${GITHUB_API}/releases?per_page=50`);
+async function githubReleases(env: Env): Promise<GithubRelease[]> {
+  const releases = await githubJson<GithubRelease[]>(env, `${GITHUB_API}/releases?per_page=50`);
   return releases.filter((r) => !r.draft && typeof r.tag_name === "string");
 }
 
-async function githubReleaseByTag(tag: string, known?: GithubRelease[]): Promise<GithubRelease> {
+async function githubReleaseByTag(env: Env, tag: string, known?: GithubRelease[]): Promise<GithubRelease> {
   const exact = (known || []).find((r) => r.tag_name === tag);
   if (exact) return exact;
-  return githubJson<GithubRelease>(`${GITHUB_API}/releases/tags/${encodeURIComponent(tag)}`);
-}
-
-function assetOf(release: GithubRelease, name: string): GithubAsset | null {
-  const asset = (release.assets || []).find((candidate) => candidate.name === name);
-  if (!asset?.browser_download_url) return null;
-  try {
-    const url = new URL(asset.browser_download_url);
-    if (
-      url.protocol !== "https:" ||
-      url.hostname !== "github.com" ||
-      !url.pathname.startsWith(`/${GITHUB_REPO}/releases/download/`)
-    ) return null;
-  } catch {
-    return null;
-  }
-  return asset;
-}
-
-function hasUpdateArtifact(release: GithubRelease): boolean {
-  return !!assetOf(release, "edgesonic-update.tar.gz") && !!assetOf(release, "edgesonic-update-manifest.json");
+  return githubJson<GithubRelease>(env, `${GITHUB_API}/releases/tags/${encodeURIComponent(tag)}`);
 }
 
 async function currentVersion(env: Env, requestUrl: string): Promise<Semver> {
@@ -211,56 +143,14 @@ async function currentVersion(env: Env, requestUrl: string): Promise<Semver> {
   } catch {
     // Fall through to the zero version for old or incomplete deployments.
   }
-  return { major: 0, minor: 0, patch: 0, prerelease: "", raw: "0.0.0" };
+  return ZERO_VERSION;
 }
 
-export async function listUpdates(env: Env, requestUrl: string): Promise<{
-  ok: true;
-  currentVersion: string;
-  defaultTag: string | null;
-  releases: ReleaseOption[];
-}> {
+// Kept as the SPA's fallback for when the browser can't reach GitHub itself
+// (blocked network, offline). The happy path lists releases client-side.
+export async function listUpdates(env: Env, requestUrl: string): Promise<ReleaseListing> {
   const current = await currentVersion(env, requestUrl);
-  const releases = await githubReleases();
-  const parsed = releases
-    .map((release) => {
-      const tag = release.tag_name || "";
-      const version = parseSemver(tag);
-      const artifact = hasUpdateArtifact(release);
-      const base: ReleaseOption = {
-        tag,
-        version: version?.raw || tag.replace(/^v/, ""),
-        name: release.name || tag,
-        publishedAt: release.published_at || null,
-         prerelease: !!release.prerelease || !!version?.prerelease,
-        htmlUrl: release.html_url || `https://github.com/${GITHUB_REPO}/releases/tag/${tag}`,
-        hasArtifact: artifact,
-        isMajor: !!version && version.major > current.major,
-        eligible: false,
-        reason: "invalid-version",
-      };
-      if (!version) return base;
-      const reason = classifyVersionUpdate(current, version, false, false);
-      return {
-        ...base,
-        isMajor: version.major > current.major,
-        eligible: reason === "ok" && artifact,
-        reason: artifact ? reason : "artifact-missing",
-      };
-    })
-    .filter((release) => !!parseSemver(release.version))
-    .sort((a, b) => {
-      const av = parseSemver(a.version);
-      const bv = parseSemver(b.version);
-      return av && bv ? compareSemver(bv, av) : 0;
-    });
-  const stable = parsed.find((release) => !release.prerelease && release.hasArtifact);
-  return {
-    ok: true,
-    currentVersion: current.raw,
-    defaultTag: stable?.tag || parsed[0]?.tag || null,
-    releases: parsed,
-  };
+  return buildReleaseOptions(await githubReleases(env), current);
 }
 
 async function cfJson<T>(token: string, path: string, init?: RequestInit): Promise<T> {
@@ -573,8 +463,8 @@ async function healthCheck(requestUrl: string, expectedVersion: string): Promise
 }
 
 async function manifestForRelease(release: GithubRelease): Promise<{ manifest: UpdateManifest; artifact: GithubAsset }> {
-  const manifestAsset = assetOf(release, "edgesonic-update-manifest.json");
-  const artifact = assetOf(release, "edgesonic-update.tar.gz");
+  const manifestAsset = assetOf(release, UPDATE_MANIFEST_NAME);
+  const artifact = assetOf(release, UPDATE_ARTIFACT_NAME);
   if (!manifestAsset || !artifact) throw new UpdateError("Selected release has no API-ready update package", 409);
   const bytes = await downloadBytes(manifestAsset.browser_download_url as string, 256 * 1024, "Update manifest");
   let manifest: UpdateManifest;
@@ -595,7 +485,7 @@ async function manifestForRelease(release: GithubRelease): Promise<{ manifest: U
     typeof manifest.assetsManifest !== "string" ||
     compareSemver(parsed, releaseVersion) !== 0 ||
     normalizeTag(manifest.tag || "") !== normalizeTag(release.tag_name || "") ||
-    manifest.artifact !== "edgesonic-update.tar.gz"
+    manifest.artifact !== UPDATE_ARTIFACT_NAME
   ) {
     throw new UpdateError("Update manifest does not match the selected release", 400);
   }
@@ -625,7 +515,7 @@ export async function executeUpdate(
   await ensureUpdateTables(env.DB);
 
   const current = await currentVersion(env, requestUrl);
-  const releases = await githubReleases();
+  const releases = await githubReleases(env);
   const stable = releases
     .filter((release) => {
       const version = parseSemver(release.tag_name || "");
@@ -635,7 +525,7 @@ export async function executeUpdate(
   const selectedTag = requestedTag ? normalizeTag(requestedTag) : stable?.tag_name;
   if (!selectedTag) throw new UpdateError("No stable release is available", 404);
   if (!/^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(selectedTag)) throw new UpdateError("Invalid release tag", 400);
-  const release = await githubReleaseByTag(selectedTag, releases);
+  const release = await githubReleaseByTag(env, selectedTag, releases);
   const { manifest, artifact } = await manifestForRelease(release);
   const target = parseSemver(manifest.version);
   if (!target) throw new UpdateError("Selected release has an invalid version", 400);

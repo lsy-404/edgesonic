@@ -33,7 +33,9 @@ export default defineConfig({
       },
     },
   ],
-  server: { port: 5173 },
+  // fs.allow reaches the repo-root shared/ module, which the SPA imports for
+  // release-eligibility rules it computes alongside the Worker.
+  server: { port: 5173, fs: { allow: [".."] } },
   define: {
     __EDGESONIC_VERSION__: JSON.stringify(version),
     __EDGESONIC_BUILD_TIME__: JSON.stringify(buildTime),
