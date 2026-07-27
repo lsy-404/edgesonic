@@ -41,7 +41,14 @@ function asEnv(env: ActivationEnv): Env {
 }
 
 export async function resolveActivation(env: ActivationEnv, user: ActivationUser): Promise<ActivationState> {
-  const enabled = await getFeature(asEnv(env), "enable_activation");
+  // Fail open (feature off = status quo) when the features table cannot be
+  // read at all — matches the flag's compat-preserving default.
+  let enabled = false;
+  try {
+    enabled = await getFeature(asEnv(env), "enable_activation");
+  } catch {
+    enabled = false;
+  }
   if (!enabled) return { enabled: false, active: true, status: "permanent", until: null };
 
   const status = (user.activation_status === "active_until" || user.activation_status === "disabled")
@@ -197,8 +204,8 @@ export function evaluateRegistrationGate(opts: {
   hasInvite: boolean;
 }): { ok: boolean; error?: string } {
   const options: Array<{ satisfied: boolean; error: string }> = [];
-  if (opts.emailConfigured) options.push({ satisfied: opts.hasEmail, error: "Email is required" });
-  if (opts.activationEnabled) options.push({ satisfied: opts.hasInvite, error: "Invite code is required" });
+  if (opts.emailConfigured) options.push({ satisfied: opts.hasEmail, error: "Email verification required" });
+  if (opts.activationEnabled) options.push({ satisfied: opts.hasInvite, error: "Invite code required" });
   if (options.length === 0) return { ok: true };
   if (opts.gateMode === "all") {
     const missing = options.find((o) => !o.satisfied);
@@ -206,7 +213,7 @@ export function evaluateRegistrationGate(opts: {
   }
   return options.some((o) => o.satisfied)
     ? { ok: true }
-    : { ok: false, error: "Email or invite code is required" };
+    : { ok: false, error: "Email verification or invite code required" };
 }
 
 // ============================================================================
