@@ -299,7 +299,7 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
   left: 0; right: 0; bottom: -1px;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--color-accent-dim), transparent);
-  animation: pulse 4s ease-in-out infinite;
+  /* Static: the old opacity pulse read as the whole title bar flickering. */
   pointer-events: none;
 }
 .nav-left {

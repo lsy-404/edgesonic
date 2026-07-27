@@ -49,6 +49,16 @@
   backdrop-filter: blur(12px);
 }
 
+/* Animated (sp-*) themes repaint their WebGL background every frame; a
+   backdrop-filter over that forces the compositor to re-blur per frame,
+   which reads as the whole bar flickering on many GPUs. Keep the glass
+   look from the translucent fill alone. Static color-* themes keep blur. */
+:root[data-theme^="sp-"] .navbar,
+:root[data-theme^="sp-"] .player-bar {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 /* ---------- cards / sections / modals ---------- */
 :root[data-theme$="gold"] .card,
 :root[data-theme$="gold"] .settings-section,
