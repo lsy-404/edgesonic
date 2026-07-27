@@ -20,6 +20,8 @@ import { getTrackMetadataXml, preloadTrack } from "../lib/trackPrefetch";
 import { getCachedTrack, putCachedTrack, deleteCachedTrack } from "../lib/audioCache";
 import { setPlaybackActive } from "../lib/requestBudget";
 import { beginRequest, describeAudio } from "../lib/netDiag";
+import { repairFlacPictureMime } from "../lib/flacRepair";
+import { extractEmbeddedCover } from "../lib/embeddedCover";
 import { i18n } from "../i18n";
 import { showError } from "./toast";
 
@@ -148,6 +150,44 @@ export const usePlayerStore = defineStore("player", () => {
     }
   }
 
+  // When getCoverArt 404s the buffered song bytes often still carry embedded
+  // art the server couldn't reach (bounded head slice, unreachable source).
+  // UI reports the miss via reportCoverMissing(); extraction runs against the
+  // in-memory full blob or the IndexedDB copy, and re-fires when a full
+  // download completes later. Object URL lifetime is one track.
+  const localCoverUrl = ref("");
+  let coverMissingTrackId: string | null = null;
+  const fullBlobByElement = new Map<HTMLAudioElement, Blob>();
+
+  function clearLocalCover() {
+    if (localCoverUrl.value) URL.revokeObjectURL(localCoverUrl.value);
+    localCoverUrl.value = "";
+    coverMissingTrackId = null;
+  }
+  watch(() => current.value?.id, () => clearLocalCover());
+
+  async function tryLocalCoverFrom(blob: Blob, trackId: string) {
+    if (localCoverUrl.value || coverMissingTrackId !== trackId) return;
+    const pic = await extractEmbeddedCover(blob);
+    if (!pic || coverMissingTrackId !== trackId || current.value?.id !== trackId) return;
+    localCoverUrl.value = URL.createObjectURL(pic);
+    console.info("[Player] cover 404 → embedded art extracted from buffered audio", { trackId, size: pic.size, type: pic.type });
+  }
+
+  async function reportCoverMissing() {
+    const tr = current.value;
+    if (!tr) return;
+    if (coverMissingTrackId === tr.id && localCoverUrl.value) return;
+    coverMissingTrackId = tr.id;
+    const inMemory = active ? fullBlobByElement.get(active) : undefined;
+    if (inMemory) {
+      await tryLocalCoverFrom(inMemory, tr.id);
+      if (localCoverUrl.value) return;
+    }
+    const cached = await getCachedTrack(tr.id);
+    if (cached) await tryLocalCoverFrom(cached, tr.id);
+  }
+
   let elA: HTMLAudioElement | null = null;
   let elB: HTMLAudioElement | null = null;
   let active: HTMLAudioElement | null = null;
@@ -201,6 +241,7 @@ export const usePlayerStore = defineStore("player", () => {
       URL.revokeObjectURL(blobSrc);
       blobSrcByElement.delete(el);
     }
+    fullBlobByElement.delete(el);
   }
 
   function abortFullDownload(el: HTMLAudioElement) {
@@ -244,6 +285,11 @@ export const usePlayerStore = defineStore("player", () => {
 
     const probe = new Uint8Array(await blob.slice(0, Math.min(blob.size, 1024 * 1024)).arrayBuffer());
     if (probe.length >= 4 && probe[0] === 0x66 && probe[1] === 0x4c && probe[2] === 0x61 && probe[3] === 0x43) {
+      const repaired = await repairFlacPictureMime(blob);
+      if (repaired) {
+        console.info("[Player] repaired FLAC picture MIME", { originalSize: blob.size, repairedSize: repaired.size });
+        return repaired;
+      }
       return blob;
     }
 
@@ -261,7 +307,13 @@ export const usePlayerStore = defineStore("player", () => {
       originalSize: blob.size,
       normalizedSize: blob.size - flacOffset,
     });
-    return blob.slice(flacOffset, blob.size, blob.type || "audio/flac");
+    const sliced = blob.slice(flacOffset, blob.size, blob.type || "audio/flac");
+    const repaired = await repairFlacPictureMime(sliced);
+    if (repaired) {
+      console.info("[Player] repaired FLAC picture MIME", { originalSize: sliced.size, repairedSize: repaired.size });
+      return repaired;
+    }
+    return sliced;
   }
 
   async function fetchFullBlob(trackId: string, signal?: AbortSignal): Promise<Blob> {
@@ -351,9 +403,14 @@ export const usePlayerStore = defineStore("player", () => {
     if (completeOrigin) {
       fullyLoadedByElement.add(el);
       fullBlobOriginByElement.set(el, completeOrigin);
+      fullBlobByElement.set(el, blob);
+      // A cover miss reported before the bytes were complete retries here.
+      const trId = current.value?.id;
+      if (el === active && trId && coverMissingTrackId === trId) void tryLocalCoverFrom(blob, trId);
     } else {
       fullyLoadedByElement.delete(el);
       fullBlobOriginByElement.delete(el);
+      fullBlobByElement.delete(el);
     }
     const blobSrc = URL.createObjectURL(blob);
     blobSrcByElement.set(el, blobSrc);
@@ -1086,8 +1143,8 @@ export const usePlayerStore = defineStore("player", () => {
 
   return {
     queue, index, playing, currentTime, duration, volume, bufferedRanges,
-    current, hasTrack, playMode, starred,
+    current, hasTrack, playMode, starred, localCoverUrl,
     setQueue, playAt, toggle, next, prev, seek, setVolume,
-    cyclePlayMode, toggleStar, clear, resumePlaybackIfNeeded,
+    cyclePlayMode, toggleStar, clear, resumePlaybackIfNeeded, reportCoverMissing,
   };
 });

@@ -35,7 +35,17 @@ const coverSrc = computed(() => {
   const tr = player.current;
   return tr?.coverArt ? coverArtUrl(tr.coverArt, 96) : "";
 });
-watch(coverSrc, () => { coverFailed.value = false; });
+// Server cover 404 (or track without a cover id): fall back to embedded art
+// extracted from the buffered audio bytes by the player store.
+const displayCoverSrc = computed(() => (!coverFailed.value && coverSrc.value) || player.localCoverUrl || "");
+function onCoverError() {
+  coverFailed.value = true;
+  void player.reportCoverMissing();
+}
+watch(coverSrc, (src) => {
+  coverFailed.value = false;
+  if (!src && player.hasTrack) void player.reportCoverMissing();
+}, { immediate: true });
 
 const bufferedSegments = computed(() => {
   if (player.duration <= 0) return [] as { left: number; width: number }[];
@@ -134,7 +144,7 @@ function removeFromQueue(i: number) {
       @click="goNowPlaying"
     >
       <div class="pb-cover" :class="{ clickable: player.hasTrack }" :title="player.hasTrack ? expandTitle : ''">
-        <img v-if="coverSrc && !coverFailed" :src="coverSrc" alt="" @error="coverFailed = true" />
+        <img v-if="displayCoverSrc" :src="displayCoverSrc" alt="" @error="onCoverError" />
         <svg v-else viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
         <svg v-if="player.hasTrack" class="pb-cover-ring" viewBox="0 0 48 48" aria-hidden="true">
           <path class="pb-cover-ring-track" d="M24 2H46V46H2V2H24" pathLength="176" />

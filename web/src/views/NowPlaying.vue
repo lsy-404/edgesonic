@@ -344,7 +344,16 @@ const coverSrc = computed(() => {
   const tr = track.value;
   return tr?.coverArt ? coverArtUrl(tr.coverArt, 512) : "";
 });
-watch(coverSrc, () => { coverFailed.value = false; });
+// Server cover 404: fall back to embedded art extracted from buffered audio.
+const displayCoverSrc = computed(() => (!coverFailed.value && coverSrc.value) || player.localCoverUrl || "");
+function onCoverError() {
+  coverFailed.value = true;
+  void player.reportCoverMissing();
+}
+watch(coverSrc, (src) => {
+  coverFailed.value = false;
+  if (!src && player.hasTrack) void player.reportCoverMissing();
+}, { immediate: true });
 
 </script>
 
@@ -353,7 +362,7 @@ watch(coverSrc, () => { coverFailed.value = false; });
     <!-- Left: cover + controls -->
     <div class="np-left">
       <div class="np-cover-wrap">
-        <img v-if="coverSrc && !coverFailed" :src="coverSrc" class="np-cover" @error="coverFailed = true" alt="cover" />
+        <img v-if="displayCoverSrc" :src="displayCoverSrc" class="np-cover" @error="onCoverError" alt="cover" />
         <div v-else class="np-cover-placeholder"><span class="np-placeholder-icon" v-html="'<svg viewBox=\'0 0 24 24\' width=\'48\' height=\'48\'><path fill=\'currentColor\' d=\'M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z\'/></svg>'"></span></div>
       </div>
       <div class="np-track-info">
