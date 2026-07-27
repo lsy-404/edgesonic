@@ -39,6 +39,9 @@ const routes = [
   { path: "/reset-password", component: () => import("./views/ResetPassword.vue"), meta: { title: "Reset Password", public: true } },
   { path: "/verify-email", component: () => import("./views/VerifyEmail.vue"), meta: { title: "Verify Email", public: true } },
   { path: "/confirm-email-change", component: () => import("./views/ConfirmEmailChange.vue"), meta: { title: "Confirm Email Change", public: true } },
+  // Requires a session but stays reachable for inactive ones — it's where an
+  // expired/disabled account redeems an activation code (see the guard below).
+  { path: "/activation", component: () => import("./views/ActivationRequired.vue"), meta: { title: "Activation" } },
   { path: "/", component: Dashboard, meta: { title: "Dashboard" } },
   { path: "/library", component: Library, meta: { title: "Library" } },
   { path: "/starred", component: Library, props: { starredOnly: true }, meta: { title: "Liked" } },
@@ -74,6 +77,19 @@ router.beforeEach((to) => {
   const loggedIn = !!localStorage.getItem("edgesonic_logged_in");
   if (!to.meta.public && !loggedIn) return "/login";
   if (to.path === "/login" && loggedIn) return "/";
+
+  // Inactive account confinement: when activation is enforced, the session is
+  // inactive and guest access is off, everything except /activation (and the
+  // public routes handled above) bounces to the redeem page. Both flags come
+  // from caches refreshed by fetchMe/App.vue — cold-cache reloads pass
+  // through and App.vue redirects once /auth/me lands.
+  if (loggedIn && !to.meta.public && to.path !== "/activation") {
+    try {
+      const act = JSON.parse(localStorage.getItem("edgesonic_activation") || "null");
+      if (act && act.enabled === true && act.active === false
+        && localStorage.getItem("edgesonic_guest_enabled") !== "1") return "/activation";
+    } catch { /* malformed cache — let the page-level gates handle it */ }
+  }
 
   // Permission-gated routes: block direct-URL access to admin pages the user
   // lacks the capability for (nav already hides the tab; this stops typing the
