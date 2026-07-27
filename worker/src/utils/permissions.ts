@@ -36,8 +36,9 @@
 
 import type { User } from "../types/entities";
 import { isDemoMode, isDemoDisabledPerm } from "./demoMode";
+import { resolveActivation, isGuestAccessEnabled, type ActivationUser } from "./activation";
 
-type PermissionUser = Pick<User, "level">;
+type PermissionUser = Pick<User, "level"> & ActivationUser;
 
 // Permission checks now prefer a runtime env-var cache over D1.
 // PERMISSIONS_OVERRIDE (pushed via POST /edgesonic/permissions/save using
@@ -72,6 +73,7 @@ const ALL_PERMISSIONS = [
   "maintenance_reclaim", "maintenance_reset", "browse", "search",
   "participate_work", "dispatch_work", "share", "manage_playlists",
   "manage_podcasts", "manage_radio", "manage_cloudflare", "edit_annotations",
+  "manage_activation",
 ] as const;
 
 // ----------------------------------------------------------------------------
@@ -98,7 +100,7 @@ export const USER_LOCKED_PERMS = new Set([
   "manage_users", "manage_permissions", "manage_settings",
   "manage_cloudflare", "manage_sources", "maintenance_cleanup",
   "maintenance_reclaim", "maintenance_reset", "dispatch_work",
-  "view_all_users_items",
+  "view_all_users_items", "manage_activation",
 ]);
 
 function isHardlocked(level: number, permission: string): boolean {
@@ -143,6 +145,25 @@ export async function getEffectivePermissions(
     const perms: Record<string, boolean> = {};
     for (const k of ALL_PERMISSIONS) perms[k] = true;
     return perms;
+  }
+
+  // Freeze semantics: an inactive account degrades to guest-group
+  // permissions (when the guest account is enabled) or to nothing at all.
+  // Only applies when the caller passed a row that carries activation
+  // fields — bare {level} probes are unaffected.
+  if (user.activation_status !== undefined) {
+    const act = await resolveActivation(env, user);
+    if (!act.active) {
+      if (await isGuestAccessEnabled(env)) {
+        const guestShape = { ...user, level: 0 } as User;
+        delete guestShape.activation_status;
+        delete guestShape.activated_until;
+        return getEffectivePermissions(env, guestShape);
+      }
+      const perms: Record<string, boolean> = {};
+      for (const k of ALL_PERMISSIONS) perms[k] = false;
+      return perms;
+    }
   }
 
   const rows = await env.DB
@@ -202,6 +223,18 @@ export async function hasPermission(
   // but a stale PERMISSIONS_OVERRIDE or direct D1 edit could otherwise deny
   // the super admin a capability they need to recover the system.
   if (user.level === 3) return true;
+
+  // Freeze semantics: an inactive account is reduced to guest-group
+  // permissions (guest enabled) or denied outright. Only rows carrying
+  // activation fields are subject — bare {level} probes are unaffected.
+  if (user.activation_status !== undefined) {
+    const act = await resolveActivation(env, user);
+    if (!act.active) {
+      if (!GUEST_ALLOWED_PERMS.has(permission)) return false;
+      if (!(await isGuestAccessEnabled(env))) return false;
+      return hasPermission(env, { level: 0 }, permission);
+    }
+  }
 
   // Hardlocked perms — read-time enforcement mirroring getEffectivePermissions.
   // A guest asking for anything beyond stream/browse/search, or a user asking

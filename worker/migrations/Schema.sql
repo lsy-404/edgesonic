@@ -76,10 +76,33 @@ CREATE TABLE IF NOT EXISTS users (
   nickname TEXT,                                      -- EdgeSonic display name (NULL → fall back to username)
   email TEXT,                                        -- self-service password reset + email registration (NULL → not set)
   email_verified INTEGER NOT NULL DEFAULT 0,          -- informational only, not a login/reset gate
+  activation_status TEXT NOT NULL DEFAULT 'permanent', -- 'permanent' | 'active_until' | 'disabled'
+  activated_until INTEGER,                           -- unix seconds, meaningful only for 'active_until'
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch())
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL;
+
+-- Invite codes: account activation vouchers redeemable at registration or later.
+CREATE TABLE IF NOT EXISTS invite_codes (
+  code TEXT PRIMARY KEY,                             -- INV- + 12 base32 chars (ambiguous glyphs excluded)
+  kind TEXT NOT NULL CHECK (kind IN ('window', 'duration', 'permanent')),
+  window_start INTEGER,                              -- kind=window: fixed activation window start
+  window_end INTEGER,                                -- kind=window: fixed activation window end
+  duration_days INTEGER,                             -- kind=duration: activation length in days
+  max_uses INTEGER NOT NULL DEFAULT 1,
+  used_count INTEGER NOT NULL DEFAULT 0,
+  note TEXT,
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  revoked INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS invite_redemptions (
+  code TEXT NOT NULL,
+  username TEXT NOT NULL,
+  redeemed_at INTEGER NOT NULL,
+  PRIMARY KEY (code, username)
+);
 
 -- ============================================================================
 -- 3. Sessions (web login → temporary session, dual-use as Subsonic password)
@@ -172,6 +195,7 @@ INSERT OR REPLACE INTO user_permissions (level, permission, enabled, max_rph) VA
   (3, 'participate_work',    1, 0),
   (3, 'dispatch_work',       1, 0),
   (3, 'view_all_users_items',1, 0),
+  (3, 'manage_activation',   1, 0),
   (3, 'browse',              1, 0),
   (3, 'search',              1, 0),
 
@@ -199,6 +223,7 @@ INSERT OR REPLACE INTO user_permissions (level, permission, enabled, max_rph) VA
   (2, 'participate_work',    1, 0),
   (2, 'dispatch_work',       0, 0),
   (2, 'view_all_users_items',0, 0),
+  (2, 'manage_activation',   0, 0),
   (2, 'browse',              1, 0),
   (2, 'search',              1, 0),
 
@@ -227,6 +252,7 @@ INSERT OR REPLACE INTO user_permissions (level, permission, enabled, max_rph) VA
   (1, 'participate_work',    1, 0),
   (1, 'dispatch_work',       0, 0),
   (1, 'view_all_users_items',0, 0),
+  (1, 'manage_activation',   0, 0),
   (1, 'browse',              1, 0),
   (1, 'search',              1, 0),
 
@@ -254,6 +280,7 @@ INSERT OR REPLACE INTO user_permissions (level, permission, enabled, max_rph) VA
   (0, 'participate_work',    0, 0),
   (0, 'dispatch_work',       0, 0),
   (0, 'view_all_users_items',0, 0),
+  (0, 'manage_activation',   0, 0),
   (0, 'browse',              1, 0),
   (0, 'search',              1, 0);
 
@@ -681,7 +708,8 @@ INSERT OR IGNORE INTO features (key, value, description) VALUES
   ('enable_subsonic_upstream', 1, '本服务器是否启用 Subsonic 类型存储源（出站代理）'),
   ('guest_browse',            0, '允许 guest 级别浏览音乐库'),
   ('open_registration',       0, '开放用户自助注册'),
-  ('allow_email_password_reset', 0, '允许通过邮箱自助重置密码（独立于自助注册开关）');
+  ('allow_email_password_reset', 0, '允许通过邮箱自助重置密码（独立于自助注册开关）'),
+  ('enable_activation',       0, '账户激活体系总开关（关闭时所有账号视为永久激活）');
 
 -- 0011: scrape_enabled master switch
 INSERT OR IGNORE INTO features (key, value, description, updated_at) VALUES
@@ -822,6 +850,12 @@ INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALU
   ('resend_from_name',  'EdgeSonic', 'Resend "from" display name', unixepoch()),
   ('login_notice_text', '', 'Optional line of text shown on the login page (empty = none, or demo hint in DEMO_MODE)', unixepoch()),
   ('login_background_url', '', 'Optional login page background image URL (empty = default grid background)', unixepoch());
+
+-- Registration gate mode: how enabled signup requirements combine.
+-- 'all' = every enabled option must be satisfied (email verification +
+-- invite code); 'any' = satisfying one is enough.
+INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
+  ('registration_gate_mode', 'all', '注册创建选项模式：all=需满足全部已启用选项，any=任一即可', unixepoch());
 
 -- Editable email templates (super-admin only, enforced in
 -- features.ts /features/updateString — not just manage_settings). Plain

@@ -18,6 +18,7 @@ import { createMiddleware } from "hono/factory";
 import { md5 } from "./utils/md5";
 import { getServerRelayPolicy, parseChain } from "./utils/features";
 import { hasPermission } from "./utils/permissions";
+import { resolveActivation, clampExpiryToActivation, clampTtlToActivation, isGuestAccessEnabled, type ActivationState } from "./utils/activation";
 import { SERVER_TYPE, SERVER_VERSION } from "./utils/xml";
 import type { User } from "./types/entities";
 
@@ -66,7 +67,8 @@ async function findSessionByCookie(
     .bind(cookieToken, Math.floor(Date.now() / 1000))
     .first<{ token: string }>();
   if (!row) return null;
-  await renewSessionIfNeeded(db, row.token);
+  // Renewal happens later in authMiddleware, once the user row (and its
+  // activation state) is loaded, so the renewed expiry can be clamped.
   return { credential: row.token, kind: "session", streamProxyStrategy: "always" };
 }
 
@@ -122,6 +124,29 @@ const GUEST_ALLOWED_PATHS = new Set([
 // non-session credentials (changePassword, share/podcast/radio CUD, download).
 // Everything else management-shaped now lives outside /rest/* so the prefix
 // check handles it implicitly.
+// Paths an inactive (activation expired/disabled) session may always reach:
+// the activation surface itself plus identity/logout (logout is NO_AUTH).
+const INACTIVE_ALLOWED_PATHS = new Set([
+  "/edgesonic/activation/me",
+  "/edgesonic/activation/redeem",
+  "/edgesonic/auth/me",
+]);
+
+// When the guest account is enabled, an inactive session additionally keeps
+// guest-grade browsing plus read-only access to its own data.
+const INACTIVE_ALLOWED_REST_PATHS = new Set([
+  ...GUEST_ALLOWED_PATHS,
+  "/rest/ping",
+  "/rest/getPlaylists",
+  "/rest/getPlaylist",
+  "/rest/getStarred",
+  "/rest/getStarred2",
+  "/rest/getUser",
+  "/rest/getBookmarks",
+  "/rest/getPlayQueue",
+  "/rest/getShares",
+]);
+
 const REST_SESSION_ONLY_PATHS = new Set([
   "/rest/changePassword",
   "/rest/changePassword.view",
@@ -196,11 +221,16 @@ async function findSubsonicCredential(
   return null;
 }
 
-async function renewSessionIfNeeded(db: D1Database, token: string): Promise<void> {
+async function renewSessionIfNeeded(db: D1Database, token: string, activation?: ActivationState): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
+  // The renewed expiry is clamped to the caller's activation window so a
+  // sliding session never outlives the account's activation.
+  const renewed = activation
+    ? clampExpiryToActivation(activation, now + SESSION_TTL_SEC)
+    : now + SESSION_TTL_SEC;
   await db
-    .prepare("UPDATE sessions SET expires_at = ? WHERE token = ? AND expires_at < ?")
-    .bind(now + SESSION_TTL_SEC, token, now + SESSION_RENEW_THRESHOLD_SEC)
+    .prepare("UPDATE sessions SET expires_at = ? WHERE token = ? AND expires_at < ? AND expires_at < ?")
+    .bind(renewed, token, now + SESSION_RENEW_THRESHOLD_SEC, renewed)
     .run();
 }
 
@@ -247,10 +277,18 @@ async function findSubsonicCredentialByPassword(
 // User Lookup (by username)
 // ============================================================================
 async function lookupUser(db: D1Database, username: string): Promise<User | null> {
-  return db
-    .prepare("SELECT username, master_password AS password, level, enabled FROM users WHERE username = ?")
+  // SELECT * so optional columns (activation_status / activated_until) come
+  // along when present and simply stay undefined on a not-yet-migrated
+  // database — no per-request schema self-heal needed on this hot path.
+  const row = await db
+    .prepare("SELECT * FROM users WHERE username = ?")
     .bind(username)
-    .first<User>();
+    .first<Record<string, unknown>>();
+  if (!row) return null;
+  return {
+    ...row,
+    password: (row.master_password ?? row.password) as string,
+  } as unknown as User;
 }
 
 // /edgesonic/auth/login path lives next to the rest of the auth-management
@@ -453,6 +491,31 @@ export const authMiddleware = createMiddleware<{
     return authFail(50, "This endpoint requires a web session credential", 403);
   }
 
+  // --- Activation enforcement ---
+  // The user row already carries activation_status / activated_until, so no
+  // extra query is needed. Subsonic client credentials are refused outright;
+  // a web session survives but is frozen: activation endpoints (+ /auth/me)
+  // always work, and when the guest account is enabled the session degrades
+  // to guest-grade browsing plus read-only own data (GETs only).
+  const activation = await resolveActivation(c.env, user);
+  if (!activation.active) {
+    if (authMethod === "apikey" || authMethod === "subsonic_cred") {
+      return authFail(40, "Account not activated", 401);
+    }
+    if (!INACTIVE_ALLOWED_PATHS.has(path)) {
+      if (!(await isGuestAccessEnabled(c.env))) {
+        return authFail(50, "Account not activated", 403);
+      }
+      if (isMgmt) {
+        if (c.req.method !== "GET") {
+          return authFail(50, "Account not activated", 403);
+        }
+      } else if (!INACTIVE_ALLOWED_REST_PATHS.has(path)) {
+        return authFail(50, "Account not activated", 403);
+      }
+    }
+  }
+
   c.set("user", user);
   c.set("authMethod", authMethod);
   if (authSource) c.set("authSource", authSource);
@@ -465,8 +528,12 @@ export const authMiddleware = createMiddleware<{
   // → the SPA logs out. A post-deploy reload surfacing as "lost login" was
   // the symptom that exposed the gap.
   if (authMethod === "session" && authSource === "cookie" && cookieToken) {
+    await renewSessionIfNeeded(db, cookieToken, activation);
     const isHttps = new URL(c.req.url).protocol === "https:";
-    c.header("Set-Cookie", buildSessionCookieHeader(cookieToken, SESSION_TTL_SEC) + (isHttps ? "; Secure" : ""), { append: true });
+    // The cookie's Max-Age is clamped to the activation window so the
+    // browser-side lifetime never exceeds the server-side session's.
+    const maxAge = clampTtlToActivation(activation, SESSION_TTL_SEC);
+    c.header("Set-Cookie", buildSessionCookieHeader(cookieToken, maxAge) + (isHttps ? "; Secure" : ""), { append: true });
   }
   return next();
 });

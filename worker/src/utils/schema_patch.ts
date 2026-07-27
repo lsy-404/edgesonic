@@ -100,6 +100,66 @@ export async function ensureEmailColumns(env: { DB: D1Database }): Promise<void>
   if (allDone) emailColumnsEnsured = true;
 }
 
+// Account activation: users.activation_status / users.activated_until plus
+// the invite_codes / invite_redemptions tables and the feature/permission
+// rows the endpoints read. Same idempotent self-heal pattern as above;
+// Schema.sql declares everything for fresh installs.
+let activationEnsured = false;
+export async function ensureActivationSchema(env: { DB: D1Database }): Promise<void> {
+  if (activationEnsured) return;
+  const alters = [
+    "ALTER TABLE users ADD COLUMN activation_status TEXT NOT NULL DEFAULT 'permanent'",
+    "ALTER TABLE users ADD COLUMN activated_until INTEGER",
+  ];
+  let allDone = true;
+  for (const sql of alters) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch (e) {
+      if (!/duplicate column/i.test(e instanceof Error ? e.message : String(e))) allDone = false;
+    }
+  }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS invite_codes (
+      code TEXT PRIMARY KEY,
+      kind TEXT NOT NULL CHECK (kind IN ('window', 'duration', 'permanent')),
+      window_start INTEGER,
+      window_end INTEGER,
+      duration_days INTEGER,
+      max_uses INTEGER NOT NULL DEFAULT 1,
+      used_count INTEGER NOT NULL DEFAULT 0,
+      note TEXT,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      revoked INTEGER NOT NULL DEFAULT 0
+    )`
+  ).run();
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS invite_redemptions (
+      code TEXT NOT NULL,
+      username TEXT NOT NULL,
+      redeemed_at INTEGER NOT NULL,
+      PRIMARY KEY (code, username)
+    )`
+  ).run();
+  // Seed the rows /features/update and the permission matrix UPDATE against
+  // (both only UPDATE existing rows).
+  try {
+    await env.DB.prepare(
+      "INSERT OR IGNORE INTO features (key, value, description) VALUES ('enable_activation', 0, '账户激活体系总开关（关闭时所有账号视为永久激活）')"
+    ).run();
+    await env.DB.prepare(
+      "INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES ('registration_gate_mode', 'all', '注册创建选项模式：all=需满足全部已启用选项，any=任一即可', unixepoch())"
+    ).run();
+    await env.DB.prepare(
+      "INSERT OR IGNORE INTO user_permissions (level, permission, enabled, max_rph) VALUES (3, 'manage_activation', 1, 0), (2, 'manage_activation', 0, 0), (1, 'manage_activation', 0, 0), (0, 'manage_activation', 0, 0)"
+    ).run();
+  } catch {
+    // features / user_permissions tables may not exist in minimal test schemas.
+  }
+  if (allDone) activationEnsured = true;
+}
+
 // storage_sources.cache_tier (per-source hot-cache tier selector) and
 // song_instances.last_accessed_at (LRU key for evictForRoom). Same idempotent
 // self-heal pattern: both columns are declared in Schema.sql's CREATE TABLE
