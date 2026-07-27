@@ -793,13 +793,13 @@
         "backgroundUrl": "背景图 URL",
         "loginConfigSaved": "登录页设置已保存",
         "templatesTitle": "邮件模板",
-        "templatesDesc": "邮箱验证、找回密码、更换邮箱确认信的文案。纯文本，{{link}} 会被替换为实际链接。仅超级管理员可编辑。",
+        "templatesDesc": "邮箱验证、找回密码、更换邮箱确认信的文案。纯文本，{'{{link}}'} 会被替换为实际链接。仅超级管理员可编辑。",
         "superAdminOnly": "仅超级管理员",
         "tplVerify": "邮箱验证",
         "tplReset": "找回密码",
         "tplChange": "更换邮箱确认",
         "tplSubject": "标题",
-        "tplBody": "正文（须包含 {{link}}）",
+        "tplBody": "正文（须包含 {'{{link}}'}）",
         "templateSaved": "模板已保存"
       },
       "sync": {
