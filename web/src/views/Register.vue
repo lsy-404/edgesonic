@@ -1,10 +1,11 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
+import { mapActivationError, registerGateHint } from "../lib/activation";
 
 const { t } = useI18n();
 const { register, isLoggedIn, getLoginConfig } = useAuth();
@@ -16,14 +17,30 @@ const username = ref("");
 const email = ref("");
 const password = ref("");
 const confirmPassword = ref("");
+const inviteCode = ref("");
 const error = ref("");
 const loading = ref(false);
 const checkingConfig = ref(true);
 const registrationEnabled = ref(false);
+const activationEnabled = ref(false);
+const gateMode = ref<"all" | "any">("all");
+const emailVerificationOn = ref(false);
+// Older backends don't announce the activation gate in loginConfig; when a
+// registration attempt bounces on the invite requirement we reveal the field.
+const inviteForcedVisible = ref(false);
+
+const showInviteField = computed(() => activationEnabled.value || inviteForcedVisible.value);
+const gateHintKey = computed(() => {
+  const hint = registerGateHint(gateMode.value, emailVerificationOn.value, showInviteField.value);
+  return hint ? `register.gate.${hint}` : "";
+});
 
 onMounted(async () => {
   const cfg = await getLoginConfig();
   registrationEnabled.value = cfg.registrationEnabled;
+  activationEnabled.value = cfg.activationEnabled;
+  gateMode.value = cfg.registrationGateMode;
+  emailVerificationOn.value = cfg.emailEnabled;
   checkingConfig.value = false;
 });
 
@@ -35,9 +52,11 @@ async function submit() {
   }
   loading.value = true;
   try {
-    const result = await register(username.value, email.value, password.value);
-    if (result.ok) router.push("/");
-    else error.value = result.error || t("register.failed");
+    const result = await register(username.value, email.value, password.value, inviteCode.value.trim() || undefined);
+    if (result.ok) { router.push("/"); return; }
+    const key = result.error ? mapActivationError(result.error) : null;
+    if (key === "activation.errors.inviteRequired") inviteForcedVisible.value = true;
+    error.value = key ? t(key) : (result.error || t("register.failed"));
   } catch {
     error.value = t("register.failed");
   } finally {
@@ -65,6 +84,7 @@ async function submit() {
           <router-link to="/login" class="btn-secondary login-btn">{{ t("register.backToLogin") }}</router-link>
         </div>
         <form v-else @submit.prevent="submit" class="login-form">
+          <p v-if="gateHintKey" class="login-hint gate-hint">{{ t(gateHintKey) }}</p>
           <div v-if="error" class="login-error" role="alert">
             <span class="login-error-mark" aria-hidden="true">!</span>
             <span>{{ error }}</span>
@@ -85,6 +105,21 @@ async function submit() {
           <div class="form-group">
             <label class="form-label">{{ t("register.confirmPassword") }}</label>
             <input v-model="confirmPassword" type="password" maxlength="256" class="form-input" autocomplete="new-password" :disabled="loading" />
+          </div>
+          <div v-if="showInviteField" class="form-group">
+            <label class="form-label">
+              {{ t("register.inviteCode") }}
+              <span v-if="gateMode === 'any'" class="invite-optional">({{ t("common.optional") }})</span>
+            </label>
+            <input
+              v-model="inviteCode"
+              maxlength="64"
+              class="form-input invite-input"
+              :placeholder="t('register.inviteCodePlaceholder')"
+              autocomplete="off"
+              spellcheck="false"
+              :disabled="loading"
+            />
           </div>
 
           <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !email || !password">
@@ -148,4 +183,7 @@ async function submit() {
   color: var(--color-accent-primary); text-decoration: none;
 }
 .login-register-hint:hover { text-decoration: underline; }
+.gate-hint { margin: 0; }
+.invite-input { font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.invite-optional { color: var(--color-text-muted); font-weight: 400; }
 </style>
