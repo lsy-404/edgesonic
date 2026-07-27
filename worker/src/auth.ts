@@ -19,6 +19,7 @@ import { md5 } from "./utils/md5";
 import { getServerRelayPolicy, parseChain } from "./utils/features";
 import { hasPermission } from "./utils/permissions";
 import { resolveActivation, clampExpiryToActivation, clampTtlToActivation, isGuestAccessEnabled, type ActivationState } from "./utils/activation";
+import { ensureActivationSchema } from "./utils/schema_patch";
 import { SERVER_TYPE, SERVER_VERSION } from "./utils/xml";
 import type { User } from "./types/entities";
 
@@ -192,19 +193,31 @@ export async function sha256(input: string): Promise<string> {
 // ============================================================================
 // Only checks subsonic_credentials. Session tokens cannot be used as password
 // or salt in any form. Sessions must use HTTP-only cookie authentication.
+// expires_at carries the activation horizon a credential was issued under
+// (NULL = unbounded); a lapsed one stops matching until the account is
+// re-activated, which re-stamps it. A deployment upgrading from a schema
+// without the column self-heals on the first call rather than failing auth.
+async function liveCredentials(
+  db: D1Database,
+  username: string,
+): Promise<{ results: Array<{ password: string; stream_proxy_strategy: string | null }> }> {
+  const sql = "SELECT password, stream_proxy_strategy FROM subsonic_credentials WHERE username = ? AND (expires_at IS NULL OR expires_at > unixepoch())";
+  try {
+    return await db.prepare(sql).bind(username).all<{ password: string; stream_proxy_strategy: string | null }>();
+  } catch (e) {
+    if (!/no such column/i.test(e instanceof Error ? e.message : String(e))) throw e;
+    await ensureActivationSchema({ DB: db });
+    return await db.prepare(sql).bind(username).all<{ password: string; stream_proxy_strategy: string | null }>();
+  }
+}
+
 async function findSubsonicCredential(
   db: D1Database,
   username: string,
   token: string,
   salt: string,
 ): Promise<{ credential: string; kind: "subsonic_cred"; streamProxyStrategy: string } | null> {
-  const creds = await db
-    // expires_at carries the activation horizon the credential was issued
-    // under (NULL = unbounded); a lapsed one stops matching until the account
-    // is re-activated, which re-stamps it.
-    .prepare("SELECT password, stream_proxy_strategy FROM subsonic_credentials WHERE username = ? AND (expires_at IS NULL OR expires_at > unixepoch())")
-    .bind(username)
-    .all<{ password: string; stream_proxy_strategy: string | null }>();
+  const creds = await liveCredentials(db, username);
 
   for (const cred of creds.results) {
     if (md5(cred.password + salt) === token) {
@@ -255,13 +268,7 @@ async function findSubsonicCredentialByPassword(
     }
   }
 
-  const creds = await db
-    // expires_at carries the activation horizon the credential was issued
-    // under (NULL = unbounded); a lapsed one stops matching until the account
-    // is re-activated, which re-stamps it.
-    .prepare("SELECT password, stream_proxy_strategy FROM subsonic_credentials WHERE username = ? AND (expires_at IS NULL OR expires_at > unixepoch())")
-    .bind(username)
-    .all<{ password: string; stream_proxy_strategy: string | null }>();
+  const creds = await liveCredentials(db, username);
   for (const cred of creds.results) {
     if (cred.password === plain) {
       await db
