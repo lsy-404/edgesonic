@@ -21,8 +21,12 @@ import { permissionMiddleware, subsonicError, sha256, SESSION_TTL_SEC, buildSess
 import { subsonicOK } from "../../utils/xml";
 import { recoverCronIfStale } from "../../utils/cronRecovery";
 import { getEffectivePermissions, hasPermission } from "../../utils/permissions";
-import { ensureNicknameColumn, ensureEmailColumns } from "../../utils/schema_patch";
+import { ensureNicknameColumn, ensureEmailColumns, ensureActivationSchema } from "../../utils/schema_patch";
 import { getFeature, getFeatureString } from "../../utils/features";
+import {
+  resolveActivation, clampTtlToActivation, checkInviteCode, redeemCode,
+  evaluateRegistrationGate, getRegistrationGateMode,
+} from "../../utils/activation";
 import { isDemoMode } from "../../utils/demoMode";
 import {
   emailSendingConfigured, sendEmail, createEmailToken, consumeEmailToken, consumeEmailChangeToken,
@@ -60,10 +64,12 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
     return c.json({ ok: false, error: "Missing username or password" }, 400);
   }
 
+  // SELECT * so activation columns come along when present (undefined on a
+  // not-yet-migrated database → treated as permanent).
   const user = await db
-    .prepare("SELECT username, master_password AS password, level, enabled FROM users WHERE username = ?")
+    .prepare("SELECT * FROM users WHERE username = ?")
     .bind(username)
-    .first<{ username: string; password: string; level: number; enabled: number }>();
+    .first<{ username: string; master_password: string; level: number; enabled: number; activation_status?: string | null; activated_until?: number | null }>();
   if (!user || !user.enabled) {
     return c.json({ ok: false, error: "Invalid credentials" }, 401);
   }
@@ -72,13 +78,18 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
   }
 
   const hash = await sha256(password);
-  if (hash !== user.password) {
+  if (hash !== user.master_password) {
     return c.json({ ok: false, error: "Invalid credentials" }, 401);
   }
 
+  // Session TTL is clamped to the activation window; an inactive user still
+  // gets a (restricted) session so they can redeem an invite code.
+  const activation = await resolveActivation(c.env, user);
+  const ttlSec = clampTtlToActivation(activation, SESSION_TTL_SEC);
+
   const sessionId = crypto.randomUUID();
   const sessionToken = crypto.randomUUID().replace(/-/g, "");
-  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SEC; // 24 hours
+  const expiresAt = Math.floor(Date.now() / 1000) + ttlSec;
   const userAgent = c.req.header("User-Agent") || "";
 
   await db
@@ -112,7 +123,7 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
   // compatibility (clients that use it as a Subsonic plain password via
   // /rest/?u=&p=), but the SPA itself no longer reads it.
   const isHttps = new URL(c.req.url).protocol === "https:";
-  const cookie = buildSessionCookieHeader(sessionToken, SESSION_TTL_SEC) + (isHttps ? "; Secure" : "");
+  const cookie = buildSessionCookieHeader(sessionToken, ttlSec) + (isHttps ? "; Secure" : "");
   c.header("Set-Cookie", cookie);
   return c.json(
     {
@@ -121,6 +132,12 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
       level: user.level,
       sessionToken,
       expiresAt,
+      activation: {
+        enabled: activation.enabled,
+        status: activation.status,
+        until: activation.until,
+        active: activation.active,
+      },
     },
     200,
   );
@@ -198,21 +215,24 @@ const USERNAME_RE = /^[a-zA-Z0-9_-]{3,32}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 webLoginRoutes.get("/edgesonic/auth/loginConfig", async (c) => {
-  const [noticeText, backgroundUrl, registrationEnabled, allowPasswordReset, emailEnabled] = await Promise.all([
+  const [noticeText, backgroundUrl, registrationEnabled, allowPasswordReset, emailEnabled, activationEnabled, gateMode] = await Promise.all([
     getFeatureString(c.env, "login_notice_text", ""),
     getFeatureString(c.env, "login_background_url", ""),
     getFeature(c.env, "open_registration"),
     getFeature(c.env, "allow_email_password_reset"),
     emailSendingConfigured(c.env),
+    getFeature(c.env, "enable_activation"),
+    getRegistrationGateMode(c.env),
   ]);
   return c.json({
     ok: true,
     noticeText,
     backgroundUrl,
-    // Self-service registration additionally requires email sending to be
-    // configured — an account created without a working verification email
-    // has no way to later prove ownership for a password reset.
-    registrationEnabled: registrationEnabled && emailEnabled,
+    // Self-service registration requires at least one signup gate: a working
+    // verification email, or (activation system on) an invite code.
+    registrationEnabled: registrationEnabled && (emailEnabled || activationEnabled),
+    activationEnabled,
+    registrationGateMode: gateMode,
     // Password reset has its own independent toggle on top of "is
     // email configured at all" — an operator may want registration without
     // self-service reset, or vice versa.
@@ -229,11 +249,13 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
   if (!(await getFeature(c.env, "open_registration"))) {
     return c.json({ ok: false, error: "Registration is disabled" }, 403);
   }
-  if (!(await emailSendingConfigured(c.env))) {
+  const emailConfigured = await emailSendingConfigured(c.env);
+  const activationEnabled = await getFeature(c.env, "enable_activation");
+  if (!emailConfigured && !activationEnabled) {
     return c.json({ ok: false, error: "Registration requires email to be configured" }, 403);
   }
 
-  let body: { username?: string; email?: string; password?: string };
+  let body: { username?: string; email?: string; password?: string; inviteCode?: string };
   try {
     body = await c.req.json();
   } catch {
@@ -242,41 +264,81 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
   const username = (body.username || "").trim();
   const email = normalizeEmail(body.email || "");
   const password = body.password || "";
+  const inviteCode = (body.inviteCode || "").trim();
 
   if (!USERNAME_RE.test(username) || username === GUEST_USERNAME) {
     return c.json({ ok: false, error: "Username must be 3-32 characters (letters, digits, _ or -)" }, 400);
   }
-  if (!EMAIL_RE.test(email)) {
+  if (email && !EMAIL_RE.test(email)) {
     return c.json({ ok: false, error: "Invalid email address" }, 400);
   }
   if (password.length < 8 || password.length > 256) {
     return c.json({ ok: false, error: "Password must be 8-256 characters" }, 400);
   }
 
+  // Signup gate: which of the enabled options (email verification, invite
+  // code) must be satisfied depends on registration_gate_mode.
+  const gate = evaluateRegistrationGate({
+    emailConfigured,
+    activationEnabled,
+    gateMode: await getRegistrationGateMode(c.env),
+    hasEmail: EMAIL_RE.test(email),
+    hasInvite: !!inviteCode,
+  });
+  if (!gate.ok) {
+    return c.json({ ok: false, error: gate.error }, 400);
+  }
+  // A provided invite code must be redeemable even when the gate would pass
+  // without it — silently ignoring a bad code would mislead the user.
+  if (inviteCode) {
+    const checked = await checkInviteCode(c.env, inviteCode);
+    if ("error" in checked) {
+      return c.json({ ok: false, error: checked.error }, 400);
+    }
+  }
+
   const db = c.env.DB;
   await ensureEmailColumns(c.env);
+  await ensureActivationSchema(c.env);
 
   const existingUser = await db.prepare("SELECT username FROM users WHERE username = ?").bind(username).first();
   if (existingUser) {
     return c.json({ ok: false, error: "Username already taken" }, 409);
   }
-  const existingEmail = await db.prepare("SELECT username FROM users WHERE email = ?").bind(email).first();
-  if (existingEmail) {
-    return c.json({ ok: false, error: "Email already registered" }, 409);
+  if (email) {
+    const existingEmail = await db.prepare("SELECT username FROM users WHERE email = ?").bind(email).first();
+    if (existingEmail) {
+      return c.json({ ok: false, error: "Email already registered" }, 409);
+    }
   }
 
+  // With the activation system on a fresh account starts 'disabled'; a
+  // supplied invite code flips it via the shared redemption path right after.
+  const initialStatus = activationEnabled ? "disabled" : "permanent";
   const now = Math.floor(Date.now() / 1000);
   await db.prepare(
-    "INSERT INTO users (username, master_password, level, enabled, email, email_verified, created_at, updated_at) VALUES (?, ?, 1, 1, ?, 0, ?, ?)"
-  ).bind(username, await sha256(password), email, now, now).run();
+    "INSERT INTO users (username, master_password, level, enabled, email, email_verified, activation_status, created_at, updated_at) VALUES (?, ?, 1, 1, ?, 0, ?, ?, ?)"
+  ).bind(username, await sha256(password), email || null, initialStatus, now, now).run();
+
+  if (activationEnabled && inviteCode) {
+    const redeemed = await redeemCode(c.env, username, inviteCode);
+    if (!redeemed.ok) {
+      // Raced out (code exhausted/revoked between check and redeem): undo the
+      // account creation so the caller can retry cleanly.
+      await db.prepare("DELETE FROM users WHERE username = ?").bind(username).run();
+      return c.json({ ok: false, error: redeemed.error }, 400);
+    }
+  }
 
   // Best-effort verification email — registration succeeds regardless of
   // whether sending works; the account is fully usable either way (email
   // verification is informational, not a login gate).
-  const token = await createEmailToken(db, username, "verify", 24 * 60 * 60);
-  const origin = new URL(c.req.url).origin;
-  const tpl = await verifyEmailTemplate(c.env, origin, token);
-  sendEmail(c.env, { to: email, ...tpl }).catch(() => {});
+  if (email && emailConfigured) {
+    const token = await createEmailToken(db, username, "verify", 24 * 60 * 60);
+    const origin = new URL(c.req.url).origin;
+    const tpl = await verifyEmailTemplate(c.env, origin, token);
+    sendEmail(c.env, { to: email, ...tpl }).catch(() => {});
+  }
 
   return c.json({ ok: true, username });
 });
@@ -446,7 +508,23 @@ edgesonicAuthRoutes.get("/auth/me", async (c) => {
     // nickname/email columns may be absent on a database not yet back-filled.
   }
 
-  return c.json({ ok: true, username: user.username, level: user.level, nickname, avatarKey, email, emailVerified, permissions });
+  const activation = await resolveActivation(c.env, user);
+  return c.json({
+    ok: true,
+    username: user.username,
+    level: user.level,
+    nickname,
+    avatarKey,
+    email,
+    emailVerified,
+    permissions,
+    activation: {
+      enabled: activation.enabled,
+      status: activation.status,
+      until: activation.until,
+      active: activation.active,
+    },
+  });
 });
 
 // ─── Email change ─────────────────────────────────────────────────────────
