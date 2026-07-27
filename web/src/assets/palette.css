@@ -438,6 +438,24 @@ img { max-width: 100%; display: block; }
 }
 .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
 
+/* --- Segmented toggle ---
+   Shared by every view that renders a mutually-exclusive choice row. Views
+   carrying their own scoped copy keep it: scoped rules gain a [data-v-*]
+   attribute and therefore outrank these. */
+.seg { display: inline-flex; border: 1px solid var(--color-border-subtle); }
+.seg-btn {
+  background: none; border: none; padding: 0.35rem 0.85rem; cursor: pointer;
+  font-family: var(--font-mono); font-size: var(--fs-xs);
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border-right: 1px solid var(--color-border-subtle);
+  transition: color 0.15s, background 0.15s;
+}
+.seg-btn:last-child { border-right: none; }
+.seg-btn:hover:not(:disabled) { color: var(--color-text-primary); }
+.seg-btn.active { background: var(--color-accent-dim); color: var(--color-accent-primary); }
+.seg-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* --- Toggle switch --- */
 .toggle { position: relative; display: inline-block; width: 38px; height: 20px; cursor: pointer; flex-shrink: 0; }
 .toggle input { opacity: 0; width: 0; height: 0; }

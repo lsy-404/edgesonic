@@ -3046,7 +3046,7 @@ onMounted(() => {
           <div class="feature-list">
             <div class="feature-row">
               <div class="feature-info">
-                <code class="feature-key">enable_activation</code>
+                <span class="feature-name">{{ t("settings.activation.enableTitle") }}</span>
                 <span class="feature-desc">{{ t("settings.activation.enableDesc") }}</span>
               </div>
               <label class="toggle" :title="activationFeature ? '' : t('settings.activation.unavailable')">
@@ -3061,7 +3061,7 @@ onMounted(() => {
             </div>
             <div class="feature-row">
               <div class="feature-info">
-                <code class="feature-key">registration_gate_mode</code>
+                <span class="feature-name">{{ t("settings.activation.gateModeTitle") }}</span>
                 <span class="feature-desc">{{ t("settings.activation.gateModeDesc") }}</span>
               </div>
               <div class="seg">
@@ -3398,6 +3398,11 @@ onMounted(() => {
   font-size: var(--fs-base);
   font-weight: 600;
   letter-spacing: 0.05em;
+  color: var(--color-text-primary);
+}
+.feature-name {
+  font-size: var(--fs-base);
+  font-weight: 600;
   color: var(--color-text-primary);
 }
 .feature-desc { font-size: var(--fs-sm); color: var(--color-text-secondary); }
