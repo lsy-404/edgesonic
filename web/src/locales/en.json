@@ -509,7 +509,17 @@
       "untilLabel": "Active until",
       "badDate": "Enter a valid expiry time",
       "saved": "Activation updated",
-      "saveFailed": "Failed to update activation"
+      "saveFailed": "Failed to update activation",
+      "dangerZone": "Account actions",
+      "freeze": "Freeze",
+      "freezeConfirm": "Freeze {name}? The account is disabled immediately.",
+      "frozen": "Account frozen",
+      "revokeSessions": "Revoke sessions",
+      "revokeSessionsConfirm": "Sign {name} out of every web session?",
+      "revokeSessionsDone": "Revoked {n} session(s)",
+      "revokeCredentials": "Revoke clients",
+      "revokeCredentialsConfirm": "Delete every client credential of {name}? Native players will stop working until new ones are issued.",
+      "revokeCredentialsDone": "Revoked {n} client credential(s)"
     },
     "invites": {
       "title": "Invite codes",

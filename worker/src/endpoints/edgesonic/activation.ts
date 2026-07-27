@@ -119,6 +119,65 @@ activationRoutes.post("/activation/set", async (c) => {
   return c.json({ ok: true });
 });
 
+// Shared guard for per-target account actions: caller already passed
+// requireActivationAdmin; the target must exist, be non-admin, and not the
+// caller themselves.
+async function loadManagedTarget(c: Ctx, username: string): Promise<{ error: Response } | { ok: true }> {
+  const caller = c.get("user");
+  if (!username) {
+    return { error: c.json({ ok: false, error: "Missing username" }, 400) };
+  }
+  if (username === caller.username) {
+    return { error: c.json({ ok: false, error: "Cannot target your own account" }, 400) };
+  }
+  const target = await c.env.DB.prepare("SELECT username, level FROM users WHERE username = ?")
+    .bind(username).first<{ username: string; level: number }>();
+  if (!target) {
+    return { error: c.json({ ok: false, error: "User not found" }, 404) };
+  }
+  if (target.level >= 3) {
+    return { error: c.json({ ok: false, error: "Cannot target an administrator" }, 403) };
+  }
+  return { ok: true };
+}
+
+async function readUsernameBody(c: Ctx): Promise<string | null> {
+  try {
+    const body = await c.req.json<{ username?: string }>();
+    return (body.username || "").trim();
+  } catch {
+    return null;
+  }
+}
+
+// Kill every web session of the target; their next request re-authenticates.
+activationRoutes.post("/activation/revokeSessions", async (c) => {
+  const denied = await requireActivationAdmin(c);
+  if (denied) return denied;
+  const username = await readUsernameBody(c);
+  if (username === null) return c.json({ ok: false, error: "Invalid JSON body" }, 400);
+  const guard = await loadManagedTarget(c, username);
+  if ("error" in guard) return guard.error;
+  const result = await c.env.DB.prepare("DELETE FROM sessions WHERE username = ?").bind(username).run();
+  return c.json({ ok: true, revoked: result.meta.changes ?? 0 });
+});
+
+// Kill every issued client credential (Subsonic passwords + raw api keys);
+// native clients drop off at their next auth.
+activationRoutes.post("/activation/revokeCredentials", async (c) => {
+  const denied = await requireActivationAdmin(c);
+  if (denied) return denied;
+  const username = await readUsernameBody(c);
+  if (username === null) return c.json({ ok: false, error: "Invalid JSON body" }, 400);
+  const guard = await loadManagedTarget(c, username);
+  if ("error" in guard) return guard.error;
+  const [creds, keys] = await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM subsonic_credentials WHERE username = ?").bind(username),
+    c.env.DB.prepare("DELETE FROM api_keys WHERE username = ?").bind(username),
+  ]);
+  return c.json({ ok: true, revoked: (creds.meta.changes ?? 0) + (keys.meta.changes ?? 0) });
+});
+
 activationRoutes.get("/activation/codes", async (c) => {
   const denied = await requireActivationAdmin(c);
   if (denied) return denied;

@@ -281,6 +281,41 @@ async function saveActivation() {
   finally { actSaving.value = false; }
 }
 
+// Account actions inside the activation modal. Freeze is a one-click
+// mode=disabled; the revokes cut web sessions / issued client credentials so
+// a compromised or off-boarded account drops out immediately.
+const actActionBusy = ref("");
+
+async function freezeTarget() {
+  if (!actTarget.value || actActionBusy.value) return;
+  if (!confirm(t("users.activation.freezeConfirm", { name: actTarget.value.username }))) return;
+  actActionBusy.value = "freeze";
+  try {
+    const resp = safeParse<OkJson>(await edgesonicPost("activation/set", {
+      username: actTarget.value.username, mode: "disabled",
+    }));
+    if (!resp.ok) throw new Error(resp.error || "freeze failed");
+    showToast(t("users.activation.frozen"));
+    closeActModal();
+    load();
+  } catch { showToast(t("users.activation.saveFailed"), "error"); }
+  finally { actActionBusy.value = ""; }
+}
+
+async function revokeTarget(kind: "revokeSessions" | "revokeCredentials") {
+  if (!actTarget.value || actActionBusy.value) return;
+  if (!confirm(t(`users.activation.${kind}Confirm`, { name: actTarget.value.username }))) return;
+  actActionBusy.value = kind;
+  try {
+    const resp = safeParse<OkJson & { revoked?: number }>(
+      await edgesonicPost(`activation/${kind}`, { username: actTarget.value.username }),
+    );
+    if (!resp.ok) throw new Error(resp.error || "revoke failed");
+    showToast(t(`users.activation.${kind}Done`, { n: resp.revoked ?? 0 }));
+  } catch { showToast(t("users.activation.saveFailed"), "error"); }
+  finally { actActionBusy.value = ""; }
+}
+
 // ---- Invite codes panel ----
 interface InviteCode {
   code: string; kind: "window" | "duration" | "permanent";
@@ -597,6 +632,14 @@ onMounted(load);
             <label class="form-label">{{ t("users.activation.untilLabel") }}</label>
             <input v-model="actUntilInput" type="datetime-local" class="form-input" />
           </div>
+          <div class="act-danger">
+            <div class="form-label">{{ t("users.activation.dangerZone") }}</div>
+            <div class="act-danger-row">
+              <button class="btn-danger btn-sm" :disabled="!!actActionBusy" @click="freezeTarget">{{ t("users.activation.freeze") }}</button>
+              <button class="btn-danger btn-sm" :disabled="!!actActionBusy" @click="revokeTarget('revokeSessions')">{{ t("users.activation.revokeSessions") }}</button>
+              <button class="btn-danger btn-sm" :disabled="!!actActionBusy" @click="revokeTarget('revokeCredentials')">{{ t("users.activation.revokeCredentials") }}</button>
+            </div>
+          </div>
         </div>
         <div class="act-modal-actions">
           <button class="btn-secondary" @click="closeActModal">{{ t("common.cancel") }}</button>
@@ -738,6 +781,8 @@ onMounted(load);
 .act-modal { position: relative; width: min(480px, 92vw); padding: 1.25rem; }
 .act-modal-body { display: flex; flex-direction: column; gap: 0.9rem; margin: 0.75rem 0 1rem; }
 .act-modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.act-danger { border-top: 1px solid var(--color-border-subtle); padding-top: 0.8rem; }
+.act-danger-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.4rem; }
 
 /* Invite codes */
 .invites-card { position: relative; margin-bottom: 1.25rem; }

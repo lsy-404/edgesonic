@@ -506,7 +506,17 @@
       "untilLabel": "有效期至",
       "badDate": "请输入有效的到期时间",
       "saved": "激活状态已更新",
-      "saveFailed": "更新激活状态失败"
+      "saveFailed": "更新激活状态失败",
+      "dangerZone": "账户操作",
+      "freeze": "冻结",
+      "freezeConfirm": "冻结 {name}？该账户将立即被禁用。",
+      "frozen": "账户已冻结",
+      "revokeSessions": "撤销会话",
+      "revokeSessionsConfirm": "登出 {name} 的全部网页会话？",
+      "revokeSessionsDone": "已撤销 {n} 个会话",
+      "revokeCredentials": "撤销客户端",
+      "revokeCredentialsConfirm": "删除 {name} 的全部客户端密钥？其原生播放器将立即失效，需重新签发。",
+      "revokeCredentialsDone": "已撤销 {n} 个客户端密钥"
     },
     "invites": {
       "title": "邀请码",
