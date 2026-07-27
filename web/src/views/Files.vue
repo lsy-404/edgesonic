@@ -1411,7 +1411,7 @@ onMounted(async () => {
 .upload-queue-overall { margin-top: 0.4rem; font-size: var(--fs-sm); color: var(--color-text-muted); }
 
 /* Cross-source copy batch selection + queue (144) */
-.cross-select-box { flex-shrink: 0; margin-right: 0.4rem; cursor: pointer; }
+.cross-select-box { flex-shrink: 0; margin-right: 0.4rem; cursor: pointer; accent-color: var(--color-accent-primary); }
 
 /* Select-all header row above the entry list */
 .select-all-row { cursor: pointer; user-select: none; background: var(--color-bg-primary); }

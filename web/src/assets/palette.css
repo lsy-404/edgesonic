@@ -4,6 +4,10 @@
    ===================================================== */
 
 :root {
+  /* Native widgets (checkbox/select/scrollbar) must follow the app theme,
+     not the OS scheme; light theme blocks below flip this to `light`. */
+  color-scheme: dark;
+
   /* bg —— studio zinc 黑阶 */
   --color-bg-primary: #0a0a0b;
   --color-bg-secondary: #111113;
@@ -52,6 +56,7 @@
    and sp-* animated) each set their own surfaces, accent and --deco triad
    below; the animated variants add a WebGL background and progress marker. */
 :root[data-theme="red"] {
+  color-scheme: light;
   --color-bg-primary: #fffafa;
   --color-bg-secondary: #fff1f1;
   --color-bg-tertiary: #ffe4e4;
@@ -71,6 +76,7 @@
 }
 
 :root[data-theme="green"] {
+  color-scheme: light;
   --color-bg-primary: #fbfffc;
   --color-bg-secondary: #effbf3;
   --color-bg-tertiary: #dcf7e5;
@@ -90,6 +96,7 @@
 }
 
 :root[data-theme="yellow"] {
+  color-scheme: light;
   --color-bg-primary: #fffdf4;
   --color-bg-secondary: #fff8d9;
   --color-bg-tertiary: #ffefad;
@@ -109,6 +116,7 @@
 }
 
 :root[data-theme="white"] {
+  color-scheme: light;
   --color-bg-primary: #f7f8fc;
   --color-bg-secondary: #ffffff;
   --color-bg-tertiary: #e9edf6;
@@ -129,10 +137,10 @@
    and elements.css (the SP crystal-drift sky gradient). Star uses a
    gold / cobalt / violet triad. */
 :root[data-theme="color-gold"], :root[data-theme="sp-gold"] { --color-bg-primary: #080a18; --color-bg-secondary: #121a38; --color-bg-tertiary: #1a2550; --color-bg-elevated: #172042; --color-text-primary: #f5f7ff; --color-text-secondary: #c6d0ff; --color-text-muted: #8493cf; --color-text-inverse: #080a18; --color-accent-primary: #d7ae37; --color-accent-dim: rgba(215,174,55,.2); --color-border-subtle: rgba(215,174,55,.18); --color-border-default: rgba(215,174,55,.34); --color-border-strong: rgba(215,174,55,.52); --deco-a: #ffd64a; --deco-b: #1c7bff; --deco-c: #7a4dff; }
-:root[data-theme="color-scarlet"], :root[data-theme="sp-scarlet"] { --color-bg-primary: #fffafb; --color-bg-secondary: #ffffff; --color-bg-tertiary: #fff0f2; --color-bg-elevated: #ffffff; --color-text-primary: #3a1b27; --color-text-secondary: #8e4558; --color-text-muted: #b77b89; --color-text-inverse: #ffffff; --color-accent-primary: #e65361; --color-accent-dim: rgba(230,83,97,.16); --color-border-subtle: rgba(230,83,97,.18); --color-border-default: rgba(230,83,97,.34); --color-border-strong: rgba(246,183,44,.7); --deco-a: #ff5a3c; --deco-b: #ff9d3d; --deco-c: #b0324e; }
-:root[data-theme="color-ocean"], :root[data-theme="sp-ocean"] { --color-bg-primary: #f7fcff; --color-bg-secondary: #ffffff; --color-bg-tertiary: #edf8ff; --color-bg-elevated: #ffffff; --color-text-primary: #23465e; --color-text-secondary: #5c88a7; --color-text-muted: #93b3c9; --color-text-inverse: #ffffff; --color-accent-primary: #65c7ec; --color-accent-dim: rgba(101,199,236,.18); --color-border-subtle: rgba(101,199,236,.24); --color-border-default: rgba(231,154,184,.5); --color-border-strong: rgba(101,199,236,.72); --deco-a: #65c7ec; --deco-b: #2f8fd0; --deco-c: #f2a8c6; }
-:root[data-theme="color-sky"], :root[data-theme="sp-sky"] { --color-bg-primary: #f8fffa; --color-bg-secondary: #ffffff; --color-bg-tertiary: #edf9f0; --color-bg-elevated: #ffffff; --color-text-primary: #244937; --color-text-secondary: #5c8970; --color-text-muted: #91b89e; --color-text-inverse: #ffffff; --color-accent-primary: #65bd8c; --color-accent-dim: rgba(101,189,140,.18); --color-border-subtle: rgba(101,189,140,.22); --color-border-default: rgba(101,189,140,.42); --color-border-strong: rgba(180,221,193,.8); --deco-a: #65bd8c; --deco-b: #3fb6a0; --deco-c: #c5e6a0; }
-:root[data-theme="color-earth"], :root[data-theme="sp-earth"] { --color-bg-primary: #fff9e8; --color-bg-secondary: #fffef9; --color-bg-tertiary: #fff0be; --color-bg-elevated: #ffffff; --color-text-primary: #403142; --color-text-secondary: #6e5364; --color-text-muted: #a78982; --color-text-inverse: #ffffff; --color-accent-primary: #ffc45a; --color-accent-dim: rgba(255,196,90,.2); --color-border-subtle: rgba(255,196,90,.28); --color-border-default: rgba(219,142,49,.48); --color-border-strong: rgba(65,48,67,.62); --deco-a: #ffc45a; --deco-b: #e0a233; --deco-c: #5a3a6e; }
+:root[data-theme="color-scarlet"], :root[data-theme="sp-scarlet"] { color-scheme: light; --color-bg-primary: #fffafb; --color-bg-secondary: #ffffff; --color-bg-tertiary: #fff0f2; --color-bg-elevated: #ffffff; --color-text-primary: #3a1b27; --color-text-secondary: #8e4558; --color-text-muted: #b77b89; --color-text-inverse: #ffffff; --color-accent-primary: #e65361; --color-accent-dim: rgba(230,83,97,.16); --color-border-subtle: rgba(230,83,97,.18); --color-border-default: rgba(230,83,97,.34); --color-border-strong: rgba(246,183,44,.7); --deco-a: #ff5a3c; --deco-b: #ff9d3d; --deco-c: #b0324e; }
+:root[data-theme="color-ocean"], :root[data-theme="sp-ocean"] { color-scheme: light; --color-bg-primary: #f7fcff; --color-bg-secondary: #ffffff; --color-bg-tertiary: #edf8ff; --color-bg-elevated: #ffffff; --color-text-primary: #23465e; --color-text-secondary: #5c88a7; --color-text-muted: #93b3c9; --color-text-inverse: #ffffff; --color-accent-primary: #65c7ec; --color-accent-dim: rgba(101,199,236,.18); --color-border-subtle: rgba(101,199,236,.24); --color-border-default: rgba(231,154,184,.5); --color-border-strong: rgba(101,199,236,.72); --deco-a: #65c7ec; --deco-b: #2f8fd0; --deco-c: #f2a8c6; }
+:root[data-theme="color-sky"], :root[data-theme="sp-sky"] { color-scheme: light; --color-bg-primary: #f8fffa; --color-bg-secondary: #ffffff; --color-bg-tertiary: #edf9f0; --color-bg-elevated: #ffffff; --color-text-primary: #244937; --color-text-secondary: #5c8970; --color-text-muted: #91b89e; --color-text-inverse: #ffffff; --color-accent-primary: #65bd8c; --color-accent-dim: rgba(101,189,140,.18); --color-border-subtle: rgba(101,189,140,.22); --color-border-default: rgba(101,189,140,.42); --color-border-strong: rgba(180,221,193,.8); --deco-a: #65bd8c; --deco-b: #3fb6a0; --deco-c: #c5e6a0; }
+:root[data-theme="color-earth"], :root[data-theme="sp-earth"] { color-scheme: light; --color-bg-primary: #fff9e8; --color-bg-secondary: #fffef9; --color-bg-tertiary: #fff0be; --color-bg-elevated: #ffffff; --color-text-primary: #403142; --color-text-secondary: #6e5364; --color-text-muted: #a78982; --color-text-inverse: #ffffff; --color-accent-primary: #ffc45a; --color-accent-dim: rgba(255,196,90,.2); --color-border-subtle: rgba(255,196,90,.28); --color-border-default: rgba(219,142,49,.48); --color-border-strong: rgba(65,48,67,.62); --deco-a: #ffc45a; --deco-b: #e0a233; --deco-c: #5a3a6e; }
 :root[data-theme="color-crimson"], :root[data-theme="sp-crimson"] { --color-bg-primary: #25183e; --color-bg-secondary: #332252; --color-bg-tertiary: #493168; --color-bg-elevated: #3b285c; --color-text-primary: #faf6ff; --color-text-secondary: #dacdf5; --color-text-muted: #ad9ace; --color-text-inverse: #181024; --color-accent-primary: #9b78e5; --color-accent-dim: rgba(155,120,229,.24); --color-border-subtle: rgba(155,120,229,.28); --color-border-default: rgba(155,120,229,.46); --color-border-strong: rgba(224,149,207,.64); --deco-a: #9b78e5; --deco-b: #7a2a68; --deco-c: #c9a8f0; }
 
 /* Ark / Endfield — evidence-based family palettes (ark-ui skill), added as
