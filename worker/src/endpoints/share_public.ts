@@ -30,7 +30,8 @@ import { createWebDAVAdapter } from "../adapters/webdav";
 import { createSubsonicAdapter } from "../adapters/subsonic";
 import { getFeature, parseChain } from "../utils/features";
 import type { StreamResult } from "../adapters/index";
-import type { Share, SongMaster } from "../types/entities";
+import type { Share } from "../types/entities";
+import type { SongRow } from "../db/queries";
 
 export const sharePublicRoutes = new Hono();
 
@@ -52,28 +53,36 @@ function formatExpires(unixSeconds: number): string {
   return new Date(unixSeconds * 1000).toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
+interface RenderTrack {
+  title: string;
+  artist: string | null;
+  durationSeconds: number | null;
+}
+
 interface RenderInput {
   shareId: string;
   description: string | null;
   expiresAt: number | null;
-  viewCount: number;
-  entryCount: number;
-  firstSongTitle: string | null;
+  tracks: RenderTrack[];
+}
+
+function formatDuration(sec: number | null): string {
+  if (sec === null || !Number.isFinite(sec) || sec <= 0) return "";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 function renderShareHtml(input: RenderInput): string {
   const safeId = escapeHtml(input.shareId);
-  const title = input.description?.trim() || input.firstSongTitle?.trim() || `EdgeSonic Share ${input.shareId}`;
+  const entryCount = input.tracks.length;
+  const firstSongTitle = input.tracks[0]?.title ?? null;
+  const title = input.description?.trim() || firstSongTitle?.trim() || `EdgeSonic Share ${input.shareId}`;
   const safeTitle = escapeHtml(title);
-  const subtitle = input.description?.trim()
-    ? (input.firstSongTitle ? escapeHtml(input.firstSongTitle) : `${input.entryCount} track${input.entryCount === 1 ? "" : "s"}`)
-    : `${input.entryCount} track${input.entryCount === 1 ? "" : "s"}`;
+  const subtitle = `${entryCount} 首曲目 · ${entryCount} track${entryCount === 1 ? "" : "s"}`;
   const expiresLine = input.expiresAt === null
     ? "永久有效 · never expires"
     : `过期时间 · expires ${escapeHtml(formatExpires(input.expiresAt))}`;
-  // view_count we render reflects the value BEFORE this hit's waitUntil lands;
-  // good enough for a landing page (+1 stale by one render is acceptable).
-  const viewLine = `已访问 ${input.viewCount} 次 · viewed ${input.viewCount} time${input.viewCount === 1 ? "" : "s"}`;
 
   return `<!doctype html>
 <html lang="zh">
@@ -91,13 +100,17 @@ function renderShareHtml(input: RenderInput): string {
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
       padding: 1.5rem;
       line-height: 1.6;
     }
     .card {
       max-width: 600px;
       width: 100%;
+      max-height: 100%;
+      display: flex;
+      flex-direction: column;
       padding: 2rem;
       background: #111113;
       border: 1px solid rgba(255, 255, 255, 0.1);
@@ -142,6 +155,65 @@ function renderShareHtml(input: RenderInput): string {
       margin: 0.5rem 0 1.25rem 0;
       filter: invert(0.95) hue-rotate(180deg);
     }
+    .tracks {
+      list-style: none;
+      margin: 0 0 0.5rem 0;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .track {
+      display: flex;
+      align-items: baseline;
+      gap: 0.6rem;
+      padding: 0.45rem 0.7rem;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 0.88rem;
+    }
+    .track:last-child { border-bottom: none; }
+    .track:hover { background: rgba(255, 255, 255, 0.05); }
+    .track.active { background: rgba(255, 255, 255, 0.09); }
+    .track.active .t-title { color: #ffffff; }
+    .tracks { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.25) transparent; }
+    .tracks::-webkit-scrollbar { width: 6px; }
+    .tracks::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); }
+    .tracks::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 3px; }
+    .tracks::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+    .t-dl {
+      font-family: 'JetBrains Mono', 'SF Mono', monospace;
+      font-size: 0.74rem;
+      color: #71717a;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      padding: 0.05rem 0.4rem;
+      align-self: center;
+      flex-shrink: 0;
+    }
+    .t-dl:hover { color: #ffffff; border-color: rgba(255, 255, 255, 0.4); }
+    .t-num {
+      font-family: 'JetBrains Mono', 'SF Mono', monospace;
+      font-size: 0.72rem;
+      color: #71717a;
+      min-width: 1.6rem;
+    }
+    .t-title {
+      flex: 1;
+      min-width: 0;
+      color: #d4d4d8;
+      word-break: break-word;
+    }
+    .t-artist {
+      display: block;
+      color: #71717a;
+      font-size: 0.76rem;
+    }
+    .t-dur {
+      font-family: 'JetBrains Mono', 'SF Mono', monospace;
+      font-size: 0.74rem;
+      color: #71717a;
+    }
     .footer {
       font-family: 'JetBrains Mono', 'SF Mono', monospace;
       font-size: 0.74rem;
@@ -170,13 +242,54 @@ function renderShareHtml(input: RenderInput): string {
     <div class="label">// EdgeSonic Share //</div>
     <h1>${safeTitle}</h1>
     <div class="meta">${subtitle}</div>
-    <audio controls preload="metadata" src="/share/${safeId}?stream=1"></audio>
+    <audio id="player" controls preload="metadata" src="/share/${safeId}?stream=1&amp;t=0"></audio>
+    <ol class="tracks">
+${input.tracks
+  .map((tr, i) => {
+    const dur = formatDuration(tr.durationSeconds);
+    const artist = tr.artist?.trim() ? `<span class="t-artist">${escapeHtml(tr.artist)}</span>` : "";
+    return `      <li class="track${i === 0 ? " active" : ""}" data-src="/share/${safeId}?stream=1&amp;t=${i}">
+        <span class="t-num">${String(i + 1).padStart(2, "0")}</span>
+        <span class="t-title">${escapeHtml(tr.title)}${artist}</span>
+        <span class="t-dur">${dur}</span>
+        <a class="t-dl" href="/share/${safeId}?stream=1&amp;t=${i}&amp;download=1" download title="下载 · download">↓</a>
+      </li>`;
+  })
+  .join("\n")}
+    </ol>
     <div class="footer">
       <span class="row">${expiresLine}</span>
-      <span class="row">${viewLine}</span>
-      <span class="row">// <a class="brand" href="/">EdgeSonic</a> //</span>
+      <span class="row">Powered by <a class="brand" href="https://github.com/wuyilingwei/edgesonic" target="_blank" rel="noopener noreferrer">EdgeSonic</a></span>
     </div>
   </main>
+  <script>
+    (function () {
+      var audio = document.getElementById("player");
+      var rows = Array.prototype.slice.call(document.querySelectorAll(".track"));
+      if (!audio || rows.length === 0) return;
+      var current = 0;
+      function select(i, autoplay) {
+        if (i < 0 || i >= rows.length) return;
+        current = i;
+        for (var j = 0; j < rows.length; j++) {
+          rows[j].className = j === i ? "track active" : "track";
+        }
+        audio.src = rows[i].getAttribute("data-src");
+        if (autoplay) audio.play().catch(function () {});
+      }
+      rows.forEach(function (row, i) {
+        row.addEventListener("click", function (e) {
+          // Download anchors live inside the row; let them navigate without
+          // also switching the playing track.
+          if (e.target && e.target.closest && e.target.closest(".t-dl")) return;
+          select(i, true);
+        });
+      });
+      audio.addEventListener("ended", function () {
+        if (current + 1 < rows.length) select(current + 1, true);
+      });
+    })();
+  </script>
 </body>
 </html>
 `;
@@ -198,7 +311,7 @@ sharePublicRoutes.get("/share/:id", async (c) => {
     return c.text("Share has expired", 410, { "Content-Type": "text/plain; charset=UTF-8" });
   }
 
-  const songs: SongMaster[] = await queries.getShareEntries(id);
+  const songs: SongRow[] = await queries.getShareEntries(id);
   if (songs.length === 0) {
     return c.text("Share has no entries", 404, { "Content-Type": "text/plain; charset=UTF-8" });
   }
@@ -217,9 +330,11 @@ sharePublicRoutes.get("/share/:id", async (c) => {
       shareId: id,
       description: share.description,
       expiresAt: share.expires_at,
-      viewCount: share.view_count,
-      entryCount: songs.length,
-      firstSongTitle: songs[0]?.title ?? null,
+      tracks: songs.map((s) => ({
+        title: s.title,
+        artist: s.artist_name,
+        durationSeconds: s.duration ?? s.inst_duration,
+      })),
     });
     return c.html(html, 200, {
       "X-EdgeSonic-Share": id,
@@ -228,11 +343,19 @@ sharePublicRoutes.get("/share/:id", async (c) => {
   }
 
   // ----- Byte-stream branch (audio clients, <audio> element) -----
-  // v1 — single-song streaming. The first entry wins; multi-song shares act
-  // as a playlist where extra entries are visible via getShares but only the
-  // first is reachable through the public link. Clients with EdgeSonic
-  // credentials can hit /rest/stream for the rest.
-  const first = songs[0];
+  // `t` selects the entry by 0-based position so every track in a multi-song
+  // share is reachable anonymously (the landing page's track list drives it).
+  // Absent → 0, keeping pre-existing `?stream=1` links working. Non-numeric
+  // or out-of-range values 404 instead of silently playing the wrong song.
+  const rawTrack = c.req.query("t");
+  let trackIndex = 0;
+  if (rawTrack !== undefined) {
+    trackIndex = Number.parseInt(rawTrack, 10);
+    if (!Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex >= songs.length) {
+      return c.text("Track not found in share", 404, { "Content-Type": "text/plain; charset=UTF-8" });
+    }
+  }
+  const first = songs[trackIndex];
   const instances = await queries.getSongInstances(first.id);
   if (instances.length === 0) {
     return c.text("Shared song has no playable source", 404, { "Content-Type": "text/plain; charset=UTF-8" });
@@ -286,6 +409,19 @@ sharePublicRoutes.get("/share/:id", async (c) => {
   if (result.acceptRanges) headers.set("Accept-Ranges", "bytes");
   if (result.contentRange) headers.set("Content-Range", result.contentRange);
   headers.set("X-EdgeSonic-Share", id);
+
+  // `download=1` turns the same byte stream into an attachment. filename* is
+  // the RFC 5987 UTF-8 form (titles here are mostly CJK); the plain filename
+  // is an ASCII-only fallback for parsers that ignore filename*.
+  if (c.req.query("download") === "1") {
+    const base = (first.title || "track").replace(/[\r\n"\\]/g, " ").trim() || "track";
+    const filename = selected.suffix ? `${base}.${selected.suffix}` : base;
+    const asciiFallback = filename.replace(/[^\x20-\x7e]/g, "_");
+    headers.set(
+      "Content-Disposition",
+      `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    );
+  }
 
   return new Response(result.body, { status: result.statusCode, headers });
 });

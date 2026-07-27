@@ -98,6 +98,12 @@ function setupSchema(sqlite: DatabaseSync): void {
     );
     CREATE TABLE artists (id TEXT PRIMARY KEY, name TEXT);
     CREATE TABLE albums (id TEXT PRIMARY KEY, name TEXT);
+    CREATE TABLE song_artists (
+      song_id TEXT NOT NULL,
+      artist_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (song_id, artist_id)
+    );
     CREATE TABLE song_masters (
       id TEXT PRIMARY KEY,
       album_id TEXT NOT NULL,
@@ -211,23 +217,31 @@ async function main() {
     assert(out.includes("&#39;"), "' escaped to &#39;");
   }
 
-  console.log("renderShareHtml produces well-formed HTML with audio src");
+  console.log("renderShareHtml produces well-formed HTML with audio src + track list");
   {
     const html = __internals.renderShareHtml({
       shareId: "abc123",
       description: "my mix",
       expiresAt: null,
-      viewCount: 3,
-      entryCount: 2,
-      firstSongTitle: "First Track",
+      tracks: [
+        { title: "First Track", artist: "Alice", durationSeconds: 100 },
+        { title: "Second Track", artist: null, durationSeconds: 225 },
+      ],
     });
     assert(html.startsWith("<!doctype html>"), "doctype present");
-    assert(html.includes(`src="/share/abc123?stream=1"`), "audio src points to ?stream=1");
+    assert(html.includes(`src="/share/abc123?stream=1&amp;t=0"`), "audio src points to ?stream=1&t=0");
     assert(html.includes("<audio"), "audio element present");
     assert(html.includes("my mix"), "description rendered as title");
     assert(html.includes("永久有效"), "never-expires line present");
-    assert(html.includes("viewed 3 times"), "view count line");
+    assert(!html.includes("viewed"), "view count line removed from page");
     assert(html.includes("EdgeSonic Share"), "brand label present");
+    assert(html.includes(`data-src="/share/abc123?stream=1&amp;t=1"`), "second track row targets t=1");
+    assert(html.includes("Second Track"), "every track title rendered");
+    assert(html.includes("3:45"), "duration formatted mm:ss");
+    assert(html.includes("Alice"), "artist rendered when present");
+    assert(html.includes(`href="/share/abc123?stream=1&amp;t=0&amp;download=1"`), "per-track download link (t=0)");
+    assert(html.includes(`href="/share/abc123?stream=1&amp;t=1&amp;download=1"`), "per-track download link (t=1)");
+    assert(html.includes("::-webkit-scrollbar"), "track list scrollbar styled");
   }
 
   console.log("renderShareHtml escapes user input in title");
@@ -236,16 +250,15 @@ async function main() {
       shareId: "id1",
       description: '<img onerror="x" src=y>',
       expiresAt: 1_700_000_000,
-      viewCount: 1,
-      entryCount: 1,
-      firstSongTitle: null,
+      tracks: [{ title: '<b>bold</b>', artist: '<i>it</i>', durationSeconds: null }],
     });
     assert(!html.includes('<img onerror'), "no raw img tag");
     assert(html.includes("&lt;img"), "img escaped");
+    assert(!html.includes("<b>bold</b>"), "track title escaped");
+    assert(!html.includes("<i>it</i>"), "track artist escaped");
     assert(html.includes("过期时间"), "expiry line uses Chinese label");
     // unix 1700000000 → 2023-11-14T22:13:20Z
     assert(html.includes("2023-11-14T22:13:20Z"), "ISO formatted expiry present");
-    assert(html.includes("viewed 1 time"), "singular time form for count=1");
   }
 
   console.log("renderShareHtml falls back to firstSongTitle when no description");
@@ -254,12 +267,16 @@ async function main() {
       shareId: "id2",
       description: null,
       expiresAt: null,
-      viewCount: 0,
-      entryCount: 5,
-      firstSongTitle: "Hello World",
+      tracks: [
+        { title: "Hello World", artist: null, durationSeconds: 10 },
+        { title: "B", artist: null, durationSeconds: 10 },
+        { title: "C", artist: null, durationSeconds: 10 },
+        { title: "D", artist: null, durationSeconds: 10 },
+        { title: "E", artist: null, durationSeconds: 10 },
+      ],
     });
-    assert(html.includes("<title>EdgeSonic · Hello World</title>"), "head title uses song title");
-    assert(html.includes(">Hello World</h1>"), "h1 uses song title");
+    assert(html.includes("<title>EdgeSonic · Hello World</title>"), "head title uses first song title");
+    assert(html.includes(">Hello World"), "h1 uses first song title");
     assert(html.includes("5 tracks"), "subtitle shows entry count");
   }
 
@@ -320,7 +337,10 @@ async function main() {
     assert(r.headers.get("content-type")?.includes("text/html"), "content-type=text/html");
     assert(r.headers.get("X-EdgeSonic-Share") === "sh-html-1", "X-EdgeSonic-Share header set");
     const body = await r.text();
-    assert(body.includes(`src="/share/sh-html-1?stream=1"`), "audio src points to ?stream=1");
+    assert(body.includes(`src="/share/sh-html-1?stream=1&amp;t=0"`), "audio src points to ?stream=1&t=0");
+    assert(body.includes("Cool Song"), "first track listed");
+    assert(body.includes("Another"), "second track listed");
+    assert(body.includes(`data-src="/share/sh-html-1?stream=1&amp;t=1"`), "second row targets t=1");
     assert(body.includes("Family mix &lt;Friday&gt;"), "description rendered HTML-escaped");
     assert(!body.includes("<Friday>"), "raw < not present in body");
     assert(body.includes("永久有效"), "never expires line present");
@@ -352,6 +372,36 @@ async function main() {
     assert(after?.view_count === 2, `view_count after stream=1 hit = 2 (got ${after?.view_count})`);
   }
 
+  console.log("GET /share/:id?stream=1&t=N → selects the Nth entry / rejects bad indices");
+  {
+    // t=1 targets s2 which (like s1) has no song_instances: reaching the
+    // "no playable source" 404 proves index selection got past validation.
+    let ctx = makeCtx();
+    let r = await app.fetch(new Request("http://test/share/sh-html-1?stream=1&t=1"), undefined, ctx as unknown as ExecutionContext);
+    let body = await r.text();
+    assert(r.status === 404 && body.includes("no playable source"), "t=1 (in range) reaches instance lookup");
+
+    ctx = makeCtx();
+    r = await app.fetch(new Request("http://test/share/sh-html-1?stream=1&t=2"), undefined, ctx as unknown as ExecutionContext);
+    body = await r.text();
+    assert(r.status === 404 && body.includes("Track not found"), "t=2 (out of range) → 404 Track not found");
+
+    ctx = makeCtx();
+    r = await app.fetch(new Request("http://test/share/sh-html-1?stream=1&t=-1"), undefined, ctx as unknown as ExecutionContext);
+    assert(r.status === 404, "t=-1 → 404");
+
+    ctx = makeCtx();
+    r = await app.fetch(new Request("http://test/share/sh-html-1?stream=1&t=abc"), undefined, ctx as unknown as ExecutionContext);
+    body = await r.text();
+    assert(r.status === 404 && body.includes("Track not found"), "t=abc (non-numeric) → 404");
+
+    // Legacy link without t still resolves to the first entry.
+    ctx = makeCtx();
+    r = await app.fetch(new Request("http://test/share/sh-html-1?stream=1"), undefined, ctx as unknown as ExecutionContext);
+    body = await r.text();
+    assert(r.status === 404 && body.includes("no playable source"), "absent t defaults to first entry");
+  }
+
   console.log("GET /share/:id → HTML escapes shareId in audio src too");
   {
     // share id with special chars — though we control the id, defense in depth.
@@ -366,7 +416,7 @@ async function main() {
     const ctx = makeCtx();
     const r = await app.fetch(new Request("http://test/share/sh-quote-test"), undefined, ctx as unknown as ExecutionContext);
     const body = await r.text();
-    assert(body.includes(`src="/share/sh-quote-test?stream=1"`), "audio src includes the share id verbatim");
+    assert(body.includes(`src="/share/sh-quote-test?stream=1&amp;t=0"`), "audio src includes the share id verbatim");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

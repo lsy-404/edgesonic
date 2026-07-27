@@ -110,6 +110,25 @@ function setupSchema(sqlite: DatabaseSync): void {
     );
     CREATE TABLE artists (id TEXT PRIMARY KEY, name TEXT);
     CREATE TABLE albums (id TEXT PRIMARY KEY, name TEXT);
+    CREATE TABLE song_artists (
+      song_id TEXT NOT NULL,
+      artist_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (song_id, artist_id)
+    );
+    CREATE TABLE song_instances (
+      id TEXT PRIMARY KEY,
+      master_id TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      source_type TEXT,
+      storage_uri TEXT,
+      suffix TEXT,
+      content_type TEXT,
+      bit_rate INTEGER,
+      duration INTEGER,
+      size INTEGER,
+      missing INTEGER DEFAULT 0
+    );
     CREATE TABLE song_masters (
       id TEXT PRIMARY KEY,
       album_id TEXT NOT NULL,
