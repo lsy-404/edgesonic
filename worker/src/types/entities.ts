@@ -98,6 +98,8 @@ export interface User {
   password: string;               // aliased from master_password in queries
   level: number;
   enabled: number;
+  activation_status?: string | null;   // 'permanent' | 'active_until' | 'disabled'
+  activated_until?: number | null;     // unix seconds, only for active_until
   created_at: number;
   updated_at: number;
 }
