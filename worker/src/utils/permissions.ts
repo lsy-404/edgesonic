@@ -156,8 +156,8 @@ export async function getEffectivePermissions(
     if (!act.active) {
       if (await isGuestAccessEnabled(env)) {
         const guestShape = { ...user, level: 0 } as User;
-        delete (guestShape as Record<string, unknown>).activation_status;
-        delete (guestShape as Record<string, unknown>).activated_until;
+        delete guestShape.activation_status;
+        delete guestShape.activated_until;
         return getEffectivePermissions(env, guestShape);
       }
       const perms: Record<string, boolean> = {};

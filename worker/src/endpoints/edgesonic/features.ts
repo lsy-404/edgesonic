@@ -174,6 +174,9 @@ const STRING_FEATURE_KEYS = new Set([
     "resend_from_name",
     "login_notice_text",
     "login_background_url",
+    // Registration gate combination mode for enabled signup options
+    // (email verification / invite code): 'all' or 'any'.
+    "registration_gate_mode",
     // Editable email templates — super-admin only, see
     // SUPER_ADMIN_ONLY_STRING_KEYS below (manage_settings alone is not
     // enough for these six).
@@ -416,6 +419,9 @@ function validateFeatureString(key: string, value: string): string | null {
     case "login_background_url":
       if (value && !/^https?:\/\//.test(value)) return "login_background_url must start with http:// or https://";
       if (value.length > 2048) return "login_background_url is too long";
+      return null;
+    case "registration_gate_mode":
+      if (value !== "all" && value !== "any") return "registration_gate_mode must be 'all' or 'any'";
       return null;
     case "email_tpl_verify_subject":
     case "email_tpl_reset_subject":

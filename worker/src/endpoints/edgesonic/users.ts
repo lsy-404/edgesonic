@@ -28,7 +28,7 @@
 import { Hono } from "hono";
 import { GUEST_USERNAME, permissionMiddleware, sha256 } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
-import { ensureNicknameColumn, ensureEmailColumns } from "../../utils/schema_patch";
+import { ensureNicknameColumn, ensureEmailColumns, ensureActivationSchema } from "../../utils/schema_patch";
 import { isDemoMode } from "../../utils/demoMode";
 import { normalizeEmail } from "../../utils/email";
 import type { User } from "../../types/entities";
@@ -82,9 +82,11 @@ usersRoutes.post("/users/updateSelf", async (c) => {
 
 usersRoutes.get("/users/list", permissionMiddleware("manage_users"), async (c) => {
   await ensureEmailColumns(c.env);
+  await ensureActivationSchema(c.env);
   const db = c.env.DB;
-  const result = await db.prepare("SELECT username, level, enabled, email, email_verified FROM users ORDER BY created_at ASC").all<{
+  const result = await db.prepare("SELECT username, level, enabled, email, email_verified, activation_status, activated_until FROM users ORDER BY created_at ASC").all<{
     username: string; level: number; enabled: number; email: string | null; email_verified: number;
+    activation_status: string | null; activated_until: number | null;
   }>();
   const users = result.results.map((u) => ({
     username: u.username,
@@ -92,6 +94,8 @@ usersRoutes.get("/users/list", permissionMiddleware("manage_users"), async (c) =
     enabled: !!u.enabled,
     email: u.email,
     emailVerified: !!u.email_verified,
+    activationStatus: u.activation_status ?? "permanent",
+    activatedUntil: u.activated_until,
   }));
   return c.json({ ok: true, users });
 });
@@ -147,10 +151,11 @@ usersRoutes.get("/users/get", async (c) => {
     return c.json({ ok: false, error: "Missing username" }, 400);
   }
   await ensureEmailColumns(c.env);
+  await ensureActivationSchema(c.env);
   const db = c.env.DB;
   const user = await db.prepare(
-    "SELECT username, level, enabled, email, email_verified FROM users WHERE username = ?"
-  ).bind(username).first<{ username: string; level: number; enabled: number; email: string | null; email_verified: number }>();
+    "SELECT username, level, enabled, email, email_verified, activation_status, activated_until FROM users WHERE username = ?"
+  ).bind(username).first<{ username: string; level: number; enabled: number; email: string | null; email_verified: number; activation_status: string | null; activated_until: number | null }>();
   if (!user) {
     return c.json({ ok: false, error: "User not found" }, 404);
   }
@@ -162,6 +167,8 @@ usersRoutes.get("/users/get", async (c) => {
       enabled: !!user.enabled,
       email: user.email,
       emailVerified: !!user.email_verified,
+      activationStatus: user.activation_status ?? "permanent",
+      activatedUntil: user.activated_until,
     },
   });
 });

@@ -20,6 +20,7 @@
 // mounts that router directly on the app, outside this aggregate.
 import { Hono } from "hono";
 import { edgesonicAuthRoutes } from "./auth";
+import { activationRoutes } from "./activation";
 import { usersRoutes } from "./users";
 import { permissionsRoutes } from "./permissions";
 import { featuresRoutes } from "./features";
@@ -39,6 +40,7 @@ import { artistScrapeRoutes } from "./artistScrape";
 export const edgesonicRoutes = new Hono();
 
 edgesonicRoutes.route("/", edgesonicAuthRoutes);
+edgesonicRoutes.route("/", activationRoutes);
 edgesonicRoutes.route("/", usersRoutes);
 edgesonicRoutes.route("/", permissionsRoutes);
 edgesonicRoutes.route("/", featuresRoutes);
