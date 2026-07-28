@@ -5,10 +5,11 @@ import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs } from "../api";
 import { useWorkerPool } from "../stores/workerPool";
+import { activationDisplay } from "../lib/activation";
 import Icon from "../components/Icon.vue";
 
 const { t } = useI18n();
-const { isLoggedIn, username, isSuperAdmin, level, hasPerm, storageFetch, edgesonicFetch, edgesonicPost, handleAuthError } = useAuth();
+const { isLoggedIn, username, isSuperAdmin, level, hasPerm, activation, storageFetch, edgesonicFetch, edgesonicPost, handleAuthError } = useAuth();
 const workerPool = useWorkerPool();
 const loading = ref(true);
 const stats = ref({ artists: 0, albums: 0, songs: 0, sources: 0, users: 0 });
@@ -89,6 +90,20 @@ const edgesonicBuildTime = new Date(__EDGESONIC_BUILD_TIME__).toLocaleString();
 const releaseVersion = edgesonicVersion.value.replace(/-dev\.[^-]+(?:-dirty)?$|-dirty$/, "");
 const isDevelopmentBuild = /-dev\./.test(edgesonicVersion.value);
 const isDirtyBuild = /-dirty$/.test(edgesonicVersion.value);
+// Activation is only worth a row when something actually bounds the account;
+// a permanently-active user has nothing to read here.
+const showActivationRow = computed(() =>
+  activation.value.enabled && activation.value.status !== "permanent");
+const activationRowText = computed(() => {
+  const a = activation.value;
+  const state = activationDisplay(a.status, a.until);
+  if (state === "until") return t("activation.state.until", { date: new Date((a.until ?? 0) * 1000).toLocaleString() });
+  if (state === "expired") return t("activation.state.expired");
+  if (state === "disabled") return t("activation.state.disabled");
+  return t("activation.state.permanent");
+});
+const activationRowClass = computed(() => (activation.value.active ? "" : "activation-lapsed"));
+
 const workerVersion = ref("—");
 const latestVersion = ref("");
 const updateAvailable = ref(false);
@@ -337,8 +352,9 @@ onMounted(async () => {
   }
   cronStatus.value = "ok";
   r2presignStatus.value = "active";
-  // version info + update check (all users)
-  void loadVersionInfo();
+  // Upstream release check is an operator concern, and it spends the caller's
+  // unauthenticated GitHub quota — only super admins run it.
+  if (isSuperAdmin.value) void loadVersionInfo();
 });
 
 onUnmounted(() => {
@@ -469,27 +485,29 @@ onUnmounted(() => {
       <div class="card-header">
         <span class="card-title">{{ t("dashboard.systemInfo") }}</span>
       </div>
-      <div class="info-two-col">
-        <div class="info-col">
-           <div class="info-row"><span class="info-key">EdgeSonic</span><span class="info-val">v{{ edgesonicVersion }}</span></div>
-           <div class="info-row"><span class="info-key">Build</span><span class="info-val">{{ edgesonicBuildTime }}</span></div>
-           <div class="info-row"><span class="info-key">{{ t("dashboard.infoApiVersion") }}</span><span class="info-val">1.16.1</span></div>
+      <!-- Rows flow into however many columns fit, so a viewer without the
+           admin-only entries gets an even spread instead of one stacked column. -->
+      <div class="info-flow">
+        <div class="info-row"><span class="info-key">EdgeSonic</span><span class="info-val">v{{ edgesonicVersion }}</span></div>
+        <div class="info-row"><span class="info-key">Build</span><span class="info-val">{{ edgesonicBuildTime }}</span></div>
+        <div class="info-row"><span class="info-key">{{ t("dashboard.infoApiVersion") }}</span><span class="info-val">1.16.1</span></div>
         <div class="info-row"><span class="info-key">{{ t("dashboard.infoPlatform") }}</span><span class="info-val">Cloudflare Workers</span></div>
+        <div v-if="showActivationRow" class="info-row">
+          <span class="info-key">{{ t("dashboard.infoActivation") }}</span>
+          <span class="info-val" :class="activationRowClass">{{ activationRowText }}</span>
         </div>
-        <div class="info-col">
-          <div v-if="canManageUsers" class="info-row"><span class="info-key">{{ t("dashboard.infoUsers") }}</span><span class="info-val">{{ stats.users }}</span></div>
-          <div v-if="canManageSources" class="info-row"><span class="info-key">{{ t("dashboard.infoSources") }}</span><span class="info-val">{{ stats.sources }}</span></div>
-          <div class="info-row">
-            <span class="info-key">{{ t("dashboard.githubLatest") }}</span>
-            <span class="info-val">
-              <a v-if="updateAvailable" href="https://github.com/wuyilingwei/edgesonic/releases/latest" target="_blank" rel="noopener" class="update-link">
-                {{ t("dashboard.updateAvailable", { ver: latestVersion }) }}
-              </a>
-               <span v-else-if="latestVersion" class="update-current">{{ t("dashboard.updateCurrent", { ver: latestVersion, state: isDirtyBuild ? t("dashboard.updateStateDirty") : isDevelopmentBuild ? t("dashboard.updateStateDev") : t("dashboard.updateStateLatest") }) }}</span>
-              <span v-else-if="updateChecking" class="muted">{{ t("dashboard.updateChecking") }}</span>
-              <span v-else class="muted">—</span>
-            </span>
-          </div>
+        <div v-if="canManageUsers" class="info-row"><span class="info-key">{{ t("dashboard.infoUsers") }}</span><span class="info-val">{{ stats.users }}</span></div>
+        <div v-if="canManageSources" class="info-row"><span class="info-key">{{ t("dashboard.infoSources") }}</span><span class="info-val">{{ stats.sources }}</span></div>
+        <div v-if="isSuperAdmin" class="info-row">
+          <span class="info-key">{{ t("dashboard.githubLatest") }}</span>
+          <span class="info-val">
+            <a v-if="updateAvailable" href="https://github.com/wuyilingwei/edgesonic/releases/latest" target="_blank" rel="noopener" class="update-link">
+              {{ t("dashboard.updateAvailable", { ver: latestVersion }) }}
+            </a>
+             <span v-else-if="latestVersion" class="update-current">{{ t("dashboard.updateCurrent", { ver: latestVersion, state: isDirtyBuild ? t("dashboard.updateStateDirty") : isDevelopmentBuild ? t("dashboard.updateStateDev") : t("dashboard.updateStateLatest") }) }}</span>
+            <span v-else-if="updateChecking" class="muted">{{ t("dashboard.updateChecking") }}</span>
+            <span v-else class="muted">—</span>
+          </span>
         </div>
       </div>
     </div>
@@ -521,13 +539,15 @@ onUnmounted(() => {
   gap: 0;
 }
 .info-grid .info-row { border-bottom: 1px solid var(--color-border-subtle); }
-.info-two-col {
+/* Column count follows the width, so the row set spreads evenly however many
+   entries the viewer's permissions leave visible. */
+.info-flow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 0 2rem;
 }
-.info-col { display: flex; flex-direction: column; }
-.info-col .info-row:last-child { border-bottom: none; }
+.info-flow .info-row { border-bottom: 1px solid var(--color-border-subtle); }
+.activation-lapsed { color: var(--color-status-error); }
 .info-row {
   display: flex; justify-content: space-between;
   padding: 0.6rem 0;

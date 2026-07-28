@@ -215,7 +215,8 @@
         "hoursAgo": "{n} 小时前",
         "daysAgo": "{n} 天前"
       }
-    }
+    },
+    "infoActivation": "激活状态"
   },
   "library": {
     "title": "媒体库",
@@ -749,15 +750,15 @@
       },
       "lastfm": {
         "title": "Last.fm",
-        "userDesc": "关联你的 Last.fm 账号以读取个人播放历史、收藏曲目与热门曲目。需要你自己填入 Last.fm API Key（下方）加上你的 Last.fm 用户名——和系统级 Key 完全隔离，不会共用。只读——不支持 scrobble / love。",
-        "userApiKeyDesc": "上面这些个人读取项（近期/收藏/热门曲目、资料）需要这个 Key 才能用。和系统级 Key 完全隔离——留空就是留空，不会回落到系统级 Key。",
+        "userDesc": "关联你的 Last.fm 账号以读取个人播放历史、收藏曲目与热门曲目。需要填入你自己的 Last.fm API Key（下方）和 Last.fm 用户名——这个 Key 只服务于你的账号，与服务器共用的 Key 相互独立。只读——不支持 scrobble / love。",
+        "userApiKeyDesc": "上面这些个人读取项（近期/收藏/热门曲目、资料）需要这个 Key 才能用。它与服务器共用的 Key 相互独立——留空就是留空，不会改用其它 Key。",
         "apiKeyLabel": "API Key",
         "apiKeyField": "API Key",
         "apiKeyPlaceholder": "32 位 Last.fm API Key",
         "apiKeySaved": "Last.fm API Key 已保存",
         "apiKeyCleared": "Last.fm API Key 已清除",
-        "systemTitle": "Last.fm（系统级）",
-        "systemDesc": "全用户共享的 API Key。只用于 Subsonic getArtistInfo / getAlbumInfo / getSimilarSongs / getTopSongs——和上面的用户级 Key 完全隔离，不会被用于任何用户的个人近期/收藏/热门曲目。留空则 last.fm 不再作为艺人信息来源，album/similar/topSongs 端点也会禁用（Subsonic 返回错误码 30）。",
+        "systemTitle": "Last.fm（服务器共用）",
+        "systemDesc": "全站共用的 API Key。只用于 Subsonic getArtistInfo / getAlbumInfo / getSimilarSongs / getTopSongs——与上面的个人 Key 相互独立，不会用于任何用户的个人近期/收藏/热门曲目。留空则 last.fm 不再作为艺人信息来源，album/similar/topSongs 端点也会禁用（Subsonic 返回错误码 30）。",
         "usernameLabel": "Last.fm 用户名",
         "usernamePlaceholder": "你的 Last.fm 账号名",
         "usernameSaved": "Last.fm 用户名已保存",
@@ -1194,6 +1195,32 @@
       "gateModeAll": "全部满足",
       "gateModeAny": "任一满足",
       "unavailable": "后端尚未支持"
+    },
+    "featureKeys": {
+      "allow_being_proxied": {
+        "name": "允许被代理",
+        "desc": "允许其它 EdgeSonic 实例把本站作为上游拉流。"
+      },
+      "allow_email_password_reset": {
+        "name": "邮箱找回密码",
+        "desc": "允许用户通过注册邮箱自助重置密码。"
+      },
+      "enable_subsonic_upstream": {
+        "name": "Subsonic 上游源",
+        "desc": "允许把外部 Subsonic 服务器作为存储源播放。"
+      },
+      "guest_browse": {
+        "name": "访客浏览",
+        "desc": "未登录访客可以浏览与试听媒体库。"
+      },
+      "open_registration": {
+        "name": "开放注册",
+        "desc": "允许任何人自助注册账号。"
+      },
+      "scrape_enabled": {
+        "name": "元数据刮削",
+        "desc": "允许从外部来源补全歌曲与艺人元数据。"
+      }
     }
   },
   "sources": {

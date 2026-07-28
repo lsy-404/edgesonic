@@ -189,6 +189,10 @@ const open = ref<Record<SectionKey, boolean>>({ user: true, activation: false, a
 function toggleSection(key: SectionKey) { open.value[key] = !open.value[key]; }
 // The expired-activation banner deep-links here with ?section=activation.
 if (route.query.section === "activation") { open.value.user = false; open.value.activation = true; }
+// Nothing to redeem or read while the account is unbounded, so the section
+// only appears once activation actually constrains it.
+const showActivationSection = computed(() =>
+  !isGuest.value && activation.value.enabled && activation.value.status !== "permanent");
 
 type SubSectionKey = "media" | "integrations" | "lastfm" | "email" | "workers" | "featureFlags";
 const subOpen = ref<Record<SubSectionKey, boolean>>({ media: false, integrations: false, lastfm: false, email: false, workers: false, featureFlags: false });
@@ -1431,6 +1435,20 @@ async function onResetFailedWork() {
 // it is filtered out of the generic flag list below.
 const activationFeature = computed(() => features.value.find((f) => f.key === "enable_activation") ?? null);
 const genericFeatures = computed(() => features.value.filter((f) => f.key !== "enable_activation"));
+
+// Flags carry a raw key and a database-authored description. Prefer a
+// translated name/description when we ship one, else show what the backend
+// gave us so a newly added flag is never invisible.
+function featureName(key: string): string {
+  const path = `settings.featureKeys.${key}.name`;
+  const translated = t(path);
+  return translated === path ? key : translated;
+}
+function featureDesc(f: { key: string; description: string }): string {
+  const path = `settings.featureKeys.${f.key}.desc`;
+  const translated = t(path);
+  return translated === path ? f.description : translated;
+}
 const gateMode = ref<"all" | "any">("all");
 const gateModeBusy = ref(false);
 
@@ -1907,7 +1925,7 @@ onMounted(() => {
     </section>
 
     <!-- ============ ACTIVATION ============ -->
-    <section v-if="!isGuest" class="settings-section card" :class="{ open: open.activation }">
+    <section v-if="showActivationSection" class="settings-section card" :class="{ open: open.activation }">
       <button class="section-header" @click="toggleSection('activation')">
         <span class="section-title">{{ t("settings.activation.title") }}</span>
         <span class="section-caret">{{ open.activation ? "−" : "+" }}</span>
@@ -3024,8 +3042,8 @@ onMounted(() => {
           <div v-else class="feature-list">
             <div v-for="f in genericFeatures" :key="f.key" class="feature-row">
               <div class="feature-info">
-                <code class="feature-key">{{ f.key }}</code>
-                <span class="feature-desc">{{ f.description }}</span>
+                <span class="feature-name">{{ featureName(f.key) }}</span>
+                <span class="feature-desc">{{ featureDesc(f) }}</span>
               </div>
               <label class="toggle" :title="canManageSettings ? '' : t('settings.common.levelRequired')">
                 <input

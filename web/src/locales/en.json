@@ -214,7 +214,8 @@
         "hoursAgo": "{n}h ago",
         "daysAgo": "{n}d ago"
       }
-    }
+    },
+    "infoActivation": "Activation"
   },
   "library": {
     "title": "Library",
@@ -752,14 +753,14 @@
       },
       "lastfm": {
         "title": "Last.fm",
-        "userDesc": "Connect your Last.fm account to read your play history, loved tracks and top tracks. Requires your own Last.fm API key (below) plus your Last.fm username — this is fully isolated from the system-level key, it is never shared. Read-only — scrobble / love are not supported.",
-        "userApiKeyDesc": "Required for the personal read paths above (recent/loved/top tracks, profile). Isolated from the system-level key — leaving this empty means those paths stay unavailable, they do not fall back to the system key.",
+        "userDesc": "Connect your Last.fm account to read your play history, loved tracks and top tracks. Requires your own Last.fm API key (below) plus your Last.fm username — this key serves only your account and is independent of the server-wide one. Read-only — scrobble / love are not supported.",
+        "userApiKeyDesc": "Required for the personal read paths above (recent/loved/top tracks, profile). Independent of the server-wide key — leaving this empty means those paths stay unavailable rather than switching to another key.",
         "apiKeyLabel": "API key",
         "apiKeyField": "API key",
         "apiKeyPlaceholder": "32-char Last.fm API key",
         "apiKeySaved": "Last.fm API key saved",
         "apiKeyCleared": "Last.fm API key cleared",
-        "systemTitle": "Last.fm (system)",
+        "systemTitle": "Last.fm (server-wide)",
         "systemDesc": "API key shared by all users. Powers the Subsonic getArtistInfo / getAlbumInfo / getSimilarSongs / getTopSongs endpoints only — isolated from the per-user key above, it is never used for a user's personal recent/loved/top tracks. Empty disables Last.fm as an artist-info source and the album/similar/topSongs endpoints (Subsonic returns error 30).",
         "usernameLabel": "Last.fm username",
         "usernamePlaceholder": "your Last.fm account name",
@@ -1211,6 +1212,32 @@
       "gateModeAll": "All required",
       "gateModeAny": "Any one",
       "unavailable": "Not available on this backend yet"
+    },
+    "featureKeys": {
+      "allow_being_proxied": {
+        "name": "Allow being proxied",
+        "desc": "Let other EdgeSonic instances stream from this server as an upstream."
+      },
+      "allow_email_password_reset": {
+        "name": "Email password reset",
+        "desc": "Let users reset their own password through their registered email."
+      },
+      "enable_subsonic_upstream": {
+        "name": "Subsonic upstream sources",
+        "desc": "Allow external Subsonic servers to be used as storage sources."
+      },
+      "guest_browse": {
+        "name": "Guest browsing",
+        "desc": "Let signed-out visitors browse and preview the library."
+      },
+      "open_registration": {
+        "name": "Open registration",
+        "desc": "Allow anyone to create an account."
+      },
+      "scrape_enabled": {
+        "name": "Metadata scraping",
+        "desc": "Allow song and artist metadata to be filled in from external sources."
+      }
     }
   },
   "sources": {
