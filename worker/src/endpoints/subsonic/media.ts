@@ -618,11 +618,22 @@ const getCoverArtHandler = async (c: Context) => {
   const size = parseCoverSize(c.req.query("size"));
 
   let coverKey: string | null = null;
-  if (prefix === "al-") {
-    // Scan-era album ids already carry the "al-" prefix — try both forms
-    let albumId = entityId;
+  if (prefix === "al-" || (prefix !== "ar-" && prefix !== "pl-" && prefix !== "pc-")) {
+    // Clients pass whatever id they have: an album id (with or without the
+    // "al-" prefix scan-era ids already carry), or a song id — Subsonic servers
+    // conventionally answer either, resolving a song to its album's artwork.
+    let albumId = prefix === "al-" ? entityId : id;
     let album = await queries.getAlbum(albumId);
-    if (!album) { albumId = id; album = await queries.getAlbum(albumId); }
+    if (!album && prefix === "al-") { albumId = id; album = await queries.getAlbum(albumId); }
+    if (!album) {
+      // Only the album link is needed here, so this stays a single-column
+      // lookup rather than the full song projection with its artist joins.
+      const song = await env.DB
+        .prepare("SELECT album_id FROM song_masters WHERE id = ?")
+        .bind(prefix === "al-" ? entityId : id)
+        .first<{ album_id: string }>();
+      if (song) { albumId = song.album_id; album = await queries.getAlbum(albumId); }
+    }
     if (!album) return c.body(null, 404 as never);
     coverKey = album.cover_r2_key ?? null;
     // entirely because its directory-image fallback assigned a shared parent

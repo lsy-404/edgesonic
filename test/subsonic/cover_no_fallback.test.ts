@@ -121,6 +121,8 @@ function buildDb(): DatabaseSync {
 
     -- al-curated: admin set cover_r2_key, must still 200
     INSERT INTO albums (id, name, cover_r2_key) VALUES ('al-curated', 'Curated', 'covers/al-curated');
+    -- Clients commonly ask for a song's cover by the song's own id.
+    INSERT INTO song_masters (id, album_id, title) VALUES ('457', 'al-curated', 'Breaking Now');
   `);
   return sqlite;
 }
@@ -227,6 +229,27 @@ async function main() {
     const { get } = makeApp(sqlite, r2, kv);
     const r = await get("/rest/getCoverArt?id=al-doesnotexist");
     assert(r.status === 404, `404 (got ${r.status})`);
+  }
+
+  console.log("\na song id resolves to its album's cover:");
+  {
+    const counter: R2Counter = { get: [], put: [] };
+    const r2 = makeR2({ "covers/al-curated": { data: new Uint8Array([0xff, 0xd8, 0xff, 1]), contentType: "image/jpeg" } }, counter);
+    const kv = makeKV();
+    const sqlite = buildDb();
+    const { get } = makeApp(sqlite, r2, kv);
+
+    // Bare song id, and the same id carrying the album prefix a client may add.
+    for (const id of ["457", "al-457"]) {
+      const r = await get(`/rest/getCoverArt?id=${id}`);
+      assert(r.status === 200, `${id} → 200 (got ${r.status})`);
+      assert(counter.get.includes("covers/al-curated"), `${id} read the album's cover`);
+    }
+
+    // A song id whose album has no art still 404s rather than inventing one.
+    const none = await get("/rest/getCoverArt?id=sm-1");
+    assert(none.status === 404, `song on an artless album → 404 (got ${none.status})`);
+    assert(counter.put.length === 0, "resolution never writes a cover");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
