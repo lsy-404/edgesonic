@@ -56,7 +56,11 @@ function main() {
     assert(!bitrateNeedsRepair(955, 955), "an exact match is left alone");
     assert(!bitrateNeedsRepair(1000, 955), "container overhead is tolerated");
     assert(!bitrateNeedsRepair(312, 320), "vbr wobble is tolerated");
-    assert(bitrateNeedsRepair(223, 320), "a 30% gap is repaired");
+    // Size includes tags and cover art, so the measurement runs high on small
+    // lossy files; a correct-looking rate must not be replaced by that.
+    assert(!bitrateNeedsRepair(104, 174), "artwork-inflated measurement leaves a plausible rate alone");
+    assert(bitrateNeedsRepair(66, 355), "a 5x gap is repaired");
+    assert(bitrateNeedsRepair(2000, 320), "an over-stated rate is repaired too");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

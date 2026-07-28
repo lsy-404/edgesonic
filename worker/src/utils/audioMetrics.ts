@@ -36,11 +36,17 @@ export function deriveBitrate(
 }
 
 /**
- * Whether a stored rate is far enough from the measured one to be worth
- * rewriting. Container overhead and VBR make small gaps normal; the failures
- * being repaired are off by an order of magnitude.
+ * Whether a stored rate is wrong enough to be worth rewriting.
+ *
+ * The measurement counts tags and embedded artwork as audio, so it runs a
+ * little high — on a short lossy track with a large cover, noticeably so.
+ * Repair therefore requires a factor-of-two disagreement, which is what the
+ * slice-parsing defect produces (roughly 20x low) while leaving a merely
+ * approximate lossy rate alone rather than replacing it with an inflated one.
  */
+const REPAIR_RATIO = 2;
+
 export function bitrateNeedsRepair(stored: number | null | undefined, measured: number): boolean {
   if (typeof stored !== "number" || !Number.isFinite(stored) || stored <= 0) return true;
-  return Math.abs(stored - measured) > measured * 0.25;
+  return stored * REPAIR_RATIO < measured || measured * REPAIR_RATIO < stored;
 }
