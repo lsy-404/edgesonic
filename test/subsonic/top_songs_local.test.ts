@@ -108,7 +108,7 @@ function buildDb(opts: { lastfmKey: string }) {
       starred INTEGER DEFAULT 0, starred_at INTEGER,
       PRIMARY KEY (user_id, item_id, item_type)
     );
-    -- 090: lastfm cache moved from KV to D1
+    -- lastfm cache lives in D1, not KV
     CREATE TABLE lastfm_cache (
       cache_key TEXT PRIMARY KEY,
       value TEXT NOT NULL,

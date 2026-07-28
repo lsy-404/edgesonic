@@ -113,7 +113,7 @@ function buildDb() {
       starred INTEGER DEFAULT 0, starred_at INTEGER,
       PRIMARY KEY (user_id, item_id, item_type)
     );
-    -- 090: now_playing moved from KV to D1
+    -- now_playing lives in D1, not KV
     CREATE TABLE now_playing (
       username TEXT PRIMARY KEY,
       song_id TEXT NOT NULL,
@@ -144,7 +144,7 @@ function buildDb() {
 }
 
 // ---------------------------------------------------------------------------
-// Harness — 090: env no longer needs KV for now_playing / scrobble
+// Harness — env needs no KV for now_playing / scrobble
 // ---------------------------------------------------------------------------
 function makeApp(
   sqlite: DatabaseSync,
