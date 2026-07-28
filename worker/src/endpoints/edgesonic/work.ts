@@ -254,7 +254,9 @@ workRoutes.post("/work/submit", async (c) => {
               "SELECT album_id FROM song_masters WHERE id = ?",
             ).bind(apply.masterId).first<{ album_id: string }>();
             if (masterRow?.album_id) {
-              const coverKey = `covers/al-${masterRow.album_id}`;
+              // Album ids already carry the "al-" prefix; prepending a second
+              // one produced the covers/al-al-… keys still present in storage.
+              const coverKey = `covers/${masterRow.album_id}`;
               const mime = (cover.mime || "image/jpeg").startsWith("image/")
                 ? cover.mime : `image/${cover.mime || "jpeg"}`;
               await (env as Env).MUSIC_BUCKET.put(coverKey, bytes, {
