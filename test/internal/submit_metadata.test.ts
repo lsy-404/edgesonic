@@ -122,6 +122,13 @@ function buildDb() {
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
     );
+    -- Relinking a song rewrites its display artists through this join table.
+    CREATE TABLE song_artists (
+      song_id TEXT NOT NULL,
+      artist_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (song_id, artist_id)
+    );
     CREATE TABLE song_instances (
       id TEXT PRIMARY KEY,
       master_id TEXT NOT NULL,

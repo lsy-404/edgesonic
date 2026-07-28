@@ -41,12 +41,18 @@ function assert(cond: unknown, msg: string) {
 // ---------------------------------------------------------------------------
 // D1Database shim backed by node:sqlite
 // ---------------------------------------------------------------------------
+// D1 accepts booleans as bind values and stores them as 1/0; node:sqlite
+// rejects them outright, so normalise on the way in.
+function toSqliteValue(v: any): any {
+  return typeof v === "boolean" ? (v ? 1 : 0) : v;
+}
+
 function makeD1(sqlite: DatabaseSync): any {
   function prepare(query: string) {
     const stmt = sqlite.prepare(query);
     let boundArgs: any[] = [];
     return {
-      bind(...args: any[]) { boundArgs = args; return this; },
+      bind(...args: any[]) { boundArgs = args.map(toSqliteValue); return this; },
       async first<T = any>(): Promise<T | null> {
         const row = stmt.get(...boundArgs);
         return (row ?? null) as T | null;
@@ -123,6 +129,13 @@ function buildDb() {
       lyrics TEXT,
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
+    );
+    -- Song listings resolve display artists through this join table first.
+    CREATE TABLE song_artists (
+      song_id TEXT NOT NULL,
+      artist_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (song_id, artist_id)
     );
     CREATE TABLE song_instances (
       id TEXT PRIMARY KEY,
