@@ -66,15 +66,21 @@ function setPerm(level: number, name: string, checked: boolean) {
   if (row) row.enabled = checked;
   else permissions.value.push({ level, name, enabled: checked });
 }
+function isLocked(level: number, name: string): boolean {
+  return !!permissions.value.find((p) => p.level === level && p.name === name)?.locked;
+}
+
 function toggle(level: number, name: string, checked: boolean) {
-  const row = permissions.value.find((p) => p.level === level && p.name === name);
-  if (row?.locked) return;
+  if (isLocked(level, name)) return;
   setPerm(level, name, checked);
   if (checked) {
     // Cascade upward to admin (level 2). Super admin (level 3) is always
     // fully permissioned server-side, so the UI never renders its card and
-    // we never write to level 3 here.
-    for (let higher = level + 1; higher <= 2; higher++) setPerm(higher, name, true);
+    // we never write to level 3 here. A level locked for this capability is
+    // skipped so the cascade can never carry it past a policy boundary.
+    for (let higher = level + 1; higher <= 2; higher++) {
+      if (!isLocked(higher, name)) setPerm(higher, name, true);
+    }
   }
   dirty.value = true;
 }
@@ -121,8 +127,11 @@ onMounted(load);
             <span :class="['status-badge', level === 2 ? 'info' : level === 1 ? 'success' : 'muted']">{{ t("settings.permissions.level", { n: level }) }}</span>
           </div>
           <div class="perm-list">
-            <div v-for="key in permKeys" :key="key" class="perm-row" :class="{ 'perm-row-locked': permissions.find(p => p.level === level && p.name === key)?.locked }">
-              <span class="perm-name">{{ permLabel(key) }}</span>
+            <div v-for="key in permKeys" :key="key" class="perm-row" :class="{ 'perm-row-locked': isLocked(level, key) }">
+              <span class="perm-name">
+                {{ permLabel(key) }}
+                <span v-if="isLocked(level, key)" class="perm-lock" :title="t('settings.permissions.lockedHint')"><Icon name="lock" /></span>
+              </span>
               <label class="toggle">
                 <input
                   type="checkbox"
@@ -162,7 +171,9 @@ onMounted(load);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 .perm-row:last-child { border-bottom: none; }
-.perm-name { font-size: var(--fs-sm); color: var(--color-text-primary); }
+.perm-name { font-size: var(--fs-sm); color: var(--color-text-primary); display: inline-flex; align-items: center; gap: 0.35rem; }
+.perm-lock { display: inline-flex; color: var(--color-text-muted); }
+.perm-lock svg { width: 12px; height: 12px; }
 .perm-row-locked .perm-name { color: var(--color-text-muted, var(--color-text-secondary)); opacity: 0.7; }
 .perm-row-locked .toggle { opacity: 0.5; cursor: not-allowed; }
 .perm-row-locked .toggle input:disabled + .toggle-slider { cursor: not-allowed; }

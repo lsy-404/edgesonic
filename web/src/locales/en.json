@@ -1183,7 +1183,8 @@
         "maintenance_reclaim": "Reclaim stalled tasks",
         "maintenance_reset": "Reset failed tasks",
         "view_all_users_items": "View all users' items"
-      }
+      },
+      "lockedHint": "This capability cannot be granted at this level"
     },
     "clients": {
       "title": "Subsonic Clients",

@@ -1166,7 +1166,8 @@
         "maintenance_reclaim": "回收滞留任务",
         "maintenance_reset": "重置失败任务",
         "view_all_users_items": "查看全部用户的内容"
-      }
+      },
+      "lockedHint": "该权限在此用户组不可开启"
     },
     "clients": {
       "title": "Subsonic 客户端",
