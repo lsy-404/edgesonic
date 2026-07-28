@@ -242,7 +242,7 @@ async function run() {
     //  subsequent prepares = 3 batched album fetches
     let stage = 0;
     const { db, calls } = makeSpyDb((call) => {
-      if (call.sql.includes("SELECT DISTINCT album_id")) {
+      if (call.sql.includes("DISTINCT") && call.sql.includes("song_masters")) {
         stage++;
         return { results: albumIds.map((id) => ({ album_id: id })) };
       }
