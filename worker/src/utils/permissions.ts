@@ -73,7 +73,7 @@ const ALL_PERMISSIONS = [
   "maintenance_reclaim", "maintenance_reset", "browse", "search",
   "participate_work", "dispatch_work", "share", "manage_playlists",
   "manage_podcasts", "manage_radio", "manage_cloudflare", "edit_annotations",
-  "manage_activation",
+  "manage_activation", "view_all_users_items",
 ] as const;
 
 // ----------------------------------------------------------------------------

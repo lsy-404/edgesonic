@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs } from "../api";
 import { useWorkerPool } from "../stores/workerPool";
@@ -315,11 +315,7 @@ async function onReclaimStaleWork() {
 onMounted(async () => {
   if (!isLoggedIn.value) return;
   try {
-    const [libraryJson, sourceXml, userXml] = await Promise.all([
-      edgesonicFetch("stats/library"),
-      canManageSources.value ? storageFetch("sources/list") : Promise.resolve(""),
-      canManageUsers.value ? edgesonicFetch("users/list") : Promise.resolve(""),
-    ]);
+    const libraryJson = await edgesonicFetch("stats/library");
 
     // A single real COUNT(*) endpoint for the library stats — exact
     // regardless of size (the earlier search3-based counts capped at 500).
@@ -331,20 +327,6 @@ onMounted(async () => {
         stats.value.songs = parsed.songs ?? 0;
       }
     } catch { /* leave stats at 0 on parse failure */ }
-
-    if (sourceXml) {
-      stats.value.sources = parseXmlAttrs(sourceXml, "source").length;
-    }
-    // /edgesonic/users/list is now JSON; older XML path stayed only
-    // because Dashboard used parseXmlAttrs to count rows. JSON.parse-and-count
-    // here mirrors the new Users.vue load().
-    if (userXml) {
-      try {
-        const parsed = JSON.parse(userXml) as { ok?: boolean; users?: unknown[] };
-        if (parsed.ok && Array.isArray(parsed.users)) stats.value.users = parsed.users.length;
-      } catch { /* leave stats.users at 0 on parse failure */ }
-    }
-
   } catch {
     // Network error or auth failure — leave stats at 0, UI shows skeleton
   } finally {
@@ -352,10 +334,35 @@ onMounted(async () => {
   }
   cronStatus.value = "ok";
   r2presignStatus.value = "active";
-  // Upstream release check is an operator concern, and it spends the caller's
-  // unauthenticated GitHub quota — only super admins run it.
-  if (isSuperAdmin.value) void loadVersionInfo();
 });
+
+// Permission-gated panels load off a watcher rather than inline in onMounted:
+// /auth/me may still be in flight at mount, and a capability that arrives late
+// would otherwise leave its row showing a stale zero forever.
+function whenPermitted(source: () => boolean, load: () => void) {
+  watch(source, (allowed) => {
+    if (allowed && isLoggedIn.value) load();
+  }, { immediate: true });
+}
+
+whenPermitted(() => canManageSources.value, async () => {
+  try {
+    const xml = await storageFetch("sources/list");
+    if (xml) stats.value.sources = parseXmlAttrs(xml, "source").length;
+  } catch { /* leave the count at 0 */ }
+});
+
+whenPermitted(() => canManageUsers.value, async () => {
+  try {
+    const json = await edgesonicFetch("users/list");
+    const parsed = JSON.parse(json) as { ok?: boolean; users?: unknown[] };
+    if (parsed.ok && Array.isArray(parsed.users)) stats.value.users = parsed.users.length;
+  } catch { /* leave the count at 0 */ }
+});
+
+// The upstream release check is an operator concern and spends the caller's
+// unauthenticated GitHub quota — super admins only.
+whenPermitted(() => isSuperAdmin.value, () => { void loadVersionInfo(); });
 
 onUnmounted(() => {
 });
@@ -440,44 +447,39 @@ onUnmounted(() => {
     </section>
 
     <!-- Stats -->
-    <div class="grid grid-4 stats-grid">
-      <div class="stat-card card hoverable">
+    <div class="stats-grid">
+      <router-link to="/library?tab=artists" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
           <span v-else>{{ stats.artists }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.artists") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
-      </div>
-      <div class="stat-card card hoverable">
+      </router-link>
+      <router-link to="/library?tab=albums" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
           <span v-else>{{ stats.albums }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.albums") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
-      </div>
-      <div class="stat-card card hoverable">
+      </router-link>
+      <router-link to="/library?tab=songs" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
           <span v-else>{{ stats.songs }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.songs") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
-      </div>
-      <div v-if="canManageSources" class="stat-card card hoverable">
+      </router-link>
+      <router-link v-if="canManageSources" to="/sources" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
           <span v-else>{{ stats.sources }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.storageSources") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
-      </div>
-      <div v-else class="stat-card card hoverable">
-        <div class="stat-num">–</div>
-        <div class="mono-label">{{ t("dashboard.online") }}</div>
-        <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
-      </div>
+      </router-link>
     </div>
 
     <!-- System Info (all logged-in users) -->
@@ -491,7 +493,6 @@ onUnmounted(() => {
         <div class="info-row"><span class="info-key">EdgeSonic</span><span class="info-val">v{{ edgesonicVersion }}</span></div>
         <div class="info-row"><span class="info-key">Build</span><span class="info-val">{{ edgesonicBuildTime }}</span></div>
         <div class="info-row"><span class="info-key">{{ t("dashboard.infoApiVersion") }}</span><span class="info-val">1.16.1</span></div>
-        <div class="info-row"><span class="info-key">{{ t("dashboard.infoPlatform") }}</span><span class="info-val">Cloudflare Workers</span></div>
         <div v-if="showActivationRow" class="info-row">
           <span class="info-key">{{ t("dashboard.infoActivation") }}</span>
           <span class="info-val" :class="activationRowClass">{{ activationRowText }}</span>
@@ -504,7 +505,7 @@ onUnmounted(() => {
             <a v-if="updateAvailable" href="https://github.com/wuyilingwei/edgesonic/releases/latest" target="_blank" rel="noopener" class="update-link">
               {{ t("dashboard.updateAvailable", { ver: latestVersion }) }}
             </a>
-             <span v-else-if="latestVersion" class="update-current">{{ t("dashboard.updateCurrent", { ver: latestVersion, state: isDirtyBuild ? t("dashboard.updateStateDirty") : isDevelopmentBuild ? t("dashboard.updateStateDev") : t("dashboard.updateStateLatest") }) }}</span>
+             <span v-else-if="latestVersion" class="update-current">{{ t("dashboard.updateCurrent", { ver: latestVersion, state: isDevelopmentBuild || isDirtyBuild ? t("dashboard.updateStateDev") : t("dashboard.updateStateLatest") }) }}</span>
             <span v-else-if="updateChecking" class="muted">{{ t("dashboard.updateChecking") }}</span>
             <span v-else class="muted">—</span>
           </span>
@@ -517,8 +518,21 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.stats-grid { margin-bottom: 1rem; }
-.stat-card { text-align: center; padding: 1.4rem 1rem 1.1rem; }
+/* Auto-fit so the row stays even whether or not the viewer sees the
+   storage-sources card. */
+.stats-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 1rem;
+}
+.stat-card {
+  text-align: center;
+  padding: 1.4rem 1rem 1.1rem;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
 .stat-num {
   font-family: var(--font-display);
   font-size: 2.4rem;

@@ -146,7 +146,6 @@
     "albums": "ALBUMS",
     "songs": "SONGS",
     "storageSources": "STORAGE SOURCES",
-    "online": "ONLINE",
     "recentAlbums": "Recent Albums",
     "systemInfo": "System Info",
     "colName": "Name",
@@ -156,11 +155,9 @@
     "infoUsers": "USERS",
     "infoSources": "SOURCES",
     "infoApiVersion": "API VERSION",
-    "infoPlatform": "PLATFORM",
     "githubLatest": "GitHub Latest",
     "updateAvailable": "v{ver} — new version available",
     "updateCurrent": "v{ver} — {state}",
-    "updateStateDirty": "workspace has uncommitted changes",
     "updateStateDev": "development build",
     "updateStateLatest": "up to date",
     "updateChecking": "Checking…",
@@ -302,7 +299,9 @@
     "locateNoCurrent": "No track is currently selected",
     "locateLoadMore": "The current track is not loaded. Click again to search the remaining library.",
     "locateNotFound": "Current track was not found in this library",
-    "locateNotLiked": "Current track is not in your liked songs"
+    "locateNotLiked": "Current track is not in your liked songs",
+    "playNext": "Play next",
+    "queuedNext": "Queued next: {title}"
   },
   "tagEditor": {
     "singleTitle": "Edit Track Info",
@@ -1170,8 +1169,21 @@
         "maintenance_cleanup": "Maintenance",
         "manage_permissions": "Manage Permissions",
         "browse": "Browse",
-        "search": "Search"
-      }
+        "search": "Search",
+        "edit_annotations": "Edit annotations (rating / play count)",
+        "share": "Create share links",
+        "manage_playlists": "Manage playlists",
+        "manage_radio": "Manage internet radio",
+        "manage_podcasts": "Manage podcasts",
+        "manage_activation": "Manage activation and invite codes",
+        "manage_cloudflare": "Manage Cloudflare integration",
+        "participate_work": "Join the browser work pool",
+        "dispatch_work": "Dispatch work queue tasks",
+        "maintenance_reclaim": "Reclaim stalled tasks",
+        "maintenance_reset": "Reset failed tasks",
+        "view_all_users_items": "View all users' items"
+      },
+      "lockedHint": "This capability cannot be granted at this level"
     },
     "clients": {
       "title": "Subsonic Clients",

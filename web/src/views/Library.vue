@@ -2,6 +2,7 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, parseXmlInner, formatDuration } from "../api";
 import { usePlayerStore, type Track } from "../stores/player";
@@ -40,7 +41,14 @@ interface Album {
 
 type Tab = "artists" | "albums" | "songs";
 type SortMode = "newest" | "oldestStarred" | "newestAdded" | "oldestAdded" | "nameAsc" | "nameDesc";
-const tab = ref<Tab>("songs");
+// ?tab= lets other pages (dashboard stat cards) land on a specific view.
+const route = useRoute();
+const requestedTab = String(route.query.tab || "");
+const tab = ref<Tab>(
+  requestedTab === "artists" || requestedTab === "albums" || requestedTab === "songs"
+    ? requestedTab
+    : "songs",
+);
 const sortMode = ref<SortMode>("newest");
 
 const artists = ref<Artist[]>([]);
@@ -584,6 +592,11 @@ function playFromStarred(i: number) {
 
 function playAlbumFromStart() {
   if (albumSongs.value.length) player.setQueue(albumSongs.value, 0);
+}
+
+function queueNext(song: Track) {
+  player.playNext(song);
+  showInfo(t("library.queuedNext", { title: song.title }));
 }
 
 async function openAlbumById(albumId: string, albumName: string) {
@@ -1174,6 +1187,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
            @edit="openEditor(s)"
            @share="openShare('song', s.id, s.title)"
            @add-playlist="openAddToPlaylist(s.id, s.title)"
+           @play-next="queueNext(s)"
            @update:starred="onStarChanged('song', s, $event)"
            @error="onStarError"
          />
@@ -1331,6 +1345,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
             @edit="openEditor(s)"
            @share="openShare('song', s.id, s.title)"
            @add-playlist="openAddToPlaylist(s.id, s.title)"
+           @play-next="queueNext(s)"
            @update:starred="onStarChanged('song', s, $event)"
            @error="onStarError"
          />
@@ -1490,6 +1505,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
             @edit="openEditor(s)"
             @share="openShare('song', s.id, s.title)"
             @add-playlist="openAddToPlaylist(s.id, s.title)"
+           @play-next="queueNext(s)"
             @update:starred="onStarChanged('song', s, $event)"
             @error="onStarError"
           />
@@ -1612,6 +1628,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
                 @edit="openEditor(s)"
             @share="openShare('song', s.id, s.title)"
             @add-playlist="openAddToPlaylist(s.id, s.title)"
+           @play-next="queueNext(s)"
              @update:starred="onStarChanged('song', s, $event)"
              @error="onStarError"
           />
@@ -1980,10 +1997,6 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
    Per-song share now lives inside the SongRowMenu "⋮" dropdown (see that
    component) rather than as its own row button. */
 .song-row { position: relative; }
-/* :deep() reaches into SongRowMenu's scoped .row-menu-btn — dimmed by
-   default (matches the old edit/share/add-playlist affordances), full
-   opacity when its row is hovered. */
-.song-row:hover :deep(.row-menu-btn) { opacity: 1; }
 
 .album-card { position: relative; }
 .card-like-btn {

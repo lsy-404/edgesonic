@@ -147,7 +147,6 @@
     "albums": "专辑",
     "songs": "歌曲",
     "storageSources": "存储源",
-    "online": "在线",
     "recentAlbums": "最新专辑",
     "systemInfo": "系统信息",
     "colName": "名称",
@@ -157,11 +156,9 @@
     "infoUsers": "用户数",
     "infoSources": "存储源",
     "infoApiVersion": "API 版本",
-    "infoPlatform": "运行平台",
     "githubLatest": "GitHub 最新版",
     "updateAvailable": "v{ver} — 有新版本",
     "updateCurrent": "v{ver} — {state}",
-    "updateStateDirty": "当前工作区有未提交修改",
     "updateStateDev": "当前开发构建",
     "updateStateLatest": "已是最新",
     "updateChecking": "检查中…",
@@ -303,7 +300,9 @@
     "locateNoCurrent": "当前没有选中的歌曲",
     "locateLoadMore": "当前歌曲不在已加载范围内，再次点击将查找剩余媒体库。",
     "locateNotFound": "未在当前媒体库中找到播放歌曲",
-    "locateNotLiked": "当前播放歌曲不在我喜欢中"
+    "locateNotLiked": "当前播放歌曲不在我喜欢中",
+    "playNext": "下一曲播放",
+    "queuedNext": "已加入下一曲：{title}"
   },
   "tagEditor": {
     "singleTitle": "编辑歌曲信息",
@@ -1153,8 +1152,21 @@
         "maintenance_cleanup": "维护清理",
         "manage_permissions": "管理权限",
         "browse": "浏览",
-        "search": "搜索"
-      }
+        "search": "搜索",
+        "edit_annotations": "编辑标记（评分/播放次数）",
+        "share": "创建分享链接",
+        "manage_playlists": "管理歌单",
+        "manage_radio": "管理网络电台",
+        "manage_podcasts": "管理播客",
+        "manage_activation": "管理激活与邀请码",
+        "manage_cloudflare": "管理 Cloudflare 集成",
+        "participate_work": "参与浏览器工作池",
+        "dispatch_work": "派发工作队列任务",
+        "maintenance_reclaim": "回收滞留任务",
+        "maintenance_reset": "重置失败任务",
+        "view_all_users_items": "查看全部用户的内容"
+      },
+      "lockedHint": "该权限在此用户组不可开启"
     },
     "clients": {
       "title": "Subsonic 客户端",

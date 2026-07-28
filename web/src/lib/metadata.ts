@@ -72,6 +72,7 @@ export interface ExtractedMetadata {
   disc?: number;
   duration?: number;     // seconds
   bitrate?: number;      // kbps (music-metadata 返回 bps，这里已经 /1000)
+  bitDepth?: number;     // bits per sample
   sampleRate?: number;   // Hz
   channels?: number;
   lyrics?: string;
@@ -101,6 +102,7 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
   if (typeof format.duration === "number") out.duration = Math.round(format.duration);
   if (typeof format.bitrate === "number") out.bitrate = Math.round(format.bitrate / 1000);
   if (typeof format.sampleRate === "number") out.sampleRate = format.sampleRate;
+  if (typeof format.bitsPerSample === "number") out.bitDepth = format.bitsPerSample;
   if (typeof format.numberOfChannels === "number") out.channels = format.numberOfChannels;
 
   const ly = lyricsTagsToText(common.lyrics) || nativeLyricsFallback(meta.native);

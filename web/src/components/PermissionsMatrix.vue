@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
 import Icon from "./Icon.vue";
@@ -15,7 +15,32 @@ const toast = ref({ show: false, msg: "", type: "success" });
 function showToast(msg: string, type = "success") { toast.value = { show: true, msg, type }; setTimeout(() => { toast.value.show = false; }, 3000); }
 
 const levelKeys: Record<number, string> = { 0: "guest", 1: "user", 2: "admin", 3: "super" };
-const permKeys = ["browse", "search", "stream", "download", "upload", "delete", "edit_tags", "manage_files", "manage_sources", "manage_credentials", "manage_users", "maintenance_cleanup", "manage_settings"];
+
+// Reading rows keeps the matrix in step with the server: a capability added
+// backend-side shows up here without a matching edit, in a stable order
+// (listed ones first, anything new appended alphabetically).
+const PREFERRED_ORDER = [
+  "browse", "search", "stream", "download", "upload", "delete", "edit_tags",
+  "edit_annotations", "share", "manage_playlists", "manage_credentials",
+  "manage_files", "manage_sources", "manage_radio", "manage_podcasts",
+  "manage_users", "manage_activation", "view_all_users_items",
+  "manage_permissions", "manage_settings",
+  "manage_cloudflare", "participate_work", "dispatch_work",
+  "maintenance_cleanup", "maintenance_reclaim", "maintenance_reset",
+];
+const permKeys = computed(() => {
+  const seen = [...new Set(permissions.value.map((p) => p.name).filter(Boolean))];
+  const known = PREFERRED_ORDER.filter((k) => seen.includes(k));
+  const extra = seen.filter((k) => !PREFERRED_ORDER.includes(k)).sort();
+  return [...known, ...extra];
+});
+// Unlabelled keys fall back to the raw name so a new capability is still
+// toggleable before its copy lands.
+function permLabel(key: string): string {
+  const path = `settings.permissions.perms.${key}`;
+  const label = t(path);
+  return label === path ? key : label;
+}
 
 async function load() {
   try {
@@ -41,15 +66,21 @@ function setPerm(level: number, name: string, checked: boolean) {
   if (row) row.enabled = checked;
   else permissions.value.push({ level, name, enabled: checked });
 }
+function isLocked(level: number, name: string): boolean {
+  return !!permissions.value.find((p) => p.level === level && p.name === name)?.locked;
+}
+
 function toggle(level: number, name: string, checked: boolean) {
-  const row = permissions.value.find((p) => p.level === level && p.name === name);
-  if (row?.locked) return;
+  if (isLocked(level, name)) return;
   setPerm(level, name, checked);
   if (checked) {
     // Cascade upward to admin (level 2). Super admin (level 3) is always
     // fully permissioned server-side, so the UI never renders its card and
-    // we never write to level 3 here.
-    for (let higher = level + 1; higher <= 2; higher++) setPerm(higher, name, true);
+    // we never write to level 3 here. A level locked for this capability is
+    // skipped so the cascade can never carry it past a policy boundary.
+    for (let higher = level + 1; higher <= 2; higher++) {
+      if (!isLocked(higher, name)) setPerm(higher, name, true);
+    }
   }
   dirty.value = true;
 }
@@ -96,8 +127,11 @@ onMounted(load);
             <span :class="['status-badge', level === 2 ? 'info' : level === 1 ? 'success' : 'muted']">{{ t("settings.permissions.level", { n: level }) }}</span>
           </div>
           <div class="perm-list">
-            <div v-for="key in permKeys" :key="key" class="perm-row" :class="{ 'perm-row-locked': permissions.find(p => p.level === level && p.name === key)?.locked }">
-              <span class="perm-name">{{ t(`settings.permissions.perms.${key}`) }}</span>
+            <div v-for="key in permKeys" :key="key" class="perm-row" :class="{ 'perm-row-locked': isLocked(level, key) }">
+              <span class="perm-name">
+                {{ permLabel(key) }}
+                <span v-if="isLocked(level, key)" class="perm-lock" :title="t('settings.permissions.lockedHint')"><Icon name="lock" /></span>
+              </span>
               <label class="toggle">
                 <input
                   type="checkbox"
@@ -137,7 +171,9 @@ onMounted(load);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 .perm-row:last-child { border-bottom: none; }
-.perm-name { font-size: var(--fs-sm); color: var(--color-text-primary); }
+.perm-name { font-size: var(--fs-sm); color: var(--color-text-primary); display: inline-flex; align-items: center; gap: 0.35rem; }
+.perm-lock { display: inline-flex; color: var(--color-text-muted); }
+.perm-lock svg { width: 12px; height: 12px; }
 .perm-row-locked .perm-name { color: var(--color-text-muted, var(--color-text-secondary)); opacity: 0.7; }
 .perm-row-locked .toggle { opacity: 0.5; cursor: not-allowed; }
 .perm-row-locked .toggle input:disabled + .toggle-slider { cursor: not-allowed; }

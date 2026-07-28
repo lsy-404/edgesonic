@@ -18,7 +18,7 @@
 // historical leftover and forced Users.vue / Dashboard.vue to lean on a
 // hand-rolled `parseXmlAttrs` regex that was easy to break.
 // Shapes:
-//   list → { ok: true, users: [{ username, level, enabled }] }
+//   list → { ok: true, users: [{ username, level, enabled, hasAvatar }] }
 //   get  → { ok: true, user: { username, level, enabled } }
 //  create → { ok: true }
 //  update → { ok: true }
@@ -84,9 +84,9 @@ usersRoutes.get("/users/list", permissionMiddleware("manage_users"), async (c) =
   await ensureEmailColumns(c.env);
   await ensureActivationSchema(c.env);
   const db = c.env.DB;
-  const result = await db.prepare("SELECT username, level, enabled, email, email_verified, activation_status, activated_until FROM users ORDER BY created_at ASC").all<{
+  const result = await db.prepare("SELECT username, level, enabled, email, email_verified, activation_status, activated_until, avatar_r2_key FROM users ORDER BY created_at ASC").all<{
     username: string; level: number; enabled: number; email: string | null; email_verified: number;
-    activation_status: string | null; activated_until: number | null;
+    activation_status: string | null; activated_until: number | null; avatar_r2_key: string | null;
   }>();
   const users = result.results.map((u) => ({
     username: u.username,
@@ -96,6 +96,9 @@ usersRoutes.get("/users/list", permissionMiddleware("manage_users"), async (c) =
     emailVerified: !!u.email_verified,
     activationStatus: u.activation_status ?? "permanent",
     activatedUntil: u.activated_until,
+    // Lets the UI skip fetching an avatar that is known not to exist; without
+    // it every avatar-less account cost a 404 on each render.
+    hasAvatar: !!u.avatar_r2_key,
   }));
   return c.json({ ok: true, users });
 });

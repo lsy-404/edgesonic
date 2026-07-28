@@ -14,6 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import { locateEmbeddedPicture } from "./tags";
+import { resolveImageMime } from "./imageType";
 import { encodePath } from "../endpoints/storage/scan";
 import { TAIL_BYTES as WAV_TAIL_BYTES } from "./slices";
 
@@ -77,7 +78,13 @@ export async function resolveAlbumCover(env: Env, albumId: string): Promise<stri
 
   if (!image) return null;
   const coverKey = `covers/${albumId}`;
-  await env.MUSIC_BUCKET.put(coverKey, image.body, { httpMetadata: { contentType: image.contentType } });
+  // extractEmbedded always hands back the bytes for this path, so the stored
+  // media type can be taken from the artwork itself rather than the tag's
+  // often-unusable declaration.
+  const bytes = image.body instanceof Uint8Array ? image.body : new Uint8Array();
+  await env.MUSIC_BUCKET.put(coverKey, image.body, {
+    httpMetadata: { contentType: resolveImageMime(image.contentType, bytes) },
+  });
   await db.prepare("UPDATE albums SET cover_r2_key = ?, updated_at = ? WHERE id = ?")
     .bind(coverKey, Math.floor(Date.now() / 1000), albumId).run();
   return coverKey;

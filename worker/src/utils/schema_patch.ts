@@ -157,6 +157,11 @@ export async function ensureActivationSchema(env: { DB: D1Database }): Promise<v
     await env.DB.prepare(
       "INSERT OR IGNORE INTO user_permissions (level, permission, enabled, max_rph) VALUES (3, 'manage_activation', 1, 0), (2, 'manage_activation', 0, 0), (1, 'manage_activation', 0, 0), (0, 'manage_activation', 0, 0)"
     ).run();
+    // Referenced by the shares and now-playing endpoints but never seeded, so
+    // it could not be delegated below super admin until now.
+    await env.DB.prepare(
+      "INSERT OR IGNORE INTO user_permissions (level, permission, enabled, max_rph) VALUES (3, 'view_all_users_items', 1, 0), (2, 'view_all_users_items', 0, 0), (1, 'view_all_users_items', 0, 0), (0, 'view_all_users_items', 0, 0)"
+    ).run();
   } catch {
     // features / user_permissions tables may not exist in minimal test schemas.
   }

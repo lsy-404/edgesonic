@@ -24,6 +24,7 @@ import { createSubsonicAdapter } from "../../adapters/subsonic";
 import type { StreamResult } from "../../adapters/index";
 import { subsonicError } from "../../auth";
 import { getFeature, getFeatureString, parseChain } from "../../utils/features";
+import { resolveImageMime } from "../../utils/imageType";
 // Transcode factory is statically imported (it lazy-loads the Sandbox /
 // External engine modules so this is safe under tsx test runs). Tests can
 // inject a FakeEngine via __setEngineFactoryForTest exported from factory.ts.
@@ -641,6 +642,35 @@ const getCoverArtHandler = async (c: Context) => {
   } else if (prefix === "ar-") {
     const artist = await queries.getArtist(entityId);
     coverKey = artist?.image_r2_key ?? null;
+  } else if (prefix === "pl-") {
+    // Playlists and podcast channels advertise their own coverArt ids; without
+    // these branches every such request fell through to a 404.
+    const row = await env.DB.prepare("SELECT cover_r2_key FROM playlists WHERE id = ?")
+      .bind(entityId).first<{ cover_r2_key: string | null }>();
+    coverKey = row?.cover_r2_key ?? null;
+  } else if (prefix === "pc-") {
+    const row = await env.DB.prepare("SELECT image_url FROM podcast_channels WHERE id = ?")
+      .bind(entityId).first<{ image_url: string | null }>();
+    if (!row?.image_url) return c.body(null, 404 as never);
+    // Channel art lives on the publisher's server; mirror it into R2 on first
+    // request so later hits are served locally like every other cover.
+    const mirrored = `covers/pc-${entityId}`;
+    const existing = await env.MUSIC_BUCKET.head(mirrored);
+    if (existing) {
+      coverKey = mirrored;
+    } else {
+      try {
+        const upstream = await fetch(row.image_url);
+        if (!upstream.ok) return c.body(null, 404 as never);
+        const bytes = new Uint8Array(await upstream.arrayBuffer());
+        await env.MUSIC_BUCKET.put(mirrored, bytes, {
+          httpMetadata: { contentType: resolveImageMime(upstream.headers.get("Content-Type"), bytes) },
+        });
+        coverKey = mirrored;
+      } catch {
+        return c.body(null, 404 as never);
+      }
+    }
   }
 
   if (!coverKey) return c.body(null, 404 as never);
@@ -715,7 +745,23 @@ const getCoverArtHandler = async (c: Context) => {
     nm.set("ETag", object.httpEtag);
     return new Response(null, { status: 304, headers: nm });
   }
-  return new Response(object.body, { headers });
+  // The artwork itself decides the media type. A stored value can be absent,
+  // bogus ("PNG", "-->"), or plausible but wrong — a PNG saved as image/jpeg
+  // because the tag said so — and clients that trust the header then fail to
+  // decode it. The sized path above re-encodes, so only this one is affected.
+  const stored = headers.get("Content-Type");
+  const bytes = new Uint8Array(await object.arrayBuffer());
+  const actual = resolveImageMime(stored, bytes);
+  if (actual !== stored) {
+    headers.set("Content-Type", actual);
+    // Correct the stored copy once so later reads need no re-typing.
+    c.executionCtx?.waitUntil?.(
+      env.MUSIC_BUCKET.put(coverKey, bytes, { httpMetadata: { contentType: actual } })
+        .then(() => undefined)
+        .catch(() => undefined),
+    );
+  }
+  return new Response(bytes, { headers });
 };
 
 // ============================================================================

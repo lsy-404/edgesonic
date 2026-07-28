@@ -25,6 +25,8 @@ import { hasPermission } from "../../utils/permissions";
 import { isDemoMode } from "../../utils/demoMode";
 import { subsonicOK } from "../../utils/xml";
 import type { User } from "../../types/entities";
+import { defaultAvatarSvg } from "../../../../shared/avatar";
+import { resolveImageMime } from "../../utils/imageType";
 
 export const accountRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
 
@@ -98,6 +100,17 @@ accountRoutes.get("/changePassword.view", changePasswordHandler);
 accountRoutes.post("/changePassword", changePasswordHandler);
 accountRoutes.post("/changePassword.view", changePasswordHandler);
 
+function defaultAvatarResponse(username: string): Response {
+  return new Response(defaultAvatarSvg(username), {
+    status: 200,
+    headers: {
+      "Content-Type": "image/svg+xml; charset=UTF-8",
+      // Short-lived: an upload should replace it without a stale cache fight.
+      "Cache-Control": "public, max-age=300",
+    },
+  });
+}
+
 const getAvatarHandler = async (c: import("hono").Context<{ Bindings: Env; Variables: { user: User } }>) => {
   const username = c.req.query("username");
   if (!username) {
@@ -110,23 +123,25 @@ const getAvatarHandler = async (c: import("hono").Context<{ Bindings: Env; Varia
     .prepare("SELECT avatar_r2_key FROM users WHERE username = ?")
     .bind(username)
     .first<{ avatar_r2_key: string | null }>();
-  if (!row || !row.avatar_r2_key) {
+  // Accounts without an uploaded picture get the generated default rather
+  // than a 404, so a client that can only fetch this endpoint still shows a
+  // consistent avatar. The web UI draws the same image locally.
+  if (!row) {
     return c.text(subsonicError(70, "Avatar not found"), 404, {
       "Content-Type": "application/xml; charset=UTF-8",
     });
   }
+  if (!row.avatar_r2_key) return defaultAvatarResponse(username);
 
   const r2 = c.env.MUSIC_BUCKET;
   const obj = await r2.get(row.avatar_r2_key);
-  if (!obj) {
-    return c.text(subsonicError(70, "Avatar not found"), 404, {
-      "Content-Type": "application/xml; charset=UTF-8",
-    });
-  }
-  const contentType =
-    obj.httpMetadata?.contentType
-    ?? (row.avatar_r2_key.endsWith(".png") ? "image/png" : "image/jpeg");
-  return new Response(obj.body, {
+  if (!obj) return defaultAvatarResponse(username);
+  // Typed from the stored bytes: the upload carries a caller-supplied media
+  // type, and a mismatch leaves clients unable to decode a picture that is
+  // otherwise fine.
+  const bytes = new Uint8Array(await obj.arrayBuffer());
+  const contentType = resolveImageMime(obj.httpMetadata?.contentType, bytes);
+  return new Response(bytes, {
     status: 200,
     headers: { "Content-Type": contentType, "Cache-Control": "public, max-age=86400" },
   });
