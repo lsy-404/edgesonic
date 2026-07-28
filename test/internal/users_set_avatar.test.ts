@@ -23,8 +23,8 @@
 //  • auth: non-self caller with level<2 → 403
 //  • auth: admin (level=2) editing another user → success
 //  • base64 with data:URL prefix is tolerated
-//  • [072] list returns { ok, users: [...] } JSON
-//  • [072] get returns { ok, user } JSON; missing user → 404 JSON {ok:false,error}
+//  • list returns { ok, users: [...] } JSON
+//  • get returns { ok, user } JSON; missing user → 404 JSON {ok:false,error}
 //
 // Run: npx tsx test/internal/users_set_avatar.test.ts
 
@@ -106,12 +106,20 @@ function makeR2Spy() {
 function buildDb() {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(`
+    -- Each case builds its own in-memory database, but the runtime self-heal
+    -- that ALTERs these columns in is memoized per module load, so only the
+    -- first database would ever get patched. Declare them up front instead.
     CREATE TABLE users (
       username TEXT PRIMARY KEY,
       master_password TEXT NOT NULL,
       level INTEGER DEFAULT 1,
       enabled INTEGER DEFAULT 1,
       avatar_r2_key TEXT,
+      nickname TEXT,
+      email TEXT,
+      email_verified INTEGER NOT NULL DEFAULT 0,
+      activation_status TEXT NOT NULL DEFAULT 'permanent',
+      activated_until INTEGER,
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
     );
@@ -365,7 +373,7 @@ console.log("\nunknown target user → 404:");
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 
-console.log("\n[072] users/list returns JSON {ok, users}:");
+console.log("\nusers/list returns JSON {ok, users}:");
 {
   const sqlite = buildDb();
   const { get } = makeApp(sqlite, { username: "root", level: 3 });
@@ -386,7 +394,7 @@ console.log("\n[072] users/list returns JSON {ok, users}:");
   assert(!/<subsonic-response/.test(rawText), "no XML envelope in JSON body");
 }
 
-console.log("\n[072] users/get returns JSON {ok, user}:");
+console.log("\nusers/get returns JSON {ok, user}:");
 {
   const sqlite = buildDb();
   const { get } = makeApp(sqlite, { username: "alice", level: 1 });
@@ -399,7 +407,7 @@ console.log("\n[072] users/get returns JSON {ok, user}:");
   assert(body.user?.enabled === true, `user.enabled=true (got ${body.user?.enabled})`);
 }
 
-console.log("\n[072] users/get unknown user → 404 JSON {ok:false,error}:");
+console.log("\nusers/get unknown user → 404 JSON {ok:false,error}:");
 {
   const sqlite = buildDb();
   const { get } = makeApp(sqlite, { username: "alice", level: 1 });
