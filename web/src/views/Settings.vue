@@ -1991,6 +1991,8 @@ onMounted(() => {
             <option :value="1024">1 GB</option>
             <option :value="2048">2 GB</option>
             <option :value="4096">4 GB</option>
+            <option :value="8192">8 GB</option>
+            <option :value="16384">16 GB</option>
           </select>
         </label>
 

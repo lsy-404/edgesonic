@@ -635,6 +635,10 @@ export const usePlayerStore = defineStore("player", () => {
   // next full-file fetch cannot compete with the current track's fetch.
   const NEXT_TRACK_PRELOAD_SECONDS = 30;
   const NEXT_TRACK_PRELOAD_FRACTION = 0.75;
+  // Hard deadline: with this little left, preload regardless of whether the
+  // current track ever finished downloading — a stream that never completes
+  // used to block the next track's preload entirely.
+  const NEXT_TRACK_PRELOAD_FORCE_SECONDS = 15;
 
   function isFullyBuffered(el: HTMLAudioElement, dur: number): boolean {
     if (fullyLoadedByElement.has(el)) return true;
@@ -664,7 +668,11 @@ export const usePlayerStore = defineStore("player", () => {
           // Metadata, lyrics and cover art are small and must not wait on the
           // current track's full-file fetch; only the next audio download does.
           prefetchNextTrackData();
-          if (isFullyBuffered(el, dur)) preloadNext();
+          // Preferably the current track has finished downloading, so the two
+          // fetches never compete. Once it is nearly over that no longer
+          // matters: waiting past this point trades a gapless start for
+          // bandwidth the current track no longer needs.
+          if (isFullyBuffered(el, dur) || remaining <= NEXT_TRACK_PRELOAD_FORCE_SECONDS) preloadNext();
         }
       }
     });
