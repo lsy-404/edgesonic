@@ -5,6 +5,7 @@ import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
 import { activationDisplay, toDatetimeLocal, fromDatetimeLocal, type ActivationStatus } from "../lib/activation";
+import { defaultAvatarColor, defaultAvatarInitial } from "../../../shared/avatar";
 import Icon from "../components/Icon.vue";
 
 const { t, locale } = useI18n();
@@ -554,7 +555,7 @@ onMounted(load);
       </div>
       <div v-for="u in users" :key="u.username" class="table-row">
         <span class="avatar-cell">
-          <span class="avatar-fallback">{{ u.username.slice(0, 1).toUpperCase() }}</span>
+          <span class="avatar-fallback" :style="{ background: defaultAvatarColor(u.username) }">{{ defaultAvatarInitial(u.username) }}</span>
           <img v-if="u.hasAvatar" :src="avatarSrc(u.username)" :alt="u.username" class="avatar-img" @error="onAvatarError" />
         </span>
         <span class="user-name">{{ u.username }}</span>
@@ -596,7 +597,7 @@ onMounted(load);
           <div class="avatar-preview-wrap">
             <div class="mono-label">{{ t("users.avatar.current") }}</div>
             <div class="avatar-preview-current">
-              <span class="avatar-fallback avatar-fallback-lg">{{ avatarTarget?.username.slice(0, 1).toUpperCase() }}</span>
+              <span class="avatar-fallback avatar-fallback-lg" :style="{ background: defaultAvatarColor(avatarTarget?.username || '') }">{{ defaultAvatarInitial(avatarTarget?.username || '') }}</span>
               <img v-if="avatarTarget && users.find(u => u.username === avatarTarget!.username)?.hasAvatar" :src="avatarSrc(avatarTarget.username)" :alt="avatarTarget.username" class="avatar-img-lg" @error="onAvatarError" />
             </div>
           </div>
@@ -689,8 +690,7 @@ onMounted(load);
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--color-surface-2, #ececec);
-  color: var(--color-text-muted, #888);
+  color: #ffffff;
   font-family: var(--font-mono);
   font-weight: 600;
   font-size: var(--fs-sm);

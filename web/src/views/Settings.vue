@@ -22,6 +22,7 @@ import {
   type GithubRelease,
   type ReleaseListing,
 } from "../../../shared/autoupdate";
+import { defaultAvatarSvg } from "../../../shared/avatar";
 
 const router = useRouter();
 const route = useRoute();
@@ -77,7 +78,9 @@ const avatarBase64 = ref("");
 const avatarMime = ref("image/jpeg");
 const selfAvatarSrc = computed(() => avatarKey.value
   ? restUrl("getAvatar", { username: username.value, ...(avatarBust.value ? { _ts: String(avatarBust.value) } : {}) })
-  : "");
+  // No upload yet: draw the same generated avatar the server would serve,
+  // inline, so the slot is never an empty image.
+  : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(defaultAvatarSvg(username.value))}`);
 
 async function compressAvatar(file: File): Promise<{ dataUrl: string; base64: string; mime: string }> {
   const blobUrl = URL.createObjectURL(file);
