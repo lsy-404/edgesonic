@@ -256,7 +256,9 @@ console.log("work/submit (metadata, success) → tag_scanned=1 + relink + physic
   // song_instances should be flipped
   const si = sqlite.prepare("SELECT * FROM song_instances WHERE id='inst-1'").get() as any;
   assert(si.tag_scanned === 1, `tag_scanned=1 (got ${si.tag_scanned})`);
-  assert(si.bit_rate === 320, `bit_rate=320 (got ${si.bit_rate})`);
+  // Measured from the row's own size and duration rather than the reported
+  // 320: the browser pool parses slices, so its rate describes the slice.
+  assert(si.bit_rate === 190, `bit_rate measured from the file (got ${si.bit_rate})`);
   assert(si.sample_rate === 48000, `sample_rate=48000 (got ${si.sample_rate})`);
   assert(si.channels === 2, `channels=2 (got ${si.channels})`);
   assert(si.duration === 210, `duration=210 (got ${si.duration})`);
@@ -304,7 +306,9 @@ console.log("work/submit (metadata, partial tags) — still flips tag_scanned, n
 
   const si = sqlite.prepare("SELECT * FROM song_instances WHERE id='inst-1'").get() as any;
   assert(si.tag_scanned === 1, "tag_scanned=1 even with only physical fields");
-  assert(si.bit_rate === 192, `bit_rate=192 (got ${si.bit_rate})`);
+  // This payload carries no duration, so nothing can be measured and the
+  // reported rate is kept — the fallback the measurement path relies on.
+  assert(si.bit_rate === 192, `bit_rate falls back to the reported value (got ${si.bit_rate})`);
 
   // song_masters must NOT have been clobbered with "Unknown Artist"
   const sm = sqlite.prepare("SELECT * FROM song_masters WHERE id='sg-1'").get() as any;

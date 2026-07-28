@@ -239,7 +239,9 @@ console.log("happy path: existing instance + full tags:");
   // D1: song_instances physical params + tag_scanned
   const si = sqlite.prepare("SELECT * FROM song_instances WHERE id='inst-1'").get() as any;
   assert(si.tag_scanned === 1, `tag_scanned=1 (got ${si.tag_scanned})`);
-  assert(si.bit_rate === 256, `bit_rate (got ${si.bit_rate})`);
+  // Bitrate comes from the stored file (5,000,000 bytes over 240s), not from
+  // the reported 256 — a parser that only saw a slice reports the slice's rate.
+  assert(si.bit_rate === 167, `bit_rate measured from size and duration (got ${si.bit_rate})`);
   assert(si.sample_rate === 44100, `sample_rate (got ${si.sample_rate})`);
   assert(si.channels === 2, `channels (got ${si.channels})`);
   assert(si.duration === 240, `instance duration (got ${si.duration})`);
