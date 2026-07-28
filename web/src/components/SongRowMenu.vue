@@ -65,7 +65,7 @@ async function toggleStar() {
       <button v-if="props.isAdmin" class="row-menu-item" @click="pick('edit')"><Icon name="edit" /> {{ t("library.editSong") }}</button>
       <button class="row-menu-item" @click="pick('share')"><Icon name="up" /> {{ t("library.share") }}</button>
       <button class="row-menu-item" @click="pick('addPlaylist')"><Icon name="check" /> {{ t("library.addToPlaylist") }}</button>
-      <a class="row-menu-item" :href="downloadUrl(props.songId)" :download="props.title" @click="emit('close')">{{ t("library.download") }}</a>
+      <a class="row-menu-item" :href="downloadUrl(props.songId)" :download="props.title" @click="emit('close')"><Icon name="download" /> {{ t("library.download") }}</a>
     </div>
   </div>
 </template>
@@ -103,7 +103,9 @@ async function toggleStar() {
   padding: 0.25rem 0;
 }
 .row-menu-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   width: 100%;
   text-align: left;
   padding: 0.4rem 0.75rem;

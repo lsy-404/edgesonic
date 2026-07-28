@@ -67,9 +67,26 @@ const ICONS: Record<string, () => ReturnType<typeof h>[]> = {
     h("circle", { cx: 8, cy: 8, r: 2, stroke: "currentColor", "stroke-width": 1.1, fill: "none" }),
     h("path", { d: "M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M3 13l1.4-1.4M11.6 4.4L13 3", stroke: "currentColor", "stroke-width": 1.1, "stroke-linecap": "round" }),
   ],
+  download: () => [
+    h("path", { d: "M8 2v8M4.5 7L8 10.5 11.5 7", stroke: "currentColor", "stroke-width": 1.2, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }),
+    h("path", { d: "M3 12.5v1h10v-1", stroke: "currentColor", "stroke-width": 1.2, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }),
+  ],
+};
+
+// Paths whose ink sits off-centre in the 16×16 box; nudged so every glyph
+// shares one optical centre when set beside text or in a button.
+const NUDGE: Record<string, string> = {
+  note: "translate(1.25 0)",
+  folder: "translate(0 -1.25)",
+  star: "translate(0 0.65)",
+  heart: "translate(0 -0.5)",
+  queueNext: "translate(-0.25 -1)",
+  edit: "translate(0.25 -0.25)",
+  search: "translate(-0.25 -0.25)",
 };
 
 const inner = computed(() => (ICONS[props.name] ?? ICONS.dot)());
+const nudge = computed(() => NUDGE[props.name]);
 </script>
 
 <template>
@@ -83,7 +100,7 @@ const inner = computed(() => (ICONS[props.name] ?? ICONS.dot)());
     :aria-label="label || undefined"
     :aria-hidden="label ? undefined : 'true'"
     xmlns="http://www.w3.org/2000/svg"
-  ><component :is="() => inner" /></svg>
+  ><g v-if="nudge" :transform="nudge"><component :is="() => inner" /></g><component v-else :is="() => inner" /></svg>
 </template>
 
 <style scoped>
