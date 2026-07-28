@@ -15,6 +15,7 @@ interface UserRow {
   // without the field render "—" and stay read-only.
   activationStatus: ActivationStatus | null;
   activatedUntil: number | null;
+  hasAvatar: boolean;
 }
 const users = ref<UserRow[]>([]);
 const loading = ref(true);
@@ -136,8 +137,11 @@ async function submitAvatar() {
     });
     const resp = JSON.parse(raw) as { ok?: boolean; error?: string };
     if (!resp.ok) throw new Error(resp.error || "upload failed");
-    // Bust cache so the row thumb refetches the new bytes.
+    // Bust cache so the row thumb refetches the new bytes, and mark the row as
+    // having one so the (previously skipped) request is now made.
     avatarBust.value = { ...avatarBust.value, [avatarTarget.value.username]: Date.now() };
+    const row = users.value.find((u) => u.username === avatarTarget.value!.username);
+    if (row) row.hasAvatar = true;
     showToast(t("users.avatar.uploaded"));
     closeAvatarModal();
   } catch {
@@ -151,7 +155,7 @@ interface OkJson { ok: boolean; error?: string }
 interface UsersListJson extends OkJson {
   users?: Array<{
     username: string; level: number; enabled: boolean;
-    activationStatus?: string; activatedUntil?: number | null;
+    activationStatus?: string; activatedUntil?: number | null; hasAvatar?: boolean;
   }>;
 }
 
@@ -175,6 +179,9 @@ async function load() {
       enabled: !!u.enabled,
       activationStatus: asActivationStatus(u.activationStatus),
       activatedUntil: typeof u.activatedUntil === "number" ? u.activatedUntil : null,
+      // Older servers omit the flag; assume an avatar exists so the request
+      // still happens and the error handler keeps its old fallback role.
+      hasAvatar: u.hasAvatar !== false,
     }));
   } catch { users.value = []; } finally {
     loading.value = false;
@@ -548,7 +555,7 @@ onMounted(load);
       <div v-for="u in users" :key="u.username" class="table-row">
         <span class="avatar-cell">
           <span class="avatar-fallback">{{ u.username.slice(0, 1).toUpperCase() }}</span>
-          <img :src="avatarSrc(u.username)" :alt="u.username" class="avatar-img" @error="onAvatarError" />
+          <img v-if="u.hasAvatar" :src="avatarSrc(u.username)" :alt="u.username" class="avatar-img" @error="onAvatarError" />
         </span>
         <span class="user-name">{{ u.username }}</span>
         <span>
@@ -590,7 +597,7 @@ onMounted(load);
             <div class="mono-label">{{ t("users.avatar.current") }}</div>
             <div class="avatar-preview-current">
               <span class="avatar-fallback avatar-fallback-lg">{{ avatarTarget?.username.slice(0, 1).toUpperCase() }}</span>
-              <img v-if="avatarTarget" :src="avatarSrc(avatarTarget.username)" :alt="avatarTarget.username" class="avatar-img-lg" @error="onAvatarError" />
+              <img v-if="avatarTarget && users.find(u => u.username === avatarTarget!.username)?.hasAvatar" :src="avatarSrc(avatarTarget.username)" :alt="avatarTarget.username" class="avatar-img-lg" @error="onAvatarError" />
             </div>
           </div>
           <div class="avatar-preview-wrap" v-if="avatarPreview">
