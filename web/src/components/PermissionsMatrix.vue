@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
 import Icon from "./Icon.vue";
@@ -15,7 +15,32 @@ const toast = ref({ show: false, msg: "", type: "success" });
 function showToast(msg: string, type = "success") { toast.value = { show: true, msg, type }; setTimeout(() => { toast.value.show = false; }, 3000); }
 
 const levelKeys: Record<number, string> = { 0: "guest", 1: "user", 2: "admin", 3: "super" };
-const permKeys = ["browse", "search", "stream", "download", "upload", "delete", "edit_tags", "manage_files", "manage_sources", "manage_credentials", "manage_users", "maintenance_cleanup", "manage_settings"];
+
+// Reading rows keeps the matrix in step with the server: a capability added
+// backend-side shows up here without a matching edit, in a stable order
+// (listed ones first, anything new appended alphabetically).
+const PREFERRED_ORDER = [
+  "browse", "search", "stream", "download", "upload", "delete", "edit_tags",
+  "edit_annotations", "share", "manage_playlists", "manage_credentials",
+  "manage_files", "manage_sources", "manage_radio", "manage_podcasts",
+  "manage_users", "manage_activation", "view_all_users_items",
+  "manage_permissions", "manage_settings",
+  "manage_cloudflare", "participate_work", "dispatch_work",
+  "maintenance_cleanup", "maintenance_reclaim", "maintenance_reset",
+];
+const permKeys = computed(() => {
+  const seen = [...new Set(permissions.value.map((p) => p.name).filter(Boolean))];
+  const known = PREFERRED_ORDER.filter((k) => seen.includes(k));
+  const extra = seen.filter((k) => !PREFERRED_ORDER.includes(k)).sort();
+  return [...known, ...extra];
+});
+// Unlabelled keys fall back to the raw name so a new capability is still
+// toggleable before its copy lands.
+function permLabel(key: string): string {
+  const path = `settings.permissions.perms.${key}`;
+  const label = t(path);
+  return label === path ? key : label;
+}
 
 async function load() {
   try {
@@ -97,7 +122,7 @@ onMounted(load);
           </div>
           <div class="perm-list">
             <div v-for="key in permKeys" :key="key" class="perm-row" :class="{ 'perm-row-locked': permissions.find(p => p.level === level && p.name === key)?.locked }">
-              <span class="perm-name">{{ t(`settings.permissions.perms.${key}`) }}</span>
+              <span class="perm-name">{{ permLabel(key) }}</span>
               <label class="toggle">
                 <input
                   type="checkbox"

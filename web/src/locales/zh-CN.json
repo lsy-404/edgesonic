@@ -1153,7 +1153,19 @@
         "maintenance_cleanup": "维护清理",
         "manage_permissions": "管理权限",
         "browse": "浏览",
-        "search": "搜索"
+        "search": "搜索",
+        "edit_annotations": "编辑标记（评分/播放次数）",
+        "share": "创建分享链接",
+        "manage_playlists": "管理歌单",
+        "manage_radio": "管理网络电台",
+        "manage_podcasts": "管理播客",
+        "manage_activation": "管理激活与邀请码",
+        "manage_cloudflare": "管理 Cloudflare 集成",
+        "participate_work": "参与浏览器工作池",
+        "dispatch_work": "派发工作队列任务",
+        "maintenance_reclaim": "回收滞留任务",
+        "maintenance_reset": "重置失败任务",
+        "view_all_users_items": "查看全部用户的内容"
       }
     },
     "clients": {

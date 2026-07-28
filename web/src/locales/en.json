@@ -1170,7 +1170,19 @@
         "maintenance_cleanup": "Maintenance",
         "manage_permissions": "Manage Permissions",
         "browse": "Browse",
-        "search": "Search"
+        "search": "Search",
+        "edit_annotations": "Edit annotations (rating / play count)",
+        "share": "Create share links",
+        "manage_playlists": "Manage playlists",
+        "manage_radio": "Manage internet radio",
+        "manage_podcasts": "Manage podcasts",
+        "manage_activation": "Manage activation and invite codes",
+        "manage_cloudflare": "Manage Cloudflare integration",
+        "participate_work": "Join the browser work pool",
+        "dispatch_work": "Dispatch work queue tasks",
+        "maintenance_reclaim": "Reclaim stalled tasks",
+        "maintenance_reset": "Reset failed tasks",
+        "view_all_users_items": "View all users' items"
       }
     },
     "clients": {
