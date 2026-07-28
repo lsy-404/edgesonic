@@ -20,9 +20,10 @@
 //     (MAX)/missing (MAX) per master, ordered by created_at DESC — a real
 //     (non-orphan) song is excluded.
 //  2. POST orphanSongs/delete removes the R2 object(s), song_instances rows,
-//     and the song_masters row for each given id; the shared unknown-artist/
-//     pending-uploads placeholder rows themselves are left alone (reused by
-//     future uploads).
+//     and the song_masters row for each given id, then sweeps albums left
+//     without any masters. The unknown-artist placeholder survives; an
+//     emptied pending-uploads album goes with the sweep and is recreated by
+//     the next upload.
 //  3. A master with zero instances still deletes cleanly (no storage calls).
 //  4. Missing masterIds body → 400, no mutation.
 //  5. Non-admin (level 2) → 403 on both endpoints, no mutation.
@@ -242,6 +243,9 @@ async function main() {
     seedInstance(sqlite, { id: "si-o1", masterId: "sm-o1", storageUri: "r2://music/o1.mp3" });
     seedMaster(sqlite, { id: "sm-o2", title: "Orphan B", albumId: "pending-uploads", artistId: "unknown-artist", createdAt: 200 });
     seedInstance(sqlite, { id: "si-o2", masterId: "sm-o2", storageUri: "r2://music/o2.mp3" });
+    // A real album that keeps a master: the empty-album sweep must not touch it.
+    seedMaster(sqlite, { id: "sm-keep", title: "Real Song", albumId: "album-real", artistId: "artist-real", createdAt: 300 });
+    seedInstance(sqlite, { id: "si-keep", masterId: "sm-keep", storageUri: "r2://music/keep.mp3" });
 
     const bucket = makeR2Bucket();
     bucket.store.set("music/o1.mp3", new Uint8Array([1]));
@@ -261,11 +265,18 @@ async function main() {
     const instances = sqlite.prepare("SELECT id FROM song_instances WHERE master_id IN ('sm-o1','sm-o2')").all();
     assert(instances.length === 0, "both song_instances rows gone");
 
-    // Placeholder bucket rows themselves must survive — future uploads reuse them.
+    // The artist placeholder survives — nothing sweeps artists.
     const artist = sqlite.prepare("SELECT id FROM artists WHERE id='unknown-artist'").get();
-    const album = sqlite.prepare("SELECT id FROM albums WHERE id='pending-uploads'").get();
     assert(!!artist, "unknown-artist placeholder row preserved");
-    assert(!!album, "pending-uploads placeholder row preserved");
+    // The album placeholder does not: deletion also sweeps albums left with no
+    // masters, so the library stops showing a clickable-but-empty card. The
+    // upload path recreates it on demand (INSERT OR IGNORE), so an emptied
+    // pending-uploads bucket costs nothing.
+    const album = sqlite.prepare("SELECT id FROM albums WHERE id='pending-uploads'").get();
+    assert(!album, "emptied pending-uploads bucket is swept with the other empty albums");
+    // ...but an album that still holds a master is left alone.
+    const realAlbum = sqlite.prepare("SELECT id FROM albums WHERE id='album-real'").get();
+    assert(!!realAlbum, "album that still has masters is untouched");
   }
 
   console.log("\nMaster with zero instances still deletes cleanly:");
