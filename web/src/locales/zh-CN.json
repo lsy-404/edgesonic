@@ -157,7 +157,6 @@
     "infoUsers": "用户数",
     "infoSources": "存储源",
     "infoApiVersion": "API 版本",
-    "infoPlatform": "运行平台",
     "githubLatest": "GitHub 最新版",
     "updateAvailable": "v{ver} — 有新版本",
     "updateCurrent": "v{ver} — {state}",

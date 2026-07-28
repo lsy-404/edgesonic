@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs } from "../api";
 import { useWorkerPool } from "../stores/workerPool";
@@ -315,11 +315,7 @@ async function onReclaimStaleWork() {
 onMounted(async () => {
   if (!isLoggedIn.value) return;
   try {
-    const [libraryJson, sourceXml, userXml] = await Promise.all([
-      edgesonicFetch("stats/library"),
-      canManageSources.value ? storageFetch("sources/list") : Promise.resolve(""),
-      canManageUsers.value ? edgesonicFetch("users/list") : Promise.resolve(""),
-    ]);
+    const libraryJson = await edgesonicFetch("stats/library");
 
     // A single real COUNT(*) endpoint for the library stats — exact
     // regardless of size (the earlier search3-based counts capped at 500).
@@ -331,20 +327,6 @@ onMounted(async () => {
         stats.value.songs = parsed.songs ?? 0;
       }
     } catch { /* leave stats at 0 on parse failure */ }
-
-    if (sourceXml) {
-      stats.value.sources = parseXmlAttrs(sourceXml, "source").length;
-    }
-    // /edgesonic/users/list is now JSON; older XML path stayed only
-    // because Dashboard used parseXmlAttrs to count rows. JSON.parse-and-count
-    // here mirrors the new Users.vue load().
-    if (userXml) {
-      try {
-        const parsed = JSON.parse(userXml) as { ok?: boolean; users?: unknown[] };
-        if (parsed.ok && Array.isArray(parsed.users)) stats.value.users = parsed.users.length;
-      } catch { /* leave stats.users at 0 on parse failure */ }
-    }
-
   } catch {
     // Network error or auth failure — leave stats at 0, UI shows skeleton
   } finally {
@@ -352,10 +334,35 @@ onMounted(async () => {
   }
   cronStatus.value = "ok";
   r2presignStatus.value = "active";
-  // Upstream release check is an operator concern, and it spends the caller's
-  // unauthenticated GitHub quota — only super admins run it.
-  if (isSuperAdmin.value) void loadVersionInfo();
 });
+
+// Permission-gated panels load off a watcher rather than inline in onMounted:
+// /auth/me may still be in flight at mount, and a capability that arrives late
+// would otherwise leave its row showing a stale zero forever.
+function whenPermitted(source: () => boolean, load: () => void) {
+  watch(source, (allowed) => {
+    if (allowed && isLoggedIn.value) load();
+  }, { immediate: true });
+}
+
+whenPermitted(() => canManageSources.value, async () => {
+  try {
+    const xml = await storageFetch("sources/list");
+    if (xml) stats.value.sources = parseXmlAttrs(xml, "source").length;
+  } catch { /* leave the count at 0 */ }
+});
+
+whenPermitted(() => canManageUsers.value, async () => {
+  try {
+    const json = await edgesonicFetch("users/list");
+    const parsed = JSON.parse(json) as { ok?: boolean; users?: unknown[] };
+    if (parsed.ok && Array.isArray(parsed.users)) stats.value.users = parsed.users.length;
+  } catch { /* leave the count at 0 */ }
+});
+
+// The upstream release check is an operator concern and spends the caller's
+// unauthenticated GitHub quota — super admins only.
+whenPermitted(() => isSuperAdmin.value, () => { void loadVersionInfo(); });
 
 onUnmounted(() => {
 });
@@ -491,7 +498,6 @@ onUnmounted(() => {
         <div class="info-row"><span class="info-key">EdgeSonic</span><span class="info-val">v{{ edgesonicVersion }}</span></div>
         <div class="info-row"><span class="info-key">Build</span><span class="info-val">{{ edgesonicBuildTime }}</span></div>
         <div class="info-row"><span class="info-key">{{ t("dashboard.infoApiVersion") }}</span><span class="info-val">1.16.1</span></div>
-        <div class="info-row"><span class="info-key">{{ t("dashboard.infoPlatform") }}</span><span class="info-val">Cloudflare Workers</span></div>
         <div v-if="showActivationRow" class="info-row">
           <span class="info-key">{{ t("dashboard.infoActivation") }}</span>
           <span class="info-val" :class="activationRowClass">{{ activationRowText }}</span>

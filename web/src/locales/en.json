@@ -156,7 +156,6 @@
     "infoUsers": "USERS",
     "infoSources": "SOURCES",
     "infoApiVersion": "API VERSION",
-    "infoPlatform": "PLATFORM",
     "githubLatest": "GitHub Latest",
     "updateAvailable": "v{ver} — new version available",
     "updateCurrent": "v{ver} — {state}",
