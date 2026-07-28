@@ -750,15 +750,11 @@
       },
       "lastfm": {
         "title": "Last.fm",
-        "userDesc": "关联你的 Last.fm 账号以读取个人播放历史、收藏曲目与热门曲目。需要填入你自己的 Last.fm API Key（下方）和 Last.fm 用户名——这个 Key 只服务于你的账号，与服务器共用的 Key 相互独立。只读——不支持 scrobble / love。",
-        "userApiKeyDesc": "上面这些个人读取项（近期/收藏/热门曲目、资料）需要这个 Key 才能用。它与服务器共用的 Key 相互独立——留空就是留空，不会改用其它 Key。",
         "apiKeyLabel": "API Key",
         "apiKeyField": "API Key",
         "apiKeyPlaceholder": "32 位 Last.fm API Key",
         "apiKeySaved": "Last.fm API Key 已保存",
         "apiKeyCleared": "Last.fm API Key 已清除",
-        "systemTitle": "Last.fm（服务器共用）",
-        "systemDesc": "全站共用的 API Key。只用于 Subsonic getArtistInfo / getAlbumInfo / getSimilarSongs / getTopSongs——与上面的个人 Key 相互独立，不会用于任何用户的个人近期/收藏/热门曲目。留空则 last.fm 不再作为艺人信息来源，album/similar/topSongs 端点也会禁用（Subsonic 返回错误码 30）。",
         "usernameLabel": "Last.fm 用户名",
         "usernamePlaceholder": "你的 Last.fm 账号名",
         "usernameSaved": "Last.fm 用户名已保存",
@@ -766,7 +762,7 @@
         "systemKeySaved": "Last.fm API Key 已保存",
         "systemKeyCleared": "Last.fm API Key 已清除",
         "fallbackTitle": "艺人信息来源",
-        "fallbackDesc": "艺人简介/封面从哪里来，按下面的顺序从上到下依次尝试，命中就停。Last.fm 默认不是主要来源——CN 源（网易云/QQ音乐）对 CN 歌手覆盖率通常好得多，默认排在前面；last.fm 仍然可用，只是默认排最后，可以自己调整顺序。每个源可单独开关，用箭头调整优先级。CN 源仅高置信度匹配（搜索结果名称必须与查询歌手名一致）。",
+        "fallbackDesc": "设置艺人简介与封面的来源及优先顺序。",
         "fallbackSaved": "艺人信息来源优先级已保存",
         "scrapeIntervalTitle": "自动补全节奏",
         "scrapeIntervalDesc": "Cron 定期扫描缺少传记/封面的歌手，从已启用的 CN 源补全，这样 getArtistInfo 热路径无需临时刮刮。",
@@ -779,7 +775,10 @@
         "setStatus": "已设置",
         "save": "保存",
         "clear": "清除",
-        "saveFailed": "保存失败"
+        "saveFailed": "保存失败",
+        "userDesc": "关联你的 Last.fm 账号以读取个人播放历史、收藏曲目与热门曲目。",
+        "userApiKeyDesc": "填写你的 Last.fm API Key 以启用上述读取。",
+        "systemDesc": "用于补全艺人与专辑信息、相似曲目与热门曲目。"
       },
       "email": {
         "resendTitle": "Resend",
@@ -835,7 +834,7 @@
       },
       "scan": {
         "title": "扫描设置",
-        "desc": "WebDAV 增量扫描节奏 + 浏览器解析队列行为。Cloudflare Cron 每小时触发，若间隔大于 1 小时则在 KV 中比对 last_scan_ts。",
+        "desc": "设置媒体库的自动扫描节奏。",
         "intervalHours": "扫描频率（小时）",
         "intervalHoursDesc": "0 = 关闭自动扫描；1 = 每次 cron tick 都跑；N>1 = 每 N 小时跑一次。",
         "etagCheck": "ETag 增量检测",
@@ -865,7 +864,7 @@
         "hint": "把 /rest/stream 302 重定向到短期签名的 R2 S3 / WebDAV UserInfo URL，让浏览器直接取字节，绕过 Worker 子请求带宽池。R2 出口免费；WebDAV 受益最大（没有 Worker 绑定快路径）。",
         "secretsConfigured": "R2 密钥已配置",
         "secretsMissing": "R2 密钥缺失",
-        "r2SecretsMissingHint": "R2 预签名为 OFF，因为两个 R2 S3 密钥（或 Cloudflare 集成块里的 CF_ACCOUNT_ID）未设置。缺密钥时即使开关打开，stream 端点也会回退到 Worker 内代理。",
+        "r2SecretsMissingHint": "需要先填写下方的 R2 访问密钥才能启用。",
         "secretPushHint": "用 `wrangler secret put <NAME>` 推送——见 worker/SECRETS.md §3 步骤说明。",
         "r2Toggle": "启用 R2 预签名",
         "r2ToggleDesc": "关闭则走 Worker 内流路径。开了但缺密钥会静默回退到 Worker 内路径。",
@@ -878,7 +877,7 @@
       },
       "cf": {
         "title": "Cloudflare 集成",
-        "desc": "通过 Cloudflare API 把 token 写入 Workers Secrets、动态修改 cron、读取 Worker 24h 分析数据。Token 始终留在 CF 自家密钥体系，不落 D1/KV。仅超级管理员可见。",
+        "desc": "关联 Cloudflare 账户以管理定时任务、密钥与访问统计。仅超级管理员可见。",
         "accountId": "Account ID",
         "accountIdPlaceholder": "Cloudflare account ID（32 位十六进制）",
         "token": "API Token",

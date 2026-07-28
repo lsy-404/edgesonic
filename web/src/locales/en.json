@@ -753,15 +753,11 @@
       },
       "lastfm": {
         "title": "Last.fm",
-        "userDesc": "Connect your Last.fm account to read your play history, loved tracks and top tracks. Requires your own Last.fm API key (below) plus your Last.fm username — this key serves only your account and is independent of the server-wide one. Read-only — scrobble / love are not supported.",
-        "userApiKeyDesc": "Required for the personal read paths above (recent/loved/top tracks, profile). Independent of the server-wide key — leaving this empty means those paths stay unavailable rather than switching to another key.",
         "apiKeyLabel": "API key",
         "apiKeyField": "API key",
         "apiKeyPlaceholder": "32-char Last.fm API key",
         "apiKeySaved": "Last.fm API key saved",
         "apiKeyCleared": "Last.fm API key cleared",
-        "systemTitle": "Last.fm (server-wide)",
-        "systemDesc": "API key shared by all users. Powers the Subsonic getArtistInfo / getAlbumInfo / getSimilarSongs / getTopSongs endpoints only — isolated from the per-user key above, it is never used for a user's personal recent/loved/top tracks. Empty disables Last.fm as an artist-info source and the album/similar/topSongs endpoints (Subsonic returns error 30).",
         "usernameLabel": "Last.fm username",
         "usernamePlaceholder": "your Last.fm account name",
         "usernameSaved": "Last.fm username saved",
@@ -769,7 +765,7 @@
         "systemKeySaved": "Last.fm API key saved",
         "systemKeyCleared": "Last.fm API key cleared",
         "fallbackTitle": "Artist info sources",
-        "fallbackDesc": "Where artist biography/cover come from, tried top to bottom until one hits. Last.fm is not primary by default — CN sources (NetEase/QQ Music) usually have far better coverage for CN artists, so they're ranked first; last.fm is available but ranked last unless you reorder it. Toggle each source and drag its priority with the arrows. CN matches are high-confidence only (search result name must match the queried artist).",
+        "fallbackDesc": "Choose which sources provide artist biographies and images, and in what order.",
         "fallbackSaved": "Artist info source priority saved",
         "scrapeIntervalTitle": "Auto backfill cadence",
         "scrapeIntervalDesc": "A cron job periodically scans artists missing biography / cover and fills them from the enabled CN sources, so getArtistInfo stays fast on hot path (no live scrape).",
@@ -782,7 +778,10 @@
         "setStatus": "SET",
         "save": "Save",
         "clear": "Clear",
-        "saveFailed": "Save failed"
+        "saveFailed": "Save failed",
+        "userDesc": "Connect your Last.fm account to read your play history, loved tracks and top tracks.",
+        "userApiKeyDesc": "Enter your Last.fm API key to enable the reads above.",
+        "systemDesc": "Used to fill in artist and album information, similar songs and top songs."
       },
       "email": {
         "resendTitle": "Resend",
@@ -838,7 +837,7 @@
       },
       "scan": {
         "title": "Scan Settings",
-        "desc": "WebDAV incremental scan cadence + browser-side metadata queue. The Cloudflare cron ticks hourly; intervals >1 are gated via KV cron:last_scan_ts.",
+        "desc": "How often the library is scanned automatically.",
         "intervalHours": "Scan interval (hours)",
         "intervalHoursDesc": "0 = disabled; 1 = run every cron tick; N>1 = run every N hours.",
         "etagCheck": "ETag incremental check",
@@ -870,7 +869,7 @@
         "hint": "302-redirect /rest/stream to a short-lived R2 S3 / WebDAV UserInfo URL so the browser fetches bytes directly, bypassing the Worker sub-request bandwidth pool. R2 egress is free; WebDAV streams benefit most (no Worker binding fast path).",
         "secretsConfigured": "R2 SECRETS SET",
         "secretsMissing": "R2 SECRETS MISSING",
-        "r2SecretsMissingHint": "R2 presign is OFF because the two R2 S3 secrets (and/or CF_ACCOUNT_ID from the Cloudflare integration block) are not set. Without them the stream endpoint falls back to the in-Worker proxy even when the flag is on.",
+        "r2SecretsMissingHint": "Fill in the R2 access keys below to enable this.",
         "secretPushHint": "Push them via `wrangler secret put <NAME>` — see worker/SECRETS.md §3 for the walkthrough.",
         "r2Toggle": "Enable R2 presign",
         "r2ToggleDesc": "Off keeps the in-Worker stream path. On without secrets silently falls back to the in-Worker path.",
@@ -883,7 +882,7 @@
       },
       "cf": {
         "title": "Cloudflare Integration",
-        "desc": "Push the Cloudflare API token into Workers Secrets, manage cron schedules dynamically, and read 24h Worker analytics. Token never leaves CF's secret store. Requires super admin.",
+        "desc": "Connect a Cloudflare account to manage scheduled tasks, secrets and traffic analytics. Super admin only.",
         "accountId": "Account ID",
         "accountIdPlaceholder": "Cloudflare account ID (32 hex)",
         "token": "API Token",
