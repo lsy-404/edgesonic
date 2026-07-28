@@ -13,486 +13,291 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-/**
- * Frontend Security Tests - XSS Prevention & Input Validation
- *
- * Tests address findings from Task 195:\n * - Medium: 文件上传验证、表单长度限制\n * - Medium: 路由参数验证\n */
+// Client-side input rules: upload type/size/name checks, form length limits,
+// escaping of user text, route parameter validation and the DOM sinks the UI
+// must not feed with user content.
+// Run: npx tsx test/web/xss-input-validation.test.ts
 
-import { describe, it, expect } from 'vitest';
+let failures = 0;
+function assert(cond: unknown, msg: string) {
+  if (cond) console.log(`  ✓ ${msg}`);
+  else { failures++; console.error(`  ✗ ${msg}`); }
+}
 
 const xssPayloads = [
-  '<script>alert(\"XSS\")</script>',
-  '<img src=x onerror=\"alert(\\'XSS\\')\" >',
-  '<svg onload=\"alert(\\'XSS\\')\">',
-  'javascript:alert(\\'XSS\\')',
-  '<iframe src=\"javascript:alert(\\'XSS\\')\"></iframe>',
-  '<body onload=\"alert(\\'XSS\\')\">',
-  '<input onfocus=\"alert(\\'XSS\\')\" autofocus>',
-  '<marquee onstart=\"alert(\\'XSS\\')\"></marquee>',
-  '<svg/onload=alert(1)>',
-  'data:text/html,<script>alert(\\'XSS\\')</script>'
+  '<script>alert("XSS")</script>',
+  '<img src=x onerror="alert(\'XSS\')" >',
+  '<svg onload="alert(\'XSS\')">',
+  "javascript:alert('XSS')",
+  '<iframe src="javascript:alert(\'XSS\')"></iframe>',
+  '<body onload="alert(\'XSS\')">',
+  '<input onfocus="alert(\'XSS\')" autofocus>',
+  '<marquee onstart="alert(\'XSS\')"></marquee>',
+  "<svg/onload=alert(1)>",
+  "data:text/html,<script>alert('XSS')</script>",
 ];
 
-describe('Security Tests - Frontend XSS Prevention', () => {
-
-  describe('File Upload Input Validation', () => {
-    /**
-     * Finding: Medium Risk - File upload validation insufficient
-     */
-
-    it('should validate file type before upload', () => {
-      const fileUploadTests = [
-        { name: 'song.mp3', type: 'audio/mpeg', valid: true },
-        { name: 'song.flac', type: 'audio/flac', valid: true },
-        { name: 'song.wav', type: 'audio/wav', valid: true },
-        { name: 'malware.exe', type: 'application/x-msdownload', valid: false },
-        { name: 'shell.sh', type: 'application/x-sh', valid: false },
-        { name: 'image.jpg', type: 'image/jpeg', valid: false }
-      ];
-
-      for (const file of fileUploadTests) {
-        const validAudioTypes = ['audio/mpeg', 'audio/flac', 'audio/wav', 'audio/ogg'];
-
-        if (file.valid) {
-          expect(validAudioTypes).toContain(file.type);
-        } else {
-          expect(validAudioTypes).not.toContain(file.type);
-        }
-      }
-    });
-
-    it('should validate file size limits', () => {
-      const maxFileSize = 1024 * 1024 * 1024; // 1GB example
-      const fileTests = [
-        { name: 'small.mp3', size: 5 * 1024 * 1024, valid: true }, // 5MB
-        { name: 'normal.flac', size: 100 * 1024 * 1024, valid: true }, // 100MB
-        { name: 'huge.wav', size: 2 * 1024 * 1024 * 1024, valid: false } // 2GB
-      ];
-
-      for (const file of fileTests) {
-        if (file.valid) {
-          expect(file.size).toBeLessThanOrEqual(maxFileSize);
-        } else {
-          expect(file.size).toBeGreaterThan(maxFileSize);
-        }
-      }
-    });
-
-    it('should prevent double extension exploitation', () => {
-      const exploitAttempts = [
-        'song.mp3.exe',
-        'song.mp3.php',
-        'song.mp3.js',
-        'song.mp3.html'
-      ];
-
-      for (const filename of exploitAttempts) {
-        // Expected: Only accept single audio extension
-        // Block files with secondary executable extension
-        expect(filename).toMatch(/\\.(exe|php|js|html)$/);
-      }
-    });
-
-    it('should validate filename for path traversal', () => {
-      const pathTraversalNames = [
-        '../../../etc/passwd',
-        '..\\..\\windows\\system32',
-        'music/../../../admin',
-        '/etc/passwd',
-        'C:\\\\Windows\\\\System32'
-      ];
-
-      for (const filename of pathTraversalNames) {
-        // Expected: Reject or sanitize to safe filename
-        expect(filename).toMatch(/\\.\\.|\\\\|^\\//);
-      }
-    });
-
-    it('should sanitize uploaded filenames', () => {
-      const unsafeNames = [
-        'song with spaces.mp3',
-        'song-with-unicode-🎵.mp3',
-        'song<script>.mp3',
-        'song; rm -rf /.mp3'
-      ];
-
-      for (const name of unsafeNames) {
-        // Expected: Sanitize to safe format
-        // \"song with spaces.mp3\" → \"song_with_spaces.mp3\" or hash
-        // \"song<script>.mp3\" → \"song_script.mp3\" or reject
-        expect(name).toBeTruthy();
-      }
-    });
-  });
-
-  describe('Form Input Length Validation', () => {
-    /**
-     * Finding: Medium Risk - Form length limits insufficient
-     */
-
-    it('should enforce username length limits', () => {
-      const usernameLengthTests = [
-        { value: '', valid: false }, // Empty
-        { value: 'ab', valid: false }, // Too short
-        { value: 'validuser', valid: true },
-        { value: 'a'.repeat(64), valid: true }, // Max
-        { value: 'a'.repeat(65), valid: false } // Over max
-      ];
-
-      const minLength = 5;
-      const maxLength = 64;
-
-      for (const test of usernameLengthTests) {
-        if (test.valid) {
-          expect(test.value.length).toBeGreaterThanOrEqual(minLength);
-          expect(test.value.length).toBeLessThanOrEqual(maxLength);
-        } else {
-          expect(
-            test.value.length < minLength || test.value.length > maxLength
-          ).toBe(true);
-        }
-      }
-    });
-
-    it('should enforce password complexity and length', () => {
-      const passwordTests = [
-        { value: '', valid: false }, // Empty
-        { value: 'short', valid: false }, // Too short
-        { value: 'ValidPass123!', valid: true }, // Valid
-        { value: 'P@ss'.repeat(100), valid: false } // Too long (>256)
-      ];
-
-      const minLength = 8;
-      const maxLength = 256;
-
-      for (const test of passwordTests) {
-        if (test.valid) {
-          expect(test.value.length).toBeGreaterThanOrEqual(minLength);
-          expect(test.value.length).toBeLessThanOrEqual(maxLength);
-        }
-      }
-    });
-
-    it('should validate playlist/collection name length', () => {
-      const nameTests = [
-        { value: '', valid: false },
-        { value: 'a', valid: true },
-        { value: 'My Favorite Songs', valid: true },
-        { value: 'x'.repeat(200), valid: true },
-        { value: 'x'.repeat(500), valid: false } // Too long
-      ];
-
-      const maxLength = 200;
-
-      for (const test of nameTests) {
-        if (test.valid && test.value.length > 0) {
-          expect(test.value.length).toBeLessThanOrEqual(maxLength);
-        }
-      }
-    });
-
-    it('should validate metadata field length', () => {
-      const metadataFields = [
-        { field: 'artist', maxLength: 100, value: 'The Beatles' },
-        { field: 'album', maxLength: 100, value: 'Abbey Road' },
-        { field: 'genre', maxLength: 50, value: 'Rock' },
-        { field: 'comment', maxLength: 500, value: 'Great song!' }
-      ];
-
-      for (const field of metadataFields) {
-        if (field.value && field.value.length > field.maxLength) {
-          // Should truncate or reject
-          expect(field.value.length).toBeLessThanOrEqual(field.maxLength);
-        }
-      }
-    });
-  });
-
-  describe('XSS in User Input Fields', () => {
-
-    it('should sanitize playlist name input', () => {
-      for (const payload of xssPayloads) {
-        const playlistName = payload;
-
-        // Expected: Either reject or sanitize
-        // Should not render as executable code
-        expect(playlistName).toContain('<');
-      }
-    });
-
-    it('should sanitize artist/album/genre input', () => {
-      const metadataInput = '<img src=x onerror=\"alert(1)\">';
-
-      // When displaying user-edited metadata:
-      // Expected: Should HTML-escape or use textContent instead of innerHTML
-
-      const htmlEscaped = metadataInput
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;');
-
-      expect(htmlEscaped).not.toContain('<img');
-      expect(htmlEscaped).toContain('&lt;img');
-    });
-
-    it('should prevent XSS through search input', () => {
-      const searchPayloads = [
-        '\" onmouseover=\"alert(1)\" \"',
-        'javascript:alert(1)',
-        '<script>alert(1)</script>'
-      ];
-
-      for (const payload of searchPayloads) {
-        // Search should use textContent, not innerHTML
-        expect(payload).toContain('<');
-      }
-    });
-
-    it('should validate and sanitize tag descriptions', () => {
-      const tagDescription = '<script>alert(\"XSS\")</script>';
-
-      // If tags can have descriptions:
-      // Expected: Sanitize or use plain text only
-
-      const isPlainText = !tagDescription.includes('<') &&
-                          !tagDescription.includes('>');
-
-      expect(isPlainText).toBe(false); // Current value contains HTML
-    });
-  });
-
-  describe('Route Parameter Validation', () => {
-    /**
-     * Finding: Medium Risk - Route parameters not validated
-     */
-
-    it('should validate numeric route parameters (album ID)', () => {
-      const routeTests = [
-        { path: '/album/123', valid: true },
-        { path: '/album/0', valid: false },
-        { path: '/album/-1', valid: false },
-        { path: '/album/abc', valid: false },
-        { path: '/album/<script>', valid: false }
-      ];
-
-      for (const test of routeTests) {
-        // Extract ID from route
-        const match = test.path.match(/\\/album\\/(\\d+)/);
-        if (test.valid) {
-          expect(match).toBeTruthy();
-          const id = parseInt(match?.[1] || '0');
-          expect(id).toBeGreaterThan(0);
-        }
-      }
-    });
-
-    it('should prevent XSS through URL parameters', () => {
-      const xssInUrl = '/album/<script>alert(1)</script>';
-
-      // Vue Router should sanitize or validate params
-      // Not: Directly render route.params without escaping
-
-      expect(xssInUrl).toContain('<');
-    });
-
-    it('should validate UUID/slug route parameters', () => {
-      const uuidTests = [
-        { value: 'a1b2c3d4-e5f6-4a5b-9c8d-e7f6a5b4c3d2', valid: true }, // Valid UUID
-        { value: 'not-a-uuid', valid: false },
-        { value: '<script>', valid: false },
-        { value: '../../../', valid: false }
-      ];
-
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-      for (const test of uuidTests) {
-        if (test.valid) {
-          expect(test.value).toMatch(uuidRegex);
-        } else {
-          expect(test.value).not.toMatch(uuidRegex);
-        }
-      }
-    });
-
-    it('should prevent open redirect through route parameters', () => {
-      const redirectTests = [
-        { url: '/app/redirect?to=https://evil.com', dangerous: true },
-        { url: '/app/redirect?to=//evil.com', dangerous: true },
-        { url: '/app/redirect?to=javascript:alert(1)', dangerous: true },
-        { url: '/app/redirect?to=/library', dangerous: false }
-      ];
-
-      for (const test of redirectTests) {
-        // Extract 'to' parameter
-        const match = test.url.match(/to=([^&]+)/);
-        if (match) {
-          const target = decodeURIComponent(match[1]);
-
-          if (test.dangerous) {
-            // Should not redirect to external URLs
-            const isExternal =
-              target.includes('evil.com') ||
-              target.startsWith('//') ||
-              target.startsWith('javascript:');
-
-            expect(isExternal).toBe(true);
-          }
-        }
-      }
-    });
-  });
-
-  describe('DOM XSS Prevention', () => {
-
-    it('should not use v-html for user-controlled content', () => {
-      // Vulnerable pattern:
-      // <div v-html=\"userInput\"></div>
-
-      const userInput = '<img src=x onerror=\"steal()\">';
-
-      // v-html directly renders HTML - DANGEROUS for user input
-      // Expected: Use {{ userInput }} (text interpolation) or sanitize
-
-      // Safe approach:
-      const safeBoundValue = userInput; // Would be escaped by Vue
-      expect(safeBoundValue).toBe(userInput);
-    });
-
-    it('should validate innerHTML assignments', () => {
-      const mockElement = {
-        innerHTML: '',
-        textContent: ''
-      };
-
-      const userContent = '<img onerror=\"alert(1)\">';
-
-      // Vulnerable:
-      // mockElement.innerHTML = userContent; // DON'T DO THIS
-
-      // Safe:
-      mockElement.textContent = userContent; // Safe - rendered as text
-
-      expect(mockElement.textContent).toBe(userContent);
-      expect(mockElement.innerHTML).toBe('');
-    });
-
-    it('should validate dynamically created DOM elements', () => {
-      const userContent = '<script>alert(1)</script>';
-
-      // Vulnerable:
-      // const div = document.createElement('div');
-      // div.innerHTML = userContent;
-
-      // Safe:
-      const div = document.createElement('div');
-      div.textContent = userContent;
-
-      expect(div.textContent).toBe(userContent);
-    });
-  });
-
-  describe('Event Handler Security', () => {
-
-    it('should prevent javascript: protocol in href attributes', () => {
-      const linkTests = [
-        { href: 'https://example.com', safe: true },
-        { href: '/page', safe: true },
-        { href: 'javascript:alert(1)', safe: false },
-        { href: 'data:text/html,<script>alert(1)</script>', safe: false }
-      ];
-
-      for (const link of linkTests) {
-        if (!link.safe) {
-          expect(link.href).toMatch(/^(javascript:|data:)/);
-        }
-      }
-    });
-
-    it('should validate onXXX event handler attributes', () => {
-      // Should avoid inline event handlers
-      // Vulnerable: <img onload=\"stealData()\">
-      // Safe: Use addEventListener
-
-      const unsafeAttributes = [
-        'onclick',
-        'onload',
-        'onerror',
-        'onmouseover',
-        'onfocus'
-      ];
-
-      for (const attr of unsafeAttributes) {
-        // Should not be present in Vue templates
-        expect(attr).toBeTruthy();
-      }
-    });
-  });
-
-  describe('SVG XSS Prevention', () => {
-
-    it('should sanitize SVG content', () => {
-      const svgPayloads = [
-        '<svg onload=\"alert(1)\"></svg>',
-        '<svg><script>alert(1)</script></svg>',
-        '<svg><animate onbegin=\"alert(1)\"></animate></svg>'
-      ];
-
-      for (const payload of svgPayloads) {
-        // SVG can execute scripts - must sanitize
-        expect(payload).toContain('<svg');
-      }
-    });
-
-    it('should validate user-provided SVG icons', () => {
-      const userProvidedSvg = '<svg><use xlink:href=\"javascript:alert(1)\"></use></svg>';
-
-      // If allowing user SVG uploads:
-      // Expected: Use DOMPurify or similar library
-      // OR: Only allow predefined safe SVG icons
-
-      expect(userProvidedSvg).toContain('xlink:href');
-    });
-  });
-
-  describe('Rate Limiting in Frontend', () => {
-
-    it('should implement client-side rate limiting on form submission', () => {
-      const formSubmission = {
-        lastSubmitTime: 0,
-        minIntervalMs: 1000, // 1 second between submissions
-        canSubmit: function() {
-          return Date.now() - this.lastSubmitTime > this.minIntervalMs;
-        }
-      };
-
-      // First submission allowed
-      expect(formSubmission.canSubmit()).toBe(true);
-
-      formSubmission.lastSubmitTime = Date.now();
-
-      // Immediate resubmission blocked
-      expect(formSubmission.canSubmit()).toBe(false);
-
-      // After 1 second, allowed again
-      setTimeout(() => {
-        expect(formSubmission.canSubmit()).toBe(true);
-      }, 1100);
-    });
-
-    it('should disable submit button during processing', () => {
-      const submitButton = {
-        disabled: false,
-        onClick: function() {
-          this.disabled = true;
-          // Submit request
-          // After response: this.disabled = false
-        }
-      };
-
-      submitButton.onClick();
-      expect(submitButton.disabled).toBe(true);
-    });
-  });
-
-});
+const htmlEscape = (s: string) => s
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;");
+
+const dangerousScheme = /^(javascript|data|vbscript):/i;
+
+// Escaping only defuses markup; a bare `javascript:` value passes through it
+// unchanged and has to be caught by the scheme check before it reaches an href.
+const neutralised = (s: string) => htmlEscape(s) !== s || dangerousScheme.test(s);
+
+// -- File upload validation -----------------------------------------------------
+
+console.log("file upload validation:");
+
+const validAudioTypes = ["audio/mpeg", "audio/flac", "audio/wav", "audio/ogg"];
+const uploadCandidates = [
+  { name: "song.mp3", type: "audio/mpeg", valid: true },
+  { name: "song.flac", type: "audio/flac", valid: true },
+  { name: "song.wav", type: "audio/wav", valid: true },
+  { name: "malware.exe", type: "application/x-msdownload", valid: false },
+  { name: "shell.sh", type: "application/x-sh", valid: false },
+  { name: "image.jpg", type: "image/jpeg", valid: false },
+];
+assert(uploadCandidates.every((f) => validAudioTypes.includes(f.type) === f.valid),
+  "the accepted upload types are exactly the audio whitelist");
+
+const maxFileSize = 1024 * 1024 * 1024;
+const sizedFiles = [
+  { name: "small.mp3", size: 5 * 1024 * 1024, valid: true },
+  { name: "normal.flac", size: 100 * 1024 * 1024, valid: true },
+  { name: "huge.wav", size: 2 * 1024 * 1024 * 1024, valid: false },
+];
+assert(sizedFiles.every((f) => (f.size <= maxFileSize) === f.valid), "the size cap admits and rejects the expected files");
+
+const executableTail = /\.(exe|php|js|html)$/i;
+const doubleExtension = ["song.mp3.exe", "song.mp3.php", "song.mp3.js", "song.mp3.html"];
+assert(doubleExtension.every((n) => executableTail.test(n)),
+  "a second executable extension is caught by looking at the final one, not the first");
+assert(!executableTail.test("song.mp3"), "a plain audio filename is unaffected");
+
+const traversalInName = /(\.\.|\\|^\/)/;
+const pathTraversalNames = [
+  "../../../etc/passwd",
+  "..\\..\\windows\\system32",
+  "music/../../../admin",
+  "/etc/passwd",
+  "C:\\Windows\\System32",
+];
+assert(pathTraversalNames.every((n) => traversalInName.test(n)),
+  "an uploaded filename that walks the tree or names a drive is rejected");
+assert(!traversalInName.test("song.mp3"), "an ordinary filename passes the same check");
+
+const safeName = (n: string) => n.replace(/[^A-Za-z0-9._-]+/g, "_");
+const unsafeNames = ["song with spaces.mp3", "song-with-unicode-🎵.mp3", "song<script>.mp3", "song; rm -rf /.mp3"];
+assert(unsafeNames.every((n) => safeName(n) !== n), "each unsafe filename is changed by sanitisation");
+assert(unsafeNames.every((n) => !/[<>;\s]/.test(safeName(n))),
+  "no markup, shell or whitespace character survives sanitisation");
+
+// -- Form input length validation --------------------------------------------------
+
+console.log("\nform input length validation:");
+
+const USERNAME_MIN = 5;
+const USERNAME_MAX = 64;
+const usernameTests = [
+  { value: "", valid: false },
+  { value: "ab", valid: false },
+  { value: "validuser", valid: true },
+  { value: "a".repeat(USERNAME_MAX), valid: true },
+  { value: "a".repeat(USERNAME_MAX + 1), valid: false },
+];
+const usernameOk = (v: string) => v.length >= USERNAME_MIN && v.length <= USERNAME_MAX;
+assert(usernameTests.every((t) => usernameOk(t.value) === t.valid),
+  `usernames are accepted exactly on ${USERNAME_MIN}..${USERNAME_MAX}`);
+
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 256;
+const passwordTests = [
+  { value: "", valid: false },
+  { value: "short", valid: false },
+  { value: "ValidPass123!", valid: true },
+  { value: "P@ss".repeat(100), valid: false },
+];
+const passwordOk = (v: string) => v.length >= PASSWORD_MIN && v.length <= PASSWORD_MAX;
+assert(passwordTests.every((t) => passwordOk(t.value) === t.valid),
+  `passwords are accepted exactly on ${PASSWORD_MIN}..${PASSWORD_MAX}`);
+
+const NAME_MAX = 200;
+const nameTests = [
+  { value: "", valid: false },
+  { value: "a", valid: true },
+  { value: "My Favorite Songs", valid: true },
+  { value: "x".repeat(NAME_MAX), valid: true },
+  { value: "x".repeat(500), valid: false },
+];
+assert(nameTests.every((t) => (t.value.length >= 1 && t.value.length <= NAME_MAX) === t.valid),
+  "playlist and collection names are accepted exactly on 1..200");
+
+const metadataFields = [
+  { field: "artist", maxLength: 100, value: "The Beatles" },
+  { field: "album", maxLength: 100, value: "Abbey Road" },
+  { field: "genre", maxLength: 50, value: "Rock" },
+  { field: "comment", maxLength: 500, value: "Great song!" },
+];
+assert(metadataFields.every((f) => f.value.length <= f.maxLength),
+  "the metadata sample values sit inside their per-field caps");
+assert(metadataFields.every((f) => "x".repeat(f.maxLength + 1).length > f.maxLength),
+  "each field has a cap that an overlong value can exceed and be truncated against");
+
+// -- XSS in user input fields --------------------------------------------------------
+
+console.log("\nXSS in user input fields:");
+
+assert(xssPayloads.every(neutralised),
+  "every payload is defused before display, by escaping or by the scheme check");
+assert(xssPayloads.every((p) => !/<[a-z]/i.test(htmlEscape(p))),
+  "no element survives escaping in a playlist name");
+
+const metadataInput = '<img src=x onerror="alert(1)">';
+const escapedMetadata = htmlEscape(metadataInput);
+assert(!escapedMetadata.includes("<img"), "escaped metadata carries no live element");
+assert(escapedMetadata.includes("&lt;img"), "the original text is still legible once escaped");
+
+const searchPayloads = ['" onmouseover="alert(1)" "', "javascript:alert(1)", "<script>alert(1)</script>"];
+assert(searchPayloads.every(neutralised),
+  "attribute-breaking, element and URL search terms are all neutralised");
+
+const tagDescription = '<script>alert("XSS")</script>';
+const isPlainText = (s: string) => !s.includes("<") && !s.includes(">");
+assert(!isPlainText(tagDescription), "a tag description carrying markup is not plain text");
+assert(isPlainText(htmlEscape(tagDescription).replace(/&[a-z]+;/g, "")),
+  "and escaping it leaves nothing the browser reads as markup");
+
+// -- Route parameter validation ---------------------------------------------------------
+
+console.log("\nroute parameter validation:");
+
+const albumRoutes = [
+  { path: "/album/123", valid: true },
+  { path: "/album/0", valid: false },
+  { path: "/album/-1", valid: false },
+  { path: "/album/abc", valid: false },
+  { path: "/album/<script>", valid: false },
+];
+const albumId = (path: string) => {
+  const m = path.match(/^\/album\/(\d+)$/);
+  if (!m) return null;
+  const id = Number.parseInt(m[1], 10);
+  return id > 0 ? id : null;
+};
+assert(albumRoutes.every((t) => (albumId(t.path) !== null) === t.valid),
+  "only a positive integer album segment resolves to a route parameter");
+assert(albumId("/album/123") === 123, "a valid segment parses to its numeric ID");
+
+const xssInUrl = "/album/<script>alert(1)</script>";
+assert(albumId(xssInUrl) === null, "a markup route segment resolves to nothing rather than being rendered");
+assert(htmlEscape(xssInUrl) !== xssInUrl, "and would still be escaped if it were ever displayed");
+
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidTests = [
+  { value: "a1b2c3d4-e5f6-4a5b-9c8d-e7f6a5b4c3d2", valid: true },
+  { value: "not-a-uuid", valid: false },
+  { value: "<script>", valid: false },
+  { value: "../../../", valid: false },
+];
+assert(uuidTests.every((t) => uuidRegex.test(t.value) === t.valid), "slug parameters are matched against the UUID shape");
+
+const isInternalTarget = (target: string) =>
+  target.startsWith("/") && !target.startsWith("//") && !/^[a-z]+:/i.test(target);
+const redirectTests = [
+  { url: "/app/redirect?to=https://evil.com", dangerous: true },
+  { url: "/app/redirect?to=//evil.com", dangerous: true },
+  { url: "/app/redirect?to=javascript:alert(1)", dangerous: true },
+  { url: "/app/redirect?to=/library", dangerous: false },
+];
+assert(redirectTests.every((t) => {
+  const m = t.url.match(/to=([^&]+)/);
+  if (!m) return false;
+  return isInternalTarget(decodeURIComponent(m[1])) === !t.dangerous;
+}), "only a same-origin path is accepted as a redirect target");
+
+// -- DOM sinks -----------------------------------------------------------------------------
+
+console.log("\nDOM sinks:");
+
+// The runner has no DOM, so the sink behaviour is modelled: assigning to
+// textContent stores the text, innerHTML stays untouched.
+type Sink = { innerHTML: string; textContent: string };
+const createElement = (): Sink => ({ innerHTML: "", textContent: "" });
+
+const bound = '<img src=x onerror="steal()">';
+assert(htmlEscape(bound) !== bound,
+  "text interpolation escapes user content, so v-html is the only way this could execute");
+
+const el = createElement();
+const userContent = '<img onerror="alert(1)">';
+el.textContent = userContent;
+assert(el.textContent === userContent, "textContent keeps the value as text");
+assert(el.innerHTML === "", "and never populates the HTML sink");
+
+const div = createElement();
+div.textContent = "<script>alert(1)</script>";
+assert(div.textContent === "<script>alert(1)</script>", "a dynamically built node also receives user content as text");
+assert(div.innerHTML === "", "with its innerHTML left empty");
+
+// -- Event handlers and URLs ------------------------------------------------------------------
+
+console.log("\nevent handlers and URLs:");
+
+const linkTests = [
+  { href: "https://example.com", safe: true },
+  { href: "/page", safe: true },
+  { href: "javascript:alert(1)", safe: false },
+  { href: "data:text/html,<script>alert(1)</script>", safe: false },
+];
+assert(linkTests.every((l) => !dangerousScheme.test(l.href) === l.safe),
+  "only http(s) and relative hrefs pass the scheme check");
+
+const inlineHandler = /\son[a-z]+\s*=/i;
+const unsafeAttributes = ["onclick", "onload", "onerror", "onmouseover", "onfocus"];
+assert(unsafeAttributes.every((a) => inlineHandler.test(` ${a}="x"`)),
+  "every inline handler attribute is recognised by the sanitiser pattern");
+assert(!inlineHandler.test(' src="x.png"'), "an ordinary attribute is not mistaken for one");
+
+// -- SVG ------------------------------------------------------------------------------------------
+
+console.log("\nSVG:");
+
+const svgPayloads = [
+  '<svg onload="alert(1)"></svg>',
+  "<svg><script>alert(1)</script></svg>",
+  '<svg><animate onbegin="alert(1)"></animate></svg>',
+];
+assert(svgPayloads.every((p) => inlineHandler.test(p) || /<script/i.test(p)),
+  "each SVG payload carries a handler or a script element, so raw SVG cannot be inlined unsanitised");
+
+const userProvidedSvg = '<svg><use xlink:href="javascript:alert(1)"></use></svg>';
+const hrefValue = userProvidedSvg.match(/xlink:href="([^"]+)"/)?.[1] ?? "";
+assert(dangerousScheme.test(hrefValue), "an xlink:href can smuggle a javascript: URL and must be scheme-checked too");
+
+// -- Submission throttling -------------------------------------------------------------------------
+
+console.log("\nsubmission throttling:");
+
+const minIntervalMs = 1000;
+let lastSubmitTime = 0;
+const canSubmit = (now: number) => now - lastSubmitTime > minIntervalMs;
+const t0 = Date.now();
+assert(canSubmit(t0), "the first submission is allowed");
+lastSubmitTime = t0;
+assert(!canSubmit(t0 + 10), "an immediate resubmission is blocked");
+assert(canSubmit(t0 + minIntervalMs + 100), "the form unlocks once the interval has passed");
+
+const submitButton = {
+  disabled: false,
+  onClick(this: { disabled: boolean }) { this.disabled = true; },
+};
+submitButton.onClick();
+assert(submitButton.disabled, "the submit button disables itself for the duration of the request");
+
+console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
+process.exit(failures ? 1 : 0);

@@ -13,351 +13,209 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-/**
- * Backend Security Tests - WebDAV Credential Leakage (HIGH Risk)
- *
- * Tests address specific finding from Task 194:
- * - WebDAV presign凭证泄露 (adapters/webdav.ts:8-11)
- * - URL contains plaintext credentials that leak through:
- *   * Browser history
- *   * Referer headers
- *   * Server logs
- *   * Network monitoring
- */
+// WebDAV presign is a known credential-exposure trade-off: the redirect URL
+// carries the upstream account so the browser can fetch bytes directly. These
+// checks pin the exposure surface (history / Referer / logs / capture), the
+// mitigations the feature depends on, and guard the source-level warnings and
+// the off-by-default switch against silent drift.
+// Run: npx tsx test/internal/webdav-security.test.ts
 
-import { describe, it, expect } from 'vitest';
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-describe('Security Tests - WebDAV Presign Credential Leakage (HIGH Risk)', () => {
+let failures = 0;
+function assert(cond: unknown, msg: string) {
+  if (cond) console.log(`  ✓ ${msg}`);
+  else { failures++; console.error(`  ✗ ${msg}`); }
+}
 
-  describe('Presign URL Generation', () => {
-    /**
-     * Finding: /worker/src/adapters/webdav.ts:8-11
-     * Security Warning (from code):
-     * \"credentials appear in the URL and will leak to browser history/Referer/server logs\"
-     */
+const root = join(__dirname, "..", "..");
+const adapter = readFileSync(join(root, "worker", "src", "adapters", "webdav.ts"), "utf8");
+const media = readFileSync(join(root, "worker", "src", "endpoints", "subsonic", "media.ts"), "utf8");
 
-    it('should NOT embed credentials directly in presigned URLs', () => {
-      // Attack Vector: Browser history captures full URL with credentials
-      const presignedUrl = 'https://webdav.example.com/music/song.mp3?user=admin&password=secretpassword';
+// -- Presign URL generation ---------------------------------------------------
 
-      // Evidence of vulnerability:
-      // 1. URL contains plaintext password
-      expect(presignedUrl).toContain('password=');
-      expect(presignedUrl).toContain('secretpassword');
-    });
+console.log("presign URL generation:");
 
-    it('should mitigate credential leakage through browser history', () => {
-      // Current status: VULNERABLE
-      // User's browser history contains full presigned URL with credentials
+assert(/SECURITY[\s\S]{0,200}credentials appear in the URL/.test(adapter),
+  "the adapter still documents that presign leaks credentials through the URL");
+assert(/\$\{encUser\}:\$\{encPass\}@/.test(adapter),
+  "presign builds a UserInfo URL, so the credential is part of the location");
+assert(!/Authorization/.test(adapter.slice(adapter.indexOf("async presign"))),
+  "the presign path cannot use an Authorization header — a 302 target carries no headers");
 
-      const historyEntry = {
-        url: 'https://webdav.example.com:8080/music/Beatles/song.mp3?user=admin&password=MyPassword123',
-        timestamp: Date.now(),
-        title: 'Song - Music Player'
-      };
+// A presigned location, in either the UserInfo or query form, exposes the
+// upstream password to anything that records URLs.
+const presignedUrl = "https://admin:secretpassword@webdav.example.com/music/song.mp3";
+assert(presignedUrl.includes("secretpassword"), "the generated location contains the plaintext password");
+assert(/\/\/[^/@]+:[^/@]+@/.test(presignedUrl), "the credential sits in the authority component of the URL");
 
-      // If compromised later, attacker can:
-      // 1. Scan browser history
-      // 2. Extract WebDAV credentials
-      // 3. Access upstream WebDAV server directly
+const historyEntry = {
+  url: "https://webdav.example.com:8080/music/Beatles/song.mp3?user=admin&password=MyPassword123",
+  timestamp: Date.now(),
+  title: "Song - Music Player",
+};
+assert(/password=[^&]+/.test(historyEntry.url), "a browser history entry retains the credential verbatim");
 
-      expect(historyEntry.url).toMatch(/password=[^&]+/);
-    });
+const referrerLeakage = {
+  sourceUrl: "https://webdav.example.com/music/song.mp3?user=admin&password=secret",
+  targetUrl: "https://attacker.com/logger",
+  referrer: "https://webdav.example.com/music/song.mp3?user=admin&password=secret",
+};
+assert(referrerLeakage.referrer.includes("password"),
+  "without a no-referrer policy the credential travels in the Referer header");
 
-    it('should prevent credential leakage through Referer header', () => {
-      // When user clicks link from presigned URL to external site:
-      // Referer: https://webdav.example.com/music/song.mp3?user=admin&password=...
+const serverLog = {
+  method: "GET",
+  path: "/music/Beatles/Abbey Road/01-Come Together.mp3",
+  query: "user=admin&password=MySecurePassword",
+  clientIP: "192.168.1.100",
+  userAgent: "EdgeSonic/1.0",
+};
+assert(serverLog.query.includes("password"), "the upstream access log records the credential");
+assert(!serverLog.query.includes("token"), "the presign path has no short-lived token to log instead");
 
-      const referrerLeakage = {
-        sourceUrl: 'https://webdav.example.com/music/song.mp3?user=admin&password=secret',
-        targetUrl: 'https://attacker.com/logger',
-        referrer: 'https://webdav.example.com/music/song.mp3?user=admin&password=secret'
-      };
+const httpsRequest = {
+  url: "https://webdav.example.com:8443/music/file.mp3",
+  params: { user: "admin", password: "exposed_in_tls_request" },
+};
+assert(Boolean(httpsRequest.params.password),
+  "TLS hides the URL on the wire but not from either endpoint of the connection");
 
-      // Expected mitigation: Use Referrer-Policy: no-referrer
-      // Or: Use session-based tokens instead of URL credentials
-      expect(referrerLeakage.referrer).toContain('password');
-    });
+// -- Credential storage --------------------------------------------------------
 
-    it('should prevent credential leakage to server logs', () => {
-      // WebDAV server receives GET request with credentials in URL:
-      // Log entry: \"GET /music/song.mp3?user=admin&password=secret HTTP/1.1\"
+console.log("\ncredential storage:");
 
-      const serverLog = {
-        timestamp: '2026-07-15T10:30:00Z',
-        method: 'GET',
-        path: '/music/Beatles/Abbey Road/01-Come Together.mp3',
-        query: 'user=admin&password=MySecurePassword',
-        clientIP: '192.168.1.100',
-        userAgent: 'EdgeSonic/1.0'
-      };
+const storageSource = {
+  id: 1,
+  name: "My WebDAV",
+  type: "webdav",
+  url: "https://webdav.example.com",
+  username: "admin",
+  password: "plaintext_password_123",
+  presign_username: "presign_user",
+  presign_password: "presign_pass",
+};
+assert(storageSource.password === "plaintext_password_123",
+  "storage_sources holds the WebDAV password as recoverable text, not a hash");
+assert(storageSource.presign_password === "presign_pass",
+  "the separate presign credential is stored the same recoverable way");
+assert(storageSource.presign_username !== storageSource.username,
+  "presign uses its own account so the main credential need not be redirect-exposed");
 
-      // Issue: Log now contains plaintext credentials
-      // If log file is compromised: Credentials exposed
+const exposureWindow = { fetch: true, memory: true, network: true, response: true };
+assert(Object.values(exposureWindow).filter(Boolean).length > 0,
+  "the credential is unavoidably live during URL construction and transmission");
 
-      expect(serverLog.query).toContain('password');
-      expect(serverLog.query).not.toContain('token'); // No token-based auth
-    });
+// -- Mitigations ----------------------------------------------------------------
 
-    it('should mitigate network packet capture exposure', () => {
-      // Even with HTTPS, if packet capture occurs:
-      // Attacker sees full TLS handshake request including URL
+console.log("\nmitigations:");
 
-      const httpsRequest = {
-        method: 'GET',
-        url: 'https://webdav.example.com:8443/music/file.mp3',
-        params: {
-          user: 'admin',
-          password: 'exposed_in_tls_request'
-        },
-        headers: {
-          'Host': 'webdav.example.com',
-          'User-Agent': 'EdgeSonic/1.0'
-        }
-      };
+const secureRequest = {
+  url: "https://webdav.example.com/music/file.mp3",
+  headers: {
+    Authorization: "Basic " + Buffer.from("admin:password").toString("base64"),
+    "User-Agent": "EdgeSonic/1.0",
+  },
+};
+assert(secureRequest.headers.Authorization !== undefined,
+  "the in-Worker stream path can authenticate with a header instead");
+assert(!secureRequest.url.includes("password"),
+  "the header form keeps the URL free of credentials");
+assert(/Authorization/.test(adapter) && /Basic/.test(adapter),
+  "the adapter's proxied stream path does use Basic auth headers");
 
-      // Even with HTTPS, URL path is visible in TLS client hello
-      expect(httpsRequest.params.password).toBeTruthy();
-    });
-  });
+const tokenFlow = {
+  authenticate: { response: { token: "secure_token_12345_expires_in_1_hour", expiresAt: Date.now() + 3600000 } },
+  useToken: { headers: { "X-Session-Token": "secure_token_12345" } },
+};
+assert(!tokenFlow.authenticate.response.token.includes("password"),
+  "a session-token scheme would not carry the account password");
+assert(tokenFlow.authenticate.response.expiresAt > Date.now(),
+  "such a token expires, unlike an embedded account credential");
 
-  describe('Credential Storage in Database', () => {
+assert(/getFeatureString\(env,\s*"enable_webdav_presign",\s*"0"\)/.test(media),
+  "the presign redirect is off unless an operator explicitly enables it");
+assert(/enable_webdav_presign must be '0' or '1'/.test(
+  readFileSync(join(root, "worker", "src", "endpoints", "edgesonic", "features.ts"), "utf8")),
+  "the switch is validated as a strict boolean flag");
 
-    it('should encrypt WebDAV credentials at rest (currently plaintext)', () => {
-      // Finding: storage_sources table stores password as TEXT (plaintext)
+const dedicatedAccount = {
+  username: "edgesonic-readonly",
+  permissions: "read-only",
+  scope: "/music/",
+  canWrite: false,
+  canDelete: false,
+  canCreateShares: false,
+  passwordRotationDays: 90,
+};
+assert(!dedicatedAccount.canWrite && !dedicatedAccount.canDelete,
+  "the documented operator setup is a read-only upstream account");
+assert(/read-only account/.test(adapter),
+  "the adapter tells operators to configure that dedicated account");
 
-      const storageSourceInDB = {
-        id: 1,
-        name: 'My WebDAV',
-        type: 'webdav',
-        url: 'https://webdav.example.com',
-        username: 'admin',
-        password: 'plaintext_password_123', // Vulnerable: plaintext
-        presign_username: 'presign_user',
-        presign_password: 'presign_pass' // Also plaintext
-      };
+// -- Monitoring -------------------------------------------------------------------
 
-      // Mitigation needed: Encrypt with database-level encryption or app-level
-      expect(storageSourceInDB.password).toBe('plaintext_password_123');
-      expect(storageSourceInDB.presign_password).toBe('presign_pass');
-    });
+console.log("\nmonitoring:");
 
-    it('should limit WebDAV credential exposure window', () => {
-      // Credentials must exist in memory during:
-      // 1. URL construction
-      // 2. HTTP request transmission
-      // 3. Response processing
+const sanitizedLog = {
+  action: "webdav_presign_fetch",
+  url: "https://webdav.example.com/music/file.mp3",
+  result: "success",
+  duration_ms: 234,
+};
+assert(!sanitizedLog.url.includes("user="), "EdgeSonic's own audit line carries no username");
+assert(!sanitizedLog.url.includes("password="), "EdgeSonic's own audit line carries no password");
+assert(!/\/\/[^/@]+:[^/@]+@/.test(sanitizedLog.url), "nor the UserInfo form of the same credential");
 
-      const exposureWindow = {
-        fetch: true,
-        memory: true,
-        network: true,
-        response: true
-      };
+const anomalies = [
+  { pattern: "rapid_presign", count: 100, threshold: 10 },
+  { pattern: "cross_ip_access", count: 5, threshold: 2 },
+  { pattern: "after_expiry", count: 1, threshold: 0 },
+];
+assert(anomalies.every((a) => a.count > a.threshold),
+  "each modelled access pattern is over its alert threshold");
 
-      // Mitigation: Use WebDAV authentication headers instead of URL params
-      expect(Object.values(exposureWindow).filter(v => v).length).toBeGreaterThan(0);
-    });
-  });
+// -- Access control for the feature ------------------------------------------------
 
-  describe('Recommended Mitigations', () => {
+console.log("\naccess control for the feature:");
 
-    it('should use HTTP Basic Auth headers instead of URL credentials', () => {
-      // Better approach: Pass credentials via Authorization header
-      const secureRequest = {
-        method: 'GET',
-        url: 'https://webdav.example.com/music/file.mp3',
-        headers: {
-          'Authorization': 'Basic ' + Buffer.from('admin:password').toString('base64'),
-          'User-Agent': 'EdgeSonic/1.0'
-        }
-      };
+const feature = { name: "enable_webdav_presign", requiredPermission: "manage_permissions" };
+assert(feature.requiredPermission === "manage_permissions",
+  "flipping the switch needs the permission-management capability");
 
-      // Advantages:
-      // - Not logged in URL logs
-      // - Not in browser history
-      // - Protected by HTTPS encryption
-      // - Can be cleared from connection pooling
+const auditLog = {
+  action: "feature_change",
+  feature: "enable_webdav_presign",
+  oldValue: false,
+  newValue: true,
+  changedBy: "admin",
+};
+assert(auditLog.feature === "enable_webdav_presign" && auditLog.changedBy === "admin",
+  "a feature flip is attributable to the account that made it");
+assert(auditLog.oldValue !== auditLog.newValue, "the audit record keeps both sides of the change");
 
-      expect(secureRequest.headers.Authorization).toBeDefined();
-      expect(secureRequest.url).not.toContain('password');
-    });
+// -- Operator documentation ---------------------------------------------------------
 
-    it('should implement WebDAV session tokens', () => {
-      // Approach: Issue temporary token instead of long-lived credentials
+console.log("\noperator documentation:");
 
-      const tokenFlow = {
-        step1_authenticate: {
-          request: {
-            method: 'POST',
-            path: '/auth',
-            body: { username: 'admin', password: 'secret' }
-          },
-          response: {
-            token: 'secure_token_12345_expires_in_1_hour',
-            expiresAt: Date.now() + 3600000
-          }
-        },
-        step2_use_token: {
-          request: {
-            method: 'GET',
-            path: '/music/file.mp3',
-            headers: { 'X-Session-Token': 'secure_token_12345' }
-          }
-        }
-      };
+const risks = [
+  "Credentials leak to browser history",
+  "Credentials leak via Referer headers",
+  "Credentials logged by WebDAV server",
+  "Requires dedicated read-only account",
+];
+assert(risks.every(Boolean) && risks.length === 4, "the acknowledgement lists every known exposure path");
 
-      // Advantages: Token is temporary, can't be reused after expiry
-      expect(tokenFlow.step1_authenticate.response.token).not.toContain('password');
-    });
+const documentation = {
+  status: "EXPERIMENTAL",
+  riskLevel: "HIGH",
+  recommendation: "Disable in production. Use HTTP Basic Auth headers instead.",
+  alternatives: ["HTTP Basic Authorization header", "Session token-based access", "Proxy WebDAV requests through EdgeSonic"],
+};
+assert(documentation.riskLevel === "HIGH", "the feature is documented as high risk");
+assert(documentation.recommendation.includes("Disable"), "the default recommendation is to leave it off");
+assert(documentation.alternatives.length === 3, "the safer alternatives are spelled out");
 
-    it('should restrict presign feature to controlled scenarios', () => {
-      // WebDAV presign should be:
-      // 1. Optional feature (disabled by default)
-      // 2. Only enabled if explicitly configured
-      // 3. Require special account setup (not production admin)
-
-      const featureControl = {
-        enabled: false, // Default: disabled
-        requiresExplicitEnable: true,
-        requiresReadOnlyAccount: true,
-        documentation: 'Use dedicated read-only WebDAV account'
-      };
-
-      expect(featureControl.enabled).toBe(false);
-      expect(featureControl.requiresReadOnlyAccount).toBe(true);
-    });
-
-    it('should use dedicated read-only WebDAV accounts', () => {
-      // Best practice: If WebDAV presign used, account should:
-      // - Be read-only (no write permissions)
-      // - Have limited scope (only music directory)
-      // - Be separate from admin accounts
-      // - Have password rotation schedule
-
-      const dedicatedAccount = {
-        username: 'edgesonic-readonly',
-        permissions: 'read-only',
-        scope: '/music/',
-        canWrite: false,
-        canDelete: false,
-        canCreateShares: false,
-        passwordRotationDays: 90
-      };
-
-      expect(dedicatedAccount.canWrite).toBe(false);
-      expect(dedicatedAccount.canDelete).toBe(false);
-    });
-  });
-
-  describe('Monitoring & Detection', () => {
-
-    it('should log WebDAV presign URL usage with anonymization', () => {
-      // Logging needed for audit trail, but without credentials
-
-      const sanitizedLog = {
-        timestamp: '2026-07-15T10:30:00Z',
-        action: 'webdav_presign_fetch',
-        source: 'edgesonic',
-        url: 'https://webdav.example.com/music/file.mp3', // NO CREDENTIALS
-        result: 'success',
-        duration_ms: 234
-      };
-
-      // Should NOT log:
-      // - Full URL with credentials
-      // - Username/password in any field
-
-      expect(sanitizedLog.url).not.toContain('user=');
-      expect(sanitizedLog.url).not.toContain('password=');
-    });
-
-    it('should alert on unusual WebDAV access patterns', () => {
-      // Anomaly detection:
-      // - Presign URLs accessed from unexpected IP
-      // - Presign URL used after URL expiry
-      // - Multiple presign URLs from same user in short time
-
-      const anomalies = [
-        { pattern: 'rapid_presign', count: 100, threshold: 10 },
-        { pattern: 'cross_ip_access', count: 5, threshold: 2 },
-        { pattern: 'after_expiry', count: 1, threshold: 0 }
-      ];
-
-      for (const anomaly of anomalies) {
-        if (anomaly.count > anomaly.threshold) {
-          // Should trigger alert/notification
-          expect(anomaly.count).toBeGreaterThan(anomaly.threshold);
-        }
-      }
-    });
-  });
-
-  describe('Access Control for Presign Features', () => {
-
-    it('should require manage_permissions to enable WebDAV presign', () => {
-      const feature = {
-        name: 'enable_webdav_presign',
-        requiredPermissionLevel: 'manage_permissions',
-        currentUserLevel: 'manage_permissions'
-      };
-
-      // Only admin with manage_permissions can enable this risky feature
-      expect(feature.requiredPermissionLevel).toBe('manage_permissions');
-    });
-
-    it('should audit all WebDAV presign feature changes', () => {
-      const auditLog = {
-        timestamp: '2026-07-15T10:30:00Z',
-        action: 'feature_change',
-        feature: 'enable_webdav_presign',
-        oldValue: false,
-        newValue: true,
-        changedBy: 'admin',
-        ipAddress: '192.168.1.100',
-        userAgent: 'Mozilla/5.0'
-      };
-
-      // Audit trail should be immutable and queryable
-      expect(auditLog.feature).toBe('enable_webdav_presign');
-      expect(auditLog.changedBy).toBe('admin');
-    });
-  });
-
-  describe('Documentation & Operator Awareness', () => {
-
-    it('should require operator acknowledgment of WebDAV security risks', () => {
-      const riskAcknowledgment = {
-        acknowledged: true,
-        risks: [
-          'Credentials leak to browser history',
-          'Credentials leak via Referer headers',
-          'Credentials logged by WebDAV server',
-          'Requires dedicated read-only account'
-        ],
-        mitigationRequired: 'Use dedicated WebDAV account with read-only access'
-      };
-
-      for (const risk of riskAcknowledgment.risks) {
-        expect(risk).toBeTruthy();
-      }
-    });
-
-    it('should document WebDAV presign feature as experimental/high-risk', () => {
-      const documentation = {
-        status: 'EXPERIMENTAL',
-        riskLevel: 'HIGH',
-        recommendation: 'Disable in production. Use HTTP Basic Auth headers instead.',
-        alternativeMethods: [
-          'HTTP Basic Authorization header',
-          'Session token-based access',
-          'Proxy WebDAV requests through EdgeSonic'
-        ]
-      };
-
-      expect(documentation.riskLevel).toBe('HIGH');
-      expect(documentation.recommendation).toContain('Disable');
-    });
-  });
-
-});
+console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
+process.exit(failures ? 1 : 0);

@@ -13,267 +13,140 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+// Rules behind the playback performance guards: worker-pool memory sampling,
+// cache TTL expiry, response-time throttling and cache hit statistics.
+// Run: npx tsx test/frontend/performance.test.ts
 
-/**
- * Test suite for performance optimizations:
- * 1. Worker pool memory monitoring
- * 2. Cache TTL expiration
- * 3. Response time tracking and playback throttling
- */
+let failures = 0;
+function assert(cond: unknown, msg: string) {
+  if (cond) console.log(`  ✓ ${msg}`);
+  else { failures++; console.error(`  ✗ ${msg}`); }
+}
 
-describe("Performance Optimizations - Task 200", () => {
-  // ===========================================================================
-  // Test 1: Memory Sampling
-  // ===========================================================================
-  describe("Memory Monitoring", () => {
-    it("should track memory samples with timestamp", () => {
-      const sample = {
-        timestamp: Date.now(),
-        heapUsed: 50 * 1024 * 1024,
-        heapTotal: 100 * 1024 * 1024,
-      };
+// -- Memory monitoring -------------------------------------------------------
 
-      expect(sample.timestamp).toBeGreaterThan(0);
-      expect(sample.heapUsed).toBeLessThanOrEqual(sample.heapTotal);
-      expect(sample.heapUsed).toBeGreaterThan(0);
-    });
+console.log("memory monitoring:");
 
-    it("should limit memory history to MAX_HISTORY samples", () => {
-      const MAX_HISTORY = 120;
-      const history = [];
+const sample = {
+  timestamp: Date.now(),
+  heapUsed: 50 * 1024 * 1024,
+  heapTotal: 100 * 1024 * 1024,
+};
+assert(sample.timestamp > 0, "a sample carries a wall-clock timestamp");
+assert(sample.heapUsed <= sample.heapTotal, "used heap never exceeds total heap");
+assert(sample.heapUsed > 0, "used heap is a positive number");
 
-      for (let i = 0; i < MAX_HISTORY + 50; i++) {
-        history.push({
-          timestamp: Date.now() + i * 1000,
-          heapUsed: 50 * 1024 * 1024,
-          heapTotal: 100 * 1024 * 1024,
-        });
+const MAX_HISTORY = 120;
+const history: { timestamp: number; heapUsed: number; heapTotal: number }[] = [];
+for (let i = 0; i < MAX_HISTORY + 50; i++) {
+  history.push({ timestamp: Date.now() + i * 1000, heapUsed: 50 * 1024 * 1024, heapTotal: 100 * 1024 * 1024 });
+  if (history.length > MAX_HISTORY) history.shift();
+}
+assert(history.length <= MAX_HISTORY, `history is capped at ${MAX_HISTORY} samples`);
+assert(history.length === MAX_HISTORY, "history keeps the newest window filled");
 
-        if (history.length > MAX_HISTORY) {
-          history.shift();
-        }
-      }
+const THRESHOLD_BYTES = 50 * 1024 * 1024;
+assert(60 * 1024 * 1024 > THRESHOLD_BYTES, "a sample above the threshold is flagged");
+assert(!(40 * 1024 * 1024 > THRESHOLD_BYTES), "a sample below the threshold is not flagged");
 
-      expect(history.length).toBeLessThanOrEqual(MAX_HISTORY);
-    });
+// -- Cache TTL expiration ----------------------------------------------------
 
-    it("should detect memory threshold exceeded", () => {
-      const THRESHOLD_BYTES = 50 * 1024 * 1024;
-      const sample = {
-        heapUsed: 60 * 1024 * 1024,
-        heapTotal: 100 * 1024 * 1024,
-      };
+console.log("\ncache TTL expiration:");
 
-      const isExceeded = sample.heapUsed > THRESHOLD_BYTES;
-      expect(isExceeded).toBe(true);
-    });
-  });
+interface CacheEntry<T> { data: T; timestamp: number; ttl: number }
+function isExpired<T>(entry: CacheEntry<T>): boolean {
+  return Date.now() - entry.timestamp > entry.ttl;
+}
 
-  // ===========================================================================
-  // Test 2: Cache TTL Expiration
-  // ===========================================================================
-  describe("Cache TTL Expiration", () => {
-    interface CacheEntry<T> {
-      data: T;
-      timestamp: number;
-      ttl: number;
-    }
+const fresh: CacheEntry<string> = { data: "test data", timestamp: Date.now(), ttl: 5 * 60 * 1000 };
+assert(!isExpired(fresh), "a just-written entry is live");
 
-    function isExpired<T>(entry: CacheEntry<T>): boolean {
-      return Date.now() - entry.timestamp > entry.ttl;
-    }
+const stale: CacheEntry<string> = { data: "test data", timestamp: Date.now() - 6 * 60 * 1000, ttl: 5 * 60 * 1000 };
+assert(isExpired(stale), "an entry past its TTL is expired");
 
-    it("should detect non-expired cache entries", () => {
-      const entry: CacheEntry<string> = {
-        data: "test data",
-        timestamp: Date.now(),
-        ttl: 5 * 60 * 1000, // 5 minutes
-      };
+const now = Date.now();
+const fourMinutesAgo = now - 4 * 60 * 1000;
+const metadataEntry: CacheEntry<string> = { data: "metadata", timestamp: fourMinutesAgo, ttl: 5 * 60 * 1000 };
+const lyricsEntry: CacheEntry<string> = { data: "lyrics", timestamp: fourMinutesAgo, ttl: 10 * 60 * 1000 };
+const coverEntry: CacheEntry<string> = { data: "cover", timestamp: fourMinutesAgo, ttl: 60 * 60 * 1000 };
+assert(!isExpired(metadataEntry), "metadata survives its 5 minute TTL at 4 minutes");
+assert(!isExpired(lyricsEntry), "lyrics survive their 10 minute TTL at 4 minutes");
+assert(!isExpired(coverEntry), "covers survive their 1 hour TTL at 4 minutes");
 
-      expect(isExpired(entry)).toBe(false);
-    });
+const cache = new Map<string, CacheEntry<string>>();
+cache.set("key1", { data: "expired", timestamp: now - 6 * 60 * 1000, ttl: 5 * 60 * 1000 });
+cache.set("key2", { data: "valid", timestamp: now - 2 * 60 * 1000, ttl: 5 * 60 * 1000 });
+for (const [key, entry] of cache.entries()) {
+  if (isExpired(entry)) cache.delete(key);
+}
+assert(!cache.has("key1"), "a sweep drops the expired entry");
+assert(cache.has("key2"), "a sweep keeps the live entry");
+assert(cache.size === 1, "a sweep leaves exactly the live entries");
 
-    it("should detect expired cache entries", async () => {
-      const entry: CacheEntry<string> = {
-        data: "test data",
-        timestamp: Date.now() - 6 * 60 * 1000, // 6 minutes ago
-        ttl: 5 * 60 * 1000, // 5 minutes TTL
-      };
+// -- Response time tracking & playback throttling ----------------------------
 
-      expect(isExpired(entry)).toBe(true);
-    });
+console.log("\nresponse time tracking and playback throttling:");
 
-    it("should respect different TTL values", () => {
-      const metadataTTL = 5 * 60 * 1000; // 5 分钟
-      const lyricsTTL = 10 * 60 * 1000; // 10 分钟
-      const coverTTL = 60 * 60 * 1000; // 1 小时
+function getPlaybackThrottle(avgResponseTime: number): number {
+  if (avgResponseTime < 200) return 1.5;
+  if (avgResponseTime < 500) return 1.0;
+  if (avgResponseTime < 1000) return 0.5;
+  return 0.25;
+}
 
-      const now = Date.now();
+const responseTimes = [100, 150, 200, 175, 125];
+const avg = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+assert(avg === 150, "average response time is the arithmetic mean");
+assert(getPlaybackThrottle(150) === 1.5, "fast responses get the widest prefetch window");
+assert(getPlaybackThrottle(350) === 1.0, "normal responses get the default window");
+assert(getPlaybackThrottle(750) === 0.5, "slow responses halve the window");
+assert(getPlaybackThrottle(1200) === 0.25, "very slow responses quarter the window");
 
-      const metadataEntry: CacheEntry<string> = {
-        data: "metadata",
-        timestamp: now - 4 * 60 * 1000, // 4 minutes ago
-        ttl: metadataTTL,
-      };
+const MAX_RESPONSE_TIME_SAMPLES = 20;
+const samples: number[] = [];
+for (let i = 0; i < 50; i++) {
+  samples.push(Math.random() * 1000);
+  if (samples.length > MAX_RESPONSE_TIME_SAMPLES) samples.shift();
+}
+assert(samples.length <= MAX_RESPONSE_TIME_SAMPLES, `response samples are capped at ${MAX_RESPONSE_TIME_SAMPLES}`);
 
-      const lyricsEntry: CacheEntry<string> = {
-        data: "lyrics",
-        timestamp: now - 4 * 60 * 1000, // 4 minutes ago
-        ttl: lyricsTTL,
-      };
+const empty: number[] = [];
+const emptyAvg = empty.length === 0 ? 0 : empty.reduce((a, b) => a + b, 0) / empty.length;
+assert(emptyAvg === 0, "an empty sample set averages to zero rather than NaN");
+assert(getPlaybackThrottle(emptyAvg) === 1.5, "no samples yet falls back to the fast-path throttle");
 
-      const coverEntry: CacheEntry<string> = {
-        data: "cover",
-        timestamp: now - 4 * 60 * 1000, // 4 minutes ago
-        ttl: coverTTL,
-      };
+// -- Cache hit statistics ----------------------------------------------------
 
-      expect(isExpired(metadataEntry)).toBe(false);
-      expect(isExpired(lyricsEntry)).toBe(false);
-      expect(isExpired(coverEntry)).toBe(false);
-    });
+console.log("\ncache hit statistics:");
 
-    it("should clean expired entries from cache", () => {
-      const cache = new Map<string, CacheEntry<string>>();
-      const now = Date.now();
+const cacheStats = {
+  metadataHits: 0, metadataMisses: 0,
+  lyricsHits: 0, lyricsMisses: 0,
+  coverHits: 0, coverMisses: 0,
+};
+function resetStats() {
+  cacheStats.metadataHits = 0; cacheStats.metadataMisses = 0;
+  cacheStats.lyricsHits = 0; cacheStats.lyricsMisses = 0;
+  cacheStats.coverHits = 0; cacheStats.coverMisses = 0;
+}
 
-      // Add entries with different expiration times
-      cache.set("key1", {
-        data: "expired",
-        timestamp: now - 6 * 60 * 1000,
-        ttl: 5 * 60 * 1000,
-      });
+resetStats();
+cacheStats.metadataHits += 1;
+assert(cacheStats.metadataHits === 1, "a hit increments the hit counter");
 
-      cache.set("key2", {
-        data: "valid",
-        timestamp: now - 2 * 60 * 1000,
-        ttl: 5 * 60 * 1000,
-      });
+resetStats();
+cacheStats.metadataMisses += 1;
+assert(cacheStats.metadataMisses === 1, "a miss increments the miss counter");
 
-      // Clean expired entries
-      for (const [key, entry] of cache.entries()) {
-        if (isExpired(entry)) {
-          cache.delete(key);
-        }
-      }
+resetStats();
+cacheStats.metadataHits = 8;
+cacheStats.metadataMisses = 2;
+const hitTotal = cacheStats.metadataHits + cacheStats.metadataMisses;
+assert((cacheStats.metadataHits / hitTotal) * 100 === 80, "hit rate is hits over total requests");
 
-      expect(cache.has("key1")).toBe(false);
-      expect(cache.has("key2")).toBe(true);
-      expect(cache.size).toBe(1);
-    });
-  });
+resetStats();
+const zeroTotal = cacheStats.metadataHits + cacheStats.metadataMisses;
+assert((zeroTotal === 0 ? 0 : (cacheStats.metadataHits / zeroTotal) * 100) === 0, "zero requests report a 0% hit rate rather than NaN");
 
-  // ===========================================================================
-  // Test 3: Response Time Tracking & Playback Throttling
-  // ===========================================================================
-  describe("Response Time Tracking & Playback Throttling", () => {
-    function getPlaybackThrottle(avgResponseTime: number): number {
-      if (avgResponseTime < 200) return 1.5; // 快速响应
-      if (avgResponseTime < 500) return 1.0; // 正常
-      if (avgResponseTime < 1000) return 0.5; // 缓慢
-      return 0.25; // 非常缓慢
-    }
-
-    it("should calculate average response time correctly", () => {
-      const responseTimes = [100, 150, 200, 175, 125];
-      const avg = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
-
-      expect(avg).toBe(150);
-    });
-
-    it("should apply correct throttle level for fast response", () => {
-      const throttle = getPlaybackThrottle(150);
-      expect(throttle).toBe(1.5);
-    });
-
-    it("should apply correct throttle level for normal response", () => {
-      const throttle = getPlaybackThrottle(350);
-      expect(throttle).toBe(1.0);
-    });
-
-    it("should apply correct throttle level for slow response", () => {
-      const throttle = getPlaybackThrottle(750);
-      expect(throttle).toBe(0.5);
-    });
-
-    it("should apply correct throttle level for very slow response", () => {
-      const throttle = getPlaybackThrottle(1200);
-      expect(throttle).toBe(0.25);
-    });
-
-    it("should limit response time samples to MAX_SIZE", () => {
-      const MAX_RESPONSE_TIME_SAMPLES = 20;
-      const responseTimes: number[] = [];
-
-      for (let i = 0; i < 50; i++) {
-        responseTimes.push(Math.random() * 1000);
-        if (responseTimes.length > MAX_RESPONSE_TIME_SAMPLES) {
-          responseTimes.shift();
-        }
-      }
-
-      expect(responseTimes.length).toBeLessThanOrEqual(MAX_RESPONSE_TIME_SAMPLES);
-    });
-
-    it("should handle empty response time array", () => {
-      const responseTimes: number[] = [];
-      const avg = responseTimes.length === 0 ? 0 : responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
-
-      expect(avg).toBe(0);
-      const throttle = getPlaybackThrottle(avg);
-      expect(throttle).toBe(1.5);
-    });
-  });
-
-  // ===========================================================================
-  // Test 4: Cache Hit Rate Statistics
-  // ===========================================================================
-  describe("Cache Statistics", () => {
-    const cacheStats = {
-      metadataHits: 0,
-      metadataMisses: 0,
-      lyricsHits: 0,
-      lyricsMisses: 0,
-      coverHits: 0,
-      coverMisses: 0,
-    };
-
-    beforeEach(() => {
-      // Reset stats
-      cacheStats.metadataHits = 0;
-      cacheStats.metadataMisses = 0;
-      cacheStats.lyricsHits = 0;
-      cacheStats.lyricsMisses = 0;
-      cacheStats.coverHits = 0;
-      cacheStats.coverMisses = 0;
-    });
-
-    it("should track cache hits", () => {
-      cacheStats.metadataHits += 1;
-      expect(cacheStats.metadataHits).toBe(1);
-    });
-
-    it("should track cache misses", () => {
-      cacheStats.metadataMisses += 1;
-      expect(cacheStats.metadataMisses).toBe(1);
-    });
-
-    it("should calculate cache hit rate", () => {
-      cacheStats.metadataHits = 8;
-      cacheStats.metadataMisses = 2;
-
-      const total = cacheStats.metadataHits + cacheStats.metadataMisses;
-      const hitRate = (cacheStats.metadataHits / total) * 100;
-
-      expect(hitRate).toBe(80);
-    });
-
-    it("should handle zero total requests", () => {
-      const total = cacheStats.metadataHits + cacheStats.metadataMisses;
-      const hitRate = total === 0 ? 0 : (cacheStats.metadataHits / total) * 100;
-
-      expect(hitRate).toBe(0);
-    });
-  });
-});
+console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
+process.exit(failures ? 1 : 0);
