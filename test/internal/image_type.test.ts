@@ -64,6 +64,10 @@ function main() {
     assert(resolveImageMime("-->", new Uint8Array([9, 9, 9])) === "image/jpeg",
       "unrecognised bytes with a bogus declaration fall back to jpeg");
     assert(resolveImageMime("  image/png  ", new Uint8Array([9, 9, 9])) === "image/png", "declaration is trimmed");
+    // The case seen in the wild: a PNG cover stored as image/jpeg because the
+    // tag said so — plausible enough to pass a validity check, still undecodable.
+    assert(resolveImageMime("image/jpeg", PNG) === "image/png", "a valid but wrong declaration loses to the bytes");
+    assert(resolveImageMime("image/png", JPEG) === "image/jpeg", "and the reverse");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

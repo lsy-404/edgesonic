@@ -26,6 +26,7 @@ import { isDemoMode } from "../../utils/demoMode";
 import { subsonicOK } from "../../utils/xml";
 import type { User } from "../../types/entities";
 import { defaultAvatarSvg } from "../../../../shared/avatar";
+import { resolveImageMime } from "../../utils/imageType";
 
 export const accountRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
 
@@ -135,10 +136,12 @@ const getAvatarHandler = async (c: import("hono").Context<{ Bindings: Env; Varia
   const r2 = c.env.MUSIC_BUCKET;
   const obj = await r2.get(row.avatar_r2_key);
   if (!obj) return defaultAvatarResponse(username);
-  const contentType =
-    obj.httpMetadata?.contentType
-    ?? (row.avatar_r2_key.endsWith(".png") ? "image/png" : "image/jpeg");
-  return new Response(obj.body, {
+  // Typed from the stored bytes: the upload carries a caller-supplied media
+  // type, and a mismatch leaves clients unable to decode a picture that is
+  // otherwise fine.
+  const bytes = new Uint8Array(await obj.arrayBuffer());
+  const contentType = resolveImageMime(obj.httpMetadata?.contentType, bytes);
+  return new Response(bytes, {
     status: 200,
     headers: { "Content-Type": contentType, "Cache-Control": "public, max-age=86400" },
   });

@@ -24,7 +24,7 @@ import { createSubsonicAdapter } from "../../adapters/subsonic";
 import type { StreamResult } from "../../adapters/index";
 import { subsonicError } from "../../auth";
 import { getFeature, getFeatureString, parseChain } from "../../utils/features";
-import { isUsableImageMime, resolveImageMime } from "../../utils/imageType";
+import { resolveImageMime } from "../../utils/imageType";
 // Transcode factory is statically imported (it lazy-loads the Sandbox /
 // External engine modules so this is safe under tsx test runs). Tests can
 // inject a FakeEngine via __setEngineFactoryForTest exported from factory.ts.
@@ -745,15 +745,23 @@ const getCoverArtHandler = async (c: Context) => {
     nm.set("ETag", object.httpEtag);
     return new Response(null, { status: 304, headers: nm });
   }
-  // Covers stored before media types were normalised can carry a tag-declared
-  // value ("PNG", "-->", empty) that clients refuse to render. Type them from
-  // their own bytes instead; the sized path above already emits a real type.
-  if (!isUsableImageMime(headers.get("Content-Type"))) {
-    const bytes = new Uint8Array(await object.arrayBuffer());
-    headers.set("Content-Type", resolveImageMime(headers.get("Content-Type"), bytes));
-    return new Response(bytes, { headers });
+  // The artwork itself decides the media type. A stored value can be absent,
+  // bogus ("PNG", "-->"), or plausible but wrong — a PNG saved as image/jpeg
+  // because the tag said so — and clients that trust the header then fail to
+  // decode it. The sized path above re-encodes, so only this one is affected.
+  const stored = headers.get("Content-Type");
+  const bytes = new Uint8Array(await object.arrayBuffer());
+  const actual = resolveImageMime(stored, bytes);
+  if (actual !== stored) {
+    headers.set("Content-Type", actual);
+    // Correct the stored copy once so later reads need no re-typing.
+    c.executionCtx?.waitUntil?.(
+      env.MUSIC_BUCKET.put(coverKey, bytes, { httpMetadata: { contentType: actual } })
+        .then(() => undefined)
+        .catch(() => undefined),
+    );
   }
-  return new Response(object.body, { headers });
+  return new Response(bytes, { headers });
 };
 
 // ============================================================================
