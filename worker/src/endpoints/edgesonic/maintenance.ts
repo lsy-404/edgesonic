@@ -568,3 +568,59 @@ maintenanceRoutes.post("/maintenance/repairCoverTypes",
     samples: fixed.slice(0, 10),
   });
 });
+
+// ============================================================================
+// POST /edgesonic/maintenance/backfillCovers
+// ============================================================================
+// Registers covers for albums that never got one. Unlike the repair above this
+// has to read from storage: the artwork is embedded in the audio files, so each
+// album costs a couple of ranged reads. Bounded per call and resumable — run it
+// until `remaining` reaches zero. Albums whose files carry no artwork are
+// reported as `noArt` and will be retried on a later run.
+maintenanceRoutes.post("/maintenance/backfillCovers",
+  permissionMiddleware("maintenance_cleanup"),
+  async (c) => {
+  const env = c.env as Env;
+  const body = await c.req.json<{ limit?: number; dryRun?: boolean }>().catch(() => ({} as { limit?: number; dryRun?: boolean }));
+  const dryRun = body.dryRun === true;
+  const limit = typeof body.limit === "number" && body.limit > 0 ? Math.min(body.limit, 100) : 25;
+
+  const pending = (await env.DB.prepare(
+    `SELECT a.id FROM albums a
+     WHERE a.cover_r2_key IS NULL
+       AND EXISTS (SELECT 1 FROM song_masters sm
+                   JOIN song_instances si ON si.master_id = sm.id AND si.missing = 0
+                   WHERE sm.album_id = a.id)
+     ORDER BY a.id`,
+  ).all<{ id: string }>()).results ?? [];
+
+  const batch = pending.slice(0, limit);
+  const resolved: string[] = [];
+  const noArt: string[] = [];
+  const failed: Array<{ id: string; error: string }> = [];
+
+  if (!dryRun) {
+    const { resolveAlbumCover } = await import("../../utils/covers");
+    for (const album of batch) {
+      try {
+        const key = await resolveAlbumCover(env, album.id);
+        if (key) resolved.push(album.id);
+        else noArt.push(album.id);
+      } catch (e) {
+        failed.push({ id: album.id, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+  }
+
+  return c.json({
+    ok: true,
+    dryRun,
+    pending: pending.length,
+    attempted: dryRun ? 0 : batch.length,
+    resolved: resolved.length,
+    noArt: noArt.length,
+    failed: failed.length,
+    remaining: pending.length - resolved.length,
+    failures: failed.slice(0, 5),
+  });
+});
