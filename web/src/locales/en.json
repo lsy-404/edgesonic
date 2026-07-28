@@ -158,7 +158,6 @@
     "githubLatest": "GitHub Latest",
     "updateAvailable": "v{ver} — new version available",
     "updateCurrent": "v{ver} — {state}",
-    "updateStateDirty": "workspace has uncommitted changes",
     "updateStateDev": "development build",
     "updateStateLatest": "up to date",
     "updateChecking": "Checking…",

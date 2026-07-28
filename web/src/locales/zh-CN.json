@@ -159,7 +159,6 @@
     "githubLatest": "GitHub 最新版",
     "updateAvailable": "v{ver} — 有新版本",
     "updateCurrent": "v{ver} — {state}",
-    "updateStateDirty": "当前工作区有未提交修改",
     "updateStateDev": "当前开发构建",
     "updateStateLatest": "已是最新",
     "updateChecking": "检查中…",

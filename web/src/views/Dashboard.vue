@@ -505,7 +505,7 @@ onUnmounted(() => {
             <a v-if="updateAvailable" href="https://github.com/wuyilingwei/edgesonic/releases/latest" target="_blank" rel="noopener" class="update-link">
               {{ t("dashboard.updateAvailable", { ver: latestVersion }) }}
             </a>
-             <span v-else-if="latestVersion" class="update-current">{{ t("dashboard.updateCurrent", { ver: latestVersion, state: isDirtyBuild ? t("dashboard.updateStateDirty") : isDevelopmentBuild ? t("dashboard.updateStateDev") : t("dashboard.updateStateLatest") }) }}</span>
+             <span v-else-if="latestVersion" class="update-current">{{ t("dashboard.updateCurrent", { ver: latestVersion, state: isDevelopmentBuild || isDirtyBuild ? t("dashboard.updateStateDev") : t("dashboard.updateStateLatest") }) }}</span>
             <span v-else-if="updateChecking" class="muted">{{ t("dashboard.updateChecking") }}</span>
             <span v-else class="muted">—</span>
           </span>
