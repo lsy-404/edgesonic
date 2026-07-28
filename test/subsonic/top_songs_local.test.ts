@@ -88,7 +88,13 @@ function buildDb(opts: { lastfmKey: string }) {
       compilation INTEGER DEFAULT 0, participants TEXT,
       created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
     );
-    -- 108 -- song listings LEFT JOIN the preferred instance for physical fields
+    -- Song listings resolve display artists through this join table first.
+    CREATE TABLE song_artists (
+      song_id TEXT NOT NULL, artist_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (song_id, artist_id)
+    );
+    -- Song listings LEFT JOIN the preferred instance for physical fields.
     CREATE TABLE song_instances (
       id TEXT PRIMARY KEY, master_id TEXT NOT NULL, storage_uri TEXT NOT NULL DEFAULT '',
       suffix TEXT DEFAULT '', content_type TEXT, bit_rate INTEGER, size INTEGER,

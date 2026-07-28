@@ -127,11 +127,25 @@ function buildDb() {
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
     );
-    -- 108 -- song listings LEFT JOIN the preferred instance for physical fields
+    -- Song listings resolve display artists through this join table first.
+    CREATE TABLE song_artists (
+      song_id TEXT NOT NULL,
+      artist_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (song_id, artist_id)
+    );
+    -- Song listings LEFT JOIN the preferred instance for physical fields.
     CREATE TABLE song_instances (
       id TEXT PRIMARY KEY, master_id TEXT NOT NULL, storage_uri TEXT NOT NULL DEFAULT '',
       suffix TEXT DEFAULT '', content_type TEXT, bit_rate INTEGER, size INTEGER,
       duration INTEGER, missing INTEGER DEFAULT 0
+    );
+    -- Peer-sync config lookup runs in the background after star/unstar.
+    CREATE TABLE user_settings (
+      username TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT,
+      PRIMARY KEY (username, key)
     );
     CREATE TABLE annotations (
       user_id TEXT NOT NULL,
@@ -185,8 +199,17 @@ function makeApp(sqlite: DatabaseSync, username = "alice") {
   return {
     async hit(method: "GET" | "POST", url: string) {
       const req = new Request(`http://test${url}`, { method });
-      return app.fetch(req, env);
+      return app.fetch(req, env, makeCtx());
     },
+  };
+}
+
+// Routes hand background peer-sync work to waitUntil; Workers always supply an
+// ExecutionContext, so the harness has to as well.
+function makeCtx(): any {
+  return {
+    waitUntil(p: Promise<unknown>) { void Promise.resolve(p).catch(() => {}); },
+    passThroughOnException() {},
   };
 }
 
@@ -418,10 +441,10 @@ console.log("endpoint: permission gating");
   app.route("/rest", annotationRoutes);
   const env = { DB: makeD1(sqlite) };
 
-  const r = await app.fetch(new Request("http://test/rest/star?id=sg-1"), env);
+  const r = await app.fetch(new Request("http://test/rest/star?id=sg-1"), env, makeCtx());
   assert(r.status === 403, `guest blocked from star (got ${r.status})`);
 
-  const r2 = await app.fetch(new Request("http://test/rest/getRandomSongs"), env);
+  const r2 = await app.fetch(new Request("http://test/rest/getRandomSongs"), env, makeCtx());
   assert(r2.status === 200, "guest allowed for getRandomSongs (browse permission)");
 }
 

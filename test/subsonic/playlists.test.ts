@@ -128,6 +128,29 @@ function setupSchema(sqlite: DatabaseSync): void {
       updated_at INTEGER DEFAULT (unixepoch())
     );
 
+    -- Playlist song listings resolve display artists and the preferred
+    -- physical instance through these two tables.
+    CREATE TABLE song_artists (
+      song_id TEXT NOT NULL,
+      artist_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (song_id, artist_id),
+      FOREIGN KEY (song_id) REFERENCES song_masters(id) ON DELETE CASCADE,
+      FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE
+    );
+    CREATE TABLE song_instances (
+      id TEXT PRIMARY KEY,
+      master_id TEXT NOT NULL,
+      storage_uri TEXT NOT NULL DEFAULT '',
+      suffix TEXT DEFAULT '',
+      content_type TEXT,
+      bit_rate INTEGER,
+      size INTEGER,
+      duration INTEGER,
+      missing INTEGER DEFAULT 0,
+      FOREIGN KEY (master_id) REFERENCES song_masters(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE playlists (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
