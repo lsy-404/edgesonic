@@ -962,6 +962,29 @@ export const usePlayerStore = defineStore("player", () => {
     loadCurrent();
   }
 
+  /**
+   * Queue a track to play right after the current one. With nothing playing
+   * this behaves as "play now"; a track already queued is moved rather than
+   * duplicated.
+   */
+  function playNext(track: Track) {
+    if (!queue.value.length || index.value < 0) {
+      setQueue([track], 0);
+      return;
+    }
+    const existing = queue.value.findIndex((q) => q.id === track.id);
+    if (existing === index.value) return;
+    const rest = existing >= 0
+      ? queue.value.filter((_, i) => i !== existing)
+      : queue.value.slice();
+    // Removing an earlier entry shifts the cursor back with it.
+    const cursor = existing >= 0 && existing < index.value ? index.value - 1 : index.value;
+    rest.splice(cursor + 1, 0, track);
+    queue.value = rest;
+    index.value = cursor;
+    invalidatePreload();
+  }
+
   function playAt(i: number) {
     if (i < 0 || i >= queue.value.length) return;
     _pendingRestoreTime = null; // cancel restore when user explicitly navigates
@@ -1144,7 +1167,7 @@ export const usePlayerStore = defineStore("player", () => {
   return {
     queue, index, playing, currentTime, duration, volume, bufferedRanges,
     current, hasTrack, playMode, starred, localCoverUrl,
-    setQueue, playAt, toggle, next, prev, seek, setVolume,
+    setQueue, playNext, playAt, toggle, next, prev, seek, setVolume,
     cyclePlayMode, toggleStar, clear, resumePlaybackIfNeeded, reportCoverMissing,
   };
 });

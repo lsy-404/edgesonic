@@ -19,6 +19,7 @@ const emit = defineEmits<{
   edit: [];
   share: [];
   addPlaylist: [];
+  playNext: [];
   "update:starred": [value: boolean];
   error: [];
 }>();
@@ -27,12 +28,13 @@ const { t } = useI18n();
 const { authFetch, downloadUrl } = useAuth();
 const starBusy = ref(false);
 
-function pick(action: "edit" | "share" | "addPlaylist") {
+function pick(action: "edit" | "share" | "addPlaylist" | "playNext") {
   // emit()'s per-event overloads don't distribute over a union-typed
   // argument, so dispatch with a literal in each branch instead of
   // `emit(action)` directly.
   if (action === "edit") emit("edit");
   else if (action === "share") emit("share");
+  else if (action === "playNext") emit("playNext");
   else emit("addPlaylist");
   emit("close");
 }
@@ -56,9 +58,10 @@ async function toggleStar() {
 
 <template>
   <div class="row-menu-wrap" @click.stop>
-    <button class="row-menu-btn" :title="t('library.moreActions')" @click="emit('toggle')"><Icon name="dot" /></button>
+    <button class="row-menu-btn" :class="{ active: open }" :title="t('library.moreActions')" @click="emit('toggle')"><Icon name="dots" /></button>
     <div v-if="open" class="row-menu">
       <button class="row-menu-item row-menu-like" :disabled="starBusy" @click="toggleStar"><Icon name="star" /> {{ props.starred ? t("library.unlike") : t("library.like") }}</button>
+      <button class="row-menu-item" @click="pick('playNext')"><Icon name="queueNext" /> {{ t("library.playNext") }}</button>
       <button v-if="props.isAdmin" class="row-menu-item" @click="pick('edit')"><Icon name="edit" /> {{ t("library.editSong") }}</button>
       <button class="row-menu-item" @click="pick('share')"><Icon name="up" /> {{ t("library.share") }}</button>
       <button class="row-menu-item" @click="pick('addPlaylist')"><Icon name="check" /> {{ t("library.addToPlaylist") }}</button>
@@ -69,13 +72,24 @@ async function toggleStar() {
 
 <style scoped>
 .row-menu-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+/* Matches the like button next to it: same box, border and hover treatment. */
 .row-menu-btn {
-  background: none; border: none; cursor: pointer;
-  color: var(--color-text-muted); font-size: var(--fs-md);
-  padding: 0 0.35rem; opacity: 0.5;
-  transition: opacity 0.15s, color 0.15s;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 2px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.row-menu-btn:hover { color: var(--color-accent-primary); }
+.row-menu-btn svg { width: 15px; height: 15px; }
+.row-menu-btn:hover { color: var(--color-accent-primary); background: var(--color-bg-tertiary); }
+.row-menu-btn.active { color: var(--color-accent-primary); border-color: var(--color-accent-dim); }
 .row-menu {
   position: absolute;
   top: 100%; right: 0;

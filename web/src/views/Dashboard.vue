@@ -447,44 +447,39 @@ onUnmounted(() => {
     </section>
 
     <!-- Stats -->
-    <div class="grid grid-4 stats-grid">
-      <div class="stat-card card hoverable">
+    <div class="stats-grid">
+      <router-link to="/library?tab=artists" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
           <span v-else>{{ stats.artists }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.artists") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
-      </div>
-      <div class="stat-card card hoverable">
+      </router-link>
+      <router-link to="/library?tab=albums" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
           <span v-else>{{ stats.albums }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.albums") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
-      </div>
-      <div class="stat-card card hoverable">
+      </router-link>
+      <router-link to="/library?tab=songs" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
           <span v-else>{{ stats.songs }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.songs") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
-      </div>
-      <div v-if="canManageSources" class="stat-card card hoverable">
+      </router-link>
+      <router-link v-if="canManageSources" to="/sources" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
           <span v-else>{{ stats.sources }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.storageSources") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
-      </div>
-      <div v-else class="stat-card card hoverable">
-        <div class="stat-num">–</div>
-        <div class="mono-label">{{ t("dashboard.online") }}</div>
-        <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
-      </div>
+      </router-link>
     </div>
 
     <!-- System Info (all logged-in users) -->
@@ -523,8 +518,21 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.stats-grid { margin-bottom: 1rem; }
-.stat-card { text-align: center; padding: 1.4rem 1rem 1.1rem; }
+/* Auto-fit so the row stays even whether or not the viewer sees the
+   storage-sources card. */
+.stats-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 1rem;
+}
+.stat-card {
+  text-align: center;
+  padding: 1.4rem 1rem 1.1rem;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
 .stat-num {
   font-family: var(--font-display);
   font-size: 2.4rem;

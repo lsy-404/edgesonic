@@ -54,6 +54,15 @@ const ICONS: Record<string, () => ReturnType<typeof h>[]> = {
   up: () => [h("path", { d: "M8 12V4M4 8l4-4 4 4", stroke: "currentColor", "stroke-width": 1.2, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" })],
   down: () => [h("path", { d: "M8 4v8M4 8l4 4 4-4", stroke: "currentColor", "stroke-width": 1.2, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" })],
   dot: () => [h("circle", { cx: 8, cy: 8, r: 2, fill: "currentColor" })],
+  dots: () => [
+    h("circle", { cx: 3.2, cy: 8, r: 1.3, fill: "currentColor" }),
+    h("circle", { cx: 8, cy: 8, r: 1.3, fill: "currentColor" }),
+    h("circle", { cx: 12.8, cy: 8, r: 1.3, fill: "currentColor" }),
+  ],
+  queueNext: () => [
+    h("path", { d: "M2 4h7M2 8h7M2 12h4", stroke: "currentColor", "stroke-width": 1.2, fill: "none", "stroke-linecap": "round" }),
+    h("path", { d: "M11 9.5V14l3.5-2.25L11 9.5z", fill: "currentColor" }),
+  ],
   gear: () => [
     h("circle", { cx: 8, cy: 8, r: 2, stroke: "currentColor", "stroke-width": 1.1, fill: "none" }),
     h("path", { d: "M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M3 13l1.4-1.4M11.6 4.4L13 3", stroke: "currentColor", "stroke-width": 1.1, "stroke-linecap": "round" }),

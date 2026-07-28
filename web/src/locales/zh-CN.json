@@ -147,7 +147,6 @@
     "albums": "专辑",
     "songs": "歌曲",
     "storageSources": "存储源",
-    "online": "在线",
     "recentAlbums": "最新专辑",
     "systemInfo": "系统信息",
     "colName": "名称",
@@ -302,7 +301,9 @@
     "locateNoCurrent": "当前没有选中的歌曲",
     "locateLoadMore": "当前歌曲不在已加载范围内，再次点击将查找剩余媒体库。",
     "locateNotFound": "未在当前媒体库中找到播放歌曲",
-    "locateNotLiked": "当前播放歌曲不在我喜欢中"
+    "locateNotLiked": "当前播放歌曲不在我喜欢中",
+    "playNext": "下一曲播放",
+    "queuedNext": "已加入下一曲：{title}"
   },
   "tagEditor": {
     "singleTitle": "编辑歌曲信息",
