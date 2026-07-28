@@ -90,7 +90,9 @@ async function run() {
   // Sitting behind the current track's full-file fetch means a slow or failed
   // fetch silently cancels every prefetch.
   const ancillaryAt = playerSrc.indexOf("prefetchNextTrackData();");
-  const audioGateAt = playerSrc.indexOf("if (isFullyBuffered(el, dur)) preloadNext();");
+  // The audio gate itself may grow extra escape hatches (a hard deadline, for
+  // one); all this check cares about is that it still gates only preloadNext.
+  const audioGateAt = playerSrc.search(/if \(isFullyBuffered\(el, dur\)[^\n]*\) preloadNext\(\);/);
   assert(
     ancillaryAt >= 0 && audioGateAt >= 0 && ancillaryAt < audioGateAt,
     "ancillary prefetch is not gated on the current track being fully buffered",

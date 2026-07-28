@@ -17,7 +17,10 @@ const checks: [string, boolean][] = [
   ["now-playing collapse stays behind mobile navigation", collapseLayer < overlayLayer && collapseLayer < sidebarLayer],
   ["crystals travel beyond their rendered glow", crystal.includes("const extent = m.size * 1.35 + 2") && crystal.includes("vw + extent * 2")],
   ["theme particles fade at both lifecycle edges", particles.includes("Math.min(1, t / 0.1, (1 - t) / 0.15)")],
-  ["library download action uses text without a download glyph", songMenu.includes('>{{ t("library.download") }}</a>') && !songMenu.includes('>⬇ {{ t("library.download") }}</a>')],
+  // Every row-menu entry carries an SVG glyph from the Icon set; the download
+  // link is an <a>, so it is the one that most easily drifts out of the row.
+  ["library download action carries the download glyph", songMenu.includes('<Icon name="download" /> {{ t("library.download") }}</a>')],
+  ["row menu items align their glyph with the label", songMenu.includes(".row-menu-item {") && songMenu.includes("gap: 0.5rem;")],
 ];
 
 let failures = 0;

@@ -114,6 +114,11 @@ function buildDb(): DatabaseSync {
       missing INTEGER DEFAULT 0, tag_scanned INTEGER DEFAULT 0,
       created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
     );
+    CREATE TABLE song_artists (
+      song_id TEXT NOT NULL, artist_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (song_id, artist_id)
+    );
     CREATE TABLE storage_sources (
       id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT NOT NULL DEFAULT '',
       base_url TEXT NOT NULL, username TEXT, password TEXT,

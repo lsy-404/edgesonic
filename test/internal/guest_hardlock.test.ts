@@ -1,5 +1,4 @@
 // Guest token TTL cap + hardlock read-time enforcement tests.
-// Covers task 258:
 //  - POST /edgesonic/auth/guestToken caps expiresIn at 30 days, rejects <=0,
 //    clamps >cap to the cap.
 //  - hasPermission enforces hardlock even with a stale PERMISSIONS_OVERRIDE
@@ -91,8 +90,12 @@ async function main() {
     assert(GUEST_ALLOWED_PERMS.has("browse"), "guest allowed browse");
     assert(GUEST_ALLOWED_PERMS.has("search"), "guest allowed search");
     assert(USER_LOCKED_PERMS.has("manage_users"), "user locked manage_users");
-    assert(USER_LOCKED_PERMS.has("manage_credentials"), "user locked manage_credentials");
     assert(USER_LOCKED_PERMS.has("maintenance_cleanup"), "user locked maintenance_cleanup");
+    // manage_credentials only ever touches the caller's own Subsonic
+    // credentials, so it is a self-service toggle rather than a management
+    // capability: it stays grantable to level 1 through the matrix.
+    assert(!USER_LOCKED_PERMS.has("manage_credentials"), "manage_credentials is not user-locked");
+    assert(isPermissionHardlocked(1, "manage_credentials") === false, "user manage_credentials not hardlocked");
   }
 
   console.log("\nisPermissionHardlocked:");
@@ -102,6 +105,9 @@ async function main() {
     assert(isPermissionHardlocked(0, "download") === true, "guest download locked");
     assert(isPermissionHardlocked(0, "edit_tags") === true, "guest edit_tags locked");
     assert(isPermissionHardlocked(0, "manage_users") === true, "guest manage_users locked");
+    // Guests run off an allow-list, so dropping a perm from USER_LOCKED_PERMS
+    // must never open it up for level 0.
+    assert(isPermissionHardlocked(0, "manage_credentials") === true, "guest manage_credentials locked");
     assert(isPermissionHardlocked(1, "stream") === false, "user stream not locked");
     assert(isPermissionHardlocked(1, "download") === false, "user download not locked");
     assert(isPermissionHardlocked(1, "manage_users") === true, "user manage_users locked");

@@ -65,6 +65,7 @@ function buildDb(): DatabaseSync {
     CREATE TABLE users (
       username TEXT PRIMARY KEY, master_password TEXT NOT NULL,
       level INTEGER DEFAULT 1, enabled INTEGER DEFAULT 1,
+      email TEXT, email_verified INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
     );
     INSERT INTO users (username, master_password, level) VALUES ('carol', 'x', 1);

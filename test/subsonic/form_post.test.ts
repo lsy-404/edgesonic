@@ -89,6 +89,18 @@ function buildDb() {
     CREATE TABLE artists (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT, image_r2_key TEXT, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0);
     CREATE TABLE albums (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT, year INTEGER, genre TEXT, cover_r2_key TEXT, song_count INTEGER DEFAULT 0, duration INTEGER DEFAULT 0, size INTEGER DEFAULT 0, compilation INTEGER DEFAULT 0, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0);
     CREATE TABLE song_masters (id TEXT PRIMARY KEY, album_id TEXT NOT NULL, artist_id TEXT NOT NULL, album_artist_id TEXT, title TEXT NOT NULL, sort_title TEXT, track INTEGER, disc INTEGER, duration INTEGER, genre TEXT, compilation INTEGER DEFAULT 0, participants TEXT, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0);
+    CREATE TABLE song_instances (
+      id TEXT PRIMARY KEY, master_id TEXT NOT NULL, source_id TEXT NOT NULL,
+      storage_uri TEXT NOT NULL, suffix TEXT NOT NULL, content_type TEXT,
+      bit_rate INTEGER, size INTEGER, duration INTEGER,
+      missing INTEGER DEFAULT 0, tag_scanned INTEGER DEFAULT 0,
+      created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
+    );
+    CREATE TABLE song_artists (
+      song_id TEXT NOT NULL, artist_id TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (song_id, artist_id)
+    );
     CREATE TABLE annotations (
       user_id TEXT NOT NULL, item_id TEXT NOT NULL,
       item_type TEXT NOT NULL CHECK (item_type IN ('song', 'album', 'artist')),
@@ -155,10 +167,20 @@ function makeApp(sqlite: DatabaseSync) {
   app.route("/rest", annotationRoutes);
   app.route("/rest", playlistsRoutes);
   const env = { DB: makeD1(sqlite), KV: kv };
+  // Handlers hand their peer-sync push to waitUntil; the runtime supplies the
+  // ExecutionContext, so the harness has to stand one in. Awaiting the promise
+  // keeps a rejected push from surfacing as an unhandled rejection.
+  const pending: Promise<unknown>[] = [];
+  const ctx = {
+    waitUntil(p: Promise<unknown>) { pending.push(Promise.resolve(p).catch(() => {})); },
+    passThroughOnException() {},
+  };
   return {
     env, kv,
     async fetch(method: "GET" | "POST", url: string, init: RequestInit = {}) {
-      return app.fetch(new Request(`http://test${url}`, { method, ...init }), env);
+      const resp = await app.fetch(new Request(`http://test${url}`, { method, ...init }), env, ctx as any);
+      await Promise.all(pending.splice(0));
+      return resp;
     },
   };
 }
