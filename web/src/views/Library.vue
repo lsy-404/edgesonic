@@ -1161,7 +1161,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       >
        <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
         <span class="song-title">{{ s.title }}</span>
-          <span class="song-artist-group">
+          <span class="song-artist-group" :data-album="s.album">
             <template v-for="(artist, idx) in parseArtists(s.artist)" :key="idx">
               <span v-if="idx > 0" class="artist-sep">,</span>
               <span class="song-artist clickable" :class="{ 'has-id': s.artistId }" @click.stop="s.artistId ? openArtistById(s.artistId, artist) : searchAndOpenArtist(artist)">{{ artist }}</span>
@@ -1319,7 +1319,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
           <span class="song-title">{{ s.title }}</span>
           <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
-          <span class="song-artist-group">
+          <span class="song-artist-group" :data-album="s.album">
             <template v-for="(artist, idx) in parseArtists(s.artist)" :key="idx">
               <span v-if="idx > 0" class="artist-sep">,</span>
               <span class="song-artist clickable" :class="{ 'has-id': s.artistId }" @click.stop="s.artistId ? openArtistById(s.artistId, artist) : searchAndOpenArtist(artist)">{{ artist }}</span>
@@ -1479,7 +1479,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
           <span class="song-title">{{ s.title }}</span>
           <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
-            <span class="song-artist-group">
+            <span class="song-artist-group" :data-album="s.album">
               <template v-for="(artist, idx) in parseArtists(s.artist)" :key="idx">
                 <span v-if="idx > 0" class="artist-sep">,</span>
                 <span class="song-artist clickable" :class="{ 'has-id': s.artistId }" @click.stop="s.artistId ? openArtistById(s.artistId, artist) : searchAndOpenArtist(artist)">{{ artist }}</span>
@@ -1602,7 +1602,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
               <span class="song-title">{{ s.title }}</span>
               <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
-               <span class="song-artist-group">
+               <span class="song-artist-group" :data-album="s.album">
                 <template v-for="(artist, idx) in parseArtists(s.artist)" :key="idx">
                   <span v-if="idx > 0" class="artist-sep">,</span>
                   <span class="song-artist clickable" :class="{ 'has-id': s.artistId }" @click.stop="s.artistId ? openArtistById(s.artistId, artist) : searchAndOpenArtist(artist)">{{ artist }}</span>
@@ -2144,14 +2144,17 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
     font-weight: 700;
   }
   .song-table .song-time { grid-area: time; align-self: start; }
-  .song-table .song-artist {
+  /* The artist chips live in a wrapper, so the wrapper is the grid item and
+     the one place the album suffix can hang off exactly once. */
+  .song-table .song-artist-group {
     grid-area: artist;
-    font-size: var(--fs-xs);
     max-width: 100%;
   }
-  .song-table .song-artist::after {
+  .song-table .song-artist { font-size: var(--fs-xs); }
+  .song-table .song-artist-group::after {
     content: " - " attr(data-album);
     color: var(--color-text-muted);
+    font-size: var(--fs-xs);
   }
   .song-table :deep(.row-menu-wrap) { grid-area: menu; align-self: center; }
   .song-table :deep(.row-menu-btn) { opacity: 1; }
