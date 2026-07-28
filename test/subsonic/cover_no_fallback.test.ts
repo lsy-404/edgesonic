@@ -99,6 +99,7 @@ function buildDb(): DatabaseSync {
       album_id TEXT,
       artist_id TEXT,
       title TEXT,
+      cover_r2_key TEXT,
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
     );
@@ -123,6 +124,9 @@ function buildDb(): DatabaseSync {
     INSERT INTO albums (id, name, cover_r2_key) VALUES ('al-curated', 'Curated', 'covers/al-curated');
     -- Clients commonly ask for a song's cover by the song's own id.
     INSERT INTO song_masters (id, album_id, title) VALUES ('457', 'al-curated', 'Breaking Now');
+    -- A track with its own artwork must win over the album's.
+    INSERT INTO song_masters (id, album_id, title, cover_r2_key)
+      VALUES ('sg-own', 'al-curated', 'Own Art', 'covers/sg-sg-own');
   `);
   return sqlite;
 }
@@ -249,7 +253,24 @@ async function main() {
     // A song id whose album has no art still 404s rather than inventing one.
     const none = await get("/rest/getCoverArt?id=sm-1");
     assert(none.status === 404, `song on an artless album → 404 (got ${none.status})`);
-    assert(counter.put.length === 0, "resolution never writes a cover");
+  }
+
+  console.log("\na track's own artwork wins over its album's:");
+  {
+    const counter: R2Counter = { get: [], put: [] };
+    const r2 = makeR2({
+      "covers/al-curated": { data: new Uint8Array([0xff, 0xd8, 0xff, 1]), contentType: "image/jpeg" },
+      "covers/sg-sg-own": { data: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 2]), contentType: "image/png" },
+    }, counter);
+    const kv = makeKV();
+    const sqlite = buildDb();
+    const { get } = makeApp(sqlite, r2, kv);
+
+    const r = await get("/rest/getCoverArt?id=sg-own");
+    assert(r.status === 200, `200 (got ${r.status})`);
+    assert(counter.get.includes("covers/sg-sg-own"), "read the track's own cover");
+    assert(!counter.get.includes("covers/al-curated"), "did not fall back to the album");
+    assert(counter.put.length === 0, "an already-resolved track is not re-extracted");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

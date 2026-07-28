@@ -113,6 +113,8 @@ export async function ensureActivationSchema(env: { DB: D1Database }): Promise<v
     // Long-lived client credentials carry the activation horizon they were
     // issued under; NULL means no ceiling (permanent activation).
     "ALTER TABLE subsonic_credentials ADD COLUMN expires_at INTEGER",
+    // Per-song artwork; NULL means the song shows its album's cover.
+    "ALTER TABLE song_masters ADD COLUMN cover_r2_key TEXT",
   ];
   let allDone = true;
   for (const sql of alters) {

@@ -116,7 +116,10 @@ export function mapSong(
     track: s.track ?? undefined,
     discNumber: s.disc ?? undefined,
     genre: s.genre ?? undefined,
-    coverArt: s.album_id.startsWith("al-") ? s.album_id : `al-${s.album_id}`,
+    // The song's own id: getCoverArt serves the track's embedded artwork when
+    // it has any and falls back to the album's, so compilations stop showing
+    // one picture for every track.
+    coverArt: s.id,
     duration: s.duration ?? s.inst_duration ?? undefined,
     suffix: s.inst_suffix ?? undefined,
     contentType: s.inst_content_type ?? undefined,

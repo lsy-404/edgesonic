@@ -626,16 +626,26 @@ const getCoverArtHandler = async (c: Context) => {
     let album = await queries.getAlbum(albumId);
     if (!album && prefix === "al-") { albumId = id; album = await queries.getAlbum(albumId); }
     if (!album) {
-      // Only the album link is needed here, so this stays a single-column
-      // lookup rather than the full song projection with its artist joins.
+      const songId = prefix === "al-" ? entityId : id;
       const song = await env.DB
-        .prepare("SELECT album_id FROM song_masters WHERE id = ?")
-        .bind(prefix === "al-" ? entityId : id)
-        .first<{ album_id: string }>();
-      if (song) { albumId = song.album_id; album = await queries.getAlbum(albumId); }
+        .prepare("SELECT album_id, cover_r2_key FROM song_masters WHERE id = ?")
+        .bind(songId)
+        .first<{ album_id: string; cover_r2_key: string | null }>();
+      if (song) {
+        // A track can carry its own artwork — compilations and singles
+        // collected into one album. Prefer it, extracting on first request,
+        // and fall through to the album's picture when the file has none.
+        coverKey = song.cover_r2_key ?? null;
+        if (!coverKey) {
+          const { resolveSongCover } = await import("../../utils/covers");
+          try { coverKey = await resolveSongCover(env, songId); } catch { coverKey = null; }
+        }
+        albumId = song.album_id;
+        album = await queries.getAlbum(albumId);
+      }
     }
-    if (!album) return c.body(null, 404 as never);
-    coverKey = album.cover_r2_key ?? null;
+    if (!coverKey && !album) return c.body(null, 404 as never);
+    coverKey = coverKey ?? album!.cover_r2_key ?? null;
     // entirely because its directory-image fallback assigned a shared parent
     // dir cover.jpg to every album under it; but mapAlbum/mapSong kept
     // advertising coverArt unconditionally, so every uncurated album 404'd.

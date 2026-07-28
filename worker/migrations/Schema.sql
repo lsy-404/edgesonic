@@ -339,6 +339,7 @@ CREATE INDEX IF NOT EXISTS idx_albums_name ON albums(name);
 CREATE TABLE IF NOT EXISTS song_masters (
   id TEXT PRIMARY KEY,
   album_id TEXT NOT NULL,
+  cover_r2_key TEXT,                                 -- per-song artwork; NULL falls back to the album's
   artist_id TEXT NOT NULL,
   album_artist_id TEXT,
   title TEXT NOT NULL,
