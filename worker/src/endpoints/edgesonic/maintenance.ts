@@ -37,6 +37,8 @@ import { Hono } from "hono";
 import type { User } from "../../types/entities";
 import { getFeatureString } from "../../utils/features";
 import { permissionMiddleware } from "../../auth";
+import { deriveBitrate, bitrateNeedsRepair } from "../../utils/audioMetrics";
+import { sniffImageMime } from "../../utils/imageType";
 import { getSourceCredentials } from "../../adapters/index";
 
 export const maintenanceRoutes = new Hono<{
@@ -460,4 +462,109 @@ maintenanceRoutes.post("/maintenance/orphanSongs/delete",
 
   const deleted = items.filter((i) => i.ok).length;
   return c.json({ ok: true, deleted, failed: items.length - deleted, items });
+});
+
+// ============================================================================
+// POST /edgesonic/maintenance/repairBitrates
+// ============================================================================
+// Recomputes stored bitrates from file size and duration. The browser pool
+// parses head+tail slices, so parser-reported rates describe the slice rather
+// than the track and land an order of magnitude low on lossless formats.
+// Nothing is downloaded: size and duration are already on the row.
+// `dryRun` reports what would change without writing.
+maintenanceRoutes.post("/maintenance/repairBitrates",
+  permissionMiddleware("maintenance_cleanup"),
+  async (c) => {
+  const env = c.env as Env;
+  const body = await c.req.json<{ dryRun?: boolean }>().catch(() => ({} as { dryRun?: boolean }));
+  const dryRun = body.dryRun === true;
+
+  const rows = (await env.DB.prepare(
+    `SELECT id, suffix, size, duration, bit_rate FROM song_instances
+     WHERE missing = 0 AND size > 0 AND duration > 0`,
+  ).all<{ id: string; suffix: string | null; size: number; duration: number; bit_rate: number | null }>()).results ?? [];
+
+  const stale: Array<{ id: string; suffix: string | null; from: number | null; to: number }> = [];
+  for (const r of rows) {
+    const measured = deriveBitrate(r.size, r.duration);
+    if (measured === null || !bitrateNeedsRepair(r.bit_rate, measured)) continue;
+    stale.push({ id: r.id, suffix: r.suffix, from: r.bit_rate, to: measured });
+  }
+
+  if (!dryRun && stale.length > 0) {
+    const now = Math.floor(Date.now() / 1000);
+    // Chunked so a large library stays inside D1's statement limits.
+    for (let i = 0; i < stale.length; i += 50) {
+      await env.DB.batch(stale.slice(i, i + 50).map((s) =>
+        env.DB.prepare("UPDATE song_instances SET bit_rate = ?, updated_at = ? WHERE id = ?")
+          .bind(s.to, now, s.id)));
+    }
+  }
+
+  const byFormat: Record<string, number> = {};
+  for (const s of stale) byFormat[s.suffix || "?"] = (byFormat[s.suffix || "?"] ?? 0) + 1;
+
+  return c.json({
+    ok: true,
+    dryRun,
+    examined: rows.length,
+    repaired: dryRun ? 0 : stale.length,
+    wouldRepair: stale.length,
+    byFormat,
+    samples: stale.slice(0, 10),
+  });
+});
+
+// ============================================================================
+// POST /edgesonic/maintenance/repairCoverTypes
+// ============================================================================
+// Rewrites cover media types that disagree with the artwork's own bytes. Tags
+// declare types loosely ("PNG", "-->", or simply the wrong one), and a client
+// that trusts the header then cannot decode an otherwise valid image. Reads
+// only the first bytes of each object unless a rewrite is actually needed.
+maintenanceRoutes.post("/maintenance/repairCoverTypes",
+  permissionMiddleware("maintenance_cleanup"),
+  async (c) => {
+  const env = c.env as Env;
+  const body = await c.req.json<{ dryRun?: boolean; limit?: number }>().catch(() => ({} as { dryRun?: boolean; limit?: number }));
+  const dryRun = body.dryRun === true;
+  const limit = typeof body.limit === "number" && body.limit > 0 ? Math.min(body.limit, 2000) : 2000;
+
+  const keys = [
+    ...((await env.DB.prepare(
+      "SELECT cover_r2_key AS k FROM albums WHERE cover_r2_key IS NOT NULL",
+    ).all<{ k: string }>()).results ?? []),
+    ...((await env.DB.prepare(
+      "SELECT image_r2_key AS k FROM artists WHERE image_r2_key IS NOT NULL",
+    ).all<{ k: string }>()).results ?? []),
+  ].map((r) => r.k).slice(0, limit);
+
+  const fixed: Array<{ key: string; from: string | null; to: string }> = [];
+  let missing = 0;
+  for (const key of keys) {
+    const head = await env.MUSIC_BUCKET.get(key, { range: { offset: 0, length: 16 } });
+    if (!head) { missing++; continue; }
+    const magic = new Uint8Array(await head.arrayBuffer());
+    const sniffed = sniffImageMime(magic);
+    if (!sniffed) continue;                       // unknown format: leave as-is
+    const stored = head.httpMetadata?.contentType ?? null;
+    if (stored === sniffed) continue;
+    fixed.push({ key, from: stored, to: sniffed });
+    if (dryRun) continue;
+    const full = await env.MUSIC_BUCKET.get(key);
+    if (!full) { missing++; continue; }
+    await env.MUSIC_BUCKET.put(key, await full.arrayBuffer(), {
+      httpMetadata: { contentType: sniffed },
+    });
+  }
+
+  return c.json({
+    ok: true,
+    dryRun,
+    examined: keys.length,
+    missing,
+    repaired: dryRun ? 0 : fixed.length,
+    wouldRepair: fixed.length,
+    samples: fixed.slice(0, 10),
+  });
 });

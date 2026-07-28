@@ -38,6 +38,7 @@
 //   "seen" so a future scan does not re-queue the work forever.
 
 import { md5 } from "./md5";
+import { deriveBitrate } from "./audioMetrics";
 import {
   artistInsertStatements,
   parseArtistCredits,
@@ -62,6 +63,7 @@ export interface SubmittedMetadata {
   duration?: number;     // seconds
   bitrate?: number;      // kbps
   sampleRate?: number;   // Hz
+  bitDepth?: number;     // bits per sample
   channels?: number;
   lyrics?: string;
   container?: string;
@@ -86,6 +88,7 @@ export interface MetaCommon {
 export interface MetaFormat {
   bitrate?: unknown;
   sampleRate?: unknown;
+  bitDepth?: unknown;
   channels?: unknown;
   duration?: unknown;
   container?: unknown;
@@ -131,8 +134,8 @@ export async function applyMetadataResult(
        tags.genre || tags.year || tags.track || tags.disc);
 
   const inst = await db.prepare(
-    "SELECT id, master_id FROM song_instances WHERE id = ?",
-  ).bind(instanceId).first<{ id: string; master_id: string }>();
+    "SELECT id, master_id, size FROM song_instances WHERE id = ?",
+  ).bind(instanceId).first<{ id: string; master_id: string; size: number | null }>();
   if (!inst) return { updated: false, reason: "instance not found" };
 
   let masterId: string | undefined;
@@ -188,8 +191,15 @@ export async function applyMetadataResult(
   // with tag_scanned=1).
   const sets: string[] = [];
   const binds: unknown[] = [];
-  if (typeof tags.bitrate === "number")    { sets.push("bit_rate = ?");    binds.push(tags.bitrate); }
+  // Bitrate is measured from the stored file rather than taken from the
+  // parser: the browser pool parses head+tail slices, so a parser-reported
+  // rate reflects the slice, not the track (lossless files came out ~20x low).
+  // The reported value is only a fallback for rows we cannot measure.
+  const measuredBitrate = deriveBitrate(inst.size, tags.duration);
+  const bitrate = measuredBitrate ?? (typeof tags.bitrate === "number" ? tags.bitrate : null);
+  if (bitrate !== null)                    { sets.push("bit_rate = ?");    binds.push(bitrate); }
   if (typeof tags.sampleRate === "number") { sets.push("sample_rate = ?"); binds.push(tags.sampleRate); }
+  if (typeof tags.bitDepth === "number")   { sets.push("bit_depth = ?");   binds.push(tags.bitDepth); }
   if (typeof tags.channels === "number")   { sets.push("channels = ?");    binds.push(tags.channels); }
   if (typeof tags.duration === "number")   { sets.push("duration = ?");    binds.push(tags.duration); }
   sets.push("tag_scanned = 1");
@@ -304,6 +314,7 @@ function mergeToSubmitted(c: MetaCommon, f: MetaFormat): SubmittedMetadata {
   const dur = toPosNum(f.duration);  if (dur !== null) out.duration   = dur;
   const br = toPosNum(f.bitrate);    if (br !== null) out.bitrate    = br;
   const sr = toPosNum(f.sampleRate); if (sr !== null) out.sampleRate = sr;
+  const bd = toPosNum(f.bitDepth);   if (bd !== null) out.bitDepth   = bd;
   const ch = toPosNum(f.channels);   if (ch !== null) out.channels   = ch;
   const cont = trimStr(f.container); if (cont) out.container = cont;
   const cdc = trimStr(f.codec);      if (cdc) out.codec     = cdc;
