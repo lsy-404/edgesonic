@@ -38,7 +38,7 @@ import type { User } from "../../types/entities";
 import { getFeatureString } from "../../utils/features";
 import { permissionMiddleware } from "../../auth";
 import { deriveBitrate, bitrateNeedsRepair } from "../../utils/audioMetrics";
-import { sniffImageMime } from "../../utils/imageType";
+import { sniffImageMime, resolveImageMime } from "../../utils/imageType";
 import { getSourceCredentials } from "../../adapters/index";
 
 export const maintenanceRoutes = new Hono<{
@@ -621,6 +621,78 @@ maintenanceRoutes.post("/maintenance/backfillCovers",
     noArt: noArt.length,
     failed: failed.length,
     remaining: pending.length - resolved.length,
+    failures: failed.slice(0, 5),
+  });
+});
+
+// ============================================================================
+// POST /edgesonic/maintenance/normalizeCoverKeys
+// ============================================================================
+// Two write paths once disagreed on how a cover key is built, leaving both
+// covers/al-<id> and covers/al-al-<id> in storage. This rewrites the stray
+// ones onto the canonical covers/<albumId>, moving the object, re-pointing
+// every row that referenced it, and dropping the thumbnails derived from the
+// old key so they regenerate under the new one.
+//
+// Bounded per call — each album costs a list, a read, a write and a few
+// deletes — and resumable: run until `remaining` is zero.
+maintenanceRoutes.post("/maintenance/normalizeCoverKeys",
+  permissionMiddleware("maintenance_cleanup"),
+  async (c) => {
+  const env = c.env as Env;
+  const body = await c.req.json<{ limit?: number; dryRun?: boolean }>().catch(() => ({} as { limit?: number; dryRun?: boolean }));
+  const dryRun = body.dryRun === true;
+  const limit = typeof body.limit === "number" && body.limit > 0 ? Math.min(body.limit, 50) : 10;
+
+  const rows = (await env.DB.prepare(
+    "SELECT id, cover_r2_key FROM albums WHERE cover_r2_key IS NOT NULL",
+  ).all<{ id: string; cover_r2_key: string }>()).results ?? [];
+  const stray = rows.filter((r) => r.cover_r2_key !== `covers/${r.id}`);
+
+  const moved: Array<{ from: string; to: string; thumbs: number }> = [];
+  const failed: Array<{ id: string; error: string }> = [];
+
+  for (const row of stray.slice(0, dryRun ? stray.length : limit)) {
+    const target = `covers/${row.id}`;
+    if (dryRun) { moved.push({ from: row.cover_r2_key, to: target, thumbs: 0 }); continue; }
+    try {
+      const source = await env.MUSIC_BUCKET.get(row.cover_r2_key);
+      if (source) {
+        const bytes = new Uint8Array(await source.arrayBuffer());
+        await env.MUSIC_BUCKET.put(target, bytes, {
+          httpMetadata: { contentType: resolveImageMime(source.httpMetadata?.contentType, bytes) },
+        });
+      }
+      // Everything derived from the old key: the object itself plus its
+      // <key>_s<size>.<ext> thumbnails.
+      const derived = await env.MUSIC_BUCKET.list({ prefix: row.cover_r2_key });
+      let thumbs = 0;
+      for (const obj of derived.objects) {
+        await env.MUSIC_BUCKET.delete(obj.key);
+        if (obj.key !== row.cover_r2_key) thumbs++;
+      }
+      await env.DB.batch([
+        env.DB.prepare("UPDATE albums SET cover_r2_key = ?, updated_at = ? WHERE id = ?")
+          .bind(target, Math.floor(Date.now() / 1000), row.id),
+        // Tracks that reused the album's object point at the old key too.
+        env.DB.prepare("UPDATE song_masters SET cover_r2_key = ? WHERE cover_r2_key = ?")
+          .bind(target, row.cover_r2_key),
+      ]);
+      moved.push({ from: row.cover_r2_key, to: target, thumbs });
+    } catch (e) {
+      failed.push({ id: row.id, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  return c.json({
+    ok: true,
+    dryRun,
+    total: rows.length,
+    stray: stray.length,
+    moved: dryRun ? 0 : moved.length,
+    failed: failed.length,
+    remaining: stray.length - (dryRun ? 0 : moved.length),
+    samples: moved.slice(0, 5),
     failures: failed.slice(0, 5),
   });
 });
