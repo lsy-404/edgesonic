@@ -102,16 +102,28 @@ async function expandTargetIds(
   const out: string[] = [];
   const seen = new Set<string>();
   for (const id of rawIds) {
-    // Album ids in EdgeSonic are prefixed `al-`; everything else is treated
-    // as a song_master id and validated via getSongMaster.
+    // Locally-scanned albums are prefixed `al-`; expand them directly.
     if (id.startsWith("al-")) {
       const songs = await queries.getSongMastersByAlbum(id);
       for (const s of songs) {
         if (!seen.has(s.id)) { seen.add(s.id); out.push(s.id); }
       }
-    } else {
-      const song = await queries.getSongMaster(id);
-      if (song && !seen.has(song.id)) { seen.add(song.id); out.push(song.id); }
+      continue;
+    }
+    // Bare ids are ambiguous: albums cloned from upstream Subsonic carry bare
+    // (numeric) ids that overlap the song_master id space. Treat the id as a
+    // song when one exists — the EdgeSonic client resolves its own album
+    // targets to song ids to sidestep the collision — and otherwise fall back
+    // to expanding it as a bare-id album so external clients sharing such an
+    // album still work.
+    const song = await queries.getSongMaster(id);
+    if (song) {
+      if (!seen.has(song.id)) { seen.add(song.id); out.push(song.id); }
+      continue;
+    }
+    const songs = await queries.getSongMastersByAlbum(id);
+    for (const s of songs) {
+      if (!seen.has(s.id)) { seen.add(s.id); out.push(s.id); }
     }
   }
   return out;

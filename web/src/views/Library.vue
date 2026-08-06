@@ -909,15 +909,35 @@ function shareExtractUrl(xml: string): string {
   const m = /<share\s+[^>]*\burl="([^"]+)"/.exec(xml);
   return m ? m[1].replace(/&amp;/g, "&") : "";
 }
+// Album ids can collide with song ids (albums cloned from an upstream Subsonic
+// server carry bare numeric ids that overlap the song_master id space), so the
+// share API can't reliably tell an album target from a song target. Resolve an
+// album to its song ids here, where the intent (kind === "album") is known.
+async function resolveAlbumSongIds(albumId: string): Promise<string[]> {
+  const xml = await authFetch("getAlbum", { id: albumId });
+  return parseXmlAttrs(xml, "song").map((s) => s.id || "").filter(Boolean);
+}
+
 async function submitShare() {
   if (!shareTarget.value) return;
   shareBusy.value = true;
   shareError.value = "";
   shareCreatedUrl.value = "";
   try {
-    const params: Record<string, string | string[]> = {
-      id: shareBatchIds.value ?? shareTarget.value.id,
-    };
+    let ids: string | string[];
+    if (shareBatchIds.value) {
+      ids = shareBatchIds.value;
+    } else if (shareTarget.value.kind === "album") {
+      ids = await resolveAlbumSongIds(shareTarget.value.id);
+      if (!ids.length) {
+        shareError.value = t("library.shareCreateFailed");
+        shareBusy.value = false;
+        return;
+      }
+    } else {
+      ids = shareTarget.value.id;
+    }
+    const params: Record<string, string | string[]> = { id: ids };
     const desc = shareDescription.value.trim();
     if (desc) params.description = desc;
     if (shareExpiresType.value === "days") {

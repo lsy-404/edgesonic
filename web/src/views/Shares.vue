@@ -206,12 +206,29 @@ function computeExpiresMs(
   return ts;
 }
 
+// Album ids can collide with song ids (albums cloned from upstream Subsonic
+// carry bare numeric ids overlapping the song id space), so the share API
+// can't tell an album target from a song target. Resolve an album to its song
+// ids here where the intent is known.
+async function resolveAlbumSongIds(albumId: string): Promise<string[]> {
+  const xml = await authFetch("getAlbum", { id: albumId });
+  return parseXmlAttrs(xml, "song").map((s) => s.id || "").filter(Boolean);
+}
+
 async function createShare() {
   if (!form.value.targetId) {
     showToast(t("shares.targetSelectRequired"), "error");
     return;
   }
-  const params: Record<string, string> = { id: form.value.targetId };
+  let ids: string | string[] = form.value.targetId;
+  if (form.value.targetType === "album") {
+    ids = await resolveAlbumSongIds(form.value.targetId);
+    if (!ids.length) {
+      showToast(t("shares.addFailed"), "error");
+      return;
+    }
+  }
+  const params: Record<string, string | string[]> = { id: ids };
   if (form.value.description.trim()) params.description = form.value.description.trim();
   const expiresMs = computeExpiresMs(
     form.value.expiresType,
