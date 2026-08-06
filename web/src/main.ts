@@ -62,6 +62,10 @@ const routes = [
   { path: "/playlists", component: () => import("./views/Playlists.vue"), meta: { title: "Playlists" } },
   { path: "/now-playing", component: () => import("./views/NowPlaying.vue"), meta: { title: "Now Playing" } },
   { path: "/about", component: () => import("./views/About.vue"), meta: { title: "About", minLevel: 0 } },
+  // `bare` drops the whole app shell (sidebar, player bar, theme background):
+  // a machine parked here is a worker, and every pixel painted is CPU taken
+  // from the tasks it is meant to be running.
+  { path: "/work", component: () => import("./views/WorkMode.vue"), meta: { title: "Work Mode", perm: "participate_work", bare: true } },
 ];
 
 const router = createRouter({ history: createWebHashHistory(), routes });

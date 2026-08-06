@@ -13,7 +13,7 @@ import { getTheme, registeredThemeIds, externalThemeIds, loadExternalTheme, unre
 import { audioCacheStats, clearAudioCache, audioCacheMaxMb, setAudioCacheMaxMb } from "../lib/audioCache";
 import PermissionsMatrix from "../components/PermissionsMatrix.vue";
 import Icon from "../components/Icon.vue";
-import { useWorkerPool } from "../stores/workerPool";
+import { useWorkSocket } from "../stores/workSocket";
 import {
   buildReleaseOptions,
   GITHUB_API,
@@ -33,7 +33,7 @@ const {
   updateNickname, requestEmailChange, changeOwnPassword, updateOwnAvatar, handleAuthError,
   activation, fetchActivationStatus, redeemActivationCode,
 } = useAuth();
-const workerPool = useWorkerPool();
+const workPool = useWorkSocket();
 
 // Release listing runs in the browser: GitHub's unauthenticated API budget is
 // per source IP, and the Worker's is a Cloudflare egress address shared with
@@ -185,7 +185,7 @@ async function saveSelfPassword() {
   finally { profileBusy.value = false; }
 }
 
-// ---- Peer sync moved to Tools.vue (252 Phase 8) ----
+// ---- Peer sync moved to Tools.vue ----
 
 type SectionKey = "user" | "activation" | "audioCache" | "system" | "sessions" | "clients" | "permissions";
 const open = ref<Record<SectionKey, boolean>>({ user: true, activation: false, audioCache: false, system: false, sessions: false, clients: false, permissions: false });
@@ -390,26 +390,26 @@ async function loadFeatures() {
       const probe = JSON.parse(await edgesonicFetch("features/secrets/get"));
       externalKeySet.value = !!probe?.set;
     } catch { externalKeySet.value = false; }
-    // 040: hydrate the scrape source priority list from feature_strings.
+    // Hydrate the scrape source priority list from feature_strings.
     hydrateScrapeFromFeatures();
-    // 043: hydrate Last.fm key presence indicator.
+    // Hydrate Last.fm key presence indicator.
     void hydrateLastfmFromUserSetting();
     if (canManageSettings.value) {
       void hydrateLastfmSystem();
     }
-    // 051: hydrate WebDAV scan cadence + BROWSER READ controls.
+    // Hydrate WebDAV scan cadence + BROWSER READ controls.
     hydrateScanFromFeatures();
-    // 065: hydrate cross-origin isolation toggle.
+    // Hydrate cross-origin isolation toggle.
     hydrateCioFromFeatures();
-    // 091/092: hydrate presign toggles + probe R2 secrets presence.
+    // Hydrate presign toggles + probe R2 secrets presence.
     hydratePresignFromFeatures();
     loadR2PresignStatus();
     // Hydrate Resend config + login page customization, probe key presence.
     hydrateEmailFromFeatures();
     loadResendKeyStatus();
-    // 110: hydrate the metadata re-check cadence.
+    // Hydrate the metadata re-check cadence.
     hydrateMetadataRecheckFromFeatures();
-    // 113: hydrate the LRC sidecar backfill cadence.
+    // Hydrate the LRC sidecar backfill cadence.
     hydrateLrcBackfillFromFeatures();
     // Hydrate the registration gate mode for the activation controls.
     gateMode.value = findFeatureString("registration_gate_mode", "all") === "any" ? "any" : "all";
@@ -610,7 +610,7 @@ async function clearLastfmApiKey() {
 }
 
 // ---- Last.fm (system-level: api_key + artist info source order + cron cadence) ----
-// 260: last.fm is no longer hardcoded as the first artist bio/cover source —
+// last.fm is no longer hardcoded as the first artist bio/cover source —
 // it's just another member of the same priority list as the CN sources,
 // reorderable the same way scrape_enabled_sources is (see ScrapeSourceKey
 // above). Defaults to CN sources ahead of last.fm.
@@ -2812,15 +2812,15 @@ onMounted(() => {
         <div class="sub-block">
           <div class="sub-header">
             <span class="mono-label">{{ t("settings.common.workerPool.title") }}</span>
-            <span class="status-badge" :class="workerPool.eligible ? (workerPool.enabled ? 'success' : 'muted') : 'warning'">
-              {{ workerPool.eligible ? (workerPool.enabled ? t("common.on") : t("common.off")) : t("common.off") }}
+            <span class="status-badge" :class="workPool.eligible ? (workPool.enabled ? 'success' : 'muted') : 'warning'">
+              {{ workPool.eligible ? (workPool.enabled ? t("common.on") : t("common.off")) : t("common.off") }}
             </span>
           </div>
           <p class="feature-desc tc-desc" style="margin-left:0">
             {{ t("settings.common.workerPool.desc") }}
           </p>
 
-          <p v-if="!workerPool.eligible" class="feature-desc tc-desc" style="margin-left:0; color: var(--color-accent-primary)">
+          <p v-if="!workPool.eligible" class="feature-desc tc-desc" style="margin-left:0; color: var(--color-accent-primary)">
             {{ t("settings.common.workerPool.ineligible") }}
           </p>
 
@@ -2903,10 +2903,10 @@ onMounted(() => {
               <span class="feature-desc">{{ recheckMetadataToast }}</span>
             </div>
 
-            <!-- 113 — cron-driven LRC sidecar backfill: interval + manual
+            <!-- Cron-driven LRC sidecar backfill: interval + manual
                  trigger. Scans song_masters still missing lyrics for a
                  sibling .lrc file next to the audio source (never retried by
-                 110's recheck, which only re-parses embedded tags). -->
+                 the recheck, which only re-parses embedded tags). -->
             <div class="tc-row" style="margin-top: 0.6rem">
               <span class="tc-key">{{ t("settings.common.workerPool.lrcBackfillLabel") }}</span>
               <span class="feature-desc">{{ t("settings.common.workerPool.lrcBackfillDesc") }}</span>
@@ -3477,7 +3477,7 @@ onMounted(() => {
 .error-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 0.7rem; padding: 0.5rem 0; }
 .error-text { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--color-text-secondary); }
 
-/* --- 049 Transcode controls --- */
+/* --- Transcode controls --- */
 .transcode-grid { display: flex; flex-direction: column; gap: 0.65rem; }
 .tc-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .tc-row-block { align-items: flex-start; }
@@ -3526,7 +3526,7 @@ onMounted(() => {
 }
 .cache-cap-select { max-width: 160px; }
 
-/* --- 091/092 presign warning banner --- */
+/* --- Presign warning banner --- */
 .presign-warning {
   margin: 0.6rem 0 0.8rem;
   padding: 0.6rem 0.8rem;
@@ -3545,7 +3545,7 @@ onMounted(() => {
 .presign-env-list li { margin: 0.15rem 0; }
 .presign-env-list code { background: none; padding: 0; color: inherit; }
 
-/* --- 051 Scan toggle pill --- */
+/* --- Scan toggle pill --- */
 .scan-toggle {
   display: inline-flex; align-items: center; gap: 0.5rem;
   font-family: var(--font-mono);
@@ -3554,7 +3554,7 @@ onMounted(() => {
 }
 .scan-toggle input { margin: 0; }
 
-/* --- 052 Worker pool --- */
+/* --- Worker pool --- */
 .worker-stats { display: inline-flex; gap: 0.8rem; flex-wrap: wrap; }
 .worker-stat {
   font-family: var(--font-mono);
@@ -3579,7 +3579,7 @@ onMounted(() => {
   padding-top: 0.4rem;
 }
 
-/* --- 040 Scrape source list --- */
+/* --- Scrape source list --- */
 .scrape-source-list { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.6rem; }
 .scrape-source-row {
   display: flex;

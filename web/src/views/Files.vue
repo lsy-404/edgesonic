@@ -9,13 +9,11 @@ import { normalizeForMatch } from "../lib/trackMatch";
 import TagEditor from "../components/TagEditor.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
 import type { ScrapeResult } from "../lib/scrape";
-import { useWorkerPool } from "../stores/workerPool";
 import { extractMetadata } from "../lib/metadata";
 import Icon from "../components/Icon.vue";
 
 const { t } = useI18n();
 const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitMetadata } = useAuth();
-const workerPool = useWorkerPool();
 
 interface StorageSource { id: string; type: string; name: string; baseUrl: string; }
 interface DirEntry { name: string; }
@@ -91,7 +89,7 @@ const demoMode = useDemoMode();
 // rejected on upload.
 const uploadAcceptMode = ref<"audio" | "all">("audio");
 const uploadAccept = computed(() => (uploadAcceptMode.value === "audio" ? "audio/*" : undefined));
-// 270 — parse metadata on upload (default on). When off, the file lands in
+// Parse metadata on upload (default on). When off, the file lands in
 // R2/D1 with tag_scanned=0 and a manual scan picks it up later.
 const uploadParseMetadata = ref(true);
 const canSelectAllFiles = computed(() => demoMode.allowAllFileTypes);
@@ -226,7 +224,6 @@ async function doUpload() {
   // uploads push real bytes through this browser; pause the
   // background metadata pool for the duration so it doesn't compete for
   // bandwidth.
-  workerPool.pauseForActivity("upload");
   try {
     for (let i = 0; i < total; i++) {
       const file = uploadQueue.value[i];
@@ -239,7 +236,7 @@ async function doUpload() {
         });
         uploadProgressList.value[i] = 100;
         uploadDoneCount.value++;
-        // 270 — when "parse metadata on upload" is on, parse the file's
+        // When "parse metadata on upload" is on, parse the file's
         // tags in-browser and submit them so the song relinks to the right
         // album/artist immediately, no worker-pool round-trip needed.
         if (uploadParseMetadata.value) {
@@ -278,7 +275,6 @@ async function doUpload() {
     uploadQueue.value = [];
     uploadProgressList.value = [];
     if (uploadInput.value) uploadInput.value.value = "";
-    workerPool.resumeAfterActivity("upload");
   }
 }
 
@@ -316,7 +312,6 @@ async function confirmCrossOp() {
   const targets = crossCopyModal.value.files;
   crossCopyBusy.value = true;
   crossCopyQueue.value = targets.map((file) => ({ file, status: "pending" }));
-  workerPool.pauseForActivity("cross-copy");
   try {
     await mapConcurrent(crossCopyQueue.value, CROSS_COPY_CONCURRENCY, async (item) => {
       item.status = "copying";
@@ -339,7 +334,6 @@ async function confirmCrossOp() {
     loadDir();
   } finally {
     crossCopyBusy.value = false;
-    workerPool.resumeAfterActivity("cross-copy");
   }
 }
 
@@ -349,7 +343,6 @@ async function runTagScan() {
   scanProcessed.value = 0;
   scanRemaining.value = null;
   let totalTagged = 0;
-  workerPool.pauseForActivity("tag-scan");
   try {
     for (;;) {
       const text = await tagFetch("read", { batch: "4" });
@@ -366,7 +359,6 @@ async function runTagScan() {
   } finally {
     scanning.value = false;
     scanRemaining.value = null;
-    workerPool.resumeAfterActivity("tag-scan");
   }
 }
 
@@ -823,10 +815,6 @@ function closeTidyFolder() { tidyOpen.value = false; }
 async function onTagEditorSubmit(patch: Record<string, string | number>, cover?: { data: string; mime: string }) {
   if (!Object.keys(patch).length && !cover) return;
   editBusy.value = true; editMsg.value = ""; editErr.value = false;
-  // batch tag writes touch many files at once; pause the background
-  // metadata pool for the duration so it doesn't compete for bandwidth.
-  const isBatch = editorMode.value === "batch";
-  if (isBatch) workerPool.pauseForActivity("batch-tag");
   try {
     if (editorMode.value === "batch") {
       if (!editTargetIds.value.length) return;
@@ -858,7 +846,6 @@ async function onTagEditorSubmit(patch: Record<string, string | number>, cover?:
   } finally {
     // finally (not just after try/catch) so the early `return` above for an
     // empty batch target list still cleans these up.
-    if (isBatch) workerPool.resumeAfterActivity("batch-tag");
     editBusy.value = false;
   }
 }
@@ -931,7 +918,7 @@ onMounted(async () => {
         <span class="upload-options-label">{{ t("files.parseMetadata") }}</span>
         <span class="upload-options-hint">{{ t("files.parseMetadataHint") }}</span>
       </div>
-      <!-- 089/S4: Upload queue list with per-file progress bars -->
+      <!-- Upload queue list with per-file progress bars -->
       <div v-if="uploadQueue.length || uploadBusy" class="upload-queue">
         <div class="mono-label upload-queue-header">{{ t("files.uploadQueue") }}</div>
         <div v-for="(file, i) in uploadQueue" :key="i" class="upload-queue-item">
@@ -965,7 +952,7 @@ onMounted(async () => {
         </button>
       </div>
 
-      <!-- 150 — batch action bar for the checkbox selection. Move/Delete stay
+      <!-- Batch action bar for the checkbox selection. Move/Delete stay
            R2-only (mirrors the existing per-row move/copy/delete buttons,
            which only ever supported R2); tag-edit and cross-copy work across
            every source, matching their existing per-row buttons — but grey
@@ -1049,7 +1036,7 @@ onMounted(async () => {
                 :title="t('files.editTags')"
                 @click.stop="openTagEditor(f)"
               ><Icon name="note" /></button>
-              <!-- Cross-source copy (all sources, canUpload) — 089/S4b, batched in 144 -->
+              <!-- Cross-source copy (all sources, canUpload) — batched -->
               <button
                 v-if="canUpload"
                 class="op-btn op-cross"
@@ -1072,7 +1059,7 @@ onMounted(async () => {
       <div class="corner corner-bl"></div>
     </div>
 
-    <!-- Move / Copy modal — 150: generalized to N files (batch move); the
+    <!-- Move / Copy modal — generalized to N files (batch move); the
          free-text destination input became a lazy-loaded folder tree: expand
          with the caret (children fetched from files/list on demand), click a
          name to pick it as the destination. -->
@@ -1166,7 +1153,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- 150 — delete confirm modal (single + batch), replacing window.confirm().
+    <!-- Delete confirm modal (single + batch), replacing window.confirm().
          Same reasoning as Sources.vue's mirror-copy confirm: a native
          confirm() can't be styled and blocks the whole page's event loop
          until a human answers it. -->
@@ -1183,7 +1170,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Cross-source copy modal — 089/S4b, batched + concurrent as of 144 -->
+    <!-- Cross-source copy modal — batched + concurrent -->
     <div v-if="crossCopyModal" class="modal-backdrop" @click.self="closeCrossModal">
       <div class="modal">
         <div class="modal-title">
@@ -1258,7 +1245,7 @@ onMounted(async () => {
       @submit="onTagEditorSubmit"
       @close="closeTagEditor"
     >
-     <!-- 040 scrape button — single mode only, batch has no one obvious
+     <!-- Scrape button — single mode only, batch has no one obvious
           "which song" query to scrape against (same reasoning as Library.vue) -->
       <template v-if="editorMode === 'single'" #extras="{ form, apply }">
         <ScrapeButton
@@ -1269,7 +1256,7 @@ onMounted(async () => {
       </template>
     </TagEditor>
 
-    <!-- Tidy folder modal (042) -->
+    <!-- Tidy folder modal -->
     <div v-if="tidyOpen" class="modal-backdrop" @click.self="closeTidyFolder">
       <div class="modal tidy-modal">
         <div class="modal-title">{{ t("files.tidyTitle", { n: tidyTargetIds.length }) }}</div>
@@ -1396,7 +1383,7 @@ onMounted(async () => {
 .upload-msg { font-family: var(--font-mono); font-size: var(--fs-sm); margin-top: 0.5rem; color: var(--color-status-success); }
 .upload-msg.error { color: var(--color-status-error); }
 
-/* 089/S4 upload queue — these classes existed in the template since task 089
+/* Upload queue — these classes existed in the template from the start
    but were never given rules, so the per-file progress bars rendered as
    invisible/unstyled divs. Fixed here alongside the analogous cross-copy
    queue below. */
@@ -1410,7 +1397,7 @@ onMounted(async () => {
 .upload-queue-pct { width: 3em; text-align: right; flex-shrink: 0; color: var(--color-text-muted); font-size: var(--fs-xs); }
 .upload-queue-overall { margin-top: 0.4rem; font-size: var(--fs-sm); color: var(--color-text-muted); }
 
-/* Cross-source copy batch selection + queue (144) */
+/* Cross-source copy batch selection + queue */
 .cross-select-box { flex-shrink: 0; margin-right: 0.4rem; cursor: pointer; accent-color: var(--color-accent-primary); }
 
 /* Select-all header row above the entry list */
@@ -1478,7 +1465,7 @@ onMounted(async () => {
 .dest-newfolder .btn-secondary { flex-shrink: 0; font-size: var(--fs-xs); padding: 0.25rem 0.6rem; white-space: nowrap; }
 .btn-new-folder { margin-left: 0.6rem; font-size: var(--fs-xs); padding: 0.25rem 0.6rem; }
 
-/* 150 — batch action bar (tag-edit / move / delete / cross-copy) shown under
+/* Batch action bar (tag-edit / move / delete / cross-copy) shown under
    the breadcrumb whenever at least one file is checked. */
 .batch-actions-bar {
   display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;

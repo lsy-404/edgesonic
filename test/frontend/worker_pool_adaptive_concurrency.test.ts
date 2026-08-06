@@ -16,7 +16,7 @@
 // 113 — workerPool.nextConcurrency: AIMD-style adaptive concurrency step.
 // worker_max_concurrent used to be the concurrency pollAndDrain always used;
 // it's now a ceiling, and nextConcurrency decides the real per-cycle value:
-//   - empty batch (no tasks polled)      → unchanged
+//   - empty batch (nothing ran)      → unchanged
 //   - any failure in the batch           → halve (min 1)
 //   - all tasks in the batch succeeded   → +1, capped at the ceiling
 //
@@ -52,8 +52,8 @@ function nextConcurrency(
 async function main() {
   console.log("empty batch — no signal, concurrency unchanged:");
   {
-    assert(nextConcurrency(3, 8, { total: 0, failed: 0 }) === 3, "3 stays 3 (no tasks polled)");
-    assert(nextConcurrency(1, 8, { total: 0, failed: 0 }) === 1, "1 stays 1 (no tasks polled)");
+    assert(nextConcurrency(3, 8, { total: 0, failed: 0 }) === 3, "3 stays 3 (nothing ran)");
+    assert(nextConcurrency(1, 8, { total: 0, failed: 0 }) === 1, "1 stays 1 (nothing ran)");
   }
 
   console.log("\nall succeeded — ramps up by 1, capped at ceiling:");
@@ -72,7 +72,7 @@ async function main() {
     assert(nextConcurrency(3, 8, { total: 4, failed: 4 }) === 1, "3 → 1 (floor(3/2)=1)");
   }
 
-  console.log("\nfull ramp-then-backoff cycle (simulating repeated polls):");
+  console.log("\nfull ramp-then-backoff cycle (simulating repeated cycles):");
   {
     let c = 1;
     // Three clean cycles: 1 → 2 → 3 → 4.
@@ -91,11 +91,11 @@ async function main() {
   console.log("\nproduction source drift guard:");
   {
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../../web/src/stores/workerPool.ts"),
+      path.resolve(__dirname, "../../web/src/stores/workSocket.ts"),
       "utf-8",
     );
     assert(src.includes("export function nextConcurrency"),
-      "nextConcurrency still exported from workerPool.ts");
+      "nextConcurrency still exported from workSocket.ts");
     assert(/if \(batch\.total === 0\) return current;/.test(src),
       "empty-batch short-circuit still present");
     assert(/if \(batch\.failed > 0\) return Math\.max\(1, Math\.floor\(current \/ 2\)\);/.test(src),
@@ -112,4 +112,4 @@ async function main() {
   console.log("All assertions passed.");
 }
 
-main();
+main().catch((e) => { console.error(e); process.exit(1); });

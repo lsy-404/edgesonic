@@ -4,13 +4,11 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs } from "../api";
-import { useWorkerPool } from "../stores/workerPool";
 import { activationDisplay } from "../lib/activation";
 import Icon from "../components/Icon.vue";
 
 const { t } = useI18n();
 const { isLoggedIn, username, isSuperAdmin, level, hasPerm, activation, storageFetch, edgesonicFetch, edgesonicPost, handleAuthError } = useAuth();
-const workerPool = useWorkerPool();
 const loading = ref(true);
 const stats = ref({ artists: 0, albums: 0, songs: 0, sources: 0, users: 0 });
 const canManageSources = computed(() => hasPerm("manage_sources"));
@@ -268,7 +266,7 @@ function onActivityVisibility() {
 async function onResetFailedWork() {
   // Mirrors the Settings → Maintenance panel button so admins don't have to
   // bounce away from the Dashboard when they spot a failed queue here. The
-  // confirm + warning text intentionally matches 082's so behaviour is
+  // confirm + warning text intentionally matches the Settings one so behaviour is
   // identical regardless of where the click came from.
   if (resetFailedBusy.value) return;
   if (!window.confirm(t("settings.common.maintenance.resetFailedConfirm"))) return;
@@ -626,9 +624,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
-/* System activity (super-admin only). Sits above the 4 stat cards;
-   work-pool + scan-status share a vertical stack so a tall failed list
-   doesn't shove the scan row off to a side column. */
+/* System activity (super-admin only). Sits above the 4 stat cards. */
 .system-activity {
   display: flex;
   flex-direction: column;
@@ -643,153 +639,6 @@ onUnmounted(() => {
   opacity: 0.85;
 }
 
-.work-pool-card {
-  padding: 1rem 1.1rem 0.9rem;
-  border-left: 3px solid var(--color-accent-primary, #6366f1);
-  transition: border-left-color 0.3s ease;
-}
-.work-pool-card.work-pool-failed {
-  border-left-color: #ef4444; /* red-500 */
-}
-.work-pool-card.work-pool-warning {
-  border-left-color: #f59e0b; /* amber-500 */
-}
-.wp-refresh {
-  background: transparent;
-  border: 1px solid var(--color-border-subtle);
-  color: var(--color-text-secondary);
-  font-size: 0.85rem;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 0;
-  cursor: pointer;
-  transition: color 0.2s, border-color 0.2s, transform 0.6s;
-}
-.wp-refresh:hover { color: var(--color-text-primary); border-color: var(--color-border-strong, var(--color-text-muted)); transform: rotate(180deg); }
-
-.wp-progress-line {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-top: 0.5rem;
-}
-.wp-progress-label {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  letter-spacing: 0.08em;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-}
-.wp-progress-num {
-  font-family: var(--font-mono);
-  font-size: var(--fs-md);
-  color: var(--color-text-primary);
-}
-.wp-progress-bar {
-  margin-top: 0.4rem;
-  height: 6px;
-  width: 100%;
-  background: var(--color-border-subtle);
-  border-radius: 0;
-  overflow: hidden;
-}
-.wp-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--color-accent-primary, #6366f1), var(--color-accent-secondary, #8b5cf6));
-  transition: width 0.6s ease;
-  min-width: 0;
-}
-.work-pool-failed .wp-progress-fill {
-  background: linear-gradient(90deg, #f59e0b, #ef4444);
-}
-
-.wp-counts {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.6rem;
-  margin-top: 0.9rem;
-}
-.wp-count {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-subtle, rgba(255,255,255,0.02));
-}
-.wp-count-icon { font-size: 0.95rem; line-height: 1; color: var(--color-text-muted); }
-.wp-count-label {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.1em;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-}
-.wp-count-num {
-  font-family: var(--font-display, inherit);
-  font-size: 1.2rem;
-  color: var(--color-text-primary);
-}
-.wp-count-emphasis { border-color: #ef4444; }
-.wp-count-emphasis .wp-count-num { color: #ef4444; }
-
-.wp-workers {
-  margin-top: 0.9rem;
-  padding-top: 0.7rem;
-  border-top: 1px dashed var(--color-border-subtle);
-}
-.wp-workers-title {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  margin-bottom: 0.35rem;
-}
-.wp-workers-empty {
-  font-size: var(--fs-sm);
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-.wp-workers-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-.wp-worker-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: var(--fs-sm);
-}
-.wp-worker-name { color: var(--color-text-primary); font-family: var(--font-mono); }
-.wp-worker-load { color: var(--color-text-muted); font-family: var(--font-mono); font-size: 0.8rem; }
-
-.wp-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.9rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid var(--color-border-subtle);
-}
-.wp-actions .btn-secondary { font-size: var(--fs-sm); padding: 0.35rem 0.7rem; }
-.wp-action-failed { border-color: #ef4444; color: #ef4444; }
-.wp-action-failed:hover:not([disabled]) { background: rgba(239, 68, 68, 0.08); }
-.wp-action-stale { border-color: #f59e0b; color: #f59e0b; }
-.wp-action-stale:hover:not([disabled]) { background: rgba(245, 158, 11, 0.08); }
-.wp-actions .btn-secondary[disabled] { opacity: 0.55; cursor: progress; }
-
-.wp-error {
-  margin-top: 0.6rem;
-  font-size: var(--fs-sm);
-  color: #ef4444;
-  font-family: var(--font-mono);
-}
 
 .scan-status-row {
   padding: 0.9rem 1.1rem 0.9rem;
@@ -825,49 +674,6 @@ onUnmounted(() => {
   font-family: var(--font-mono);
 }
 
-/* P2 — Worker toggle + last error */
-.wp-worker-toggle {
-  margin-top: 0.7rem;
-  padding-top: 0.6rem;
-  border-top: 1px dashed var(--color-border-subtle);
-}
-.wp-toggle-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-.wp-toggle-text {
-  font-size: var(--fs-sm);
-  color: var(--color-text-secondary);
-  font-family: var(--font-mono);
-}
-.wp-toggle-on { color: #10b981; }
-.wp-toggle-off { color: var(--color-text-muted); }
-.wp-last-error {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
-  padding: 0.4rem 0.6rem;
-  background: rgba(239, 68, 68, 0.07);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-left: 3px solid #ef4444;
-}
-.wp-last-error-icon { color: #ef4444; flex-shrink: 0; }
-.wp-last-error-label {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-  margin-top: 0.05rem;
-}
-.wp-last-error-msg {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: #ef4444;
-  word-break: break-all;
-}
 
 /* P3 — recent albums skeleton */
 .recent-skeleton { padding: 0.4rem 0; }
@@ -890,10 +696,9 @@ onUnmounted(() => {
 .dashboard-toast-enter-from, .dashboard-toast-leave-to { opacity: 0; transform: translateY(0.5rem); }
 
 @media (max-width: 720px) {
-  .wp-counts { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ── 101: Storage section ─────────────────────────────────────────── */
+/* ── Storage section ─────────────────────────────────────────── */
 .storage-section { margin-bottom: 2rem; }
 .storage-panels {
   display: grid;

@@ -5,12 +5,10 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
-import { useWorkerPool } from "../stores/workerPool";
 import Icon from "../components/Icon.vue";
 
 const { t } = useI18n();
 const { isAdmin, isSuperAdmin, storageFetch, storagePost, crossCopy } = useAuth();
-const workerPool = useWorkerPool();
 
 type ScanState = "idle" | "running" | "completed" | "failed";
 
@@ -308,7 +306,6 @@ async function confirmStartMirror() {
   // mirror listing/pagination runs through this browser; pause the
   // background metadata pool for the duration so it doesn't compete for
   // bandwidth with the mirror copy loop.
-  workerPool.pauseForActivity("mirror");
   try {
     let offset = 0;
     const limit = 50;
@@ -375,7 +372,6 @@ async function confirmStartMirror() {
   } finally {
     st.running = false;
     st.inFlight = [];
-    workerPool.resumeAfterActivity("mirror");
   }
 }
 
@@ -550,7 +546,7 @@ onUnmounted(() => {
           <input v-model="form.root_path" maxlength="256" class="form-input" :placeholder="form.type === 's3' ? 'bucket' : '/music'" />
           <span class="field-hint">{{ form.type === 's3' ? t('sources.s3BucketHint') : t('sources.rootPathHint') }}</span>
         </div>
-        <!-- 096: region field (S3 only) -->
+        <!-- region field (S3 only) -->
         <div v-if="form.type === 's3'" class="form-group span-all">
           <label class="form-label">{{ t("sources.s3Region") }}</label>
           <input v-model="form.region" maxlength="256" class="form-input" :placeholder="t('sources.s3RegionPlaceholder')" />
@@ -641,7 +637,7 @@ onUnmounted(() => {
             <span v-else class="text-muted">{{ t("sources.notSynced") }}</span>
           </template>
         </div>
-        <!-- 146 — real determinate progress bar for a running scan, once the
+        <!-- Real determinate progress bar for a running scan, once the
              job has reported a total (early on, total=0 and the spinner in
              the pill above is the only signal — that's still correct since
              there's genuinely nothing to show a percentage of yet). Reuses
@@ -710,7 +706,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 146 — in-app confirm modal for "镜像到 R2", replacing window.confirm().
+    <!-- In-app confirm modal for "镜像到 R2", replacing window.confirm().
          A native confirm() blocks the whole page (including any assistive/
          automation tooling attached to the tab) until a human answers it in
          a dialog the page itself can't style or recover from — this modal
@@ -772,7 +768,7 @@ onUnmounted(() => {
             </select>
             <span class="field-hint">{{ t("sources.cacheTier.hint") }}</span>
           </div>
-          <!-- 096: region field in edit modal (shown for all types; only meaningful for s3) -->
+          <!-- region field in edit modal (shown for all types; only meaningful for s3) -->
           <div v-if="editing?.type === 's3'" class="form-group span-all">
             <label class="form-label">{{ t("sources.s3Region") }}</label>
             <input v-model="editForm.region" maxlength="256" class="form-input" :placeholder="t('sources.s3RegionPlaceholder')" />
@@ -1066,7 +1062,7 @@ onUnmounted(() => {
   to { transform: rotate(360deg); }
 }
 
-/* 146 — determinate scan progress bar (shown once a job reports a total
+/* Determinate scan progress bar (shown once a job reports a total
    alongside the spinner pill above). The shimmer sweep gives the bar visual
    life instead of a flat static fill, matching the mirror-progress bar's
    upgrade below. */

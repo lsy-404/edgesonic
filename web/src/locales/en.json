@@ -606,7 +606,6 @@
     "workPool": {
       "title": "Worker Pre-parse",
       "running": "Running",
-      "autoStart": "Auto-start in {sec}",
       "startNow": "Start Now",
       "progress": "Parse Progress",
       "parsing": "Parsing:",
@@ -936,7 +935,7 @@
       },
       "workerPool": {
         "title": "Worker Pool",
-        "desc": "Logged-in users with write permission (level ≥ 2) can become a browser worker node: every 5 minutes the tab polls /edgesonic/work/poll and posts results back. Runs only while the tab is visible.",
+        "desc": "Logged-in users with write permission (level ≥ 2) can become a browser worker node: open the Work Mode page and the tab holds a socket that receives tasks as they are queued, posting results back. Runs while that page stays open.",
         "participate": "Participate in pool",
         "participateDesc": "Local toggle. When off, polling stops immediately. Task routing is decided by the server based on detected capabilities.",
         "capsLabel": "Capabilities",
@@ -1558,5 +1557,32 @@
     "locked": "Locked in demo mode",
     "uploadCap": "Upload size is capped in demo mode",
     "storageFull": "R2 storage limit reached"
+  },
+  "workMode": {
+    "title": "Work Mode",
+    "start": "Start working",
+    "stop": "Stop",
+    "occupied": "occupied",
+    "idle": "idle",
+    "link": "Link",
+    "uptime": "Connected",
+    "completed": "Completed",
+    "failed": "Failed",
+    "reconnects": "Reconnects",
+    "wakeLock": "Wake lock",
+    "held": "held",
+    "released": "released",
+    "concurrency": "Concurrency",
+    "ineligible": "This account does not have permission to join the work pool.",
+    "wakeLockUnsupported": "This browser has no wake lock; work pauses when the device sleeps.",
+    "wakeLockFailed": "Wake lock request failed: {reason}",
+    "state": {
+      "offline": "offline",
+      "connecting": "connecting",
+      "online": "online",
+      "refused": "unavailable"
+    },
+    "speed": "Per minute",
+    "ceiling": "Ceiling"
   }
 }

@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // ---------------------------------------------------------------------------
-// Runs as a dedicated Worker (module type) instantiated by stores/workerPool.ts
+// Runs as a dedicated Worker (module type) instantiated by lib/taskRunner.ts
 // for each claimed task. Receives one task via postMessage, runs it, posts
 // {ok, result}|{ok:false, error} back, terminates.
 //
@@ -23,7 +23,7 @@
 // (metadata, scrape) finish well within the default 60s claim TTL and don't
 // need heartbeats.
 //
-// Why a Worker at all when most tasks are I/O bound? Because 041 already
+// Why a Worker at all when most tasks are I/O bound? Because we already
 // proved that `music-metadata` decode pegs the main thread for several
 // hundred ms per file on slower hardware (FLAC + APIC bigger than 10MB). The
 // player UI MUST stay responsive; offloading is the cheap insurance.
@@ -31,7 +31,8 @@
 import { parseBuffer } from "music-metadata";
 import { lyricsTagsToText, nativeLyricsFallback } from "../lib/metadata";
 
-// Wire shape — matches the `tasks[]` returned by /edgesonic/work/poll. Kept
+// Wire shape — matches the task frame the coordinator pushes down the
+// socket. Kept
 // minimal here because the worker can only trust what the Worker handed it
 // (any extra columns leaked from D1 are just ignored).
 interface Task {
@@ -40,7 +41,7 @@ interface Task {
   payload: Record<string, unknown>;
 }
 
-// truncates again to 500 in workerPool.ts → /work/submit truncates again to
+// truncates again to 500 in taskRunner.ts → /work/submit truncates again to
 // 500 in work.ts. Doing it here too keeps each postMessage cheap.
 const ERR_LIMIT = 500;
 function clampMsg(s: string): string {
@@ -93,7 +94,7 @@ self.addEventListener("unhandledrejection", (e: PromiseRejectionEvent) => {
   (self as unknown as Worker).postMessage({ ok: false, error: clampMsg(msg) });
 });
 
-// 116 — locate the first `moof` (movie fragment) box in an MP4 buffer.
+// Locate the first `moof` (movie fragment) box in an MP4 buffer.
 // Returns the byte offset where that box STARTS (its 4-byte size field, i.e.
 // 4 bytes before the "moof" 4CC), or -1 when no fragment is present. Used by
 // the fMP4 parse fallback in runMetadata.
@@ -135,9 +136,9 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
   // sourceUri is a logical EdgeSonic URI (r2://…, webdav://…, url://…). We
   // can't fetch those directly — but the /rest/stream endpoint resolves the
   // URI server-side using the same instanceId. To stay storage-agnostic we
-  // request the first 512KB via stream which honours Range headers (023).
+  // request the first 512KB via stream which honours Range headers.
   // The session signing is added by the main thread before postMessage
-  // see stores/workerPool.ts buildStreamUrl().
+  // see lib/taskRunner.ts, which builds the signed stream URL.
   const streamUrl = String(payload.streamUrl || "");
   if (!streamUrl) throw new Error("metadata task missing streamUrl (main thread should populate)");
 
@@ -154,7 +155,7 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
   // hundred KB to a few MB, pushing the TITLE/ARTIST frames — usually ordered
   // before APIC — outside a 512KB tail window entirely. Match the 2MB tail
   // worker/src/utils/slices.ts already uses for the equivalent server-side
-  // path (same bug class 111 fixed there).
+  // path (same bug class fixed there).
   const TAIL_BYTES = 2 * 1024 * 1024; // 2MB — trailing id3/INFO chunk (may include embedded art)
 
   const headResp = await fetch(streamUrl, {
@@ -220,7 +221,7 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
         size: totalSize > buf.length ? totalSize : undefined,
       }, { duration: false, skipCovers: false });
     } catch {
-      // 116 — fragmented-MP4 fallback. music-metadata (≤11.13.0) throws
+      // Fragmented-MP4 fallback. music-metadata (≤11.13.0) throws
       // "Missing sampleDuration and no defaultSampleDuration in track
       // fragment header" while walking `moof` fragments of some fMP4 .m4a
       // files — AFTER it has already read the complete tag set (moov/udta/
@@ -297,7 +298,7 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
     }
   }
 
-  // Flatten the compact wire shape that endpoints/tag/submit.ts (041) expects.
+  // Flatten the compact wire shape that endpoints/tag/submit.ts expects.
   // We strip the giant common.picture / native.* fields — they'd inflate the
   // result_json column past the 100KB cap in /work/submit. The cover goes in
   // a separate `cover` field (base64) so the worker can write it to R2.
@@ -312,9 +313,9 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
       year:        meta.common.year ? String(meta.common.year) : "",
       track:       meta.common.track?.no ? String(meta.common.track.no) : "",
       disc:        meta.common.disk?.no ? String(meta.common.disk.no) : "",
-      // this; songs scanned via work_queue (the primary multi-format path,
-      // 052a/052b) never got embedded lyrics into D1. lyricsTagsToText is
-      // shared with the 041 local-scan path (web/src/lib/metadata.ts).
+      // this; songs scanned via work_queue (the primary multi-format path)
+      // never got embedded lyrics into D1. lyricsTagsToText is
+      // shared with the local-scan path (web/src/lib/metadata.ts).
       lyrics:      lyricsTagsToText(meta.common.lyrics) || nativeLyricsFallback(meta.native) || "",
       duration:    meta.format.duration ? Math.round(meta.format.duration) : 0,
       bitrate:     meta.format.bitrate ? Math.round(meta.format.bitrate / 1000) : 0,
@@ -338,7 +339,7 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
 // canonical R2 path, not whatever the browser claims).
 //
 // NOTE: ffmpeg.wasm v0.12 prefers crossOriginIsolation (SharedArrayBuffer +
-// COOP/COEP). EdgeSonic does not enable those yet (task 054). On non-isolated
+// COOP/COEP). EdgeSonic does not enable those yet. On non-isolated
 // pages ff.load() falls back to a slower single-thread build; if it errors
 // at all, we surface the message and let /work/submit mark the task failed.
 // ---------------------------------------------------------------------------
@@ -410,7 +411,7 @@ async function runTranscode(payload: Record<string, unknown>): Promise<unknown> 
 // ---------------------------------------------------------------------------
 // scrape — generic third-party HTTP proxy. Worker fetches the URL with the
 // caller-supplied headers, parses the response as JSON. Used by the metadata
-// scrape pipeline (040) when CORS prevents the main thread from going direct.
+// scrape pipeline when CORS prevents the main thread from going direct.
 // ---------------------------------------------------------------------------
 async function runScrape(payload: Record<string, unknown>): Promise<unknown> {
   const url = String(payload.url || "");

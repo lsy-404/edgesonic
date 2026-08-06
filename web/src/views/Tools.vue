@@ -4,24 +4,14 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
-import { useWorkerPool } from "../stores/workerPool";
+import { useWorkSocket } from "../stores/workSocket";
 import { mapConcurrent } from "../lib/concurrency";
 import Icon from "../components/Icon.vue";
 import { normalizeForMatch } from "../lib/trackMatch";
 
 const { t } = useI18n();
 const { isSuperAdmin, isAdmin, isUser, isGuest, hasPerm, username: currentUsername, edgesonicPost, edgesonicFetch, rescanSongs, md5, signedParams, restUrl } = useAuth();
-const workerPool = useWorkerPool();
-
-const nowTick = ref(Date.now());
-const autoStartCountdownText = computed(() => {
-  const eta = workerPool.nextPollAt;
-  if (!eta || eta <= nowTick.value) return "";
-  const totalSec = Math.ceil((eta - nowTick.value) / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-});
+const workPool = useWorkSocket();
 
 interface WorkCounts { queued: number; claimed: number; completed: number; failed: number; canceled: number }
 interface WorkLoadRow { username: string; n: number }
@@ -79,14 +69,18 @@ async function loadWorkStatus() {
   } catch { /* stay quiet */ }
 }
 
-const maxConcurrentInput = ref<number>(workerPool.maxConcurrent);
+// Several tasks can be in flight at once now, so there is no single "current"
+// one — show the first, which is what the old single-slot readout showed.
+const currentFileName = computed(() => [...workPool.running.values()][0]?.fileName ?? "");
+
+const maxConcurrentInput = ref<number>(workPool.maxConcurrent);
 const maxConcurrentBusy = ref(false);
 function saveMaxConcurrent() {
   const n = Math.max(1, Math.min(8, Math.floor(Number(maxConcurrentInput.value) || 0)));
   maxConcurrentInput.value = n;
   maxConcurrentBusy.value = true;
   try {
-    workerPool.setMaxConcurrent(n);
+    workPool.setMaxConcurrent(n);
     showToast(t("tools.workPool.concurrencySaved"));
   } finally {
     maxConcurrentBusy.value = false;
@@ -261,18 +255,15 @@ async function saveSyncConfig(nextEnabled?: boolean) {
 }
 
 let workStatusPollHandle: ReturnType<typeof setInterval> | null = null;
-let nowTickHandle: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
   void loadWorkStatus();
   void loadStorageStats();
   void loadOrphanSongs();
   if (!isGuest.value) void loadSyncConfig();
   workStatusPollHandle = window.setInterval(() => { if (!document.hidden) void loadWorkStatus(); }, 10000);
-  nowTickHandle = window.setInterval(() => { nowTick.value = Date.now(); }, 1000);
 });
 onUnmounted(() => {
   if (workStatusPollHandle !== null) { clearInterval(workStatusPollHandle); workStatusPollHandle = null; }
-  if (nowTickHandle !== null) { clearInterval(nowTickHandle); nowTickHandle = null; }
 });
 
 const toast = ref({ show: false, msg: "", type: "success" });
@@ -683,7 +674,7 @@ async function buildCloneFilterSet(): Promise<Set<string> | null> {
 
 async function cloneMetadataStage() {
   const stage = cloneStages.value.metadata;
-  // 176: writing metadata into the shared library is manage_users (admin) only.
+  // Writing metadata into the shared library is manage_users (admin) only.
   if (!cloneMetadataEnabled.value || !isAdmin.value) {
     stage.status = "skipped";
     stage.message = "disabled";
@@ -722,7 +713,7 @@ async function cloneMetadataStage() {
 
   interface MetaItem { s: any; albumNode: any; artist: string }
 
-  // 162: search3 with an empty query is the "list everything" convention
+  // search3 with an empty query is the "list everything" convention
   // this app's own Songs tab already relies on (Navidrome-compatible) — one
   // paginated walk gets every song directly, each entry already carrying
   // albumId/artistId/track/genre/duration/…, instead of one getAlbum
@@ -828,7 +819,7 @@ async function cloneMetadataStage() {
       stage.failed++;
       cloneLogPush(`metadata: [FAIL] ${payload.song.title} — ${e instanceof Error ? e.message : String(e)}`);
     }
-  // 159: mapConcurrent's isCancelled param was never wired up here — it only
+  // mapConcurrent's isCancelled param was never wired up here — it only
   // stopped a lane from picking up the *next* item, but nothing was even
   // passing it, so the cancel button had no effect on this stage at all.
   }, () => cloneCancelRequested.value);
@@ -838,7 +829,7 @@ async function cloneMetadataStage() {
 
 async function cloneAudioStage() {
   const stage = cloneStages.value.audio;
-  // 176: fetching audio bytes into R2 is manage_users (admin) only.
+  // Fetching audio bytes into R2 is manage_users (admin) only.
   if (!cloneAudioEnabled.value || !isAdmin.value) {
     stage.status = "skipped";
     stage.message = "disabled";
@@ -873,9 +864,9 @@ async function cloneAudioStage() {
     offset += PAGE;
   }
 
-  // 160: the per-album getAlbum walk used to be a plain sequential `for`
+  // The per-album getAlbum walk used to be a plain sequential `for`
   // loop with stage.total only set after everything had been fetched —
-  // 158 made it concurrent and grew stage.total live as each album
+  // then it became concurrent and grew stage.total live as each album
   // resolved, but a total that keeps climbing while the row already reads
   // "running" is just a different kind of confusing (is it done counting
   // or not?). Collect fully first (still concurrent, so still fast) and
@@ -915,7 +906,7 @@ async function cloneAudioStage() {
   cloneLogPush(`audio: ${allSongs.length} song(s) to fetch`);
 
   await mapConcurrent(allSongs, CLONE_AUDIO_CONCURRENCY, async (s) => {
-    // 159: resume cache — this song's bytes already landed in R2 in a
+    // Resume cache — this song's bytes already landed in R2 in a
     // previous run of this same upstream URL, skip re-fetching/re-uploading.
     if (s.id && cloneCache.audioDone.has(s.id)) {
       stage.done++;
@@ -1248,7 +1239,7 @@ async function cloneUserStarredAndPlaylists(username: string, password: string):
 
 async function cloneUsersStage() {
   const stage = cloneStages.value.users;
-  // 176: the all-users flow (provision every upstream account + their data) is
+  // The all-users flow (provision every upstream account + their data) is
   // super-admin only and only runs in the "all" target mode.
   if (cloneUserMode.value !== "all" || !isSuperAdmin.value) {
     stage.status = "skipped";
@@ -1323,8 +1314,7 @@ async function runClone() {
   // clone can fetch+re-upload audio bytes through this browser
   // (browser mode); pause the background metadata pool for the duration so
   // it doesn't compete for bandwidth.
-  workerPool.pauseForActivity("clone");
-  // 159: reload from sessionStorage (not just reuse the module-level var) in
+  // Reload from sessionStorage (not just reuse the module-level var) in
   // case the URL field changed since last load — cache is scoped per URL.
   cloneCache = loadCloneCache();
   if (cloneCache.metadataDone.size || cloneCache.audioDone.size) {
@@ -1397,7 +1387,6 @@ async function runClone() {
   // cancel/error, where the run stops well before the 1s debounce would.
   saveCloneCacheNow();
   cloneRunning.value = false;
-  workerPool.resumeAfterActivity("clone");
 }
 
 function cancelClone() {
@@ -1589,7 +1578,6 @@ async function runPush() {
   }
   pushRunning.value = true;
   pushCancelRequested.value = false;
-  workerPool.pauseForActivity("push");
   pushMatchCache.clear();
   for (const k of Object.keys(pushStages.value) as Array<keyof typeof pushStages.value>) {
     pushStages.value[k] = newCloneProgress();
@@ -1602,7 +1590,6 @@ async function runPush() {
     showToast(`${t("settings.common.clone.failed")}: ${e instanceof Error ? e.message : String(e)}`, "error");
   }
   pushRunning.value = false;
-  workerPool.resumeAfterActivity("push");
 }
 
 function cancelPush() {
@@ -1702,7 +1689,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
               {{ t("settings.common.clone.desc") }}
             </p>
             <div class="transcode-grid">
-              <!-- 176: favourites / playlists are independently selectable and
+              <!-- favourites / playlists are independently selectable and
                    available to any user; they land on the target chosen below. -->
               <label class="tc-row">
                 <span class="tc-key">{{ t("settings.common.clone.starredToggle") }}</span>
@@ -1746,7 +1733,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
               </label>
               <p class="feature-desc tc-desc">{{ t(`settings.common.clone.userMode.${cloneUserMode}Desc`) }}</p>
 
-              <!-- 176: metadata / audio write into the shared library — admin only. -->
+              <!-- metadata / audio write into the shared library — admin only. -->
               <template v-if="isAdmin">
                 <label class="tc-row">
                   <span class="tc-key">{{ t("settings.common.clone.metadataToggle") }}</span>
@@ -1781,7 +1768,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
                   {{ cloneAudioMode === "worker" ? t("settings.common.clone.audioModeWorkerDesc") : t("settings.common.clone.audioModeBrowserDesc") }}
                 </p>
 
-                <!-- 176: filters only appear once metadata or audio is enabled. -->
+                <!-- filters only appear once metadata or audio is enabled. -->
                 <div v-if="cloneMetadataEnabled || cloneAudioEnabled" class="clone-options">
                   <label class="tc-row">
                     <label class="toggle">
@@ -1931,7 +1918,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
       </section>
 
       <!-- ============ Work pool ============ -->
-      <section v-if="workerPool.eligible" class="settings-section card" :class="{ open: open.workPool }">
+      <section v-if="workPool.eligible" class="settings-section card" :class="{ open: open.workPool }">
         <button class="section-header" @click="toggleSection('workPool')">
           <span class="section-title">{{ t("tools.sections.workPool") }}</span>
           <span class="section-caret">{{ open.workPool ? '−' : '+' }}</span>
@@ -1942,9 +1929,8 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
         <div class="card-header">
           <span class="card-title">{{ t("tools.workPool.title") }}</span>
           <div class="wp-header-actions">
-            <span v-if="workerPool.isWorking" class="wp-auto-status wp-auto-status-running">{{ t("tools.workPool.running") }}</span>
-            <span v-else-if="autoStartCountdownText" class="wp-auto-status">{{ t("tools.workPool.autoStart", { sec: autoStartCountdownText }) }}</span>
-            <button class="wp-refresh" :disabled="workerPool.isWorking" @click="workerPool.pollNow()">{{ t("tools.workPool.startNow") }}</button>
+            <span v-if="workPool.isWorking" class="wp-auto-status wp-auto-status-running">{{ t("tools.workPool.running") }}</span>
+            <button class="wp-refresh" :disabled="workPool.isWorking" @click="workPool.nudge()">{{ t("tools.workPool.startNow") }}</button>
           </div>
         </div>
         <div class="wp-progress-line">
@@ -1955,9 +1941,9 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
           <div class="wp-progress-fill" :style="{ width: progressPct + '%' }"></div>
         </div>
         <!-- Real-time: which song this browser is parsing right now. -->
-        <div v-if="workerPool.stats.currentFileName" class="wp-current-song mono-label">
+        <div v-if="currentFileName" class="wp-current-song mono-label">
           <span class="wp-current-dot" aria-hidden="true"></span>
-          {{ t("tools.workPool.parsing") }}{{ workerPool.stats.currentFileName }}
+          {{ t("tools.workPool.parsing") }}{{ currentFileName }}
         </div>
         <div class="wp-counts">
           <div class="wp-count"><span class="wp-count-label">{{ t("tools.workPool.queue") }}</span><span class="wp-count-num">{{ workCounts.queued }}</span></div>
@@ -1968,7 +1954,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
         <div class="wp-speed-row">
           <div class="wp-speed-item">
             <span class="wp-count-label">{{ t("tools.workPool.localSpeed") }}</span>
-            <span class="wp-count-num">{{ workerPool.speedPerMin === null ? '—' : `${workerPool.speedPerMin}${t("tools.workPool.perMinute")}` }}</span>
+            <span class="wp-count-num">{{ workPool.speedPerMin === null ? '—' : `${workPool.speedPerMin}${t("tools.workPool.perMinute")}` }}</span>
           </div>
           <div class="wp-speed-item">
             <span class="wp-count-label">{{ t("tools.workPool.totalSpeed") }}</span>
@@ -1998,21 +1984,21 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
         <div class="wp-worker-toggle">
           <label class="wp-toggle-label">
             <label class="toggle">
-              <input type="checkbox" :checked="workerPool.enabled" @change="workerPool.setEnabled(($event.target as HTMLInputElement).checked)" />
+              <input type="checkbox" :checked="workPool.enabled" @change="workPool.setEnabled(($event.target as HTMLInputElement).checked)" />
               <span class="toggle-slider"></span>
             </label>
-            <span>{{ t("tools.workPool.workerEnabled", { state: workerPool.enabled ? t("tools.workPool.enabled") : t("tools.workPool.disabled") }) }}</span>
+            <span>{{ t("tools.workPool.workerEnabled", { state: workPool.enabled ? t("tools.workPool.enabled") : t("tools.workPool.disabled") }) }}</span>
           </label>
         </div>
         <div class="wp-local-stats">
           <span class="wp-count-label">{{ t("tools.workPool.localStats") }}</span>
-          <span class="wp-local-stat wp-local-stat-ok">{{ t("tools.workPool.ok") }} {{ workerPool.stats.completed }}</span>
-          <span class="wp-local-stat wp-local-stat-fail">{{ t("tools.workPool.failed") }} {{ workerPool.stats.failed }}</span>
+          <span class="wp-local-stat wp-local-stat-ok">{{ t("tools.workPool.ok") }} {{ workPool.stats.completed }}</span>
+          <span class="wp-local-stat wp-local-stat-fail">{{ t("tools.workPool.failed") }} {{ workPool.stats.failed }}</span>
         </div>
         <div class="wp-caps">
           <span class="wp-count-label">{{ t("tools.workPool.currentCaps") }}</span>
-          <span v-for="cap in workerPool.caps" :key="cap" class="wp-cap-pill">{{ cap }}</span>
-          <span v-if="workerPool.caps.length === 0" class="text-muted">—</span>
+          <span v-for="cap in workPool.caps" :key="cap" class="wp-cap-pill">{{ cap }}</span>
+          <span v-if="workPool.caps.length === 0" class="text-muted">—</span>
         </div>
         <div class="wp-concurrency">
           <span class="wp-count-label">{{ t("tools.workPool.concurrency") }}</span>
@@ -2023,11 +2009,11 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
           />
           <button class="btn-secondary btn-sm" :disabled="maxConcurrentBusy" @click="saveMaxConcurrent">{{ t("tools.workPool.save") }}</button>
           <span class="wp-concurrency-hint">{{ t("tools.workPool.concurrencyHint") }}</span>
-          <span class="wp-count-label" style="margin-left: 0.6rem">{{ t("tools.workPool.currentConcurrency", { cur: workerPool.currentConcurrency, max: workerPool.maxConcurrent }) }}</span>
+          <span class="wp-count-label" style="margin-left: 0.6rem">{{ t("tools.workPool.currentConcurrency", { cur: workPool.currentConcurrency, max: workPool.maxConcurrent }) }}</span>
         </div>
 
-        <div v-if="workerPool.lastError" class="wp-last-error">
-          <span>{{ t("tools.workPool.errorPrefix") }}</span> <code>{{ workerPool.lastError }}</code>
+        <div v-if="workPool.lastError" class="wp-last-error">
+          <span>{{ t("tools.workPool.errorPrefix") }}</span> <code>{{ workPool.lastError }}</code>
         </div>
       </div>
         </div>
@@ -2245,7 +2231,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 }
 .scan-toggle input { margin: 0; }
 
-/* --- 094 Subsonic clone --- */
+/* --- Subsonic clone --- */
 .clone-progress {
   margin-top: 0.8rem;
   border-top: 1px dashed var(--color-border-subtle);

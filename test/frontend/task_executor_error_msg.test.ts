@@ -31,8 +31,9 @@ function assert(cond: unknown, msg: string) {
   else { failures++; console.error(`  ✗ ${msg}`); }
 }
 
-// formatTaskError sits inside web/src/stores/workerPool.ts, which transitively
-// imports Pinia/vue/api modules — too much surface for a tsx unit test. We
+// formatTaskError sits inside web/src/lib/taskRunner.ts, which transitively
+// imports the Worker entry and Vite-only URL syntax — too much surface for a
+// tsx unit test. We
 // re-implement the same contract here against a tiny harness that mirrors the
 // exact function body. If the production function drifts, the regex below
 // catches it (we snapshot the implementation signature).
@@ -131,20 +132,25 @@ async function main() {
 
   console.log("\nproduction source drift guard:");
   {
-    // Read web/src/stores/workerPool.ts and confirm the function still
-    // exists with the same signature. If someone renames or removes it the
+    // Read web/src/lib/taskRunner.ts and confirm the function still exists
+    // with the same signature. If someone renames or removes it the
     // re-implementation above goes stale silently — this catches it.
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../../web/src/stores/workerPool.ts"),
+      path.resolve(__dirname, "../../web/src/lib/taskRunner.ts"),
       "utf-8",
     );
     assert(src.includes("export function formatTaskError"),
-      "formatTaskError still exported from workerPool.ts");
+      "formatTaskError still exported from taskRunner.ts");
     assert(/ERR_LIMIT\s*=\s*500/.test(src),
       "ERR_LIMIT=500 still defined");
-    assert(src.includes("formatTaskError(\n        { id: task.id, task_type: task.taskType }")
-      || src.includes("formatTaskError("),
-      "executeOne calls formatTaskError");
+    assert(src.includes("formatTaskError("),
+      "runTask calls formatTaskError");
+    const store = fs.readFileSync(
+      path.resolve(__dirname, "../../web/src/stores/workSocket.ts"),
+      "utf-8",
+    );
+    assert(store.includes("runTask"),
+      "workSocket.ts runs tasks through the shared runner");
   }
 
   console.log("\nworker error listener installed in taskExecutor.ts:");
@@ -161,10 +167,10 @@ async function main() {
       "empty-message fallback string present");
   }
 
-  console.log("\nrunWorkerOnce onError fallback in workerPool.ts:");
+  console.log("\nrunWorkerOnce onError fallback in taskRunner.ts:");
   {
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../../web/src/stores/workerPool.ts"),
+      path.resolve(__dirname, "../../web/src/lib/taskRunner.ts"),
       "utf-8",
     );
     assert(src.includes("worker fired ${e.type || \"error\"} event"),

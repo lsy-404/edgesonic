@@ -9,7 +9,6 @@ import PlayerBar from "./components/PlayerBar.vue";
 import UpdateBanner from "./components/UpdateBanner.vue";
 import Icon from "./components/Icon.vue";
 import { usePlayerStore } from "./stores/player";
-import { useWorkerPool } from "./stores/workerPool";
 import { useDemoMode } from "./stores/demoMode";
 import { activeTheme, resetTheme, restoreSavedTheme } from "./theme";
 import { getTheme } from "./themes/registry";
@@ -18,10 +17,12 @@ import { activeToast, dismissToast } from "./stores/toast";
 
 const router = useRouter();
 const route = useRoute();
+// Routes that opt out of the app shell entirely — no sidebar, no player bar,
+// no theme background layer. See the /work route in main.ts.
+const isBare = computed(() => route.meta?.bare === true);
 const { t } = useI18n();
 const { isLoggedIn, level, logout, hasPerm, fetchMe, displayName, activation, probeGuestEnabled } = useAuth();
 const player = usePlayerStore();
-const workerPool = useWorkerPool();
 const demoMode = useDemoMode();
 
 // Inactive-session handling: with guest access on, the account degrades to
@@ -54,11 +55,9 @@ watch(isLoggedIn, (now) => {
     // level (covers reloads where login()'s fetchMe never ran this session).
     void fetchMe();
     void restoreSavedTheme();
-    void workerPool.hydrateConfig().then(() => workerPool.start());
     player.resumePlaybackIfNeeded();
   } else {
     resetTheme();
-    workerPool.reset();
   }
 }, { immediate: true });
 
@@ -139,7 +138,6 @@ const groups = computed<NavGroup[]>(() => {
 
 function doLogout() {
   player.clear();
-  workerPool.reset();
   logout();
   router.push("/login");
 }
@@ -172,8 +170,10 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
 </script>
 
 <template>
-  <component :is="activeThemeDef?.background" v-if="activeThemeDef?.background" />
-  <div v-else-if="activeThemeDef?.mountBackground" ref="bgHostEl" aria-hidden="true"></div>
+  <template v-if="!isBare">
+    <component :is="activeThemeDef?.background" v-if="activeThemeDef?.background" />
+    <div v-else-if="activeThemeDef?.mountBackground" ref="bgHostEl" aria-hidden="true"></div>
+  </template>
 
   <UpdateBanner />
 
@@ -205,8 +205,8 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
     </button>
   </Transition>
 
-  <!-- 未登录：全屏渲染（Login） -->
-  <router-view v-if="!isLoggedIn" />
+  <!-- 未登录：全屏渲染（Login）；bare 路由同样全屏，不套框架 -->
+  <router-view v-if="!isLoggedIn || isBare" />
 
   <!-- 登录后框架：NavBar + Sidebar + Main + PlayerBar -->
   <div v-else class="shell" :class="{ 'now-playing-shell': route.path === '/now-playing' }">

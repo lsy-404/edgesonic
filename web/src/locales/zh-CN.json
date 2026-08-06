@@ -603,7 +603,6 @@
     "workPool": {
       "title": "Worker 预解析",
       "running": "运行中",
-      "autoStart": "{sec} 后自动启动",
       "startNow": "立即开始",
       "progress": "解析进度",
       "parsing": "正在解析：",
@@ -931,7 +930,7 @@
       },
       "workerPool": {
         "title": "浏览器预解析",
-        "desc": "登录的写权限用户（等级 ≥ 2）可参与浏览器侧预解析任务池：轮询 /edgesonic/work/poll 领取任务，结果回传 /work/submit。本机开关、并发度、当前进度等设置已移至「工具」页面的「WORKER 预解析」区块。",
+        "desc": "登录的写权限用户（等级 ≥ 2）可参与浏览器侧预解析任务池：打开「工作模式」页后标签页保持一条长连接，任务入队即下发，结果回传 /work/submit。该页开着期间持续工作。",
         "queueOverview": "队列概况（仅管理员）",
         "queueQueued": "Queued",
         "queueClaimed": "Claimed",
@@ -1544,5 +1543,32 @@
     "locked": "演示模式下已锁定",
     "uploadCap": "演示模式下上传大小受限",
     "storageFull": "R2 存储已达上限"
+  },
+  "workMode": {
+    "title": "工作模式",
+    "start": "开始工作",
+    "stop": "停止",
+    "occupied": "占用",
+    "idle": "空闲",
+    "link": "连接",
+    "uptime": "已连接",
+    "completed": "已完成",
+    "failed": "失败",
+    "reconnects": "重连次数",
+    "wakeLock": "屏幕保持",
+    "held": "已持有",
+    "released": "未持有",
+    "concurrency": "并发",
+    "ineligible": "当前账户没有参与工作池的权限。",
+    "wakeLockUnsupported": "此浏览器不支持屏幕保持，设备休眠后工作会暂停。",
+    "wakeLockFailed": "屏幕保持申请失败：{reason}",
+    "state": {
+      "offline": "离线",
+      "connecting": "连接中",
+      "online": "在线",
+      "refused": "不可用"
+    },
+    "speed": "每分钟",
+    "ceiling": "上限"
   }
 }
