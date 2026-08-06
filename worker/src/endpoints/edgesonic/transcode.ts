@@ -24,7 +24,7 @@
 //  Returns the transcode_jobs row plus the engine name.
 //
 // The /stream endpoint integration (on-demand transcoding triggered by
-// stream's format/maxBitRate parameters) is owned by task 036 and lives
+// stream's format/maxBitRate parameters) lives
 // in media.ts; this file ships only the manual entry point.
 
 import { Hono } from "hono";
@@ -124,34 +124,17 @@ transcodeRoutes.post("/transcode/start", permissionMiddleware("manage_sources"),
     const origin = `${reqUrl.protocol}//${reqUrl.host}`;
     const sourceUri = `${origin}/rest/stream?id=${encodeURIComponent(body.id)}&format=raw`;
 
-    // Reserve the queue id first so we can mint a token bound to it.
-    // dispatchWork inside enqueueTranscodeTask reuses the same id format
-    // (wq-xxx) — we mint here and pass the upload URL with that id.
-    // We pre-mint by signing a placeholder; instead we ask the engine
-    // for the queue id first, then patch a freshly-signed token onto a
-    // second-step PATCH UPDATE — but D1 latency is cheap, do it in two
-    // steps for simplicity:
-    //  step 1: enqueue with a placeholder uploadUrl pointing to a token
-    //         we will sign for the returned queue id
-    //  step 2: re-write payload.uploadUrl now that we know the id.
-    // We avoid step 2 by signing AFTER we know the id: we enqueue an empty
-    // string, then UPDATE payload.uploadUrl with the signed token. That
-    // keeps dispatchWork API unchanged.
-    const queueId = await engine.enqueueTranscodeTask(sourceUri, body.id, profile, "PENDING_URL");
-    const token = await signUploadToken(env, queueId);
-    const uploadUrl = `${origin}/edgesonic/work/upload?id=${encodeURIComponent(queueId)}&token=${encodeURIComponent(token)}`;
-
-    // Patch payload.uploadUrl in-place — small JSON, single D1 UPDATE.
-    const patched = await env.DB.prepare(
-      `SELECT payload FROM work_queue WHERE id = ?`,
-    ).bind(queueId).first<{ payload: string }>();
-    if (patched?.payload) {
-      const obj = JSON.parse(patched.payload);
-      obj.uploadUrl = uploadUrl;
-      await env.DB.prepare(
-        `UPDATE work_queue SET payload = ? WHERE id = ?`,
-      ).bind(JSON.stringify(obj), queueId).run();
-    }
+    // The upload token has to be bound to the queue id, which only exists
+    // after the insert. The engine sequences that for us — insert, patch,
+    // then wake the pool — so the row is never visible to a browser without
+    // a valid upload URL in it.
+    const queueId = await engine.enqueueTranscodeTask(
+      sourceUri, body.id, profile,
+      async (id) => {
+        const token = await signUploadToken(env, id);
+        return `${origin}/edgesonic/work/upload?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`;
+      },
+    );
 
     return c.json({
       ok: true,

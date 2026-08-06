@@ -24,6 +24,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { runMetadataRecheck, maybeRunMetadataRecheck } from "../../worker/src/utils/metadataRecheck";
 
+// No WORK_COORDINATOR binding: notifyCoordinator returns early, which is
+// exactly the production behaviour on a deployment without the binding.
+const TEST_ENV = {} as unknown as Env;
+
 let failures = 0;
 function assert(cond: unknown, msg: string) {
   if (cond) console.log(`  ✓ ${msg}`);
@@ -142,7 +146,7 @@ async function main() {
   {
     const sqlite = buildDb();
     const db = makeD1(sqlite);
-    const result = await runMetadataRecheck(db);
+    const result = await runMetadataRecheck(db, TEST_ENV);
     assert(result.unsupportedFormat === 1, `criterion A matched exactly 1 row (got ${result.unsupportedFormat})`);
     assert(result.lyricsOrDiscIncomplete === 1, `criterion B matched exactly 1 row (got ${result.lyricsOrDiscIncomplete})`);
     assert(result.implausibleWavDuration === 1, `criterion C matched exactly 1 row (got ${result.implausibleWavDuration})`);
@@ -171,8 +175,8 @@ async function main() {
     // — these instances should never be re-dispatched by this mechanism again.
     const sqlite = buildDb();
     const db = makeD1(sqlite);
-    await runMetadataRecheck(db);
-    await runMetadataRecheck(db);
+    await runMetadataRecheck(db, TEST_ENV);
+    await runMetadataRecheck(db, TEST_ENV);
     const count = (sqlite.prepare("SELECT COUNT(*) AS n FROM work_queue").get() as { n: number }).n;
     assert(count === 3, `re-running twice still yields exactly 3 rows, not 6 (got ${count})`);
   }
@@ -187,7 +191,7 @@ async function main() {
       INSERT INTO work_queue (id, task_type, payload, priority, status, max_attempts)
       VALUES ('wt-metadata-si-incomplete', 'metadata', '{}', 5, 'completed', 3);
     `);
-    await runMetadataRecheck(db);
+    await runMetadataRecheck(db, TEST_ENV);
     const recheckRow = sqlite.prepare("SELECT id FROM work_queue WHERE id = 'wt-metadata-recheck:si-incomplete'").get();
     assert(recheckRow !== undefined, "recheck: namespace dispatch succeeds even though a plain scan.ts dedup row already exists for the same instance");
   }
@@ -201,7 +205,7 @@ async function main() {
       INSERT INTO work_queue (id, task_type, payload, priority, status, max_attempts)
       VALUES ('wt-metadata-recheck:si-bad-wav-duration', 'metadata', '{}', 5, 'completed', 3);
     `);
-    await runMetadataRecheck(db);
+    await runMetadataRecheck(db, TEST_ENV);
     const durRow = sqlite.prepare("SELECT id FROM work_queue WHERE id = 'wt-metadata-recheck-dur:si-bad-wav-duration'").get();
     assert(durRow !== undefined, "recheck-dur: namespace dispatch succeeds even though a recheck: row already exists for the same instance");
   }

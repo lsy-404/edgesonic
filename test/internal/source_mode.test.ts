@@ -336,7 +336,12 @@ async function main() {
     };
 
     try {
-      await asyncScanSource(mockDb, srcSyncOnly, "job-sync-test");
+      // env is required now — the scan's own dispatch has to wake the work
+      // coordinator. This case dispatches nothing, so a binding-free env is
+      // enough; notifyCoordinator returns early without WORK_COORDINATOR.
+      await asyncScanSource(mockDb, srcSyncOnly, "job-sync-test", {
+        env: {} as unknown as Env,
+      });
     } finally {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (globalThis as any).fetch = originalFetch;
@@ -430,7 +435,9 @@ async function main() {
     };
 
     try {
-      await asyncScanSource(mockDb, srcLibrary, "job-lib-test");
+      await asyncScanSource(mockDb, srcLibrary, "job-lib-test", {
+        env: {} as unknown as Env,
+      });
     } finally {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (globalThis as any).fetch = originalFetch;

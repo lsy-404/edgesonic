@@ -28,6 +28,7 @@
 //   max_attempts (per row) — work_queue.max_attempts (default 3)
 
 import { getFeatureString } from "./features";
+import { wakePool } from "../endpoints/edgesonic/work";
 
 export interface ReclaimReport {
   scanned: number;
@@ -53,7 +54,8 @@ export async function reclaimStaleWork(env: Env): Promise<ReclaimReport> {
 
   // Batch updates in two buckets: rows still under the retry budget go back to
   // 'queued', rows that ran out of attempts go to terminal 'failed'. We keep
-  // attempts as-is — the failed claim already counted +1 when /work/poll ran.
+  // attempts as-is — the failed claim already counted +1 when the coordinator
+  // claimed the row on the agent's behalf.
   const reQueueStmts: D1PreparedStatement[] = [];
   const failStmts: D1PreparedStatement[] = [];
   for (const row of stale) {
@@ -88,5 +90,9 @@ export async function reclaimStaleWork(env: Env): Promise<ReclaimReport> {
   for (let i = 0; i < failStmts.length; i += 80) {
     await env.DB.batch(failStmts.slice(i, i + 80));
   }
+  // Rows put back here would otherwise sit until some unrelated enqueue
+  // happened to wake the coordinator — this sweep runs from the cron with no
+  // browser involved, so nothing else is going to trigger a dispatch.
+  if (reQueueStmts.length > 0) await wakePool(env);
   return report;
 }

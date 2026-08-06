@@ -30,10 +30,10 @@
 //    songs that were already successfully scanned (tag_scanned=1) and
 //    whose album already has a resolved cover (proof the pipeline mostly
 //    worked) but are still missing lyrics/disc — likely because they were
-//    scanned before 109 wired up lyrics/disc extraction. These get one
+//    scanned before lyrics/disc extraction was wired up. These get one
 //    more browser-pool pass so the now-fixed extraction can backfill them.
 //
-// C) "WAV duration reads as ~3 seconds" — 111 fixed the root cause (a
+// C) "WAV duration reads as ~3 seconds" — the root cause is fixed (a
 //    Range-truncated 512KB buffer made music-metadata's WaveParser clamp
 //    the audio "data" chunk length to whatever fit in the slice, instead of
 //    the file's real length), but library rows scanned BEFORE that fix
@@ -44,12 +44,12 @@
 //
 // All three dispatch the SAME 'metadata' task type via dispatchWorkBatch.
 // A/B use dedupKey namespace "recheck:<instanceId>"; C uses a separate
-// "recheck-dur:<instanceId>" namespace. 076's INSERT OR IGNORE semantics mean
+// "recheck-dur:<instanceId>" namespace. The INSERT OR IGNORE semantics mean
 // a given dedupKey is only ever dispatched once (the work_queue row is never
 // deleted) — reusing scan.ts's plain "<instanceId>" key would make
 // already-scanned instances undispatchable here, and folding C into the same
 // "recheck:" namespace as A/B would mean an instance already re-checked once
-// under A/B (before 111 existed) could never get the C duration fix either.
+// under A/B (before the duration fix existed) could never get it either.
 // Separate namespaces keep each family of fix independently retriable exactly
 // once per instance — a failed/no-op result is never retried forever.
 
@@ -77,7 +77,7 @@ export interface RecheckResult {
 }
 
 // Wire shape helper — matches scan.ts's dispatchWorkBatch payload exactly
-// (instanceId/sourceUri/suffix/size) so the main-thread workerPool.ts can
+// (instanceId/sourceUri/suffix/size) so the main thread can
 // resolve streamUrl the same way it does for a fresh scan dispatch.
 function toDispatchInputs(rows: CandidateRow[], dedupPrefix: string): DispatchInput[] {
   return rows.map((row) => ({
@@ -98,7 +98,11 @@ function toDispatchInputs(rows: CandidateRow[], dedupPrefix: string): DispatchIn
 // (maybeRunMetadataRecheck, below) and the admin "run now" endpoint
 // (POST /edgesonic/work/recheckMetadataNow) so both paths select and dedupe
 // candidates identically.
-export async function runMetadataRecheck(db: D1Database): Promise<RecheckResult> {
+// `env` is threaded through purely so the dispatch at the end can wake the
+// coordinator. Without it this was the one dispatch site in the tree that
+// enqueued rows nobody was told about — harmless while browsers polled,
+// an indefinite stall once they stopped.
+export async function runMetadataRecheck(db: D1Database, env: Env): Promise<RecheckResult> {
   // A) worker-side parser gave up (unsupported format or corrupt file).
   const unsupported = (await db.prepare(
     `SELECT id, storage_uri, suffix, size FROM song_instances
@@ -107,7 +111,7 @@ export async function runMetadataRecheck(db: D1Database): Promise<RecheckResult>
   ).bind(BATCH_LIMIT).all<CandidateRow>()).results;
 
   // B) already scanned, but the album has a cover and lyrics/disc are still
-  // empty — worth a second browser-pool pass now that 109 extracts them.
+  // empty — worth a second browser-pool pass now that extraction handles them.
   const remainingAfterA = Math.max(0, BATCH_LIMIT - unsupported.length);
   const incomplete = remainingAfterA > 0
     ? (await db.prepare(
@@ -122,7 +126,7 @@ export async function runMetadataRecheck(db: D1Database): Promise<RecheckResult>
     : [];
 
   // implausible at any realistic bitrate (a 5MB CD-quality WAV alone decodes
-  // to ~28s minimum) and is almost certainly a pre-111 truncated-buffer scan.
+  // to ~28s minimum) and is almost certainly an old truncated-buffer scan.
   const remainingAfterB = Math.max(0, BATCH_LIMIT - unsupported.length - incomplete.length);
   const badWavDuration = remainingAfterB > 0
     ? (await db.prepare(
@@ -147,7 +151,7 @@ export async function runMetadataRecheck(db: D1Database): Promise<RecheckResult>
     ...toDispatchInputs(unsupported, "recheck"),
     ...toDispatchInputs(incomplete, "recheck"),
     ...toDispatchInputs(badWavDuration, "recheck-dur"),
-  ]);
+  ], env);
   return result;
 }
 
@@ -174,5 +178,5 @@ export async function maybeRunMetadataRecheck(env: Env, _ctx: ExecutionContext):
     " ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
   ).bind(LAST_RUN_KEY, String(now), now).run();
 
-  await runMetadataRecheck(db);
+  await runMetadataRecheck(db, env);
 }

@@ -19,11 +19,11 @@
 // and safe to re-run (idempotent / "no-op when nothing to do").
 //
 // First endpoint: cleanupDuplicateCovers.
-//  Background: Before 076 the getCoverArt fallback path (resolveAlbumCover)
+//  Background: the old getCoverArt fallback path (resolveAlbumCover)
 //  would write the same parent-directory cover.jpg to a distinct R2 key per
 //  album, so a folder hosting 25 albums ended up with 25 R2 keys whose
 //  *contents* were identical (one anime character shown for every album).
-//  076 removed the fallback, but the 25 historical keys are still bound to
+//  That fallback is gone now, but the 25 historical keys are still bound to
 //  their albums in D1. This endpoint releases all but one binding per
 //  duplicate key, letting each freed album re-resolve its own cover on the
 //  next /rest/getCoverArt call (which now correctly 404s if no per-album
@@ -40,6 +40,7 @@ import { permissionMiddleware } from "../../auth";
 import { deriveBitrate, bitrateNeedsRepair } from "../../utils/audioMetrics";
 import { sniffImageMime, resolveImageMime } from "../../utils/imageType";
 import { getSourceCredentials } from "../../adapters/index";
+import { wakePool } from "./work";
 
 export const maintenanceRoutes = new Hono<{
   Bindings: Env;
@@ -108,7 +109,7 @@ maintenanceRoutes.post("/maintenance/cleanupDuplicateCovers",
     // ids[0] is the survivor; release the rest. We could do an `IN (?,?,?)`
     // but D1's bind parameter limit (100) plus the fact that we'd need to
     // build the placeholder list dynamically makes a per-row UPDATE simpler
-    // and not much slower (each group is ~25 rows max per the 076 finding).
+    // and not much slower (each group is ~25 rows max in practice).
     for (let i = 1; i < ids.length; i++) {
       const result = await env.DB.prepare(
         `UPDATE albums
@@ -130,7 +131,7 @@ maintenanceRoutes.post("/maintenance/cleanupDuplicateCovers",
 // POST /edgesonic/maintenance/reclaimStaleWork
 // ---------------------------------------------------------------------------
 // scheduled handler. Useful when the CF Worker has no cron schedules (the
-// 067 dynamic-cron path was never run with ensureDefaultCron after a deploy)
+// dynamic-cron path was never run with ensureDefaultCron after a deploy)
 // and browser workers have left rows stuck in 'claimed' with stale heartbeats.
 //
 // Response: { ok, reclaimed, requeued, failed, items: [{ id, status, attempts }] }
@@ -251,6 +252,11 @@ maintenanceRoutes.post("/maintenance/resetFailedWork",
   const result = onlyTaskType
     ? await stmt.bind(onlyTaskType).run()
     : await stmt.run();
+
+  // These rows just became runnable. Nothing pulls from the queue, so without
+  // this the admin clicks "reset failed" and sees nothing happen until some
+  // unrelated enqueue wakes the pool.
+  if (result.meta.changes > 0) await wakePool(env);
 
   return c.json({
     ok: true,

@@ -226,7 +226,7 @@ tagEditRoutes.post("/rescan", permissionMiddleware("edit_tags"), async (c) => {
     priority: 3, // ahead of routine scan dispatch (priority 5) — user explicitly asked for this
     dedupKey: t.instanceId,
     upsert: true,
-  })));
+  })), env);
 
   return c.json({ ok: true, dispatched: dispatchedIds.length, skipped });
 });

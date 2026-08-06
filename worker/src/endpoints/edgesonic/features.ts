@@ -105,11 +105,11 @@ const STRING_FEATURE_KEYS = new Set([
   "scrape_enabled_sources",
   // getArtistInfo / getAlbumInfo / getSimilarSongs / getTopSongs proxies.
   "lastfm_api_key",
-  // 260 — full artist bio/cover source priority list: netease/qmusic/lastfm,
+  // Full artist bio/cover source priority list: netease/qmusic/lastfm,
   // tried in array order, first enabled hit wins. A source not present in the
   // array is disabled. See utils/artistScrapeFallback.ts.
   "lastfm_fallback_sources",
-  // 253 — cadence (hours) for the cron-driven batch backfill that scans
+  // Cadence (hours) for the cron-driven batch backfill that scans
   // artists missing biography / cover. 0=disabled.
   "artist_scrape_interval_hours",
   "scan_interval_hours",
@@ -119,17 +119,15 @@ const STRING_FEATURE_KEYS = new Set([
   // as strings even though some look numeric, so they round-trip through the
   // same /features/updateString endpoint as the rest of feature_strings.
   "worker_pool_enabled",
-  "worker_poll_interval_seconds",
-  "worker_batch_size",
   "worker_claim_ttl_seconds",
   // higher fetch bandwidth and CPU on the participating browser. Clamped 1..8.
   "worker_max_concurrent",
     // middleware in index.ts stamps COOP/COEP/CORP headers so the browser flips
     // `crossOriginIsolated = true`, unlocking SharedArrayBuffer + ffmpeg.wasm
-    // multi-thread in the work pool. '0' restores pre-065 behaviour.
+    // multi-thread in the work pool. '0' restores the previous behaviour.
     "enable_cross_origin_isolation",
     // AND R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY secrets are set (plus
-    // CF_ACCOUNT_ID reused from 054), the stream endpoint 302-redirects the
+    // CF_ACCOUNT_ID from the CF integration), the stream endpoint 302-redirects the
     // browser to a short-lived SigV4 R2 S3 URL so bytes bypass the Worker
     // sub-request bandwidth pool. '0' keeps the existing in-Worker stream path.
     "enable_r2_presign",
@@ -149,14 +147,14 @@ const STRING_FEATURE_KEYS = new Set([
     // dispatches unsupported-format / lyrics-or-disc-incomplete song_instances
     // to the browser worker pool for a second music-metadata pass. 0=disabled.
     "metadata_recheck_interval_hours",
-    // 101 — GB of R2 free tier allocated to EdgeSonic for stats.ts's monthly
+    // GB of R2 free tier allocated to EdgeSonic for stats.ts's monthly
     // cost estimate (migration 0033 seeds the row). Never added to this
     // allowlist, so /features/updateString 404'd on it ("Unknown feature")
     // even though the row exists and is read fine via getFeatureString.
     "r2_free_allocation_gb",
-    // 113 — cadence (hours) for the cron-driven batch scan that backfills
+    // Cadence (hours) for the cron-driven batch scan that backfills
     // song_masters.lyrics from a sibling .lrc file for songs that were never
-    // caught by 094's scan-time/on-demand sidecar checks. 0=disabled.
+    // caught by the scan-time/on-demand sidecar checks. 0=disabled.
     "lrc_backfill_interval_hours",
     // Cumulative R2 storage ceiling in bytes (0 = disabled). Editable in
     // normal mode; locked in demo mode via DEMO_LOCKED_FEATURE_KEYS.
@@ -323,7 +321,7 @@ function validateFeatureString(key: string, value: string): string | null {
       return null;
     }
     case "r2_free_allocation_gb": {
-      // 101 — GB of R2's free tier the admin allocates to EdgeSonic's cost
+      // GB of R2's free tier the admin allocates to EdgeSonic's cost
       // estimate. Positive integer; 1000 is a generous ceiling (Cloudflare's
       // published free tier is 10 GB, but self-hosters may have a paid plan
       // with a larger effective allowance).
@@ -333,7 +331,7 @@ function validateFeatureString(key: string, value: string): string | null {
       return null;
     }
     case "lrc_backfill_interval_hours": {
-      // 113 — same shape as metadata_recheck_interval_hours: non-negative
+      // Same shape as metadata_recheck_interval_hours: non-negative
       // integer, 0-168 (one week).
       if (!/^\d+$/.test(value)) return "lrc_backfill_interval_hours must be a non-negative integer";
       const n = parseInt(value, 10);
@@ -355,21 +353,6 @@ function validateFeatureString(key: string, value: string): string | null {
     }
     case "allow_all_file_types": {
       if (value !== "0" && value !== "1") return "allow_all_file_types must be '0' or '1'";
-      return null;
-    }
-    case "worker_poll_interval_seconds": {
-      // Stored as a stringified integer in [30, 3600]. Anything lower hammers
-      // D1 / KV; anything higher means a job sits in the queue for an hour.
-      if (!/^\d+$/.test(value)) return "worker_poll_interval_seconds must be a non-negative integer";
-      const n = parseInt(value, 10);
-      if (n < 30 || n > 3600) return "worker_poll_interval_seconds must be between 30 and 3600";
-      return null;
-    }
-    case "worker_batch_size": {
-      // tasks; smaller batches mean more polls per minute.
-      if (!/^\d+$/.test(value)) return "worker_batch_size must be a non-negative integer";
-      const n = parseInt(value, 10);
-      if (n < 1 || n > 20) return "worker_batch_size must be between 1 and 20";
       return null;
     }
     case "worker_claim_ttl_seconds": {

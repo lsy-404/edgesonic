@@ -17,25 +17,34 @@
 // All endpoints are JSON-shaped (the /edgesonic/* bucket is web-session only,
 // the web frontend consumes JSON). Authorisation matrix:
 //
-//   GET  /edgesonic/work/poll     — permission participate_work
+//   GET  /edgesonic/work/socket   — permission participate_work
+//   GET  /edgesonic/work/agents   — permission dispatch_work (super-admin)
 //   POST /edgesonic/work/submit   — claimed_by must equal current user
 //  POST /edgesonic/work/heartbeat — claimed_by must equal current user
 //   POST /edgesonic/work/dispatch — permission dispatch_work (super-admin)
 //   GET  /edgesonic/work/status   — level >= 3 (super-admin)
 //   POST /edgesonic/work/cancel   — level >= 3 (super-admin)
 //
-// The atomic claim uses D1's RETURNING clause inside a single UPDATE-by-subquery
-// so two browsers can't grab the same row. caps filtering is done on the worker
-// side (D1 has no array containment operator) — we read candidate rows with
-// required_caps NULL OR required_caps LIKE '%cap%' then filter in JS.
+// Claiming happens in one place only: the coordinator object, which pushes
+// each claimed row down the socket of the browser it picked. It still uses
+// D1's RETURNING clause on an UPDATE constrained to status='queued', so two
+// concurrent dispatches collide harmlessly. caps filtering is done in JS
+// because D1 has no array containment operator.
+//
+// Because nothing pulls any more, every path that makes a row runnable must
+// wake the coordinator — see wakePool below and its callers. A row queued
+// without a wake waits for the reclaim sweep, which is the slow path.
 //
 // Reclaim of stale claims (heartbeat older than worker_claim_ttl_seconds) is
-// handled by reclaimStaleWork(), wired into index.ts scheduled handler.
+// handled by reclaimStaleWork(), wired into index.ts scheduled handler. It
+// covers the case the coordinator can't: a browser that died without its
+// socket closing cleanly.
 
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import { getFeatureString } from "../../utils/features";
 import { applyMetadataResult } from "../../utils/metadataApply";
+import { notifyCoordinator } from "../../coordinator/workCoordinator";
 import type { User } from "../../types/entities";
 
 export const workRoutes = new Hono<{
@@ -43,117 +52,48 @@ export const workRoutes = new Hono<{
   Variables: { user: User };
 }>();
 
-// Shape of a work_queue row as returned to a polling worker. Keeps the over-
-// the-wire payload narrow so a curious user can't read every column.
-interface PolledTask {
-  id: string;
-  taskType: string;
-  payload: unknown;
-  requiredCaps: string[];
-  priority: number;
-  attempts: number;
-  maxAttempts: number;
-  claimedAt: number;
-  heartbeatAt: number;
-}
-
 // ---------------------------------------------------------------------------
-// GET /edgesonic/work/poll?caps=a,b,c&limit=5
+// GET /edgesonic/work/socket — the only way to receive work.
 // ---------------------------------------------------------------------------
-// Atomically claims up to `limit` queued tasks whose required_caps are a
-// subset of the caller's caps. Each claim runs as a separate UPDATE ...
-// RETURNING so we never hand the same row to two workers.
-workRoutes.get("/work/poll", permissionMiddleware("participate_work"), async (c) => {
+// Upgrades to a WebSocket held by the coordinator object, which pushes claimed
+// tasks down it the moment they are queued (and whatever is already queued, on
+// join). Results still come back through /work/submit.
+//
+// 503 means "not available", not "try again in a moment": either the binding
+// is missing or an admin has switched the pool off. The client is expected to
+// treat it as a policy answer and stop retrying, rather than reconnect-looping.
+workRoutes.get("/work/socket", permissionMiddleware("participate_work"), async (c) => {
   const env = c.env as Env;
   const user = c.get("user");
-
-  // Kill-switch: if worker_pool_enabled='0' return an empty list (the client
-  // will keep polling at the configured cadence but nothing will move).
+  if (!env.WORK_COORDINATOR) {
+    return c.json({ ok: false, error: "Coordinator not configured" }, 503);
+  }
   const enabled = (await getFeatureString(env, "worker_pool_enabled", "1")) !== "0";
   if (!enabled) {
-    return c.json({ ok: true, tasks: [] });
+    return c.json({ ok: false, error: "Worker pool is disabled" }, 503);
   }
 
-  const callerCaps = parseCaps(c.req.query("caps") || "");
-  const rawLimit = parseInt(c.req.query("limit") || "5", 10);
-  const batchCeiling = parseInt(await getFeatureString(env, "worker_batch_size", "5"), 10);
-  const ceiling = Number.isFinite(batchCeiling) && batchCeiling > 0 ? batchCeiling : 5;
-  // Don't let a client ask for more than the server-side batch ceiling.
-  const limit = Math.max(1, Math.min(ceiling, Number.isFinite(rawLimit) ? rawLimit : 5));
+  // The agent's identity comes from the authenticated session, never from the
+  // client — claims are recorded against it and /work/submit checks ownership.
+  const headers = new Headers(c.req.raw.headers);
+  headers.set("X-Agent-User", user.username);
+  headers.set("X-Agent-Caps", c.req.query("caps") || "");
+  headers.set("X-Agent-Concurrency", c.req.query("concurrency") || "1");
 
-  const claimed: PolledTask[] = [];
-  // Each iteration claims at most one row. We over-iterate by a factor of 2
-  // so caps mismatches don't starve the client before we hit `limit`.
-  for (let attempt = 0; attempt < limit * 2 && claimed.length < limit; attempt++) {
-    // Try to claim the highest-priority oldest task whose caps are satisfied.
-    // We pre-filter with a SELECT (no LOCK needed; the subsequent UPDATE
-    // with RETURNING is the actual claim).
-    const candidates = (await env.DB.prepare(
-      `SELECT id, task_type, payload, required_caps, priority, attempts, max_attempts
-       FROM work_queue
-       WHERE status = 'queued'
-       ORDER BY priority ASC, created_at ASC
-       LIMIT 8`,
-    ).all<{
-      id: string;
-      task_type: string;
-      payload: string;
-      required_caps: string | null;
-      priority: number;
-      attempts: number;
-      max_attempts: number;
-    }>()).results;
+  const id = env.WORK_COORDINATOR.idFromName("pool");
+  return env.WORK_COORDINATOR.get(id).fetch(
+    new Request("https://coordinator/join", { headers }),
+  );
+});
 
-    let target: string | null = null;
-    for (const row of candidates) {
-      const required = parseCaps(row.required_caps);
-      if (capsSatisfy(callerCaps, required)) {
-        target = row.id;
-        break;
-      }
-    }
-    if (!target) break;             // nothing this worker can do this round
-
-    // UPDATE-by-subquery + RETURNING: atomic per-row claim. We constrain the
-    // UPDATE to status='queued' so two simultaneous claims collide harmlessly
-    // (the second one's WHERE turns false).
-    const row = await env.DB.prepare(
-      `UPDATE work_queue
-       SET status = 'claimed',
-           claimed_by = ?,
-           claimed_at = unixepoch(),
-           heartbeat_at = unixepoch(),
-           attempts = attempts + 1
-       WHERE id = ? AND status = 'queued'
-       RETURNING id, task_type, payload, required_caps, priority,
-                 attempts, max_attempts, claimed_at, heartbeat_at`,
-    ).bind(user.username, target).first<{
-      id: string;
-      task_type: string;
-      payload: string;
-      required_caps: string | null;
-      priority: number;
-      attempts: number;
-      max_attempts: number;
-      claimed_at: number;
-      heartbeat_at: number;
-    }>();
-    if (!row) continue;             // someone else grabbed it; try the next candidate
-
-    claimed.push({
-      id: row.id,
-      taskType: row.task_type,
-      payload: safeJsonParse(row.payload),
-      requiredCaps: parseCaps(row.required_caps),
-      priority: row.priority,
-      attempts: row.attempts,
-      maxAttempts: row.max_attempts,
-      claimedAt: row.claimed_at,
-      heartbeatAt: row.heartbeat_at,
-    });
-  }
-
-  return c.json({ ok: true, tasks: claimed });
+// ---------------------------------------------------------------------------
+// GET /edgesonic/work/agents — who is currently holding a push socket.
+// ---------------------------------------------------------------------------
+workRoutes.get("/work/agents", permissionMiddleware("dispatch_work"), async (c) => {
+  const env = c.env as Env;
+  if (!env.WORK_COORDINATOR) return c.json({ ok: true, agents: [] });
+  const id = env.WORK_COORDINATOR.idFromName("pool");
+  return env.WORK_COORDINATOR.get(id).fetch("https://coordinator/agents");
 });
 
 // ---------------------------------------------------------------------------
@@ -172,7 +112,7 @@ workRoutes.post("/work/submit", async (c) => {
   if (!body.id) return c.json({ ok: false, error: "Missing id" }, 400);
 
   // path knows whether to cascade the result into song_masters/song_instances.
-  // Before 077 we only ever stored result_json against work_queue and called it
+  // We used to only store result_json against work_queue and call it
   // done; admins saw rows pile up as "completed" while song_instances stayed
   // tag_scanned=0 (82 completed → 1 with tag_scanned,
   const row = await env.DB.prepare(
@@ -353,14 +293,14 @@ workRoutes.post("/work/dispatch", permissionMiddleware("dispatch_work"), async (
     requiredCaps: body.required_caps,
     maxAttempts: body.max_attempts,
     expiresAt: body.expires_at,
-  });
+  }, env);
   return c.json({ ok: true, id });
 });
 
 // ---------------------------------------------------------------------------
 // GET /edgesonic/work/status — admin overview.
 // ---------------------------------------------------------------------------
-// dispatch_work permission (super-admin by default per 052a); pre-087 used a
+// dispatch_work permission (super-admin by default); earlier code used a
 // hardcoded `if (user.level < 3)` which violated the permission-model rule.
 workRoutes.get("/work/status", permissionMiddleware("dispatch_work"), async (c) => {
   const env = c.env as Env;
@@ -373,7 +313,9 @@ workRoutes.get("/work/status", permissionMiddleware("dispatch_work"), async (c) 
   for (const r of counts) byStatus[r.status] = r.n;
 
   // Per-user active load — claimed tasks OR recently completed (last 60s)
-  // so the "active workers" list doesn't flicker to empty between poll cycles
+  // so the "active workers" list doesn't flicker to empty between tasks.
+  // GET /work/agents is the authoritative live roster; this is the historical
+  // view, smoothed
   // when a task finishes but the next hasn't been claimed yet.
   const nowSec = Math.floor(Date.now() / 1000);
   const load = (await env.DB.prepare(
@@ -460,7 +402,7 @@ workRoutes.post("/work/cancel", permissionMiddleware("dispatch_work"), async (c)
 // errors[] sample so admins can spot patterns (e.g. all failures hitting the
 // same source) without exploding the JSON body.
 //
-// Admin-only — 087: gated by dispatch_work (super-admin per 052a), same gate
+// Admin-only — gated by dispatch_work (super-admin by default), same gate
 // as /work/status. A regular worker should never need to trigger this.
 workRoutes.post("/work/backfillCompleted",
   permissionMiddleware("dispatch_work"),
@@ -531,7 +473,7 @@ workRoutes.post("/work/recheckMetadataNow",
   async (c) => {
     const env = c.env as Env;
     const { runMetadataRecheck } = await import("../../utils/metadataRecheck");
-    const result = await runMetadataRecheck(env.DB);
+    const result = await runMetadataRecheck(env.DB, env);
     return c.json({ ok: true, ...result });
   },
 );
@@ -539,7 +481,7 @@ workRoutes.post("/work/recheckMetadataNow",
 // ---------------------------------------------------------------------------
 // POST /edgesonic/work/backfillLrcNow
 // ---------------------------------------------------------------------------
-// 113 — Manual trigger for the same selection+fill runLrcBackfill runs on its
+// Manual trigger for the same selection+fill runLrcBackfill runs on its
 // own cadence (utils/lrcBackfill.ts), bypassing lrc_backfill_interval_hours so
 // an admin can kick off a sweep immediately. Same permission gate as the
 // other work-queue admin endpoints. Unlike recheckMetadataNow this does not
@@ -588,7 +530,17 @@ const REDISPATCH_CONFLICT_CLAUSE = `
        claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL,
        result_json = NULL, expires_at = excluded.expires_at`;
 
-export async function dispatchWork(db: D1Database, input: DispatchInput): Promise<string> {
+// `env` is required: nothing pulls from the queue any more, so a row inserted
+// without waking the coordinator waits for the reclaim sweep. Callers that
+// must defer the wake — because they still have to patch the payload before
+// it is safe to hand out — pass `{ wake: false }` and call wakePool
+// themselves once the row is complete.
+export async function dispatchWork(
+  db: D1Database,
+  input: DispatchInput,
+  env: Env,
+  opts: { wake?: boolean } = {},
+): Promise<string> {
   // a re-dispatch becomes a no-op; the caller still gets the canonical id back
   // and can look it up regardless of whether the INSERT actually inserted.
   const id = input.dedupKey
@@ -614,7 +566,16 @@ export async function dispatchWork(db: D1Database, input: DispatchInput): Promis
     maxAttempts,
     input.expiresAt ?? null,
   ).run();
+  if (opts.wake !== false) await wakePool(env);
   return id;
+}
+
+// A coordinator that is unreachable, unconfigured or mid-restart must never
+// fail the enqueue — the row is already durable, and the reclaim sweep plus
+// the next dispatch trigger will still find it.
+export async function wakePool(env: Env): Promise<void> {
+  try { await notifyCoordinator(env); }
+  catch (e) { console.error("[work] coordinator notify failed:", e); }
 }
 
 // Batch dispatch — used by scan.ts when 1758 files become pending at once.
@@ -623,6 +584,7 @@ export async function dispatchWork(db: D1Database, input: DispatchInput): Promis
 export async function dispatchWorkBatch(
   db: D1Database,
   inputs: DispatchInput[],
+  env: Env,
 ): Promise<string[]> {
   const ids: string[] = [];
   if (inputs.length === 0) return ids;
@@ -660,6 +622,9 @@ export async function dispatchWorkBatch(
   for (let i = 0; i < stmts.length; i += 80) {
     await db.batch(stmts.slice(i, i + 80));
   }
+  // One wake for the whole batch: the coordinator drains as much as the
+  // connected pool has capacity for, and freed capacity re-triggers dispatch.
+  await wakePool(env);
   return ids;
 }
 
@@ -668,33 +633,8 @@ export async function dispatchWorkBatch(
 // ===========================================================================
 const ALLOWED_TASK_TYPES = new Set(["metadata", "transcode", "scrape"]);
 
-function parseCaps(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  // Accept either "a,b,c" (poll query) or a JSON array (work_queue column).
-  if (raw.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((s): s is string => typeof s === "string" && s.length > 0);
-      }
-    } catch { /* fall through */ }
-    return [];
-  }
-  return raw.split(",").map((s) => s.trim()).filter(Boolean);
-}
-
-function capsSatisfy(callerCaps: string[], required: string[]): boolean {
-  if (required.length === 0) return true;
-  const have = new Set(callerCaps);
-  for (const cap of required) {
-    if (!have.has(cap)) return false;
-  }
-  return true;
-}
-
-function safeJsonParse(s: string): unknown {
-  try { return JSON.parse(s); } catch { return s; }
-}
+// caps parsing and matching now live with the only code that claims rows —
+// the coordinator. They were duplicated here purely for the poll handler.
 
 function clampInt(n: number, lo: number, hi: number): number {
   if (!Number.isFinite(n)) return lo;

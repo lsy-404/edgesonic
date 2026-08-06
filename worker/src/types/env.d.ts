@@ -16,6 +16,11 @@
 interface Env {
   DB: D1Database;
   MUSIC_BUCKET: R2Bucket;
+  // Rendezvous point for the push-based work pool: browsers hold a socket
+  // here and newly queued rows are handed straight down it. Optional so a
+  // deployment whose wrangler.toml predates the binding keeps working — every
+  // call site treats its absence as "poll path only".
+  WORK_COORDINATOR?: DurableObjectNamespace;
   // Cloudflare Images binding — resizes cover art on demand in getCoverArt.
   IMAGES: ImagesBinding;
   ASSETS: Fetcher;

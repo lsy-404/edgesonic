@@ -23,6 +23,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { dispatchWork, dispatchWorkBatch } from "../../worker/src/endpoints/edgesonic/work";
 
+// Binding-free env: notifyCoordinator returns early without
+// WORK_COORDINATOR, so these SQL-level tests need no coordinator.
+const TEST_ENV = {} as unknown as Env;
+
 let failures = 0;
 function assert(cond: unknown, msg: string) {
   if (cond) console.log(`  ✓ ${msg}`);
@@ -124,8 +128,8 @@ async function main() {
   {
     const sqlite = buildDb();
     const db = makeD1(sqlite);
-    const id1 = await dispatchWork(db, { taskType: "transcode", payload: { foo: 1 } });
-    const id2 = await dispatchWork(db, { taskType: "transcode", payload: { foo: 1 } });
+    const id1 = await dispatchWork(db, { taskType: "transcode", payload: { foo: 1 } }, TEST_ENV);
+    const id2 = await dispatchWork(db, { taskType: "transcode", payload: { foo: 1 } }, TEST_ENV);
     assert(id1 !== id2, "two distinct random ids returned");
     const rows = sqlite.prepare("SELECT id FROM work_queue").all() as Array<{ id: string }>;
     assert(rows.length === 2, `2 rows (got ${rows.length})`);
@@ -140,12 +144,12 @@ async function main() {
       { taskType: "metadata", payload: { x: 1 }, dedupKey: "alpha" },
       { taskType: "transcode", payload: { y: 1 } },
       { taskType: "metadata", payload: { x: 2 }, dedupKey: "beta" },
-    ]);
+    ], TEST_ENV);
     // Re-dispatch only the deduped ones.
     await dispatchWorkBatch(db, [
       { taskType: "metadata", payload: { x: 1 }, dedupKey: "alpha" },
       { taskType: "metadata", payload: { x: 2 }, dedupKey: "beta" },
-    ]);
+    ], TEST_ENV);
     const rows = sqlite.prepare("SELECT id FROM work_queue ORDER BY id").all() as Array<{ id: string }>;
     // alpha + beta + 1 random transcode = 3 rows
     assert(rows.length === 3, `3 rows after dedup re-dispatch (got ${rows.length})`);

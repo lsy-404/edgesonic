@@ -48,7 +48,7 @@ interface SourceRow {
   username: string | null;
   password: string | null;
   root_path: string | null;
-  // 089 S2 — 'library' (default) | 'sync_only' (scan but skip DB inserts)
+  // 'library' (default) | 'sync_only' (scan but skip DB inserts)
   mode?: string | null;
 }
 
@@ -245,7 +245,7 @@ scanRoutes.get("/scan/pending", permissionMiddleware("edit_tags"), async (c) => 
   if (!source) {
     return c.json({ ok: false, error: "Missing source parameter" }, 400);
   }
-  // 157: dropped the 500 ceiling — this route is already gated by
+  // Dropped the 500 ceiling — this route is already gated by
   // permissionMiddleware("edit_tags"), so the "malicious client" the old
   // comment worried about would need to be an authenticated tag-editor
   // already; default 50 matches the BROWSER READ batch size that
@@ -290,7 +290,7 @@ scanRoutes.get("/scan/pending", permissionMiddleware("edit_tags"), async (c) => 
   });
 });
 
-// 093f — GET /storage/scan/listForMirror?source=<id>&offset=0&limit=100
+// GET /storage/scan/listForMirror?source=<id>&offset=0&limit=100
 // Returns song_instances for a given source that are NOT yet mirrored to R2
 // (i.e. no sibling r2:// instance for the same master). The client iterates
 // page by page and calls /storage/files/crossCopy per item, so the Worker
@@ -301,7 +301,7 @@ scanRoutes.get("/scan/listForMirror", permissionMiddleware("manage_sources"), as
   const db = env.DB;
   const source = c.req.query("source") || "";
   if (!source) return c.json({ ok: false, error: "Missing source parameter" }, 400);
-  // 157: dropped the 500 ceiling — already gated by manage_sources.
+  // Dropped the 500 ceiling — already gated by manage_sources.
   const rawLimit = parseInt(c.req.query("limit") || "100", 10);
   const limit = Number.isFinite(rawLimit) ? Math.max(1, rawLimit) : 100;
   const rawOffset = parseInt(c.req.query("offset") || "0", 10);
@@ -363,13 +363,15 @@ scanRoutes.get("/scan/listForMirror", permissionMiddleware("manage_sources"), as
 // the BROWSER READ queue (or Worker tag parser) re-reads the new bytes.
 // When `etagCheck` is false (feature_strings.scan_etag_check='0') the skip
 // path is disabled — every existing file gets the UPDATE + tag_scanned reset.
+// `env` is no longer optional: the scan's own dispatch has to wake the
+// coordinator, and both callers were already passing it.
 export async function asyncScanSource(
   db: D1Database,
   src: SourceRow,
   jobId: string,
-  opts: { etagCheck?: boolean; dispatchToWorkerPool?: boolean; env?: Env } = {},
+  opts: { etagCheck?: boolean; dispatchToWorkerPool?: boolean; env: Env },
 ): Promise<void> {
-  const env = opts.env as Env | undefined;
+  const env = opts.env;
   const queries = createQueries(db);
   const now = Math.floor(Date.now() / 1000);
   const etagCheck = opts.etagCheck !== false;            // default true
@@ -454,8 +456,8 @@ export async function asyncScanSource(
         const sizeSame = prior.size === file.size;
         if (etagSame && lmSame && sizeSame) {
           skipped++;
-          // 052 fix: file unchanged but if tag_scanned=0 (never read or 0021
-          // backfilled before 052a) still enqueue metadata work so browsers
+          // File unchanged but if tag_scanned=0 (never read, or backfilled
+          // before the worker pool) still enqueue metadata work so browsers
           // can drain the backlog. Without this, "orphan" rows that pre-date
           // the worker_queue would never be picked up by any scan iteration.
           if (dispatchToWorkerPool && prior.tagScanned === 0) {
@@ -496,7 +498,7 @@ export async function asyncScanSource(
       }
 
       // -------- Path 3: brand new file → INSERT --------
-      // 089 S2 — sync_only sources: scan tracks the file but does NOT write
+      // sync_only sources: scan tracks the file but does NOT write
       // artists/albums/song_masters/song_instances rows. `last_sync` and
       // scan_jobs progress counters are still updated so the scan appears
       // normal in the UI. Dispatch to the worker pool is also skipped (no
@@ -606,7 +608,7 @@ export async function asyncScanSource(
           // instances whose work_queue row already finished, not silently
           // no-op on the dedupKey collision (plain INSERT OR IGNORE would).
           upsert: !etagCheck,
-        })));
+        })), env);
       } catch (e) {
         console.error(`[scan ${jobId}] dispatchWorkBatch failed:`, e);
       }
@@ -861,7 +863,7 @@ export async function asyncScanS3Source(
           // See webdav scan path above: force rescan must redispatch
           // already-completed rows, not INSERT-OR-IGNORE no-op on them.
           upsert: !etagCheck,
-        })));
+        })), env);
       } catch (e) {
         console.error(`[s3scan ${jobId}] dispatchWorkBatch failed:`, e);
       }
@@ -1098,7 +1100,7 @@ export async function asyncScanR2Source(
           // dedupKey collision (plain INSERT OR IGNORE would) — same fix
           // as the WebDAV/S3 scan paths above.
           upsert: !etagCheck,
-        })));
+        })), env);
       } catch (e) {
         console.error(`[r2scan ${jobId}] dispatchWorkBatch failed:`, e);
       }

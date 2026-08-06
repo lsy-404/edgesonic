@@ -21,7 +21,7 @@
 // two call sites cannot drift, and provides a test hook so on-demand-stream
 // tests can inject a FakeEngine without monkey-patching @cloudflare/sandbox.
 //
-// Resolution mirrors the original buildEngine() that shipped with 049:
+// Resolution mirrors the original buildEngine():
 //  transcode_engine = 'disabled' → null
 //  transcode_engine = 'sandbox' → SandboxTranscodeEngine (requires the
 //                                 Sandbox DO binding)
@@ -88,7 +88,7 @@ export async function buildTranscodeEngine(env: Env): Promise<ResolvedEngine | n
   // queued until somebody opens the web UI.
   if (kind === "browser_pool") {
     const { BrowserPoolEngine } = await import("./browser_pool");
-    return { engine: new BrowserPoolEngine(env.DB, env.MUSIC_BUCKET), kind };
+    return { engine: new BrowserPoolEngine(env.DB, env.MUSIC_BUCKET, env), kind };
   }
 
   return null;

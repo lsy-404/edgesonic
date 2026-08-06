@@ -36,6 +36,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { dispatchWork, dispatchWorkBatch } from "../../worker/src/endpoints/edgesonic/work";
 
+// Binding-free env: notifyCoordinator returns early without
+// WORK_COORDINATOR, so these SQL-level tests need no coordinator.
+const TEST_ENV = {} as unknown as Env;
+
 let failures = 0;
 function assert(cond: unknown, msg: string) {
   if (cond) console.log(`  ✓ ${msg}`);
@@ -118,9 +122,9 @@ async function main() {
   {
     const sqlite = buildDb();
     const db = makeD1(sqlite);
-    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-A" }, dedupKey: "si-A" });
+    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-A" }, dedupKey: "si-A" }, TEST_ENV);
     markCompleted(sqlite, "wt-metadata-si-A");
-    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-A" }, dedupKey: "si-A" });
+    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-A" }, dedupKey: "si-A" }, TEST_ENV);
     const row = sqlite.prepare("SELECT status, attempts FROM work_queue WHERE id = ?").get("wt-metadata-si-A") as { status: string; attempts: number };
     assert(row.status === "completed", `row stays 'completed' without upsert (got "${row.status}")`);
     assert(row.attempts === 3, `attempts untouched without upsert (got ${row.attempts})`);
@@ -130,9 +134,9 @@ async function main() {
   {
     const sqlite = buildDb();
     const db = makeD1(sqlite);
-    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-B" }, dedupKey: "si-B" });
+    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-B" }, dedupKey: "si-B" }, TEST_ENV);
     markCompleted(sqlite, "wt-metadata-si-B");
-    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-B", sourceUri: "webdav://x/b.flac" }, dedupKey: "si-B", upsert: true });
+    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-B", sourceUri: "webdav://x/b.flac" }, dedupKey: "si-B", upsert: true }, TEST_ENV);
     const row = sqlite.prepare(
       "SELECT status, attempts, claimed_by, claimed_at, heartbeat_at, result_json, error_message, payload FROM work_queue WHERE id = ?",
     ).get("wt-metadata-si-B") as {
@@ -155,9 +159,9 @@ async function main() {
   {
     const sqlite = buildDb();
     const db = makeD1(sqlite);
-    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-C" }, dedupKey: "si-C" });
+    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-C" }, dedupKey: "si-C" }, TEST_ENV);
     markFailed(sqlite, "wt-metadata-si-C");
-    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-C" }, dedupKey: "si-C", upsert: true });
+    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "si-C" }, dedupKey: "si-C", upsert: true }, TEST_ENV);
     const row = sqlite.prepare("SELECT status, error_message FROM work_queue WHERE id = ?").get("wt-metadata-si-C") as { status: string; error_message: string | null };
     assert(row.status === "queued", `failed row redispatched to 'queued' (got "${row.status}")`);
     assert(row.error_message === null, "prior error_message cleared");
@@ -170,7 +174,7 @@ async function main() {
     await dispatchWorkBatch(db, [
       { taskType: "metadata", payload: { instanceId: "si-D1" }, dedupKey: "D1" },
       { taskType: "metadata", payload: { instanceId: "si-D2" }, dedupKey: "D2" },
-    ]);
+    ], TEST_ENV);
     markCompleted(sqlite, "wt-metadata-D1");
     markFailed(sqlite, "wt-metadata-D2");
     // Re-walk the source: D1/D2 come back plus a brand-new D3.
@@ -178,7 +182,7 @@ async function main() {
       { taskType: "metadata", payload: { instanceId: "si-D1" }, dedupKey: "D1", upsert: true },
       { taskType: "metadata", payload: { instanceId: "si-D2" }, dedupKey: "D2", upsert: true },
       { taskType: "metadata", payload: { instanceId: "si-D3" }, dedupKey: "D3", upsert: true },
-    ]);
+    ], TEST_ENV);
     const rows = sqlite.prepare("SELECT id, status FROM work_queue ORDER BY id").all() as Array<{ id: string; status: string }>;
     assert(rows.length === 3, `still 3 rows total, no duplicates (got ${rows.length})`);
     assert(rows.every((r) => r.status === "queued"), `all three rows are 'queued' (got ${rows.map((r) => `${r.id}:${r.status}`).join(", ")})`);
@@ -188,8 +192,8 @@ async function main() {
   {
     const sqlite = buildDb();
     const db = makeD1(sqlite);
-    await dispatchWorkBatch(db, [{ taskType: "metadata", payload: { instanceId: "si-E", v: 1 }, dedupKey: "E" }]);
-    await dispatchWorkBatch(db, [{ taskType: "metadata", payload: { instanceId: "si-E", v: 2 }, dedupKey: "E" }]);
+    await dispatchWorkBatch(db, [{ taskType: "metadata", payload: { instanceId: "si-E", v: 1 }, dedupKey: "E" }], TEST_ENV);
+    await dispatchWorkBatch(db, [{ taskType: "metadata", payload: { instanceId: "si-E", v: 2 }, dedupKey: "E" }], TEST_ENV);
     const row = sqlite.prepare("SELECT payload FROM work_queue WHERE id = ?").get("wt-metadata-E") as { payload: string };
     assert(JSON.parse(row.payload).v === 1, "still-queued row's original payload untouched (INSERT OR IGNORE, not upsert)");
   }

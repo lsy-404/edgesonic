@@ -40,7 +40,7 @@ import type {
   TranscodeProfile,
 } from "./engine";
 import { buildFfmpegArgs } from "./profiles";
-import { dispatchWork } from "../endpoints/edgesonic/work";
+import { dispatchWork, wakePool } from "../endpoints/edgesonic/work";
 
 // Payload shape persisted in work_queue.payload (JSON). Kept narrow so the
 // browser-side executor (web/src/workers/taskExecutor.ts) can act on it with
@@ -62,7 +62,13 @@ export class BrowserPoolEngine implements TranscodeEngine {
   // (and for future direct-write helpers), even though enqueueing itself
   // never touches R2 — that's the browser-side worker's job through
   // /work/upload.
-  constructor(private readonly db: D1Database, private readonly bucket: R2Bucket) {}
+  // `env` is required: enqueueing is only half the job now, the coordinator
+  // also has to be woken, and nothing polls to cover a missed wake.
+  constructor(
+    private readonly db: D1Database,
+    private readonly bucket: R2Bucket,
+    private readonly env: Env,
+  ) {}
 
   // Synchronous transcode is fundamentally incompatible with the queue
   // model — the request would have to block on a browser polling the queue,
@@ -77,7 +83,7 @@ export class BrowserPoolEngine implements TranscodeEngine {
   }
 
   // Look up the work_queue row for a given queue id. We project it into the
-  // legacy TranscodeJobRow shape (049) so existing callers can keep treating
+  // legacy TranscodeJobRow shape so existing callers can keep treating
   // a "job" uniformly — the only fields we can fill from work_queue are
   // status / error / created_at; the rest stay null/empty.
   async getStatus(jobId: string): Promise<TranscodeJobRow | null> {
@@ -146,11 +152,20 @@ export class BrowserPoolEngine implements TranscodeEngine {
   // Asynchronous entry point. Returns the work_queue id; the caller is
   // responsible for surfacing it to the client (HTTP JSON / Subsonic XML).
   // -------------------------------------------------------------------------
+  // `buildUploadUrl` receives the queue id and returns the signed URL the
+  // browser will POST its output to. It is a callback rather than a plain
+  // argument because the token has to be bound to an id that only exists
+  // after the insert — and the row must not become visible to the pool until
+  // that URL is in its payload. So: insert without waking anyone, patch the
+  // payload, and only then wake. Under polling the ~5 minute cadence hid this
+  // ordering; a pushed task would otherwise reach a browser carrying the
+  // literal string the payload was seeded with, and its upload would have
+  // nowhere valid to go.
   async enqueueTranscodeTask(
     sourceUri: string,
     instanceId: string,
     profile: TranscodeProfile,
-    uploadUrl: string,
+    buildUploadUrl: (queueId: string) => Promise<string>,
   ): Promise<string> {
     const payload: TranscodePayload = {
       sourceUri,
@@ -158,13 +173,21 @@ export class BrowserPoolEngine implements TranscodeEngine {
       profileId: profile.id,
       outputSuffix: profile.container,
       ffmpegArgs: buildFfmpegArgs(profile),
-      uploadUrl,
+      uploadUrl: "",
     };
-    return await dispatchWork(this.db, {
+    const queueId = await dispatchWork(this.db, {
       taskType: "transcode",
       payload,
       requiredCaps: ["ffmpeg"],
       priority: 5,
-    });
+    }, this.env, { wake: false });
+
+    payload.uploadUrl = await buildUploadUrl(queueId);
+    await this.db.prepare(
+      "UPDATE work_queue SET payload = ? WHERE id = ?",
+    ).bind(JSON.stringify(payload), queueId).run();
+
+    await wakePool(this.env);
+    return queueId;
   }
 }

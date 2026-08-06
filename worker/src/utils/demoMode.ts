@@ -27,8 +27,6 @@ export const DEMO_LOCKED_FEATURE_KEYS = new Set<string>([
   "enable_webdav_presign",
   "enable_cross_origin_isolation",
   "worker_pool_enabled",
-  "worker_poll_interval_seconds",
-  "worker_batch_size",
   "worker_claim_ttl_seconds",
   "worker_max_concurrent",
   "cache_tier_standard",

@@ -170,7 +170,7 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
         requiredCaps: ["music-metadata"],
         priority: 3, // higher than scan-dispatched tasks (5) so uploads parse fast
         dedupKey: instanceId,
-      });
+      }, env);
     }
   } catch (e) {
     console.error(`[upload] dispatchWork failed for ${instanceId}:`, e);
@@ -423,7 +423,7 @@ filesRoutes.post("/files/copy", permissionMiddleware("upload"), async (c) => {
   return c.json({ ok: true });
 });
 
-// 089 S2 — Cross-source file copy (byte-level copy between any two adapters).
+// Cross-source file copy (byte-level copy between any two adapters).
 //
 // POST /rest/files/crossCopy body: { srcUri, destSource, destPath }
 //

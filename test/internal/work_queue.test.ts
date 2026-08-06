@@ -17,8 +17,8 @@
 // Coverage:
 //  1. dispatchWork → row appears in queue with correct caps/payload
 //  2. dispatchWorkBatch → many rows in one D1 batch call
-//  3. /work/poll atomic claim (RETURNING)
-//  4. /work/poll caps filter — task with required_caps the caller lacks is NOT returned
+//  3. atomic claim (RETURNING) — the coordinator's claim, formerly /work/poll's
+//  4. caps filter — a task whose required_caps the agent lacks is NOT handed out
 //  5. /work/submit success path → status='completed', result_json stored
 //  6. /work/submit error path — attempts left → re-queued ; exhausted → failed
 //  7. /work/heartbeat updates heartbeat_at on the claimed row only
@@ -29,6 +29,10 @@
 
 import { dispatchWork, dispatchWorkBatch } from "../../worker/src/endpoints/edgesonic/work";
 import { reclaimStaleWork } from "../../worker/src/utils/workReclaim";
+
+// Binding-free env: notifyCoordinator returns early without
+// WORK_COORDINATOR, which is what a deployment lacking it does too.
+const TEST_ENV = {} as unknown as Env;
 
 let failures = 0;
 function assert(cond: boolean, msg: string) {
@@ -174,7 +178,7 @@ function makeEnv() {
         throw new Error(`unmocked run sql: ${trimmed}`);
       },
       async first<T = unknown>() {
-        // poll: SELECT row before claim — handled by `all` (we treat poll's
+        // SELECT row before claim — handled by `all` (we treat the claim's
         // SELECT as a batch read, even though the worker code uses .all()).
         // The other first() call is the UPDATE ... RETURNING claim:
         if (trimmed.startsWith("UPDATE work_queue SET status = 'claimed'")) {
@@ -223,7 +227,7 @@ function makeEnv() {
             results: Array.from(featureStrings.entries()).map(([key, value]) => ({ key, value })),
           } as { results: T[] };
         }
-        // poll candidate select
+        // candidate select
         if (trimmed.startsWith("SELECT id, task_type, payload, required_caps")) {
           // ORDER BY priority ASC, created_at ASC LIMIT 8
           const queued = rows.filter((r) => r.status === "queued")
@@ -303,7 +307,7 @@ async function run() {
       payload: { instanceId: "si-1", sourceUri: "webdav://x/a.mp3", suffix: "mp3", size: 1024 },
       requiredCaps: ["music-metadata"],
       priority: 4,
-    });
+    }, TEST_ENV);
     assert(id.startsWith("wq-"), "id is prefixed wq-");
     assert(ctx.rows.length === 1, "one row inserted");
     assert(ctx.rows[0].task_type === "metadata", "task_type stored");
@@ -332,18 +336,18 @@ async function run() {
   }
 
   // ----------------------------------------------------------------------------
-  // 3+4. /work/poll atomic claim + caps filter
+  // 3+4. coordinator atomic claim + caps filter
   // ----------------------------------------------------------------------------
-  console.log("\nwork/poll claim & caps filter:");
+  console.log("\ncoordinator claim & caps filter:");
   {
     const ctx = makeEnv();
     // Seed: one task that needs ffmpeg, one that needs music-metadata.
     await dispatchWork(ctx.db as unknown as D1Database, {
       taskType: "transcode", payload: { x: 1 }, requiredCaps: ["ffmpeg"], priority: 1,
-    });
+    }, TEST_ENV);
     await dispatchWork(ctx.db as unknown as D1Database, {
       taskType: "metadata", payload: { y: 2 }, requiredCaps: ["music-metadata"], priority: 2,
-    });
+    }, TEST_ENV);
 
     // Caller has only music-metadata; ffmpeg task must NOT be claimed.
     const claimedByCaps: WorkRow[] = [];
@@ -370,7 +374,7 @@ async function run() {
     const ctx = makeEnv();
     const id = await dispatchWork(ctx.db as unknown as D1Database, {
       taskType: "metadata", payload: { x: 1 },
-    });
+    }, TEST_ENV);
     // claim
     await (ctx.db.prepare("UPDATE work_queue SET status = 'claimed', claimed_by = ?, claimed_at = unixepoch(), heartbeat_at = unixepoch(), attempts = attempts + 1 WHERE id = ? AND status = 'queued' RETURNING id, task_type, payload, required_caps, priority, attempts, max_attempts, claimed_at, heartbeat_at") as any).bind("alice", id).first();
     // submit (success)
@@ -389,7 +393,7 @@ async function run() {
     const ctx = makeEnv();
     const id = await dispatchWork(ctx.db as unknown as D1Database, {
       taskType: "metadata", payload: {}, maxAttempts: 2,
-    });
+    }, TEST_ENV);
     // first attempt: claim + submit error → should re-queue
     await (ctx.db.prepare("UPDATE work_queue SET status = 'claimed', claimed_by = ?, claimed_at = unixepoch(), heartbeat_at = unixepoch(), attempts = attempts + 1 WHERE id = ? AND status = 'queued' RETURNING id, task_type, payload, required_caps, priority, attempts, max_attempts, claimed_at, heartbeat_at") as any).bind("alice", id).first();
     // Simulate the worker's submit-error branch: attempts (1) < max_attempts (2) → status='queued'
@@ -412,7 +416,7 @@ async function run() {
     const ctx = makeEnv();
     const id = await dispatchWork(ctx.db as unknown as D1Database, {
       taskType: "metadata", payload: {},
-    });
+    }, TEST_ENV);
     await (ctx.db.prepare("UPDATE work_queue SET status = 'claimed', claimed_by = ?, claimed_at = unixepoch(), heartbeat_at = unixepoch(), attempts = attempts + 1 WHERE id = ? AND status = 'queued' RETURNING id, task_type, payload, required_caps, priority, attempts, max_attempts, claimed_at, heartbeat_at") as any).bind("alice", id).first();
     const before = ctx.rows[0].heartbeat_at;
     ctx.setNow(99_999_999);
@@ -432,7 +436,7 @@ async function run() {
     const ctx = makeEnv();
     const id = await dispatchWork(ctx.db as unknown as D1Database, {
       taskType: "scrape", payload: {},
-    });
+    }, TEST_ENV);
     const r = await (ctx.db.prepare("UPDATE work_queue SET status = 'canceled', error_message = COALESCE(error_message, 'canceled by admin') WHERE id = ? AND status NOT IN ('completed', 'canceled')") as any).bind(id).run();
     assert(r.meta.changes === 1, "cancel succeeds on queued");
     assert(ctx.rows[0].status === "canceled", "row marked canceled");
@@ -450,10 +454,10 @@ async function run() {
     // Two stale claims: one with attempts left, one exhausted.
     const id1 = await dispatchWork(ctx.db as unknown as D1Database, {
       taskType: "metadata", payload: {}, maxAttempts: 3,
-    });
+    }, TEST_ENV);
     const id2 = await dispatchWork(ctx.db as unknown as D1Database, {
       taskType: "metadata", payload: {}, maxAttempts: 1,
-    });
+    }, TEST_ENV);
     // claim both at t=1000 with heartbeat=1000
     ctx.setNow(1000);
     await (ctx.db.prepare("UPDATE work_queue SET status = 'claimed', claimed_by = ?, claimed_at = unixepoch(), heartbeat_at = unixepoch(), attempts = attempts + 1 WHERE id = ? AND status = 'queued' RETURNING id, task_type, payload, required_caps, priority, attempts, max_attempts, claimed_at, heartbeat_at") as any).bind("ghost", id1).first();

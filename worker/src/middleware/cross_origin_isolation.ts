@@ -24,7 +24,7 @@
 //                                  stripped on cross-origin requests)
 //   Cross-Origin-Resource-Policy: same-origin     (default grant: only embeddable by same-origin pages)
 //
-// 138 — switched from `require-corp` to `credentialless` so the browser can
+// Switched from `require-corp` to `credentialless` so the browser can
 // follow the R2 presign 302 (cross-origin *.r2.cloudflarestorage.com, which
 // does NOT emit a Cross-Origin-Resource-Policy header). `require-corp` blocked
 // those responses; `credentialless` still enables `crossOriginIsolated` (so
@@ -48,6 +48,12 @@ export const crossOriginIsolationMiddleware = async (
   next: Next,
 ): Promise<void> => {
   await next();
+  // A 101 carries the WebSocket handle on the Response object itself, and the
+  // fallback branch below rebuilds the response — which would both drop that
+  // handle and throw, since 101 is outside the range `new Response` accepts.
+  // The socket is the only way work reaches a browser, so this must not be
+  // left resting on the happy path happening to preserve the same object.
+  if (c.res.status === 101) return;
   const env = c.env as Env;
   // Best-effort: if features util is unreachable (e.g. during D1 outage) we
   // skip stamping rather than 500 the entire response. Default is ON in the

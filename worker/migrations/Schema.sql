@@ -661,7 +661,8 @@ CREATE INDEX IF NOT EXISTS idx_scrape_jobs_master ON scrape_jobs (song_master_id
 -- 20. Work Queue (052) — browser worker pool task queue
 -- ============================================================================
 -- Logged-in users (level ≥ 2) can opt in to becoming a worker node: their
--- browser polls /edgesonic/work/poll every ~5 minutes and runs queued tasks
+-- browser holds a WebSocket on /edgesonic/work/socket, the coordinator claims
+-- queued rows and pushes them down it, and the browser runs each task
 -- (metadata parse, third-party scrape) inside a Web Worker, then POSTs the
 -- result back via /edgesonic/work/submit. The Worker only schedules
 -- non-realtime jobs here (user-facing /stream still runs inline).
@@ -777,8 +778,6 @@ INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALU
 -- 0021: 052 work pool tunables
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('worker_pool_enabled',          '1',   'Whether the browser work pool is active (0|1)', unixepoch()),
-  ('worker_poll_interval_seconds', '300', 'Client poll interval in seconds (default 5 min)', unixepoch()),
-  ('worker_batch_size',            '5',   'Max tasks returned per /work/poll call',          unixepoch()),
   ('worker_claim_ttl_seconds',     '60',  'Heartbeat timeout before stale claim is re-queued', unixepoch());
 
 -- 0022: 065 cross-origin isolation (default ON)

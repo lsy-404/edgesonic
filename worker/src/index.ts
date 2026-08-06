@@ -36,18 +36,10 @@ import { sharePublicRoutes } from "./endpoints/share_public";
 // when the engine is not in use (containers binding is declared in wrangler.toml).
 export { Sandbox } from "@cloudflare/sandbox";
 
-// Placeholder for the WORK_COORDINATOR Durable Object. The production
-// deployment carries a WorkCoordinator DO (WS work-pool). This build does not
-// implement that pool, but we still export the class — and keep the binding in
-// wrangler.toml — so the existing DO namespace and its state are preserved
-// rather than destroyed by a delete-class migration. It is never invoked here
-// (the work model in this build is D1-polling based).
-export class WorkCoordinator {
-  constructor(_state: DurableObjectState, _env: Env) {}
-  async fetch(_request: Request): Promise<Response> {
-    return new Response("WorkCoordinator is not implemented in this build", { status: 501 });
-  }
-}
+// Rendezvous point for the push-based work pool. Browsers on the work-mode
+// page hold a socket here; newly queued tasks are handed straight down it
+// the moment they are queued.
+export { WorkCoordinator } from "./coordinator/workCoordinator";
 
 const app = new Hono();
 
@@ -173,7 +165,7 @@ export default {
         console.error("scheduled maybeRunMetadataRecheck failed:", e);
       }),
     );
-    // 113 — batch-scan song_masters still missing lyrics for a sibling .lrc
+    // Batch-scan song_masters still missing lyrics for a sibling .lrc
     // file. Independent of maybeRunMetadataRecheck: this never touches
     // work_queue, it reads directly from R2/WebDAV and writes D1 in place.
     ctx.waitUntil(
@@ -181,7 +173,7 @@ export default {
         console.error("scheduled maybeRunLrcBackfill failed:", e);
       }),
     );
-    // 253 — batch backfill artists missing biography / image_url from
+    // Batch backfill artists missing biography / image_url from
     // netease/qmusic. Independent cadence (artist_scrape_interval_hours).
     ctx.waitUntil(
       maybeRunArtistScrapeBackfill(env, ctx).catch((e) => {
