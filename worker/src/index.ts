@@ -36,6 +36,19 @@ import { sharePublicRoutes } from "./endpoints/share_public";
 // when the engine is not in use (containers binding is declared in wrangler.toml).
 export { Sandbox } from "@cloudflare/sandbox";
 
+// Placeholder for the WORK_COORDINATOR Durable Object. The production
+// deployment carries a WorkCoordinator DO (WS work-pool). This build does not
+// implement that pool, but we still export the class — and keep the binding in
+// wrangler.toml — so the existing DO namespace and its state are preserved
+// rather than destroyed by a delete-class migration. It is never invoked here
+// (the work model in this build is D1-polling based).
+export class WorkCoordinator {
+  constructor(_state: DurableObjectState, _env: Env) {}
+  async fetch(_request: Request): Promise<Response> {
+    return new Response("WorkCoordinator is not implemented in this build", { status: 501 });
+  }
+}
+
 const app = new Hono();
 
 // ./middleware/cross_origin_isolation so the test suite can import it without
