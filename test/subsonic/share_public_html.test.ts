@@ -261,23 +261,57 @@ async function main() {
     assert(html.includes("2023-11-14T22:13:20Z"), "ISO formatted expiry present");
   }
 
-  console.log("renderShareHtml falls back to firstSongTitle when no description");
+  console.log("renderShareHtml uses the uniform 分享 headline for a SINGLE-track share without description");
   {
     const html = __internals.renderShareHtml({
       shareId: "id2",
       description: null,
       expiresAt: null,
+      tracks: [{ title: "Hello World", artist: null, durationSeconds: 10 }],
+    });
+    assert(html.includes("<h1>分享</h1>"), "h1 is the uniform 分享 label (single track)");
+    assert(html.includes("<title>EdgeSonic · 分享</title>"), "head title is uniform (single track)");
+    assert(!html.includes("<h1>Hello World</h1>"), "h1 is not the track title");
+    assert(!html.includes("EdgeSonic Share id2"), "share id never appears in a visible headline");
+    assert(html.includes(">Hello World"), "track title still listed in the row");
+    // The id is still present in the functional stream/download URLs (required
+    // for playback) — it just must not appear in the headline.
+    assert(html.includes("/share/id2?stream=1"), "share id still drives the audio stream URL");
+  }
+
+  console.log("renderShareHtml uses the uniform 分享 headline for a MULTI-track share without description");
+  {
+    const html = __internals.renderShareHtml({
+      shareId: "id2b",
+      description: null,
+      expiresAt: null,
       tracks: [
-        { title: "Hello World", artist: null, durationSeconds: 10 },
-        { title: "B", artist: null, durationSeconds: 10 },
-        { title: "C", artist: null, durationSeconds: 10 },
-        { title: "D", artist: null, durationSeconds: 10 },
-        { title: "E", artist: null, durationSeconds: 10 },
+        { title: "Hello World", artist: null, album: "Greatest Hits", durationSeconds: 10 },
+        { title: "B", artist: null, album: "Greatest Hits", durationSeconds: 10 },
+        { title: "C", artist: null, album: "Greatest Hits", durationSeconds: 10 },
       ],
     });
-    assert(html.includes("<title>EdgeSonic · Hello World</title>"), "head title uses first song title");
-    assert(html.includes(">Hello World"), "h1 uses first song title");
-    assert(html.includes("5 tracks"), "subtitle shows entry count");
+    assert(html.includes("<h1>分享</h1>"), "h1 is the uniform 分享 label (multi track)");
+    assert(!html.includes("<h1>Hello World</h1>"), "h1 does not fall back to first song title");
+    assert(!html.includes("<h1>Greatest Hits</h1>"), "h1 does not use the album name either");
+    assert(!html.includes("EdgeSonic Share id2b"), "share id never appears in a visible headline");
+    assert(html.includes("3 tracks"), "subtitle shows entry count");
+  }
+
+  console.log("renderShareHtml renders the album name on each track row");
+  {
+    const html = __internals.renderShareHtml({
+      shareId: "id2d",
+      description: "mix",
+      expiresAt: null,
+      tracks: [
+        { title: "Track A", artist: "Alice", album: "Album One", durationSeconds: 10 },
+        { title: "Track B", artist: "Bob", album: "Album Two", durationSeconds: 10 },
+      ],
+    });
+    assert(html.includes("Album One"), "first track shows its album");
+    assert(html.includes("Album Two"), "second track shows its album");
+    assert(html.includes("Alice · Album One"), "artist and album joined on the row");
   }
 
   // --- Live route ---

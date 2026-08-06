@@ -56,6 +56,7 @@ function formatExpires(unixSeconds: number): string {
 interface RenderTrack {
   title: string;
   artist: string | null;
+  album?: string | null;
   durationSeconds: number | null;
 }
 
@@ -76,8 +77,12 @@ function formatDuration(sec: number | null): string {
 function renderShareHtml(input: RenderInput): string {
   const safeId = escapeHtml(input.shareId);
   const entryCount = input.tracks.length;
-  const firstSongTitle = input.tracks[0]?.title ?? null;
-  const title = input.description?.trim() || firstSongTitle?.trim() || `EdgeSonic Share ${input.shareId}`;
+
+  // Headline: the caller's description when set, otherwise a uniform "分享"
+  // label. We never fall back to a track title, an album name, or the share id
+  // — a single-song and a multi-song share must read the same way, and the id
+  // is meaningless to a visitor. Album/artist context lives on each track row.
+  const title = input.description?.trim() || "分享";
   const safeTitle = escapeHtml(title);
   const subtitle = `${entryCount} 首曲目 · ${entryCount} track${entryCount === 1 ? "" : "s"}`;
   const expiresLine = input.expiresAt === null
@@ -247,10 +252,13 @@ function renderShareHtml(input: RenderInput): string {
 ${input.tracks
   .map((tr, i) => {
     const dur = formatDuration(tr.durationSeconds);
-    const artist = tr.artist?.trim() ? `<span class="t-artist">${escapeHtml(tr.artist)}</span>` : "";
+    const subParts = [tr.artist?.trim(), tr.album?.trim()]
+      .filter((x): x is string => !!x)
+      .map((x) => escapeHtml(x));
+    const sub = subParts.length ? `<span class="t-artist">${subParts.join(" · ")}</span>` : "";
     return `      <li class="track${i === 0 ? " active" : ""}" data-src="/share/${safeId}?stream=1&amp;t=${i}">
         <span class="t-num">${String(i + 1).padStart(2, "0")}</span>
-        <span class="t-title">${escapeHtml(tr.title)}${artist}</span>
+        <span class="t-title">${escapeHtml(tr.title)}${sub}</span>
         <span class="t-dur">${dur}</span>
         <a class="t-dl" href="/share/${safeId}?stream=1&amp;t=${i}&amp;download=1" download title="下载 · download">↓</a>
       </li>`;
@@ -333,6 +341,7 @@ sharePublicRoutes.get("/share/:id", async (c) => {
       tracks: songs.map((s) => ({
         title: s.title,
         artist: s.artist_name,
+        album: s.album_name,
         durationSeconds: s.duration ?? s.inst_duration,
       })),
     });
