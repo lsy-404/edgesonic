@@ -25,7 +25,7 @@
 // the endpoint returns an empty <lyrics/> element on null. Each upstream
 // timeout / non-2xx → next source → null.
 //
-// 0259: now also fetches the `klyric.klyric` field (NetEase's enhanced LRC
+// Also fetches the `klyric.klyric` field (NetEase's enhanced LRC
 // with word-level timestamps) and returns it alongside the line-level LRC.
 // Callers that only want line-level LRC ignore `rich`; callers that want
 // cue data pass `rich` through the enhanced-LRC parser in richLyrics.ts.
@@ -134,7 +134,7 @@ export async function fetchExternalLyric(
   return fetchNetEaseLyric(a, t);
 }
 
-// 0259 — rich variant: returns both the line-level LRC and the enhanced-LRC
+// Rich variant: returns both the line-level LRC and the enhanced-LRC
 // word-level payload (NetEase klyric). Used by getLyricsBySongId to populate
 // both `lyrics` and `lyrics_rich` in one round-trip.
 export async function fetchExternalLyricRich(

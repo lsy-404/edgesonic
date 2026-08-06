@@ -28,10 +28,10 @@
 //   the account); `u` is optional when apiKey is present, matching spec.
 //   * tokenInfo v1          — this file
 //   * formPost v1           — all mutating Subsonic endpoints accept POST
-//   * songLyrics v2         — 108: getLyricsBySongId emits spec-shaped
+//   * songLyrics v2         — getLyricsBySongId emits spec-shaped
 //   structuredLyrics ({start,value} lines); clients only call it when the
 //   extension is advertised, which is why lyrics never showed in players.
-//   0259: v2 advertises the `enhanced` parameter — when true, the response
+//   v2 advertises the `enhanced` parameter — when true, the response
 //   carries cueLine/cue (word-level timing), `kind` (main/translation/
 //   pronunciation) and `agents` (vocal attribution), per the songLyrics
 //   v2 spec.
@@ -39,7 +39,7 @@
 //   automatic exact/fuzzy remote-id → local-id merge support.
 //
 // NOT advertised (kept honest):
-//  * transcodeOffset — 036
+//  * transcodeOffset — not implemented yet
 //  * indexBasedQueue — no client implementation yet
 
 import { Hono } from "hono";
@@ -57,7 +57,7 @@ const XML = { "Content-Type": "application/xml; charset=UTF-8" } as const;
 // ---------------------------------------------------------------------------
 // getOpenSubsonicExtensions
 // ---------------------------------------------------------------------------
-// Spec (107): one `<openSubsonicExtensions name="...">` element per
+// Spec: one `<openSubsonicExtensions name="...">` element per
 // extension, each carrying `<versions>N</versions>` CHILD ELEMENTS — the
 // shape Navidrome emits. The JSON serialization (middleware/format.ts) turns
 // this into `"openSubsonicExtensions":[{"name":"...","versions":[1,2]}]`
@@ -78,7 +78,7 @@ const EXTENSIONS: Array<{ name: string; versions: number[]; attrs?: Record<strin
 ];
 
 const extensionsHandler = async (c: import("hono").Context) => {
-  // 178 (OpenSubsonic #254): advertise the declarative S2S relay policy and
+  // OpenSubsonic #254: advertise the declarative S2S relay policy and
   // this server's loop-prevention UUID at the response root. server_uuid is our
   // persistent INSTANCE_ID (the same id used in the X-OpenSubsonic-Path /
   // X-EdgeSonic-Chain loop guard).

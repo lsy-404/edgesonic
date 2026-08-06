@@ -334,7 +334,7 @@ export const authMiddleware = createMiddleware<{
   // Another EdgeSonic proxying us appends its INSTANCE_ID to esChain. The
   // chain guard only ever fires on /rest/* (proxied Subsonic calls), so we
   // keep the XML shape there; a management path would never carry esChain.
-  // 178 (OpenSubsonic #254): the standard X-OpenSubsonic-Path header carries the
+  // OpenSubsonic #254: the standard X-OpenSubsonic-Path header carries the
   // same comma-separated UUID chain as our proprietary esChain / X-EdgeSonic-Chain
   // (both use INSTANCE_ID as the server_uuid), so we accept any of the three.
   const chain = parseChain(

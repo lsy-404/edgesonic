@@ -15,7 +15,7 @@
 
 //
 // wrangler.toml fixes the cron to `0 */1 * * *` (every hour, shared with
-// 046's podcast refresh). To support cadences other than hourly we layer a
+// the podcast refresh). To support cadences other than hourly we layer a
 // soft scheduler on top: each tick this helper consults
 // `feature_strings.scan_interval_hours` and `KV.cron:last_scan_ts` to decide
 // whether enough wall-clock time has elapsed since the previous run.
@@ -43,7 +43,7 @@ interface SourceRow {
   username: string | null;
   password: string | null;
   root_path: string | null;
-  // 089 S2 — 'library' (default) | 'sync_only' (scan but skip DB inserts)
+  // 'library' (default) | 'sync_only' (scan but skip DB inserts)
   mode?: string | null;
 }
 

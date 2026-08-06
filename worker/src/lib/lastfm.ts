@@ -159,7 +159,7 @@ export async function lastfmFetch(
 // the Last.fm username so two EdgeSonic users with different Last.fm accounts
 // don't cross-pollinate.
 //
-// 260: fully isolated from the system-level key. Requires the caller's own
+// Fully isolated from the system-level key. Requires the caller's own
 // user_settings.lastfm_api_key — it does NOT fall back to feature_strings.
 // lastfm_api_key. The system key powers the artist/album/similar "info" path
 // (lastfmFetch) only; per-user activity (recentTracks/lovedTracks/userInfo/

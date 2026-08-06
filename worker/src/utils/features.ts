@@ -92,7 +92,7 @@ export function invalidateFeatureString(env: Env, _key?: string): void {
 
 export type RelayPolicy = "allow" | "deny" | "no-cache";
 
-// 178 — the declarative S2S relay policy advertised via getOpenSubsonicExtensions
+// The declarative S2S relay policy advertised via getOpenSubsonicExtensions
 // (OpenSubsonic discussion #254). An explicit `server_relay_policy`
 // feature_string wins; otherwise it derives from the `allow_being_proxied`
 // boolean gate so operators who only ever toggled that keep a consistent

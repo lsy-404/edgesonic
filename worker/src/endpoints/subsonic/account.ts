@@ -49,7 +49,7 @@ const changePasswordHandler = async (c: import("hono").Context<{ Bindings: Env; 
 
   const caller = c.get("user");
   const isSelf = caller.username === username;
-  // by /edgesonic/users/{create,update,delete}). Pre-087 used a hardcoded
+  // by /edgesonic/users/{create,update,delete}). Earlier code used a hardcoded
   // `caller.level < 3` which violated the permission-model rule.
   // Guests (level 0) are blocked from self-profile edits entirely — they
   // cannot change their own password, set their own avatar, or edit their

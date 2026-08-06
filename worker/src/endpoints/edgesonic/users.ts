@@ -24,7 +24,7 @@
 //  update → { ok: true }
 //  delete → { ok: true }
 // Errors: `{ ok: false, error }` with the appropriate HTTP status (400 / 403 /
-// 404), matching setAvatar's convention from 064.
+// 404), matching setAvatar's convention.
 import { Hono } from "hono";
 import { GUEST_USERNAME, permissionMiddleware, sha256 } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
@@ -352,7 +352,7 @@ usersRoutes.post("/users/setAvatar", async (c) => {
   }
 
   // ---- Auth: self or manage_users -----------------------------------------
-  // update/delete endpoints in this file). Pre-087 used a hardcoded
+  // update/delete endpoints in this file). Earlier code used a hardcoded
   // `caller.level < 2` which violated the permission-model rule.
   // Guests (level 0) are blocked from self-profile edits entirely — they
   // cannot set their own avatar, nickname, or password (see changePassword

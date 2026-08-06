@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Metadata scrape aggregator (task 040).
+// Metadata scrape aggregator.
 //
 // Drives the per-source adapters (netease/qmusic/kugou) according to the
 // Settings-managed priority list. Each source falls back to the Worker proxy
@@ -51,7 +51,7 @@ const ADAPTERS: Record<ScrapeSource, {
   netease: { search: netease.search, fetchLyric: netease.fetchLyric },
   qmusic: { search: qmusic.search, fetchLyric: qmusic.fetchLyric },
   kugou: { search: kugou.search, fetchLyric: kugou.fetchLyric },
-  // 040 doesn't ship kuwo/migu adapters; the keys exist in types so the
+  // No kuwo/migu adapters ship today; the keys exist in types so the
   // Settings UI can still validate user input. Aggregator silently skips them.
   kuwo: undefined,
   migu: undefined,

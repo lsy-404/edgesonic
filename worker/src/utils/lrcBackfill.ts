@@ -13,12 +13,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// 113 — Batch LRC sidecar backfill for the pre-existing library.
+// Batch LRC sidecar backfill for the pre-existing library.
 // ---------------------------------------------------------------------------
-// 094 wired fetchLrcSidecar/importLrcOnScan into two places: scan.ts (only for
+// fetchLrcSidecar/importLrcOnScan are wired into two places: scan.ts (only for
 // brand-new song_instances INSERTs) and lyrics.ts's getLyrics endpoint (only
 // when a client actually requests lyrics for that song). Neither path
-// retroactively checks songs that were scanned before 094 shipped, or that
+// retroactively checks songs that were scanned before those landed, or that
 // nobody has ever played — a sibling .lrc file sitting right next to those
 // tracks is never looked at. This closes that gap with a cron-driven batch
 // pass, mirroring metadataRecheck.ts's cadence/kv_store-throttle shape, but
@@ -61,9 +61,9 @@ export interface LrcBackfillResult {
 // (maybeRunLrcBackfill, below) and the admin "run now" endpoint
 // (POST /edgesonic/work/backfillLrcNow) so both paths behave identically.
 //
-// 0259 — also back-fills `lyrics_rich` from sibling .ttml/.krc/enhanced .lrc
+// Also back-fills `lyrics_rich` from sibling .ttml/.krc/enhanced .lrc
 // sidecars. Candidates are songs that still lack EITHER the line-level LRC
-// OR the rich payload, so a pre-existing library that pre-dates 0259 gets
+// OR the rich payload, so a pre-existing library that pre-dates the column gets
 // the new column populated without a forced full re-scan.
 export async function runLrcBackfill(db: D1Database, env: Env): Promise<LrcBackfillResult> {
   await ensureRichLyricsColumn(env);
@@ -94,7 +94,7 @@ export async function runLrcBackfill(db: D1Database, env: Env): Promise<LrcBackf
         ).bind(lrc, Math.floor(Date.now() / 1000), cand.master_id).run();
         if (result.meta.changes > 0) filled++;
       }
-      // 0259 — also fetch a rich sidecar (.ttml / .krc / enhanced .lrc)
+      // Also fetch a rich sidecar (.ttml / .krc / enhanced .lrc)
       // when one is present. Independent of the LRC result above — a
       // track can have both a .lrc and a .ttml sidecar.
       const rich = await fetchSidecarRich(env, cand.storage_uri);

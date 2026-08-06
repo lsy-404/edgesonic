@@ -237,7 +237,7 @@ function setupObserver(): void {
       const kind = el.dataset.kind as "songs" | "albums" | undefined;
       if (kind) guardLoad(kind);
     }
-  // 155: rootMargin order is (top, right, bottom, left) — this was expanding
+  // rootMargin order is (top, right, bottom, left) — this was expanding
   // the *top* of the intersection root, which only matters for content
   // scrolled above the viewport. The sentinel sits below the list, so the
   // "preload before the user hits the literal last pixel" buffer needs to

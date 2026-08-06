@@ -108,7 +108,7 @@ export function replaceSubsonicServerVersion(xml: string, version?: string): str
 export function subsonicOK(
   inner: Record<string, unknown>,
   version = "1.16.1",
-  // 178 — extra root attributes on <subsonic-response> (e.g. server_relay_policy
+  // Extra root attributes on <subsonic-response> (e.g. server_relay_policy
   // / server_uuid for the S2S extension). They flatten to top-level JSON keys
   // via the JSON serializer, matching status/version/openSubsonic.
   rootAttrs?: Record<string, string | number | boolean | undefined>,

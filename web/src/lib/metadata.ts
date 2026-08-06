@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // ============================================================================
-// Browser-side metadata extraction (task 041)
+// Browser-side metadata extraction
 // ----------------------------------------------------------------------------
 // Worker端 scanTags 只懂 MP3 / FLAC / WAV — 这里用 music-metadata v8+ 在浏览器
 // 解析其余十几种格式（OGG/Opus/M4A/MP4/AAC/APE/WMA/AIFF/ALAC/DSF/DFF/WebM/...）
@@ -54,10 +54,10 @@ export function isBrowserParse(suffix: string): boolean {
 // ============================================================================
 // ExtractedMetadata — 落地到 /rest/submitMetadata 的 payload 形状
 // ----------------------------------------------------------------------------
-// 字段对齐策略（见 049/findings.md D + 041/findings.md）：
+// 字段对齐策略：
 //  - logical：title/artist/album/albumArtist/genre/year/track/disc → song_masters
 //  - physical：duration/bitrate/sampleRate/channels → song_instances
-//  - lyrics：109 起持久化到 song_masters.lyrics（applyMetadataResult 用
+//  - lyrics：持久化到 song_masters.lyrics（applyMetadataResult 用
 //   COALESCE(NULLIF(lyrics,''), ?) 只填空列，不覆盖已有的用户编辑/外部抓取结果）
 //  - container/codec：只用于诊断/未来回填；后端目前忽略
 // ============================================================================
@@ -85,7 +85,7 @@ export interface ExtractedMetadata {
  * 失败时抛错；调用方应 try/catch 并 toast 用户。
  */
 export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
-  // skipCovers=true：041 不处理封面（封面由 042 接管）；省 RAM
+  // skipCovers=true：本路径不处理封面（封面由标签编辑器接管）；省 RAM
   const meta = await parseBlob(file, { skipCovers: true, duration: true });
   const { format, common } = meta;
 
@@ -115,16 +115,16 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
 }
 
 // ============================================================================
-// lyricsTagsToText — shared by extractMetadata() (this file, 041 local scan)
-// and taskExecutor.ts (052b browser worker pool) so both paths flatten
+// lyricsTagsToText — shared by extractMetadata() (this file, local scan)
+// and taskExecutor.ts (browser worker pool) so both paths flatten
 // music-metadata's `common.lyrics` the same way.
 // ----------------------------------------------------------------------------
 // music-metadata's ILyricsTag shape: { text?, syncText?: {text,timestamp}[] }
 // (some builds instead hand back a bare string[]). Preference order:
 //  1. An entry with syncText → rebuild LRC `[mm:ss.xx]line` per timestamp so
-//    the backend's parseLrc (worker/src/endpoints/subsonic/lyrics.ts, 108)
+//    the backend's parseLrc (worker/src/endpoints/subsonic/lyrics.ts)
 //    round-trips it back into per-line start offsets for Subsonic clients.
-//    Before 109 we only joined the plain text, discarding every timestamp.
+//    We used to only join the plain text, discarding every timestamp.
 //  2. An entry with plain `.text`.
 //  3. A bare string element.
 // ============================================================================
@@ -160,7 +160,7 @@ function msToLrcTimestamp(ms: number): string {
 // bare `LYRICS` key only — `SYNCEDLYRICS`/`UNSYNCEDLYRICS` (common output of
 // Mp3tag/MusicBee/foobar2000-style taggers) never reach `common.lyrics` and
 // silently vanish. worker/src/utils/tags.ts (the server-side embedded-tag
-// scanner, 109) already recognises all three with priority
+// scanner) already recognises all three with priority
 // SYNCEDLYRICS > LYRICS > UNSYNCEDLYRICS; this mirrors that priority by
 // reading music-metadata's raw `native` tag dump (always populated,
 // format-independent — no extra parse option needed) as a fallback when

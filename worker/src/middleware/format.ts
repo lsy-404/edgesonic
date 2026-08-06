@@ -15,7 +15,7 @@
 
 //
 // The Subsonic API spec says: `f=xml` (default), `f=json`, or `f=jsonp`.
-// Before 106, EdgeSonic ignored `f` entirely and always returned XML.
+// EdgeSonic used to ignore `f` entirely and always return XML.
 // Clients requesting `f=json` got an XML body, failed to parse it, and
 // reported a connectivity/auth error.
 //
@@ -75,7 +75,7 @@ export async function formatMiddleware(c: Context<{ Bindings: Env }>, next: () =
 }
 
 // ---------------------------------------------------------------------------
-// Attribute typing tables (107). Keyed by attribute NAME — the Subsonic XSD
+// Attribute typing tables. Keyed by attribute NAME — the Subsonic XSD
 // gives every attribute a fixed type, so a name uniquely determines it.
 // Anything not listed stays a string (ids, names, dates, paths...).
 // ---------------------------------------------------------------------------

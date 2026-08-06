@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // Artist bio/cover resolution across all configured sources — netease, qmusic,
-// and last.fm — tried in the admin-configured priority order (260). Last.fm
+// and last.fm — tried in the admin-configured priority order. Last.fm
 // is no longer hardcoded as the first thing tried: it is just another member
 // of the same ordered, individually-toggleable list as the CN sources, and
 // defaults to LAST so CN coverage (much better for CN artists) is tried
@@ -126,7 +126,7 @@ async function tryLastfm(env: Env, name: string): Promise<ArtistScrapeFallback |
 // Reads `lastfm_fallback_sources` (JSON array of source ids) and returns the
 // enabled subset in stored order. A source not present in the array is
 // treated as disabled — this is the same self-healing rule the
-// scrape_enabled_sources UI already uses, so a pre-260 deployment whose
+// scrape_enabled_sources UI already uses, so an older deployment whose
 // stored value is `["netease","qmusic"]` (no "lastfm") keeps last.fm off
 // until an admin explicitly re-adds it, instead of silently changing
 // behavior on deploy.

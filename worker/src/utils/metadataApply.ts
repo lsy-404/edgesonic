@@ -15,10 +15,10 @@
 
 // ----------------------------------------------------------------------------
 // Three call sites funnel through here:
-//  1. 041 POST /tag/submit — the legacy "Files browser parsed locally" path.
-//  2. 052a POST /edgesonic/work/submit (success branch) — the worker-pool path
+//  1. POST /tag/submit — the legacy "Files browser parsed locally" path.
+//  2. POST /edgesonic/work/submit (success branch) — the worker-pool path
 //    that previously only marked work_queue rows 'completed' and forgot to
-//    cascade onto song_masters / song_instances (the bug 077 fixes).
+//    cascade onto song_masters / song_instances (the bug this fixes).
 //  3. /edgesonic/work/backfillCompleted — replays old completed rows whose
 //    apply step was skipped before the fix landed.
 //
@@ -47,7 +47,7 @@ import {
 } from "./artistCredits";
 
 // ---------------------------------------------------------------------------
-// SubmittedMetadata — the 041 wire shape, also reused as the merged form that
+// SubmittedMetadata — the /tag/submit wire shape, also reused as the merged form that
 // applyMetadataResult feeds to relinkArtistAlbum. Kept here so the helper has
 // no upward dependency on endpoints/*.
 // ---------------------------------------------------------------------------
@@ -121,7 +121,7 @@ export async function applyMetadataResult(
 
   // Merge common + format into the SubmittedMetadata shape that relinkArtist
   // Album already speaks. We re-coerce every scalar so a worker that emits
-  // year:"2024" (string) lands the same as a 041 caller emitting year:2024.
+  // year:"2024" (string) lands the same as a caller emitting year:2024.
   const tags = mergeToSubmitted(common ?? {}, format ?? {});
 
   // Even if no useful field came through, we still want to flip tag_scanned.
@@ -156,7 +156,7 @@ export async function applyMetadataResult(
   // write independent of hasLogical — a submission carrying ONLY lyrics (no
   // title/artist/etc, e.g. a re-scan that only turned up an embedded LYRICS
   // tag) must still land. COALESCE(NULLIF(lyrics,''), ?) only fills an EMPTY
-  // column: a user-authored edit or a NetEase/.lrc-sidecar fetch (036/094)
+  // column: a user-authored edit or a NetEase/.lrc-sidecar fetch
   // already in song_masters.lyrics is never clobbered by a lower-priority
   // embedded tag on a later re-scan.
   if (tags.lyrics) {
@@ -213,9 +213,9 @@ export async function applyMetadataResult(
 }
 
 // ---------------------------------------------------------------------------
-// relinkArtistAlbum — pulled in from endpoints/tag/submit.ts in 077 so the
+// relinkArtistAlbum — pulled in from endpoints/tag/submit.ts so the
 // helper can call it directly. Behaviour is byte-for-byte identical to the
-// 041 implementation:
+// original implementation:
 //  * md5(linkArtistName)[:10] -> artist id
 //  * md5(linkArtistName + " " + albumName)[:10] -> album id
 //  * INSERT OR IGNORE both, UPDATE song_masters with the new fk's
@@ -295,7 +295,7 @@ export async function relinkArtistAlbum(
 // ---------------------------------------------------------------------------
 // mergeToSubmitted — coerces a loose common+format pair into the strict
 // SubmittedMetadata shape relinkArtistAlbum + the legacy /tag/submit logic
-// already accept. Same coercion rules as the 041 cleanInput so the two paths
+// already accept. Same coercion rules as the /tag/submit cleanInput so the two paths
 // produce byte-identical UPDATEs.
 // ---------------------------------------------------------------------------
 function mergeToSubmitted(c: MetaCommon, f: MetaFormat): SubmittedMetadata {

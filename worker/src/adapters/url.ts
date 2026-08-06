@@ -16,7 +16,7 @@
 import type { StorageAdapter, StreamResult } from "./index";
 
 export const urlAdapter: StorageAdapter = {
-  // 089 S2 — URL sources are read-only; writing is not supported.
+  // URL sources are read-only; writing is not supported.
   async put(): Promise<void> {
     throw new Error("read-only source: url adapter does not support put");
   },

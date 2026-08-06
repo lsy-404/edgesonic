@@ -15,8 +15,8 @@
 
 //
 // Long-lived browser tabs run a stale bundle after we deploy fixes that touch
-// the work-queue executor (078 error propagation, 080 reclaim). When the frontend
-// keeps polling /edgesonic/work/poll with the old buggy code, attempts++ until
+// the work-queue executor (error propagation, reclaim). When the frontend
+// keeps running work with the old buggy code, attempts++ until
 // the deterministic-ID rows hit failed permanently.
 //
 // The SPA records the version on first load, polls /edgesonic/version every 5

@@ -31,7 +31,7 @@
 //   accumulate bytes from the stream and abort on overflow.
 //  - All failures are swallowed: a missing .lrc is the common case, not an
 //   error. The caller treats null as "no lyrics available".
-//  - 0259: the sidecar reader now also recognizes `.ttml` and `.krc`. The
+//  - The sidecar reader also recognizes `.ttml` and `.krc`. The
 //   scan-time importer prefers the rich-format file when present and stores
 //   its parsed payload in song_masters.lyrics_rich; the plain `.lrc` (if
 //   also present) still fills `lyrics` for v1 clients.

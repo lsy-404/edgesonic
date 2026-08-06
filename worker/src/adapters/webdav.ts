@@ -36,7 +36,7 @@ export function createWebDAVAdapter(
   presign(uri: string, rangeHeader?: string): Promise<WebDAVPresignResult | null>;
 } {
   return {
-    // 089 S2 — Write a body to WebDAV via HTTP PUT. Uses the same credential
+    // Write a body to WebDAV via HTTP PUT. Uses the same credential
     // resolution and path encoding as stream(). The URI must be
     // `webdav://<sourceId>/<relative-path>`.
     async put(

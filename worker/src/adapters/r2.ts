@@ -17,7 +17,7 @@ import type { StorageAdapter, StreamResult } from "./index";
 
 export function createR2Adapter(bucket: R2Bucket): StorageAdapter {
   return {
-    // 089 S2 — Write a new object into the R2 bucket. The URI must be
+    // Write a new object into the R2 bucket. The URI must be
     // `r2://<key>` where <key> is the full object key (e.g. `music/album/track.mp3`).
     async put(
       uri: string,
@@ -35,7 +35,7 @@ export function createR2Adapter(bucket: R2Bucket): StorageAdapter {
 
       if (range) {
         const match = range.match(/bytes=(\d+)-(\d*)/);
-        // 138 — `bytes=0-` (open-ended from offset 0) is semantically the
+        // `bytes=0-` (open-ended from offset 0) is semantically the
         // whole file. Treat it as a non-range GET so R2 returns the complete
         // object in a single 200 response (avoids any R2 range-stream edge
         // behaviour that could stall the browser's demuxer after the metadata

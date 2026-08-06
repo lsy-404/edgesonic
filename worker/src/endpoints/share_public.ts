@@ -20,7 +20,7 @@
 // metadata) so that opening the link in a browser shows context instead of a
 // raw byte stream. The actual audio bytes moved to `?stream=1` so the inline
 // <audio src> still works. Audio-only clients (VLC etc.) hit `?stream=1`
-// directly; UA sniffing intentionally not implemented (see task 075 Part C).
+// directly; UA sniffing intentionally not implemented.
 import { Hono } from "hono";
 import { createQueries } from "../db/queries";
 import { parseStorageUri } from "../adapters/index";

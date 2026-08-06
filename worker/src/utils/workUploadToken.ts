@@ -24,9 +24,9 @@
 // `work_queue.claimed_by === session.user.username` so even a leaked token
 // can only be redeemed by the worker that actually claimed the row.
 //
-// HMAC secret derivation (updated 066) — preferred:
+// HMAC secret derivation — preferred:
 //  env.WORK_UPLOAD_HMAC_KEY (wrangler secret, ≥32 random bytes)
-// fallback (compatibility with 053-era deployments that haven't yet pushed
+// fallback (compatibility with older deployments that haven't yet pushed
 // the secret):
 //  `${env.INSTANCE_ID}:${STATIC_SALT}`
 //

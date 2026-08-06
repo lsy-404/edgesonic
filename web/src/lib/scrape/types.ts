@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Shared types for the metadata scrape pipeline (task 040).
+// Shared types for the metadata scrape pipeline.
 //
 // Each provider in lib/scrape/{netease,qmusic,kugou}.ts normalises its
 // upstream response into ScrapeResult[]; the aggregator (lib/scrape/index.ts)
@@ -36,7 +36,7 @@ export interface ScrapeResult {
   albumArtist?: string;
   album?: string;
   year?: number;
-  /** Optional remote cover URL. 040 only carries it; 042 will download + write. */
+  /** Optional remote cover URL. The scraper only carries it; the tag editor downloads + writes. */
   coverUrl?: string;
   /** Optional inline lyrics (already fetched). NetEase often inlines, others don't. */
   lyrics?: string;

@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Kugou scrape adapter (task 040).
+// Kugou scrape adapter.
 //
 // API: songsearch.kugou.com/song_search_v2 (the v2 endpoint is the easiest
 // public one — no signature param required).

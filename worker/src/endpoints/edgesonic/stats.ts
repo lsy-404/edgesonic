@@ -26,7 +26,7 @@ export const statsRoutes = new Hono<{
 }>();
 
 // GET /edgesonic/stats/library
-// 164: real COUNT(*) totals (artists/albums/songs) for the Dashboard stat
+// Real COUNT(*) totals (artists/albums/songs) for the Dashboard stat
 // tiles — same "browse" permission as the /rest/* Subsonic reads it's
 // replacing (getArtists / the old capped search3 call), so any logged-in
 // user who can see the library sees an accurate count of it, not just admins.

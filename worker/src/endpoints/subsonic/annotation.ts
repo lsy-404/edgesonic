@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Subsonic Annotation endpoints (task 033).
+// Subsonic Annotation endpoints.
 //
 // Routes:
 //   - star / unstar        (id|albumId|artistId, repeatable)
@@ -29,8 +29,8 @@
 // getStarred / getRandomSongs require `browse`.
 //
 // Field back-fill (starred / userRating / playCount on artist/album/song
-// responses) is NOT done here — that belongs to task 035 (OpenSubsonic
-// declaration + browsing field enrichment).
+// responses) is NOT done here — that belongs to the OpenSubsonic
+// declaration + browsing field enrichment work.
 
 import { Hono } from "hono";
 import { createQueries } from "../../db/queries";
@@ -186,7 +186,7 @@ const scrobbleHandler = async (c: import("hono").Context) => {
   // Subsonic spec:
   //  submission=true (default) → song actually played to completion: D1 count++
   //   submission=false         → "now playing" heartbeat
-  // 047: BOTH update KV `now_playing:{username}` so getNowPlaying can surface
+  // BOTH update KV `now_playing:{username}` so getNowPlaying can surface
   // the active stream. submission=false only writes KV; submission=true writes
   // KV *and* the D1 annotations row.
   const submission = parseBool(c.req.query("submission"), true);
@@ -297,14 +297,14 @@ register("getStarred2", permissionMiddleware("browse"), getStarredHandler("starr
 // getRandomSongs
 // =============================================================================
 const getRandomSongsHandler = async (c: import("hono").Context) => {
-  // 157: was capped at 500 for no documented reason — dropped, keeping only
+  // This was capped at 500 for no documented reason — dropped, keeping only
   // the floor of 1 (reject zero/negative).
   const size = Math.max(parseIntQ(c.req.query("size")) ?? 10, 1);
   const genre = c.req.query("genre") || undefined;
   const fromYear = parseIntQ(c.req.query("fromYear"));
   const toYear = parseIntQ(c.req.query("toYear"));
   // musicFolderId intentionally ignored: EdgeSonic exposes a single folder
-  // (see getMusicFolders); 038 will revisit when multi-folder support lands.
+  // (see getMusicFolders); revisit when multi-folder support lands.
 
   const queries = createQueries((c.env as Env).DB);
   const songs = await queries.getRandomSongs({ size, genre, fromYear, toYear });

@@ -121,7 +121,7 @@ async function resolveLyrics(
   return fetched;
 }
 
-// 0259 — rich-lyrics resolver. Returns a parsed RichLyrics payload (with
+// Rich-lyrics resolver. Returns a parsed RichLyrics payload (with
 // cueLine/cue/agents) when a word-level source is available, else null.
 // Resolution order:
 //  1. song_masters.lyrics_rich (D1) — populated by scan-time TTML/KRC sidecar

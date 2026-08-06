@@ -21,7 +21,7 @@
 // The only code-level escape hatch is to stop re-fetching from WebDAV at all:
 // on first play we copy the whole file into R2 in the background and register
 // a source_type='cached' song_instances row. The stream selector already
-// prefers r2:// instances (093), so the next play automatically rides the R2
+// prefers r2:// instances, so the next play automatically rides the R2
 // fast path (Worker binding, or a presigned 302 when enable_r2_presign is on).
 //
 // caching itself is now gated per-source (storage_sources.cache_tier)

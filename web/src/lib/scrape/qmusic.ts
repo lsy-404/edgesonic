@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// QQ Music (Tencent) scrape adapter (task 040).
+// QQ Music (Tencent) scrape adapter.
 //
 // API: c.y.qq.com/soso/fcgi-bin/client_search_cp (GET ?format=json)
 //

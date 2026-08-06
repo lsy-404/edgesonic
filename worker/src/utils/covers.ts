@@ -63,12 +63,12 @@ async function extractFromInstance(
 }
 
 /**
- * On-demand album cover resolution — EMBEDDED ART ONLY (102).
+ * On-demand album cover resolution — EMBEDDED ART ONLY.
  *
- * 076 removed the directory-image fallback (cover/folder/front/albumart in
- * the file's parent dir): a shared NAS-root cover.jpg got assigned to every
+ * The directory-image fallback (cover/folder/front/albumart in the file's
+ * parent dir) was dropped: a shared NAS-root cover.jpg got assigned to every
  * child album. Embedded art (ID3v2 APIC / FLAC PICTURE) has no such hazard
- * the picture lives inside one of the album's own files — so 102 re-enables
+ * the picture lives inside one of the album's own files — so this re-enables
  * the on-demand path restricted to embedded extraction. Albums without
  * embedded art keep cover_r2_key NULL and getCoverArt keeps returning 404.
  * The result is cached in R2 (covers/<albumId>) and albums.cover_r2_key.
@@ -114,7 +114,7 @@ export async function extractEmbedded(
  // WAV needs a much bigger tail window than other formats: rippers commonly
   // append the whole "id3 " chunk (tags + APIC art) after "data", and that
   // chunk's own size scales with the embedded picture — the same class of
-  // bug 111 already fixed for the /tag/read text-tag path (slices.ts grew
+  // bug already fixed for the /tag/read text-tag path (slices.ts grew
   // its tail from 128KB to 2MB for exactly this reason). This on-demand
   // cover path had its own separate 256KB tail that was never updated, so a
   // WAV's id3/APIC chunk starting further back than 256KB from EOF was

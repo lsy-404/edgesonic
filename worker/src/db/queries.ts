@@ -63,7 +63,7 @@ export function createQueries(db: D1Database) {
       return result.results;
     },
 
-    // 164: real COUNT(*) totals for the Dashboard stat tiles — those used to
+    // Real COUNT(*) totals for the Dashboard stat tiles — those used to
     // be derived from a capped search3 call (songCount/albumCount:"500"),
     // which silently plateaus at exactly 500 for any library past that size
     // instead of showing the true total.
@@ -342,7 +342,7 @@ export function createQueries(db: D1Database) {
       const result = await db.prepare(
         // instances[0]` default already lands on the R2 copy when present
         // (Worker binding fast path + R2 presign eligible). Within the same
-        // source tier, higher bit_rate wins to preserve pre-093 quality
+        // source tier, higher bit_rate wins to preserve the earlier quality
         // preference. media.ts still runs the full selector loop for
         // format/maxBitRate overrides.
         `SELECT * FROM song_instances
@@ -363,7 +363,7 @@ export function createQueries(db: D1Database) {
       artistCount?: number; artistOffset?: number;
       albumCount?: number; albumOffset?: number;
       songCount?: number; songOffset?: number;
-      // 154: EdgeSonic-only extension, not part of the Subsonic spec. Defaults
+      // EdgeSonic-only extension, not part of the Subsonic spec. Defaults
       // to the original alphabetical order so third-party Subsonic clients
       // (which never send this) see no behavior change; the web Songs tab
       // passes "newest"/"oldest" to browse by library insertion time.
@@ -448,7 +448,7 @@ export function createQueries(db: D1Database) {
       ).bind(ann.user_id, ann.item_id, ann.item_type, ann.play_count, ann.play_date, ann.rating, ann.starred, ann.starred_at).run();
     },
 
-    // --- 033: Annotation endpoint helpers ---
+    // --- Annotation endpoint helpers ---
 
     // Set starred=1 + starred_at=now for one item; UPSERT preserves other columns.
     async starItem(userId: string, itemId: string, itemType: "song" | "album" | "artist"): Promise<void> {
@@ -995,13 +995,13 @@ export function createQueries(db: D1Database) {
 
     // ========================================================================
     // ========================================================================
-    // After the browser-pool worker (053) uploads a transcoded blob to R2,
+    // After the browser-pool worker uploads a transcoded blob to R2,
     // we persist a song_instances row so the stream endpoint can short-circuit
     // future identical requests without queueing another transcode.
     //
   // - `id` is caller-provided (we use `si-bp-<random16>` from work_upload.ts
     //  so it's easy to grep / distinguish from upload-flow instances).
-    // - `source_id` is fixed to 'r2-local' to match 049's transcode_jobs path
+    // - `source_id` is fixed to 'r2-local' to match the transcode_jobs path
     //  (the output always lives in MUSIC_BUCKET).
     // - `parent_instance_id` is the original instance that triggered the
     //  transcode; tracking it lets the future tidy-up job cascade cleanly.
@@ -1056,7 +1056,7 @@ export function createQueries(db: D1Database) {
       }
     },
 
-    // Used by /rest/stream to short-circuit the 049 engine dispatch when the
+    // Used by /rest/stream to short-circuit the engine dispatch when the
     // browser pool (or pre-bake) has already produced the requested profile.
     async findTranscodedInstance(
       masterId: string,

@@ -35,7 +35,7 @@ export async function ensureNicknameColumn(env: { DB: D1Database }): Promise<voi
   }
 }
 
-// 0253 — artist biography / image_url / biography_source columns. Same
+// Artist biography / image_url / biography_source columns. Same
 // idempotent pattern as ensureNicknameColumn: Schema.sql declares them in
 // CREATE TABLE for fresh installs; this back-fills existing databases.
 export async function ensureArtistScrapeColumns(env: { DB: D1Database }): Promise<void> {
@@ -58,7 +58,7 @@ export async function ensureArtistScrapeColumns(env: { DB: D1Database }): Promis
   if (allDone) artistsEnsured = true;
 }
 
-// 0259 — song_masters.lyrics_rich column. Stores the JSON-serialized
+// song_masters.lyrics_rich column. Stores the JSON-serialized
 // RichLyrics payload (cueLine/cue/agents) produced from TTML/KRC/enhanced
 // LRC sidecars or NetEase klyric. NULL when only line-level LRC is
 // available; the getLyricsBySongId endpoint degrades to lyrics then.

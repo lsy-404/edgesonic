@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 ﻿// ============================================================================
-// Task 043 鈥?Third-party metadata proxy (last.fm).
+// Third-party metadata proxy (last.fm).
 //
 // Exposes the four Subsonic "info" endpoint families:
 //  getArtistInfo / getArtistInfo2
@@ -141,7 +141,7 @@ async function artistInfoHandler(
     const count = Math.max(1, Math.min(isNaN(countRaw) ? 20 : countRaw, 100));
     const includeNotPresent = (c.req.query("includeNotPresent") || "").toLowerCase() === "true";
 
-    // 260: bio/cover come from whichever source (netease/qmusic/lastfm) is
+    // Bio/cover come from whichever source (netease/qmusic/lastfm) is
     // enabled and highest-priority per admin config — last.fm is no longer
     // hardcoded first. D1 cache (cron-backfilled) always wins outright since
     // it costs nothing to read.
@@ -292,7 +292,7 @@ async function similarSongsHandler(
 // (registration at file bottom)
 
 // ---------------------------------------------------------------------------
-// getTopSongs (047 鈥?local-first, last.fm fallback)
+// getTopSongs — local-first, last.fm fallback
 //
 // Strategy:
 //  1. D1 first: select up to `count` song_masters for this artist ranked by

@@ -113,7 +113,7 @@ sourcesRoutes.get("/sources/list", async (c) => {
         rootPath: s.root_path ?? "",
         username: s.username ?? "", enabled: String(!!s.enabled),
         lastSync: s.last_sync ? String(s.last_sync) : "0",
-        // 089 S2 — 'library' | 'sync_only'
+        // 'library' | 'sync_only'
         mode: s.mode ?? "library",
         region: s.region ?? "us-east-1",
         presignUsername: s.presign_username ?? "",
@@ -149,7 +149,7 @@ sourcesRoutes.post("/sources/add", permissionMiddleware("manage_sources"), async
   if (!body.type || !body.base_url) {
     return c.text(subsonicError(0, "Missing type or base_url"), 400, XML);
   }
-  // 089 S2 — validate mode
+  // validate mode
   const mode = body.mode ?? "library";
   if (mode !== "library" && mode !== "sync_only") {
     return c.text(subsonicError(0, "Invalid mode: must be 'library' or 'sync_only'"), 400, XML);
@@ -191,7 +191,7 @@ sourcesRoutes.post("/sources/update", permissionMiddleware("manage_sources"), as
   if (!body.id) {
     return c.text(subsonicError(0, "Missing id"), 400, XML);
   }
-  // 089 S2 — validate mode if provided
+  // validate mode if provided
   if (body.mode !== undefined && body.mode !== "library" && body.mode !== "sync_only") {
     return c.text(subsonicError(0, "Invalid mode: must be 'library' or 'sync_only'"), 400, XML);
   }
@@ -212,7 +212,7 @@ sourcesRoutes.post("/sources/update", permissionMiddleware("manage_sources"), as
   }
   if (body.root_path !== undefined) { sets.push("root_path = ?"); binds.push(body.root_path); }
   if (body.enabled !== undefined) { sets.push("enabled = ?"); binds.push(body.enabled ? 1 : 0); }
-  // 089 S2 — update mode
+  // update mode
   if (body.mode !== undefined) { sets.push("mode = ?"); binds.push(body.mode); }
   // update cache_tier
   if (body.cache_tier !== undefined) { sets.push("cache_tier = ?"); binds.push(body.cache_tier); }

@@ -22,13 +22,13 @@
 //  * 更新 song_instances 的物理参数（bit_rate/sample_rate/channels/duration）
 //  * 标记 tag_scanned = 1
 //
-// 这里只做端点壳子：参数校验 → cleanInput → applyMetadataResult → 包成 041 既有响应。
+// 这里只做端点壳子：参数校验 → cleanInput → applyMetadataResult → 包成既有响应。
 // 对调用方（Files 浏览器）签名 / 返回字段全部保持兼容。本文件保留两符号的 re-export
 // 给历史路径，避免外部代码迁移负担。
 //
 // 设计原则保持不变：
-//  * 不调用 worker/src/utils/tags.ts → 041 的核心动机就是节约 Workers CPU
-//  * 不复用 tagedit.applyTagsToSong → 那条路径会 rewriteInstance 强写文件，041 只落 D1
+//  * 不调用 worker/src/utils/tags.ts → 本路径的核心动机就是节约 Workers CPU
+//  * 不复用 tagedit.applyTagsToSong → 那条路径会 rewriteInstance 强写文件，本路径只落 D1
 // ============================================================================
 
 import { Hono } from "hono";
@@ -40,7 +40,7 @@ import {
 } from "../../utils/metadataApply";
 
 // Re-export so any caller historically pulling SubmittedMetadata / relinkArtistAlbum
-// from "endpoints/tag/submit" keeps working — 077 only moved the source of truth.
+// from "endpoints/tag/submit" keeps working — only the source of truth moved.
 export { relinkArtistAlbum, type SubmittedMetadata };
 
 export const metadataRoutes = new Hono();
@@ -96,7 +96,7 @@ metadataRoutes.post("/submit", permissionMiddleware("edit_tags"), async (c) => {
     return c.json({ ok: false, error: res.reason || "apply failed" }, code);
   }
 
-  // 041 response shape included album/artist ids. The helper only returns
+  // The original response shape included album/artist ids. The helper only returns
   // masterId so we look the freshly-relinked fk's up here. This adds one D1
   // read on the happy path — negligible vs. the work it just did.
   const ids = await db.prepare(
@@ -112,7 +112,7 @@ metadataRoutes.post("/submit", permissionMiddleware("edit_tags"), async (c) => {
 });
 
 // ============================================================================
-// Input scrubbing — same shape as tagedit.cleanInput, plus the 041-only fields.
+// Input scrubbing — same shape as tagedit.cleanInput, plus this endpoint's own fields.
 // Kept inline because /submit's 400 "No usable tag fields" guard depends on it
 // running before applyMetadataResult (the helper would silently flip
 // tag_scanned=1 with no other UPDATE — fine for /work/submit, NOT fine for an

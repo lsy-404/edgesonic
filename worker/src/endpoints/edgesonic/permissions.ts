@@ -107,7 +107,7 @@ permissionsRoutes.post("/permissions/update", permissionMiddleware("manage_permi
 //  1. D1 is always updated first — the durable source of truth and the
 //    fallback path permissionMiddleware/hasPermission use when the env
 //    override below is unset or fails to parse.
-//  2. Best-effort: if CF_API_TOKEN/CF_ACCOUNT_ID are configured (054), push
+//  2. Best-effort: if CF_API_TOKEN/CF_ACCOUNT_ID are configured, push
 //    the same matrix as the PERMISSIONS_OVERRIDE Workers Secret (same
 //    write pattern as cf.ts:setToken) so subsequent requests skip the D1
 //    round-trip entirely. A push failure does NOT fail the request — D1

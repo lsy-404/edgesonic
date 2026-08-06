@@ -24,7 +24,7 @@
 //   GET  /edgesonic/cf/getCron     — level=3
 //   GET /edgesonic/cf/getAnalytics — level=3
 //
-// Design notes (per 054 brief):
+// Design notes:
 //  - Token storage is via Workers Secrets, NOT D1/KV encryption. We push the
 //   secret with CF API (PUT /accounts/{id}/workers/scripts/{name}/secrets).
 //  - "Fast update": admin POSTs new token here; the worker uses the *currently
@@ -353,7 +353,7 @@ cfRoutes.get("/cf/getCron", async (c) => {
 // [triggers] block was removed from wrangler.toml so the runtime CF API is
 // the single source of truth). After every deploy a super admin opens
 // Settings → Cloudflare integration and clicks "Ensure default cron"; this
-// endpoint inspects the live schedules and PUTs the default 046/051/052
+// endpoint inspects the live schedules and PUTs the default
 // cadence ("0 */1 * * *") only when the list is empty.
 //
 // Semantics:

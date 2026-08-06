@@ -164,11 +164,11 @@ async function openSourceForTranscode(
 // ============================================================================
 // GET /rest/stream
 // ----------------------------------------------------------------------------
-// New query params (036):
+// Query params:
 //   format             — target codec/container; 'raw' to skip transcoding
 //   maxBitRate         — kbps cap; triggers transcode when exceeded
 //   timeOffset         — seconds; **accepted but not honoured** in v1 (the
-//                        049 engine interface has no offset parameter).
+//                        engine interface has no offset parameter).
 //                        Response carries X-EdgeSonic-TimeOffset-Ignored:1
 //                        so clients can fall back gracefully.
 //  estimateContentLength — when 'true', emit a Content-Length header derived
@@ -190,7 +190,7 @@ const streamHandler = async (c: Context) => {
   const env = c.env as Env;
 
   const queries = createQueries(env.DB);
-  // 056/058 hotfix: 052b worker pool 任务 payload 携带 song_instances.id (si- 前缀)
+  // 兼容修复：worker pool 任务 payload 携带 song_instances.id (si- 前缀)
   // 而 Subsonic 标准 stream id = song_masters.id (sm- 前缀)。让 stream 端点宽容地
   // 接受 instance id：当 id 以 'si-' 开头时反查对应 master_id，再走标准路径。
   let resolvedId = id;
@@ -209,7 +209,7 @@ const streamHandler = async (c: Context) => {
     if (format !== "raw" && inst.suffix === format) { selected = inst; break; }
     if (inst.suffix === selected.suffix && (inst.bit_rate || 0) > (selected.bit_rate || 0)) selected = inst;
     if (inst.suffix === "flac" && selected.suffix !== "flac") selected = inst;
-    // eligible). Pre-093 checked source_id === 'local' which never matched
+    // eligible). This used to check source_id === 'local' which never matched
     // the actual R2 source_id 'r2-local', so R2 copies were never preferred.
     if (inst.storage_uri.startsWith("r2://") && !selected.storage_uri.startsWith("r2://")) selected = inst;
     if (maxBitRate > 0 && (inst.bit_rate || 0) <= maxBitRate && (selected.bit_rate || 0) > maxBitRate) selected = inst;
@@ -268,7 +268,7 @@ const streamHandler = async (c: Context) => {
       } // end else (no cached transcoded instance)
     } else {
       // pickProfile returned null → no profile in catalogue matches the
-      // client's (format, maxBitRate). Same fallback as 053: serve raw.
+      // client's (format, maxBitRate). Same fallback as the browser pool: serve raw.
     }
   }
 
@@ -344,8 +344,8 @@ const streamHandler = async (c: Context) => {
       const secretKey = env.R2_SECRET_ACCESS_KEY;
       const accountId = env.CF_ACCOUNT_ID;
       const schemeAllowed = strategy === "always" || strategy === "r2_only";
-      // 138 — re-enabled R2 presign 302 for browser sessions. The original
-      // ban (task 001) existed because the presigned URL signed the Range
+      // Re-enabled R2 presign 302 for browser sessions. The original
+      // ban existed because the presigned URL signed the Range
       // header; the browser's own Range value 403'd, leaving only the ~1.2 MB
       // pre-buffer before playback died. r2presign.ts now signs `host` only,
       // so any Range the <audio> element sends is accepted by R2. COEP is
@@ -408,7 +408,7 @@ const streamHandler = async (c: Context) => {
         // too, not just browsers — external players got a 302 they couldn't
         // follow and reported "unable to load media". It also hands the
         // WebDAV credentials to every streaming client.
-        // SECURITY (199): Presign disabled by default. To enable, set enable_webdav_presign=1
+        // SECURITY: Presign disabled by default. To enable, set enable_webdav_presign=1
         // in feature_strings ONLY if you have a safe presign implementation that does not
         // embed credentials in the URL.
         const presignOn = await getFeatureString(env, "enable_webdav_presign", "0");
@@ -537,19 +537,16 @@ async function tryTranscodeStream(
     ctx.executionCtx.waitUntil((async () => {
       try {
         const sourceUri = `${ctx.origin}/rest/stream?id=${encodeURIComponent(ctx.instanceId)}&format=raw`;
-        const queueId = await engine.enqueueTranscodeTask(sourceUri, ctx.instanceId, profile, "PENDING_URL");
-        const token = await signUploadToken(env, queueId);
-        const uploadUrl = `${ctx.origin}/edgesonic/work/upload?id=${encodeURIComponent(queueId)}&token=${encodeURIComponent(token)}`;
-        const patched = await env.DB.prepare(
-          `SELECT payload FROM work_queue WHERE id = ?`,
-        ).bind(queueId).first<{ payload: string }>();
-        if (patched?.payload) {
-          const obj = JSON.parse(patched.payload);
-          obj.uploadUrl = uploadUrl;
-          await env.DB.prepare(
-            `UPDATE work_queue SET payload = ? WHERE id = ?`,
-          ).bind(JSON.stringify(obj), queueId).run();
-        }
+        // The engine sequences insert → patch upload URL → wake the pool, so
+        // a pushed task always carries a usable upload target. This path runs
+        // on ordinary playback, so it is the one that would hit the race most.
+        await engine.enqueueTranscodeTask(
+          sourceUri, ctx.instanceId, profile,
+          async (id) => {
+            const token = await signUploadToken(env, id);
+            return `${ctx.origin}/edgesonic/work/upload?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`;
+          },
+        );
       } catch {
         // pre-bake failure is non-fatal — the request still falls back to raw
       }
@@ -599,12 +596,12 @@ async function tryTranscodeStream(
 // ============================================================================
 // GET /rest/getCoverArt
 // ----------------------------------------------------------------------------
-// New query param (036):
+// Query param:
 //  size — numeric pixel hint (64 / 96 / 128 / 192 / 256 / 384 / 512). When
 //        present and allowed, the cached R2 key becomes covers/<id>_s<size>
 //        so different size requests stay separate in client caches. The
-//        server does **not** actually resize the image (see findings.md
-//        decision 1) — the underlying bytes are the original.
+//        server does **not** actually resize the image — the underlying
+//        bytes are the original.
 // ============================================================================
 const getCoverArtHandler = async (c: Context) => {
   const id = c.req.query("id");

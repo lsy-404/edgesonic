@@ -31,7 +31,7 @@ export function createSubsonicAdapter(
   _env?: unknown,
 ): StorageAdapter {
   return {
-    // 089 S2 — Subsonic sources are read-only; writing is not supported.
+    // Subsonic sources are read-only; writing is not supported.
     async put(): Promise<void> {
       throw new Error("read-only source: subsonic adapter does not support put");
     },
@@ -56,7 +56,7 @@ export function createSubsonicAdapter(
       if (range) headers["Range"] = range;
       if (chain.length > 0) {
         headers["X-EdgeSonic-Chain"] = chain.join(",");
-        // 178 (OpenSubsonic #254): also emit the standard loop-prevention header
+        // OpenSubsonic #254: also emit the standard loop-prevention header
         // (chronological UUID path incl. our own INSTANCE_ID appended above) so
         // upstreams implementing the spec can break loops without EdgeSonic.
         headers["X-OpenSubsonic-Path"] = chain.join(",");

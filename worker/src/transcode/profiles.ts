@@ -21,7 +21,7 @@
 import type { TranscodeProfile } from "./engine";
 
 // Default catalogue. The Settings UI multi-select source-of-truth.
-// Bitrates are kbps. priority is used only by 036 when picking the best
+// Bitrates are kbps. priority is used only when picking the best
 // available pre-baked instance for a stream request.
 export const DEFAULT_PROFILES: TranscodeProfile[] = [
   { id: "mp3-128k", codec: "libmp3lame", bitrate: 128, container: "mp3",  contentType: "audio/mpeg",        priority: 1 },

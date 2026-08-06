@@ -305,7 +305,7 @@ export interface PictureLocation {
   offset: number;
   length: number;
   mime: string;
-  // pre-111 caller (offsets were always head-relative); "tail" only when the
+  // older callers (offsets were always head-relative); "tail" only when the
   // picture was found via the WAV tail-scan fallback, so callers know they
   // must index into the TAIL slice they fetched, not the head.
   source?: "head" | "tail";

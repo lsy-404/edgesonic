@@ -30,7 +30,7 @@ const props = withDefaults(
     busy?: boolean;
     message?: string;
     error?: boolean;
-    // 149: URL of the cover currently on file (single mode only — batch targets
+    // URL of the cover currently on file (single mode only — batch targets
     // may span different albums, so there's no one image to preview/reuse).
     // Shown as the drop-zone's starting preview, and re-fetched + compressed
     // when the user clicks the {write} keyword instead of relying on the
@@ -348,9 +348,9 @@ function blobToBase64(blob: Blob): Promise<string> {
         {{ props.title || (isBatch ? t("tagEditor.batchTitle", { n: songIds.length }) : t("tagEditor.singleTitle")) }}
       </div>
 
-      <!-- cover slot — 042: drag/drop or click to pick. Canvas-compressed to
+      <!-- cover slot — drag/drop or click to pick. Canvas-compressed to
            ≤500KB JPEG client-side, base64 attached to the submit payload.
-           149: pre-loads the song's existing cover (single mode) as the
+           Pre-loads the song's existing cover (single mode) as the
            starting preview so the modal doesn't look art-less on open. -->
       <slot name="cover">
         <div
@@ -471,7 +471,7 @@ function blobToBase64(blob: Blob): Promise<string> {
           </div>
         </div>
 
-        <!-- Comment / Lyrics (lyrics supports {null}/{write}/{export} keywords — 095) -->
+        <!-- Comment / Lyrics (lyrics supports {null}/{write}/{export} keywords) -->
         <div class="te-row">
           <input v-if="isBatch" type="checkbox" v-model="apply.comment" class="apply-check" :title="t('tagEditor.applyField')" />
           <div class="form-group" style="flex:1">
@@ -491,7 +491,7 @@ function blobToBase64(blob: Blob): Promise<string> {
 
       <p class="field-hint">{{ isBatch ? t("tagEditor.hintBatch") : t("tagEditor.hintSingle") }}</p>
 
-      <!-- extras slot — 040 will inject scrape buttons here -->
+      <!-- extras slot — scrape buttons are injected here -->
       <slot name="extras" :patch-preview="patchPreview" :form="form" :apply="apply"></slot>
 
       <p v-if="message" :class="['te-msg', { error: error }]">{{ message }}</p>

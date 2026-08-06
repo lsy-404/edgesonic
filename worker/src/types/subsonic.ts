@@ -16,7 +16,7 @@
 import type { Artist, Album, SongMaster, Playlist, Bookmark, PlayQueue, InternetRadioStation, Share, PodcastChannel, PodcastEpisode } from "./entities";
 
 // All three mapXxx functions accept this as an optional 3rd arg so existing
-// callers (037 detail maps, etc.) compile unchanged.
+// callers (detail maps, etc.) compile unchanged.
 export interface AnnotationLite {
   starred: number;                  // 0|1
   starred_at: number | null;        // unix seconds
@@ -92,7 +92,7 @@ export function mapAlbum(a: Album, artistName?: string, annotation?: AnnotationL
   return applyAnnotation(obj, annotation);
 }
 
-// mapper picks them up when present. Before 107 `album` was set to the album
+// mapper picks them up when present. `album` used to be set to the album
 // ID (parentId), which broke every client that displays Child.album as text.
 // queries.ts SongPhysical); clients gate playback on suffix/contentType/
 // bitRate/size/path, so emit them whenever the row has them.

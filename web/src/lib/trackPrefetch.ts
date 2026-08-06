@@ -25,7 +25,7 @@ export interface PrefetchTrack {
 export interface TrackLyricsPayload {
   structured?: string;
   lrc?: string;
-  // 0259 — raw structuredLyrics XML payload as returned by the songLyrics v2
+  // Raw structuredLyrics XML payload as returned by the songLyrics v2
   // endpoint with `enhanced=true`. Includes cueLine/cue/agents/kind. The
   // frontend parser (NowPlaying.vue) splits this into tracks the same way it
   // splits the v1 `structured` payload, then falls back to `structured` when
@@ -157,7 +157,7 @@ export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAut
   }
   cacheStats.lyricsMisses++;
   return remember(lyricsCache, key, async () => {
-    // 0259 — prefer the enhanced endpoint so karaoke rendering has cue data
+    // Prefer the enhanced endpoint so karaoke rendering has cue data
     // when the server has it. We request once; the response carries both
     // the v2 cueLine shape and the v1 line array. On failure / empty
     // lyricsList we fall back to v1 (no enhanced) and finally to getLyrics.

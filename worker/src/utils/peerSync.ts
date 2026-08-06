@@ -147,7 +147,7 @@ async function peerCall(
     else qs.append(k, v);
   }
   const resp = await fetch(`${cfg.url}/rest/${method}?${qs.toString()}`, {
-    // Advertise our instance in the loop-prevention header (178) so an
+    // Advertise our instance in the loop-prevention header so an
     // EdgeSonic peer can break relay loops.
     headers: { "X-OpenSubsonic-Path": "peer-sync" },
   });

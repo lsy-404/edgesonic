@@ -18,7 +18,7 @@
 // R2_SECRET_ACCESS_KEY) are configured and the feature flag is on, so the
 // Dashboard can surface a "stream speed may be limited" hint when presign is
 // inactive. The R2 account id is read from CF_ACCOUNT_ID (already required by
-// the 054 Cloudflare integration) — no separate R2_ACCOUNT_ID secret exists.
+// the Cloudflare integration) — no separate R2_ACCOUNT_ID secret exists.
 // Never echoes the secret values — only booleans.
 
 import { Hono } from "hono";

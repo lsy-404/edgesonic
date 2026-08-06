@@ -22,7 +22,7 @@
 //
 // All endpoints live under /edgesonic/clone/* behind authMiddleware (path
 // prefix /edgesonic/ → web session only). Per-endpoint authorisation is
-// graded (176):
+// graded:
 //  * upsertMaster / ingestAudio / fetchAudioToR2 — manage_users (writes to the
 //    shared library / R2).
 //  * upsertUser — super admin only (clone-all-users provisions accounts).
@@ -346,7 +346,7 @@ async function resolveCloneId(db: D1Database, sourceKey: string, itemType: "song
 // Bulk variant of resolveCloneId: one clone_id_map query per 80 ids instead of
 // one per item. Returns remoteId → localId (unmapped ids map to themselves).
 // Keeps upsertStarred/upsertPlaylist within the subrequest budget on large
-// lists (176).
+// lists.
 async function resolveCloneIds(
   db: D1Database,
   sourceKey: string,
@@ -443,7 +443,7 @@ async function resolveCloneItemRefs(
 }
 
 // Resolve the local target user for a starred/playlist clone and enforce the
-// graded permission model (176): writing to your own account needs no extra
+// graded permission model: writing to your own account needs no extra
 // permission; writing to a different user requires manage_users.
 async function resolveTargetUser(
   c: Context<{ Bindings: Env; Variables: { user: User } }>,
@@ -454,7 +454,7 @@ async function resolveTargetUser(
   if (target === sessionUser) return { ok: true, userId: target };
   // An unknown target user falls back to the caller's own account (writing to
   // self needs no extra permission) — this keeps a clone from failing when the
-  // upstream owner has no local counterpart, matching the pre-176 fallback.
+  // upstream owner has no local counterpart, matching the earlier fallback.
   const exists = await c.env.DB.prepare("SELECT username FROM users WHERE username = ?")
     .bind(target).first<{ username: string }>();
   if (!exists) return { ok: true, userId: sessionUser };
@@ -540,7 +540,7 @@ function signedUpstreamUrl(baseUrl: string, username: string, password: string, 
 // EdgeSonic worker; the worker performs the upstream fetch server-side and
 // returns the raw response. This avoids browser CORS restrictions when the
 // upstream Subsonic server doesn't emit Access-Control-Allow-Origin.
-// 176: session-only (any authenticated user). Non-admins need this to read the
+// Session-only (any authenticated user). Non-admins need this to read the
 // upstream they clone favourites/playlists from. The SSRF surface (server-side
 // fetch of a user-supplied URL) is an accepted trade-off for that flow.
 cloneRoutes.post("/clone/proxy", async (c) => {
@@ -729,7 +729,7 @@ cloneRoutes.post("/clone/upsertMaster", permissionMiddleware("manage_users"), as
 // Replaces local playlist rows + entries on each call (mirrors the
 // replacePlaylistSongs query semantics). INSERT OR REPLACE the playlist
 // header so re-cloning refreshes name/public/comment atomically.
-// 176: `owner` is the target local user. Writing to your own account needs no
+// `owner` is the target local user. Writing to your own account needs no
 // extra permission; a different owner requires manage_users. `append` lets the
 // browser stream a large playlist in bounded chunks — the first call (append
 // false) (re)creates the header and clears entries, each subsequent append
@@ -858,7 +858,7 @@ cloneRoutes.post("/clone/upsertPlaylist", async (c) => {
 // Uses starItem() semantics: UPSERT annotations, set starred=1 + starred_at.
 // We don't unstar items that are absent from the upstream list — a clone is
 // additive by design so local-only stars survive.
-// 176: `userId` is optional; omitted (or equal to the session user) → the stars
+// `userId` is optional; omitted (or equal to the session user) → the stars
 // land on the caller's own account (no extra permission). A different target
 // requires manage_users. Ids are resolved in bulk and inserted with one
 // db.batch so a chunk is a bounded number of subrequests; the browser sends
@@ -916,7 +916,7 @@ cloneRoutes.post("/clone/upsertStarred", async (c) => {
 // getStarred/getUsers responses expose the password as plaintext (Subsonic
 // spec requires it for token auth), so we hash here before INSERT. If the
 // caller already hashed, set `passwordHashed: true` to skip hashing.
-// 176: super admin only — the clone-all-users flow provisions local accounts
+// Super admin only — the clone-all-users flow provisions local accounts
 // (and their login passwords), a strictly higher-privilege operation than the
 // per-account favourite/playlist clone.
 cloneRoutes.post("/clone/upsertUser", permissionMiddleware("manage_users"), async (c) => {
@@ -1003,7 +1003,7 @@ const MAX_INGEST_BYTES = 256 * 1024 * 1024;
 // Shared by ingestAudio (bytes come from the browser's POST body, already
 // fully buffered by the time Hono hands it to us) and fetchAudioToR2 (bytes
 // come from a server-side fetch of the upstream /rest/stream — streamed
-// straight through to R2 rather than buffered, see 159) — both just need
+// straight through to R2 rather than buffered) — both just need
 // "verify master exists, R2 put, idempotent song_instances insert".
 async function registerAudioInstance(
   env: Env,
@@ -1157,7 +1157,7 @@ cloneRoutes.post("/clone/fetchAudioToR2", permissionMiddleware("manage_users"), 
   if (!resp.ok) {
     return c.json({ ok: false, error: `upstream stream returned HTTP ${resp.status}` }, 502);
   }
-  // 159: was `await resp.arrayBuffer()` — buffering the whole file into
+  // Was `await resp.arrayBuffer()` — buffering the whole file into
   // Worker memory before handing it to R2. Lossless files easily run
   // 30-80MB+; a few of those in flight at once (CLONE_AUDIO_CONCURRENCY=3
   // in Tools.vue) was blowing past the isolate's memory budget, surfacing

@@ -204,7 +204,7 @@ workUploadRoutes.post("/work/upload", async (c) => {
 
 // Tiny suffix → MIME fallback for when the profile lookup misses (unknown
 // profile id sneaked through enqueue). Kept narrow to the containers the
-// 049 catalogue actually emits.
+// transcode catalogue actually emits.
 function suffixToMime(suffix: string): string | null {
   switch (suffix.toLowerCase()) {
     case "mp3":  return "audio/mpeg";

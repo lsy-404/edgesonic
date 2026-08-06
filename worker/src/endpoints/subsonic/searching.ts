@@ -111,7 +111,7 @@ const search1Handler = async (c: Context): Promise<Response> => {
   const albumQ = c.req.query("album") || "";
   const titleQ = c.req.query("title") || "";
   const anyQ = c.req.query("any") || "";
-  // 157: was capped at 500 for no documented reason, unlike search2/3 (this
+  // This was capped at 500 for no documented reason, unlike search2/3 (this
   // handler's direct siblings below) which have never had a ceiling.
   const count = parseInt(c.req.query("count") || "20", 10) || 20;
   const offset = parseInt(c.req.query("offset") || "0", 10) || 0;

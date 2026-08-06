@@ -143,7 +143,7 @@ const getSongHandler = async (c: Context) => {
 
 const getIndexesHandler = async (c: Context) => {
   const queries = createQueries((c.env as Env).DB);
-  // Optional musicFolderId filter (038): "default" / "0" / "" → aggregate view.
+  // Optional musicFolderId filter: "default" / "0" / "" → aggregate view.
   const musicFolderId = c.req.query("musicFolderId") || undefined;
   const indexes = await queries.getArtistIndexes(musicFolderId);
   const allIds = indexes.flatMap((g) => g.artists.map((a) => a.id));
@@ -187,7 +187,7 @@ const getMusicFoldersHandler = async (c: Context) => {
 
 const albumList2Handler = async (c: Context, tag: "albumList" | "albumList2") => {
   const type = c.req.query("type") || "newest";
-  // 157: was capped at 500 for no documented reason — inconsistent with
+  // This was capped at 500 for no documented reason — inconsistent with
   // search2/3 (never capped) and low enough that a real library's alphabetical
   // album grid legitimately needs 3+ requests just to page through once.
   // D1's LIMIT itself has no such ceiling; only IN(?,?,...) bind-parameter
@@ -245,7 +245,7 @@ const getGenresHandler = async (c: Context) => {
 const getSongsByGenreHandler = async (c: Context) => {
   const genre = c.req.query("genre");
   if (!genre) return c.text(subsonicOK({ songsByGenre: {} }), 200, XML);
-  // 157: same arbitrary-500-cap removal as getAlbumList2 above.
+  // Same arbitrary-500-cap removal as getAlbumList2 above.
   const count = parseInt(c.req.query("count") || "10", 10) || 10;
   const offset = parseInt(c.req.query("offset") || "0", 10) || 0;
 

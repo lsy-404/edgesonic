@@ -27,9 +27,9 @@ import { timedFetch, SCRAPE_UA as UA } from "../../utils/scrapeFetch";
 //                                    (NetEase / QQ / Kugou) so the browser
 //                                    can bypass CORS + Referer checks.
 //   POST /rest/submitScrapeResult  — record one audit row in scrape_jobs.
-//                                    040 does NOT auto-apply: the result is
+//                                    Does NOT auto-apply: the result is
 //                                    pushed into TagEditor's form, then the
-//                                    user saves via the 037/039 writeTags
+//                                    user saves via the writeTags
 //                                    chain. We just remember which result
 //                                    was chosen for which song.
 //   GET  /rest/getScrapeHistory    — paginated history for the calling user.

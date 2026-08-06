@@ -41,7 +41,7 @@ interface SandboxBindings {
 
 export interface SandboxEngineOptions {
   // Which sandboxId pool to share. Defaults to "edgesonic-transcoder".
-  // 036 may switch to per-user pools to throttle isolation.
+  // May switch to per-user pools to throttle isolation.
   sandboxId?: string;
   // Port the container is listening on. Matches EXPOSE in the Dockerfile.
   port?: number;

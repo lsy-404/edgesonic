@@ -65,7 +65,7 @@ export interface TranscodeInput {
   body: ReadableStream<Uint8Array> | Uint8Array;
   contentType?: string;
   // Hint for engines that want to forward a Range request (none today, but
-  // 036 will use this for partial transcodes when stream timeOffset is set).
+  // reserved for partial transcodes when stream timeOffset is set).
   size?: number;
 }
 

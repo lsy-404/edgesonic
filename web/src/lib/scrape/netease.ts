@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// NetEase Music scrape adapter (task 040).
+// NetEase Music scrape adapter.
 //
 // API docs: https://music.163.com/api/search/get/web (POST form-urlencoded)
 //

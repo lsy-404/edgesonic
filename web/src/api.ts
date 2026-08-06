@@ -588,7 +588,7 @@ export function useAuth() {
     avatarKey.value = `avatars/${username.value}`;
   }
 
-  // === Tag edit helpers (task 039) — thin sugar over authFetch/authPost ===
+  // === Tag edit helpers — thin sugar over authFetch/authPost ===
   // readTags returns the latest known song row (used by editors to prefill).
   async function readTags(id: string): Promise<Record<string, string> | null> {
     const xml = await authFetch("getSong", { id });
@@ -603,7 +603,7 @@ export function useAuth() {
 
   interface WriteTagsResult { ok: boolean; error?: string; files?: Array<{ instanceId: string; uri: string; written: boolean; reason?: string }>; masterId?: string; }
   // `cover.data` is the raw base64 string (no data: prefix); the worker accepts
-  // either form. 042 ships ≤500KB JPEG/PNG produced by the canvas compressor
+  // either form. We ship ≤500KB JPEG/PNG produced by the canvas compressor
   // in TagEditor.vue.
   async function writeTags(
     id: string,
@@ -655,7 +655,7 @@ export function useAuth() {
     return JSON.parse(await tagPost("submit", { instanceId, tags }));
   }
 
-  // 089/S4 — XHR-based upload exposes onProgress for per-file progress bars.
+  // XHR-based upload exposes onProgress for per-file progress bars.
   // Auth is via signedParams() query string (same as all other storage calls).
   async function uploadFile(
     file: File,
@@ -696,9 +696,9 @@ export function useAuth() {
     });
   }
 
-  // 089/S4 — Cross-source copy: POST /storage/files/crossCopy with JSON body.
+  // Cross-source copy: POST /storage/files/crossCopy with JSON body.
   // Throws with the backend error message when ok:false so callers can surface it.
-  // 093f — optional registerInstance for the mirror-to-R2 flow: when present,
+  // Optional registerInstance for the mirror-to-R2 flow: when present,
   // the backend also creates a song_instances row for the new R2 copy.
   interface CrossCopyResult { ok: boolean; destUri?: string; instanceId?: string; error?: string; }
   interface RegisterInstanceOpts {

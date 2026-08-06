@@ -15,7 +15,7 @@
 
 export interface StorageAdapter {
   stream(uri: string, range?: string): Promise<StreamResult>;
-  // 089 S2 — Optional write capability. r2 and webdav implement this; url and
+  // Optional write capability. r2 and webdav implement this; url and
   // subsonic are read-only and either leave it undefined or throw. Callers must
   // check for undefined and surface a meaningful error before calling.
   put?(
@@ -67,7 +67,7 @@ interface SourceRow {
 export async function getSourceCredentials(
   db: D1Database,
   scheme: "webdav" | "subsonic",
-  // env kept for call-site compat; encryption removed (068 rolled back)
+  // env kept for call-site compat; encryption removed (rolled back)
   _env?: unknown,
 ): Promise<{ username: string; password: string; baseUrl: string } | null> {
   const source = await db

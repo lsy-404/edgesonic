@@ -11,7 +11,7 @@ const player = usePlayerStore();
 const { t } = useI18n();
 const { coverArtUrl, authFetch, username } = useAuth();
 
-// 0259 — lyrics model supports three layers:
+// Lyrics model supports three layers:
 //   * cueWord: word-level karaoke rendering. Each line carries an array of
 //     cues {start, end?, value}; the current word is highlighted by
 //     comparing player.currentTime against cue boundaries.
@@ -25,7 +25,7 @@ interface LyricLine {
   tr?: string;
   // word-level cues for this line; empty when only line timing exists.
   cues: LyricCue[];
-  // 0259 — when the source distinguishes multiple vocal agents (main +
+  // When the source distinguishes multiple vocal agents (main +
   // backing) for the same line, we emit one LyricLine per agent per
   // timestamp, each carrying its own cues + an agent label. The first
   // entry (role=main) leads; subsequent entries render as backing layers.
@@ -116,7 +116,7 @@ function parseStructuredLines(inner: string): LyricLine[] {
   return ordered.sort((a, b) => a.time - b.time);
 }
 
-// 0259 — parse the enhanced structuredLyrics payload (with cueLine/cue/
+// Parse the enhanced structuredLyrics payload (with cueLine/cue/
 // agents/kind) into LyricLine[]. Each <structuredLyrics> block becomes a
 // "track"; we render the main track's lines and overlay the translation
 // track's text under each main line via `tr`.
@@ -264,7 +264,7 @@ const activeIdx = computed(() => {
   return idx;
 });
 
-// 0259 — within the active line, find the cue whose [start, end) contains
+// Within the active line, find the cue whose [start, end) contains
 // the current playback time. Returns -1 when no cue is active (e.g. the
 // line is unsynced, or playback is between cues).
 const activeLineCues = computed(() => {
@@ -499,7 +499,7 @@ watch(coverSrc, (src) => {
   color: var(--color-text-secondary);
 }
 
-/* 0259 — word karaoke */
+/* word karaoke */
 .np-lyric-karaoke { display: inline; }
 .np-cue {
   color: var(--color-text-muted);

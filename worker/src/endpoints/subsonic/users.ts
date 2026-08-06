@@ -13,9 +13,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-﻿// 106 鈥?Subsonic 1.16.1 user management endpoints, exposed at /rest/*.
+﻿// Subsonic 1.16.1 user management endpoints, exposed at /rest/*.
 //
-// 055 moved the CRUD to /edgesonic/users/* (JSON, web-UI only). This file
+// The CRUD moved to /edgesonic/users/* (JSON, web-UI only). This file
 // restores the Subsonic-protocol surface so Subsonic clients (DSub admin
 // panel, Submariner, etc.) can call /rest/getUser, /rest/getUsers,
 // /rest/createUser, /rest/updateUser, /rest/deleteUser.

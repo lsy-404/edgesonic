@@ -80,7 +80,7 @@ const getPlaylistsHandler = async (c: import("hono").Context<{ Bindings: Env; Va
   const queries = createQueries(c.env.DB);
   // `username` param: callers with view_all_users_items (admin default) may
   // inspect another user's playlists. Everyone else silently falls back to
-  // their own list — 087 replaces the pre-existing `user.level === 3` check.
+  // their own list — this replaces the older `user.level === 3` check.
   const username = c.req.query("username");
   let target = user.username;
   if (username && username !== user.username) {
@@ -264,7 +264,7 @@ const deletePlaylistHandler = async (c: import("hono").Context<{ Bindings: Env; 
 
   await queries.deletePlaylist(id);
   // Outbound peer sync: pass through the playlist's pre-deletion owner/public
-  // so the scope filter (252 Phase 7) decides whether to propagate.
+  // so the scope filter decides whether to propagate.
   {
     const ownerIsLocalUser = existing.owner === user.username;
     const wasPublic = existing.public === 1;

@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// 044 Sharing — Subsonic share API.
+// Sharing — Subsonic share API.
 //
 // Provides:
 //   GET            /rest/getShares         — list caller's shares + entries
@@ -286,7 +286,7 @@ const deleteShareHandler = async (c: import("hono").Context<{ Bindings: Env; Var
 // ============================================================================
 // Route registration. Each handler is bound to both `/<name>` and the
 // `.view` legacy suffix × {GET, POST}. The public /share/:id was extracted to
-// endpoints/share_public.ts during the 055 refactor.
+// endpoints/share_public.ts during an earlier refactor.
 // ============================================================================
 function register(
   path: string,
