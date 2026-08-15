@@ -179,6 +179,12 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
 
   <div v-if="demoMode.enabled" class="demo-badge" role="status" aria-live="polite">
     <span class="demo-badge-text">{{ t("demo.badge") }}</span>
+    <a
+      class="demo-badge-deploy"
+      href="https://github.com/wuyilingwei/edgesonic/blob/main/docs/DEPLOYMENT.md"
+      target="_blank"
+      rel="noopener noreferrer"
+    >{{ t("demo.easyDeploy") }}</a>
   </div>
 
   <button
@@ -586,4 +592,11 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
   pointer-events: none;
 }
 .demo-badge-text { white-space: nowrap; }
+.demo-badge-deploy {
+  pointer-events: auto;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 </style>
