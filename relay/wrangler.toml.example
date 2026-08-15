@@ -1,0 +1,26 @@
+# EdgeSonic Installer Relay — wrangler config template
+# ---------------------------------------------------------------------------
+# This is the public, committable template. The real relay/wrangler.toml
+# carries a private account_id and is excluded via .gitignore.
+#
+# First-time setup:
+#   cp relay/wrangler.toml.example relay/wrangler.toml
+#   Replace the <placeholders> below with your own Cloudflare identifiers.
+#
+# ALLOWED_ORIGINS is a comma-separated, exact-match allowlist of installer
+# origins permitted to read this relay's responses (no wildcards — see
+# CONTRACT.md §3). It can stay a plain [vars] entry, or be pushed as a
+# Worker secret instead (`wrangler secret put ALLOWED_ORIGINS`) to change it
+# without a redeploy — the Worker reads it the same way either way.
+# ---------------------------------------------------------------------------
+name = "edgesonic-installer-relay"
+main = "src/index.ts"
+compatibility_date = "2025-05-24"
+compatibility_flags = ["nodejs_compat"]
+account_id = "<YOUR_CLOUDFLARE_ACCOUNT_ID>"
+
+[vars]
+ALLOWED_ORIGINS = "<https://your-installer.github.io>"
+
+[observability]
+enabled = true
