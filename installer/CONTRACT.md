@@ -1,10 +1,13 @@
-# Installer CORS Relay — Contract
+# Installer Backend — Contract
 
-Context: `installer/` (a static GitHub Pages site) cannot call `api.cloudflare.com` directly from the
-browser — confirmed by a live probe, Cloudflare's API sends no `Access-Control-Allow-*` headers on any
-method, including `OPTIONS` preflight. This relay is a small Worker, deployed on the project's own
-Cloudflare account, whose only job is: forward an allow-listed set of Cloudflare API calls and add CORS
-headers. It must never become a general-purpose open proxy.
+Context: the installer wizard cannot call `api.cloudflare.com` directly from the browser — confirmed by a
+live probe, Cloudflare's API sends no `Access-Control-Allow-*` headers on any method, including `OPTIONS`
+preflight. `worker/` is this app's own backend (same Worker that serves the built frontend via the
+`ASSETS` binding — see `worker/index.ts`), whose `/cf` and `/r2` routes forward an allow-listed set of
+Cloudflare API calls and add CORS headers. Same origin as the frontend, so the wizard's own calls need no
+CORS at all — the headers stay on regardless, so a separately-hosted frontend fork can still reach this
+backend cross-origin, gated by the `ALLOWED_ORIGINS` allowlist (§3). This must never become a
+general-purpose open proxy.
 
 Non-goals: no logging of `Authorization` headers or request/response bodies (Workers `console.log` calls
 go to observability — do not log secrets, ever, even at debug level). No persistence — pure passthrough,

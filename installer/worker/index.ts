@@ -14,12 +14,19 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //
-// Stateless CORS relay for the EdgeSonic guided installer. Two routes:
+// This Worker serves the installer wizard's static build (via the ASSETS
+// binding — Cloudflare tries the asset manifest before invoking this script,
+// so only unmatched paths reach here) and the CORS relay it needs:
 //   /cf/*             — allow-listed passthrough to api.cloudflare.com (cfProxy.ts)
 //   POST /r2/verify-keys — signed HEAD against R2's S3 endpoint (r2Verify.ts)
 // See CONTRACT.md for the full spec. Never log Authorization headers,
 // request/response bodies, or the R2 key pair — this Worker's entire trust
 // model depends on it being a dumb pipe nobody can extract tokens from.
+//
+// Same-origin means the wizard's own calls never need CORS at all, but the
+// headers stay on: CONTRACT.md's allowlist is deliberately reachable
+// cross-origin too (e.g. a separately-hosted fork of the frontend), gated by
+// the ALLOWED_ORIGINS allowlist rather than assuming same-origin only.
 
 import { Hono } from "hono";
 import { handleCfProxy } from "./cfProxy";
@@ -38,7 +45,10 @@ app.use("*", async (c, next) => {
 app.all("/cf/*", handleCfProxy);
 app.post("/r2/verify-keys", handleVerifyR2Keys);
 
+// Reaching here means neither a static asset nor an API route matched —
+// let the asset binding produce its own 404 page instead of a bare JSON body.
 app.notFound((c) => {
+  if (c.env.ASSETS) return c.env.ASSETS.fetch(c.req.raw);
   const headers = new Headers({ "Content-Type": "application/json" });
   applyCorsHeaders(c, headers);
   return new Response(JSON.stringify({ ok: false, error: "Not found" }), {

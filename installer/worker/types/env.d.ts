@@ -14,9 +14,12 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 interface Env {
-  // Comma-separated, exact-match allowlist of installer origins permitted to
-  // read this relay's responses (e.g. "https://user.github.io"). No
-  // wildcards — see CONTRACT.md §3. Read at request time so it can be
-  // updated (Worker var or secret) without touching source.
+  // Comma-separated, exact-match allowlist of cross-origin callers permitted
+  // to read this Worker's /cf and /r2 responses (e.g. a separately-hosted
+  // fork of the frontend). The wizard's own same-origin calls never need
+  // this. No wildcards — see CONTRACT.md §3. Read at request time so it can
+  // be updated (Worker var or secret) without touching source.
   ALLOWED_ORIGINS?: string;
+  // Static build output (installer/dist), bound via [assets] in wrangler.toml.
+  ASSETS: Fetcher;
 }

@@ -18,7 +18,7 @@
 // string — it runs inside a Worker, so no CORS rules apply to that fetch.
 // This installer runs in a browser calling a *different* origin (the Worker
 // it just deployed), which sends no Access-Control-Allow-Origin on that
-// route, and relay/CONTRACT.md doesn't cover proxying arbitrary deployed-
+// route, and CONTRACT.md doesn't cover proxying arbitrary deployed-
 // worker URLs either. A `mode: "cors"` fetch would reject with the same
 // opaque error on success and failure alike, so it can't be used here.
 // `no-cors` is the only mode that can tell "the origin answered" from "the

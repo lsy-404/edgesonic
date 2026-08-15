@@ -1,20 +1,22 @@
-name: Deploy Installer Relay
+name: Deploy Installer
 
-# Manual-only trigger. Deploys relay/ to the project's own Cloudflare
-# account (repo secrets CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID) — this
-# is shared infrastructure the installer calls, not something an end user
-# deploys for themselves.
+# Manual-only trigger. Builds the wizard frontend and deploys the whole
+# installer/ Worker (frontend + its backend routes, one origin) to the
+# project's own Cloudflare account (repo secrets CLOUDFLARE_API_TOKEN /
+# CLOUDFLARE_ACCOUNT_ID) — this is shared infrastructure the project hosts,
+# not something an end user deploying EdgeSonic itself needs to run.
 on:
   workflow_dispatch:
     inputs:
       allowed_origins:
-        description: 'Comma-separated exact-match allowlist of installer origins (e.g. https://<user>.github.io)'
-        required: true
+        description: 'Comma-separated exact-match allowlist of other origins allowed to call /cf and /r2 cross-origin (leave empty unless the frontend is hosted separately from this Worker)'
+        required: false
+        default: ''
         type: string
 
 jobs:
   deploy:
-    name: Deploy relay
+    name: Build and deploy
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,12 +41,17 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install dependencies
-        working-directory: relay
-        run: npm install
+      # npm workspaces monorepo — `npm ci` runs at the repo root so installer's
+      # deps resolve/hoist against the shared root lockfile, same pattern
+      # release.yml uses for the web build.
+      - name: Install monorepo dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build -w installer
 
       - name: Generate wrangler.toml
-        working-directory: relay
+        working-directory: installer
         env:
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           ORIGINS: ${{ inputs.allowed_origins }}
@@ -52,11 +59,11 @@ jobs:
           set -euo pipefail
           sed \
             -e "s|<YOUR_CLOUDFLARE_ACCOUNT_ID>|${CF_ACCOUNT_ID}|g" \
-            -e "s|<https://your-installer.github.io>|${ORIGINS}|" \
+            -e "s|^ALLOWED_ORIGINS = \"\"|ALLOWED_ORIGINS = \"${ORIGINS}\"|" \
             wrangler.toml.example > wrangler.toml
 
       - name: Deploy
-        working-directory: relay
+        working-directory: installer
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler deploy

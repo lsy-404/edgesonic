@@ -17,7 +17,7 @@
 // session/bucket protocol, but every api.cloudflare.com call goes through the
 // relay instead of a direct fetch. The completion call
 // (workers/assets/upload) is authorized with the session's own JWT rather
-// than the user's API token — relay/CONTRACT.md §1 notes the relay forwards
+// than the user's API token — CONTRACT.md §1 notes the relay forwards
 // whatever bearer it's handed, so callCfMultipart just takes the JWT as its
 // `token` argument for that one call.
 

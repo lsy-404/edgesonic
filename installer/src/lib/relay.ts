@@ -13,16 +13,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Every Cloudflare API call this app makes goes through the relay described
-// in relay/CONTRACT.md — api.cloudflare.com sends no CORS headers, so a
-// direct browser call would fail regardless of the token's validity.
-
-export class RelayNotConfiguredError extends Error {
-  constructor() {
-    super("VITE_RELAY_URL is not configured");
-    this.name = "RelayNotConfiguredError";
-  }
-}
+// Every Cloudflare API call this app makes goes through this Worker's own
+// /cf and /r2 routes (see worker/index.ts, CONTRACT.md) — api.cloudflare.com
+// sends no CORS headers, so a direct browser call would fail regardless of
+// the token's validity.
 
 export class CfApiError extends Error {
   constructor(
@@ -36,9 +30,11 @@ export class CfApiError extends Error {
   }
 }
 
+// Empty (the default) means same-origin relative calls — this Worker serves
+// both the built frontend and these routes. Only set VITE_RELAY_URL when the
+// frontend is deployed separately from the Worker it talks to.
 function relayBase(): string {
   const url = (import.meta.env.VITE_RELAY_URL || "").trim();
-  if (!url) throw new RelayNotConfiguredError();
   return url.replace(/\/+$/, "");
 }
 
@@ -66,7 +62,7 @@ async function fetchRelay(url: string, init: RequestInit): Promise<Response> {
  * Calls `RELAY_URL/cf/<path>` with the given bearer token. `token` isn't
  * always the user's CF_API_TOKEN — the asset upload completion call reuses
  * this same helper with the short-lived JWT the upload session returns, per
- * relay/CONTRACT.md §1's note that the relay forwards whatever bearer it's
+ * CONTRACT.md §1's note that the relay forwards whatever bearer it's
  * handed.
  */
 export async function callCfJson<T>(
@@ -134,7 +130,7 @@ export interface R2VerifyResult {
   message?: string;
 }
 
-/** relay/CONTRACT.md §2 — signs a HEAD against the bucket, doesn't touch api.cloudflare.com. */
+/** CONTRACT.md §2 — signs a HEAD against the bucket, doesn't touch api.cloudflare.com. */
 export async function verifyR2Keys(params: R2VerifyParams): Promise<R2VerifyResult> {
   const base = relayBase();
   let response: Response;

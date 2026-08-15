@@ -49,7 +49,6 @@
     "verify": "Verify",
     "verifying": "Verifying…",
     "verified": "Verified",
-    "relayMissing": "VITE_RELAY_URL is not configured for this build — the installer has nothing to call. Contact whoever built this page.",
     "tokenInvalid": "This token couldn't be validated against account {accountId}. Double-check the token and the account ID.",
     "accountNameLabel": "Account",
     "r2CheckTitle": "R2 storage",

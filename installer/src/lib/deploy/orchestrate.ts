@@ -57,7 +57,7 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
 
   await guarded("r2", report, async () => {
     await getOrCreateBucket(apiToken, accountId, target.bucketName);
-    // relay/CONTRACT.md §2 — the key pair can only be verified against a
+    // CONTRACT.md §2 — the key pair can only be verified against a
     // bucket that already exists, so this has to run after creation, not
     // back in the credentials step.
     const verified = await verifyR2Keys({
@@ -149,7 +149,7 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
   await guarded("health", report, async () => {
     // No custom domain means no known URL to probe: constructing the
     // *.workers.dev URL needs the account's subdomain, which isn't in
-    // relay/CONTRACT.md's allowlist (no GET .../workers/subdomain route).
+    // CONTRACT.md's allowlist (no GET .../workers/subdomain route).
     if (!url) return;
     await probeReachable(`${url}/edgesonic/version`);
     // Best-effort only (see health.ts) — never throws, a dark result still

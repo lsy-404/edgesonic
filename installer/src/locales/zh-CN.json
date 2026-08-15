@@ -49,7 +49,6 @@
     "verify": "校验",
     "verifying": "校验中…",
     "verified": "已校验",
-    "relayMissing": "本次构建未配置 VITE_RELAY_URL，安装向导没有可调用的中继地址。请联系构建此页面的人。",
     "tokenInvalid": "无法用账号 {accountId} 校验此令牌，请检查令牌和账号 ID 是否正确。",
     "accountNameLabel": "账号",
     "r2CheckTitle": "R2 存储",

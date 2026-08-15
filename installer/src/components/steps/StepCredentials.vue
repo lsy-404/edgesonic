@@ -3,7 +3,7 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
-import { callCfJson, RelayNotConfiguredError } from "../../lib/relay";
+import { callCfJson } from "../../lib/relay";
 import { listBucketNames } from "../../lib/deploy/r2";
 import { describeCfError } from "../../lib/cf/errors";
 
@@ -54,11 +54,7 @@ async function verify() {
     }
     wizard.credentialsVerified = true;
   } catch (e) {
-    if (e instanceof RelayNotConfiguredError) {
-      errorMessage.value = t("credentials.relayMissing");
-    } else {
-      errorMessage.value = describeCfError(e, "Account Settings Read").message;
-    }
+    errorMessage.value = describeCfError(e, "Account Settings Read").message;
   } finally {
     verifying.value = false;
   }

@@ -17,12 +17,22 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
 export default defineConfig({
-  // GitHub Pages can serve this from a project subpath, a user/org root, or
-  // a custom domain — a relative base works in all three without a build-time
-  // repo-name guess.
+  // The deployed Worker can serve this from a subpath or a custom domain —
+  // a relative base works in either without a build-time host guess.
   base: "./",
   plugins: [vue()],
-  // Reaches the repo-root shared/ module for release-eligibility logic
-  // (shared/autoupdate.ts), mirroring web/vite.config.ts.
-  server: { port: 5174, fs: { allow: [".."] } },
+  server: {
+    port: 5174,
+    // Reaches the repo-root shared/ module for release-eligibility logic
+    // (shared/autoupdate.ts), mirroring web/vite.config.ts.
+    fs: { allow: [".."] },
+    // In production this app is same-origin with its own /cf and /r2 routes
+    // (see worker/index.ts) — `npm run dev` alone can't replicate that, so
+    // forward those paths to a separately-running `wrangler dev` (port 8787
+    // by default) instead of requiring VITE_RELAY_URL for local work too.
+    proxy: {
+      "/cf": "http://localhost:8787",
+      "/r2": "http://localhost:8787",
+    },
+  },
 });

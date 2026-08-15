@@ -47,7 +47,7 @@ export interface UpdateManifest {
 // and raw.githubusercontent.com, which do. A plain browser fetch() of
 // `browser_download_url` (or the api.github.com asset-by-id alias, which
 // redirects to the same host) throws "Failed to fetch" with no further detail.
-// relay/CONTRACT.md doesn't cover this host — it's scoped to api.cloudflare.com
+// CONTRACT.md doesn't cover this host — it's scoped to api.cloudflare.com
 // and R2's S3 endpoint only. Until the relay (or something else) adds a
 // passthrough for it, this call fails in every real browser; the try/catch
 // below exists to turn that opaque TypeError into an actionable message
