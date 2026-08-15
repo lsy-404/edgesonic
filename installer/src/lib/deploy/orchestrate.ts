@@ -1,0 +1,160 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+import type { GithubRelease } from "../../../../shared/autoupdate";
+import { fetchSchemaSql } from "../github";
+import { getOrCreateDatabase, runQuery } from "./d1";
+import { getOrCreateBucket } from "./r2";
+import { verifyR2Keys } from "../relay";
+import { fetchManifestAndArtifact } from "./manifest";
+import { unpackArtifact, textFile } from "./tar";
+import { uploadAssets, type AssetManifest } from "./assets";
+import { uploadWorkerVersion, switchTraffic, readCrons } from "./workerVersion";
+import { pushSecret } from "./secrets";
+import { setCron, DEFAULT_CRON } from "./cron";
+import { createSuperadmin, ADMIN_USERNAME } from "./admin";
+import { generateHmacKeyBase64 } from "./crypto";
+import { probeReachable } from "./health";
+import { DeployError, type DeployCredentials, type DeployResult, type DeployStep, type DeployTarget, type StepStatus } from "./types";
+
+export type StepReporter = (step: DeployStep, status: StepStatus, detail?: string) => void;
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function guarded<T>(step: DeployStep, report: StepReporter, run: () => Promise<T>): Promise<T> {
+  report(step, "running");
+  try {
+    const result = await run();
+    report(step, "success");
+    return result;
+  } catch (error) {
+    const message = error instanceof DeployError ? error.message : messageOf(error);
+    report(step, "failed", message);
+    throw error instanceof DeployError ? error : new DeployError(step, message);
+  }
+}
+
+export async function runDeploy(creds: DeployCredentials, target: DeployTarget, release: GithubRelease, report: StepReporter): Promise<DeployResult> {
+  const { accountId, apiToken } = creds;
+  const script = target.workerName;
+  const tag = release.tag_name || target.releaseTag;
+
+  const databaseId = await guarded("d1", report, () => getOrCreateDatabase(apiToken, accountId, target.dbName));
+
+  await guarded("r2", report, async () => {
+    await getOrCreateBucket(apiToken, accountId, target.bucketName);
+    // relay/CONTRACT.md §2 — the key pair can only be verified against a
+    // bucket that already exists, so this has to run after creation, not
+    // back in the credentials step.
+    const verified = await verifyR2Keys({
+      accountId,
+      bucketName: target.bucketName,
+      accessKeyId: creds.r2AccessKeyId,
+      secretAccessKey: creds.r2SecretAccessKey,
+    });
+    if (!verified.ok) throw new Error(verified.message || "R2 access key pair didn't verify against the bucket");
+  });
+
+  await guarded("schema", report, async () => {
+    const sql = await fetchSchemaSql(target.sourceRepo, tag);
+    await runQuery(apiToken, accountId, databaseId, sql);
+  });
+
+  const { manifest, files, workerBytes, assetsManifest } = await guarded("download", report, async () => {
+    const { manifest, archive } = await fetchManifestAndArtifact(release);
+    const files = await unpackArtifact(archive);
+    const workerBytes = files.get(manifest.workerModule);
+    if (!workerBytes) throw new DeployError("download", "Update artifact has no Worker module");
+    const assetsManifest = JSON.parse(textFile(files, manifest.assetsManifest)) as AssetManifest;
+    return { manifest, files, workerBytes, assetsManifest };
+  });
+
+  // Read before the version upload — any new version clears the schedule, so
+  // this is the last point the pre-upload list is still visible via the API.
+  const existingCrons = target.mode === "overwrite" ? await readCrons(apiToken, accountId, script).catch(() => []) : [];
+
+  const assetJwt = await guarded("assets", report, () => uploadAssets(apiToken, accountId, script, files, assetsManifest));
+
+  const versionId = await guarded("worker", report, () =>
+    uploadWorkerVersion({
+      token: apiToken,
+      accountId,
+      script,
+      workerModule: manifest.workerModule,
+      workerBytes,
+      assetJwt,
+      compatibilityDate: manifest.compatibilityDate,
+      compatibilityFlags: manifest.compatibilityFlags,
+      mode: target.mode,
+      fresh:
+        target.mode === "fresh"
+          ? {
+              databaseId,
+              bucketName: target.bucketName,
+              workerName: target.workerName,
+              version: manifest.version,
+              buildTime: manifest.buildTime,
+              instanceId: crypto.randomUUID(),
+            }
+          : undefined,
+      overwriteVersion: target.mode === "overwrite" ? { version: manifest.version, buildTime: manifest.buildTime } : undefined,
+    }),
+  );
+
+  await guarded("deploy", report, () => switchTraffic(apiToken, accountId, script, versionId));
+
+  await guarded("secrets", report, async () => {
+    await pushSecret(apiToken, accountId, script, "WORK_UPLOAD_HMAC_KEY", generateHmacKeyBase64());
+    await pushSecret(apiToken, accountId, script, "CF_ACCOUNT_ID", accountId);
+    // The R2 key pair was already verified against the bucket in the "r2"
+    // step — push it and flip the flag so the presign short-circuit
+    // (worker/SECRETS.md §3) is live immediately instead of leaving the
+    // wizard's R2 credentials step collect values nothing then uses.
+    await pushSecret(apiToken, accountId, script, "R2_ACCESS_KEY_ID", creds.r2AccessKeyId);
+    await pushSecret(apiToken, accountId, script, "R2_SECRET_ACCESS_KEY", creds.r2SecretAccessKey);
+    // worker/src/endpoints/subsonic/media.ts signs presigned GETs against the
+    // literal bucket name "edgesonic-music", not whatever's actually bound —
+    // flipping this on for any other bucket name would 404 every presigned
+    // stream instead of just skipping the optimization, so only auto-enable
+    // it on the one bucket name the feature actually works with.
+    if (target.bucketName === "edgesonic-music") {
+      await runQuery(
+        apiToken,
+        accountId,
+        databaseId,
+        "UPDATE feature_strings SET value = '1', updated_at = unixepoch() WHERE key = 'enable_r2_presign'",
+      );
+    }
+  });
+
+  await guarded("cron", report, () => setCron(apiToken, accountId, script, existingCrons.length > 0 ? existingCrons : [DEFAULT_CRON]));
+
+  const adminPassword = await guarded("admin", report, () => createSuperadmin(apiToken, accountId, databaseId));
+
+  const url = target.domain ? `https://${target.domain}` : "";
+  await guarded("health", report, async () => {
+    // No custom domain means no known URL to probe: constructing the
+    // *.workers.dev URL needs the account's subdomain, which isn't in
+    // relay/CONTRACT.md's allowlist (no GET .../workers/subdomain route).
+    if (!url) return;
+    await probeReachable(`${url}/edgesonic/version`);
+    // Best-effort only (see health.ts) — never throws, a dark result still
+    // reports success so it doesn't mask an otherwise-complete deployment.
+  });
+
+  return { url, adminUsername: ADMIN_USERNAME, adminPassword, version: manifest.version };
+}
