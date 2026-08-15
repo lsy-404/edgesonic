@@ -16,10 +16,7 @@
     "required": "必填",
     "recommended": "推荐，非必需",
     "loading": "加载中…",
-    "stepOf": "第 {current} / {total} 步",
-    "advancedFallback": "想用手动填表的旧安装方式？参见{link}。",
-    "advancedFallbackLink": "经典 GitHub Actions 工作流",
-    "screenshotPlaceholder": "截图即将补充"
+    "stepOf": "第 {current} / {total} 步"
   },
   "welcome": {
     "title": "开始部署 EdgeSonic",
@@ -33,6 +30,23 @@
     "requirement1": "一个 Cloudflare 账号（免费套餐即可体验）。",
     "requirement2": "一个 Cloudflare API 令牌和 R2 访问密钥——下一步会引导你创建它们。",
     "requirement3": "大约 5 分钟时间。"
+  },
+  "guide": {
+    "title": "你需要准备什么",
+    "subtitle": "四项信息，都来自你的 Cloudflare 账号。这里先说明每一项是什么、怎么拿到——下一步才是真正填进去的地方。",
+    "whatAccountId": "标识这次要部署到哪个 Cloudflare 账号。",
+    "whatApiToken": "让安装器代你创建 Worker、D1 数据库、R2 存储桶。只留在你的浏览器标签页内，不会离开。",
+    "whatR2KeysLabel": "R2 Access Key ID + Secret",
+    "whatR2Keys": "一对独立的 S3 兼容凭据，用来校验对 R2 存储的直接访问。和 API 令牌在同一个页面显示，只显示一次。",
+    "step1Title": "1. 找到你的账号 ID",
+    "step1Desc": "在 Cloudflare 控制台几乎任意页面的右侧边栏都能找到——从那里复制。",
+    "step1Screenshot": "截图：控制台右侧边栏的账号 ID",
+    "step2Title": "2. 创建 API 令牌"
+  },
+  "optional": {
+    "title": "可选功能",
+    "subtitle": "以下都不是部署必需项——之后也都能在应用内重新打开。",
+    "skip": "继续"
   },
   "credentials": {
     "title": "Cloudflare 凭证",
@@ -69,7 +83,21 @@
     "imagesCardLink": "打开 Images Transformations 设置",
     "imagesGuideScreenshot": "截图：Images Transformations 页面的「Enable transformations」开关",
     "permissionHint": "Cloudflare 提示此令牌缺少权限：{permission}",
-    "genericError": "与 Cloudflare 通信时出错：{message}"
+    "genericError": "与 Cloudflare 通信时出错：{message}",
+    "checks": {
+      "token": "令牌有效",
+      "account": "账号访问",
+      "workersScripts": "Workers Scripts 权限",
+      "d1": "D1 权限",
+      "r2": "R2 存储"
+    },
+    "checkStatus": {
+      "pending": "尚未检查",
+      "checking": "检查中…",
+      "ok": "正常",
+      "missing": "缺失或未启用",
+      "error": "检查失败"
+    }
   },
   "target": {
     "title": "部署目标",

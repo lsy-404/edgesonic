@@ -38,14 +38,6 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
     <main class="shell-card">
       <slot />
     </main>
-
-    <footer class="shell-footer">
-      <i18n-t keypath="common.advancedFallback" tag="p">
-        <template #link>
-          <a href="https://github.com/wuyilingwei/edgesonic/actions/workflows/deploy.yml" target="_blank" rel="noreferrer">{{ t("common.advancedFallbackLink") }}</a>
-        </template>
-      </i18n-t>
-    </footer>
   </div>
 </template>
 
@@ -136,15 +128,6 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
   box-shadow: var(--shadow-card);
   padding: 32px;
   margin-top: 16px;
-}
-
-.shell-footer {
-  width: 100%;
-  max-width: 720px;
-  margin-top: 20px;
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  text-align: center;
 }
 
 @media (max-width: 560px) {

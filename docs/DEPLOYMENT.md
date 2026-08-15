@@ -23,55 +23,19 @@ deployment target, picking a release, reviewing the plan, then running the deplo
 Because it deploys directly from your browser to your Cloudflare account with credentials you supply in
 the moment, there's no fork to maintain and nothing to configure in the Actions tab.
 
-## Advanced: manual GitHub Actions deploy
-
-Prefer a fork-based, credential-as-workflow-input flow, or want deploys triggered from CI instead of a
-browser? The workflow at `.github/workflows/deploy.yml` is **manual-only** (no automatic push trigger).
-Instead of building from source, it **downloads a precompiled release package** (prebuilt `web/dist` +
-isolated `worker/node_modules`) published by `.github/workflows/release.yml`, then deploys it with
-`wrangler`. All credentials are supplied as workflow inputs each time — the repository itself stores
-nothing.
-
-D1 databases and R2 buckets that do not yet exist are **automatically created and bound** during the run.
-
-### Prerequisites
-
-1. **Fork** this repository (deploys run from your fork's Actions tab).
-2. A **Cloudflare API token** ([dash.cloudflare.com → API Tokens](https://dash.cloudflare.com/profile/api-tokens) → *Create Token*) with `Workers Scripts:Edit`, `D1:Edit`, and `Workers R2 Storage:Edit`, plus your **Account ID**.
-
-No local Node.js or Wrangler install is needed — everything runs on the GitHub-hosted runner.
-
-### How to deploy
-
-Go to **Actions → Deploy EdgeSonic → Run workflow** and fill in:
-
-| Input | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `cf_api_token` | ✅ | — | CF API token (Workers:Edit + D1:Edit + R2:Edit) |
-| `cf_account_id` | ✅ | — | Cloudflare Account ID |
-| `release_channel` | ✅ | `stable` | Which release to deploy: `stable` (latest non-prerelease) or `prerelease` (latest prerelease) |
-| `release_tag` | optional | — | Pin an exact release tag (e.g. `v1.0.0`); overrides `release_channel` when set |
-| `source_repo` | optional | `wuyilingwei/edgesonic` | Repo to download the release from. Leave as-is to pull the upstream release; change it only if your fork publishes its own |
-| `worker_name` | optional | `edgesonic` | Worker script name |
-| `d1_database_name` | optional | `edgesonic-db` | D1 database (auto-created if absent) |
-| `r2_bucket_name` | optional | `edgesonic-music` | R2 bucket (auto-created if absent) |
-| `domain` | optional | — | Custom domain; leave empty for `<worker>.workers.dev` |
-| `instance_id` | optional | — | Anti-loop UUID; auto-generated when blank |
-
-The workflow verifies the package checksum and embedded build metadata before extracting, so a corrupted, incomplete, or mismatched release fails before deployment.
+The old fork-and-run-a-GitHub-Actions-workflow deploy path has been retired — the guided installer above
+replaces it entirely, including automatic D1/R2 resource creation and cron schedule restoration
+(`0 */1 * * *` by default, preserving whatever schedule was already live on an overwrite install). Local
+development still uses `./deploy.sh` (see the main [README](../README.md#local-cli-deploy-development)),
+which restores cron the same way when `CLOUDFLARE_API_TOKEN` is available.
 
 ### Publishing a release
 
-Both the guided installer and the manual Actions flow consume releases produced by
-`.github/workflows/release.yml`. Push a `v*` tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`) or run
-**Actions → Release EdgeSonic → Run workflow** with a tag. That job builds the frontend, assembles the
-self-contained package, and publishes it as a GitHub Release asset — it needs **no** Cloudflare
-credentials. Mark a release as a *pre-release* on GitHub for it to be picked up by the `prerelease`
-channel.
-
-### Cron recovery
-
-The GitHub Action restores the default cron schedule (`0 */1 * * *`) after deployment and fails if that restoration fails. Local `./deploy.sh` restores it when `CLOUDFLARE_API_TOKEN` is available. A direct `wrangler deploy` clears dynamic cron schedules; restore them from **Settings → Cloudflare → "Ensure default cron"** after configuring the Cloudflare API token.
+The guided installer consumes releases produced by `.github/workflows/release.yml`. Push a `v*` tag (e.g.
+`git tag v1.0.0 && git push origin v1.0.0`) or run **Actions → Release EdgeSonic → Run workflow** with a
+tag. That job builds the frontend, assembles the self-contained package, and publishes it as a GitHub
+Release asset — it needs **no** Cloudflare credentials. Mark a release as a *pre-release* on GitHub for it
+to be picked up by the installer's prerelease channel.
 
 ## Cloudflare resource requirements
 

@@ -67,10 +67,10 @@ watch(
 const canContinue = () => wizard.workerName.trim().length > 0 && !(wizard.mode === "fresh" && collision.value === true);
 
 function goNext() {
-  wizard.step = 4;
+  wizard.step = 6;
 }
 function goBack() {
-  wizard.step = 2;
+  wizard.step = 4;
 }
 </script>
 

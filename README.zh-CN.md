@@ -48,13 +48,6 @@ EdgeSonic 同时承担两个角色：
 
 无需 fork，无需打开 Actions 页面，也不需要本地工具链——一个引导式安装向导完全在你的浏览器中运行，直接部署到你自己的 Cloudflare 账号。它会校验你的 Cloudflare 凭据，检查 R2 和 Images 是否已启用（未启用会给出直达链接），并让你从近期 release 中选择。完整说明见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)（英文）。
 
-### 进阶：fork 仓库 + GitHub Action
-
-更倾向于基于 fork、由 CI 触发的流程？无需任何本地工具链——直接从一个 fork 用预编译 release 部署：
-
-1. **Fork** 本仓库到你自己的 GitHub 账号。
-2. **在 Cloudflare 注册一个 API Token**（[dash.cloudflare.com → API Tokens](https://dash.cloudflare.com/profile/api-tokens) → *Create Token*），勾选 `Workers Scripts:Edit`、`D1:Edit`、`Workers R2 Storage:Edit`，并记下你的 **Account ID**。
-3. 在你的 fork 里打开 **Actions → Deploy EdgeSonic → Run workflow**，粘贴 token 和 account ID，选择 **`stable`**（稳定版）或 **`prerelease`**（预发布）通道，运行。
 
 该工作流会下载最新的预编译 release（已构建好的前端 + Worker——**不再本地 build**），自动创建缺失的 D1/KV/R2 资源并部署。完整输入项说明见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)（英文）。
 
@@ -143,7 +136,7 @@ npx wrangler d1 execute edgesonic-db --remote --command \
 | [`DEPLOY_BY_AGENT.md`](docs/DEPLOY_BY_AGENT.md) | 面向 AI agent 的自包含部署手册——用预编译 release 包，无需本地构建 |
 | [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Monorepo 目录结构、存储后端模型、如何添加 S3 兼容存储源 |
 | [`DEVELOPMENT.md`](docs/DEVELOPMENT.md) | 开发服务器、类型检查、运行测试、应用数据库 Schema |
-| [`DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 推荐的引导式安装向导部署、进阶的 fork + GitHub Action 部署、Cloudflare 资源需求与免费额度 |
+| [`DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 引导式安装向导部署、Cloudflare 资源需求与免费额度 |
 | [`worker/SECRETS.md`](worker/SECRETS.md) | Worker Secrets 与可选 R2 预签名播放 |
 | [`worker/CF_CRON.md`](worker/CF_CRON.md) | 运行时管理的 Cron 计划 |
 

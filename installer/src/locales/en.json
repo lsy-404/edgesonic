@@ -16,10 +16,7 @@
     "required": "Required",
     "recommended": "Recommended, not required",
     "loading": "Loading…",
-    "stepOf": "Step {current} of {total}",
-    "advancedFallback": "Looking for the manual, form-fill install path instead? See {link}.",
-    "advancedFallbackLink": "the classic GitHub Actions workflow",
-    "screenshotPlaceholder": "Screenshot coming soon"
+    "stepOf": "Step {current} of {total}"
   },
   "welcome": {
     "title": "Let's deploy EdgeSonic",
@@ -33,6 +30,23 @@
     "requirement1": "A Cloudflare account (free tier is enough to try it).",
     "requirement2": "A Cloudflare API Token and R2 access keys — the next step walks you through creating them.",
     "requirement3": "About 5 minutes."
+  },
+  "guide": {
+    "title": "What you'll need",
+    "subtitle": "Four pieces of information, all from your Cloudflare account. Here's what each one is for and how to get it — the next step is where you actually paste them in.",
+    "whatAccountId": "Identifies which Cloudflare account this installs into.",
+    "whatApiToken": "Lets the installer create the Worker, D1 database, and R2 bucket on your behalf. Never leaves your browser tab.",
+    "whatR2KeysLabel": "R2 Access Key ID + Secret",
+    "whatR2Keys": "A separate S3-compatible credential pair, used to verify direct access to your R2 storage. Shown once, on the same page as the API Token.",
+    "step1Title": "1. Find your Account ID",
+    "step1Desc": "It's on the right sidebar of almost any page in the Cloudflare dashboard — copy it from there.",
+    "step1Screenshot": "Screenshot: Account ID in the dashboard's right sidebar",
+    "step2Title": "2. Create the API Token"
+  },
+  "optional": {
+    "title": "Optional features",
+    "subtitle": "Nothing here is required to deploy — everything below can be turned on later from inside the app too.",
+    "skip": "Continue"
   },
   "credentials": {
     "title": "Cloudflare credentials",
@@ -69,7 +83,21 @@
     "imagesCardLink": "Open Images Transformations settings",
     "imagesGuideScreenshot": "Screenshot: the Images Transformations \"Enable transformations\" toggle",
     "permissionHint": "Cloudflare says this token is missing: {permission}",
-    "genericError": "Something went wrong talking to Cloudflare: {message}"
+    "genericError": "Something went wrong talking to Cloudflare: {message}",
+    "checks": {
+      "token": "Token is valid",
+      "account": "Account access",
+      "workersScripts": "Workers Scripts permission",
+      "d1": "D1 permission",
+      "r2": "R2 storage"
+    },
+    "checkStatus": {
+      "pending": "Not checked yet",
+      "checking": "Checking…",
+      "ok": "OK",
+      "missing": "Missing or not enabled",
+      "error": "Couldn't check"
+    }
   },
   "target": {
     "title": "Deployment target",

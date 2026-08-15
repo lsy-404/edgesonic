@@ -45,7 +45,7 @@ async function start() {
       wizard.setStepStatus(step, status, detail);
     });
     wizard.finishSuccess(result);
-    wizard.step = 7;
+    wizard.step = 9;
   } catch (e) {
     if (e instanceof DeployError) {
       failedStep.value = e.step;
