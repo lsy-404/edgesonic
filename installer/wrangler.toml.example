@@ -23,9 +23,9 @@ compatibility_date = "2025-05-24"
 compatibility_flags = ["nodejs_compat"]
 account_id = "<YOUR_CLOUDFLARE_ACCOUNT_ID>"
 
-[[routes]]
-pattern = "deploy-edgesonic.wuyilingwei.com"
-custom_domain = true
+# The production custom domain is configured once in the Cloudflare dashboard.
+# Do not declare it here: normal releases only update this Worker and must not
+# require permission to edit Zone routes.
 
 [assets]
 directory = "dist"
