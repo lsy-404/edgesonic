@@ -6,6 +6,7 @@ import { useWizard } from "../../stores/wizard";
 import { callCfJson } from "../../lib/relay";
 import { listBucketNames } from "../../lib/deploy/r2";
 import { describeCfError } from "../../lib/cf/errors";
+import ScreenshotPlaceholder from "../ScreenshotPlaceholder.vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -85,9 +86,20 @@ function goBack() {
       <input id="apiToken" v-model.trim="wizard.credentials.apiToken" :type="showToken ? 'text' : 'password'" autocomplete="off" spellcheck="false" />
       <p class="field-help">
         {{ t("credentials.apiTokenHelp") }}
-        <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">{{ t("credentials.apiTokenCreateLink") }}</a>
         · <button type="button" class="btn-secondary" style="padding: 2px 8px; font-size: 0.75rem" @click="showToken = !showToken">{{ showToken ? t("common.hide") : t("common.show") }}</button>
       </p>
+      <div class="guide-card">
+        <h3>{{ t("credentials.tokenGuideTitle") }}</h3>
+        <ol>
+          <li>{{ t("credentials.tokenGuideStep1") }}</li>
+          <li>{{ t("credentials.tokenGuideStep2") }}</li>
+          <li>{{ t("credentials.tokenGuideStep3") }}</li>
+        </ol>
+        <ScreenshotPlaceholder :label="t('credentials.tokenGuideScreenshot')" />
+        <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer" class="btn btn-secondary">
+          {{ t("credentials.apiTokenCreateLink") }} ↗
+        </a>
+      </div>
     </div>
 
     <div class="field">
@@ -120,9 +132,17 @@ function goBack() {
           <dd>{{ wizard.r2Enabled ? t("credentials.r2Enabled") : t("credentials.r2NotEnabled") }}</dd>
         </div>
       </div>
-      <p v-if="!wizard.r2Enabled" class="field-help">
-        <a :href="`https://dash.cloudflare.com/${wizard.credentials.accountId}/r2/overview`" target="_blank" rel="noreferrer">{{ t("credentials.r2EnableLink") }}</a>
-      </p>
+      <div v-if="!wizard.r2Enabled" class="guide-card">
+        <h3>{{ t("credentials.r2EnableLink") }}</h3>
+        <ol>
+          <li>{{ t("credentials.r2GuideStep1") }}</li>
+          <li>{{ t("credentials.r2GuideStep2") }}</li>
+        </ol>
+        <ScreenshotPlaceholder :label="t('credentials.r2GuideScreenshot')" />
+        <a :href="`https://dash.cloudflare.com/${wizard.credentials.accountId}/r2/overview`" target="_blank" rel="noreferrer" class="btn btn-secondary">
+          {{ t("credentials.r2EnableLink") }} ↗
+        </a>
+      </div>
       <p v-else class="field-help">{{ t("credentials.r2KeysUnverifiedNote") }}</p>
     </template>
 
@@ -132,9 +152,10 @@ function goBack() {
         <span class="field-tag recommended">{{ t("common.recommended") }}</span>
       </h3>
       <p>{{ t("credentials.imagesCardDesc") }}</p>
-      <p class="field-help">
-        <a :href="`https://dash.cloudflare.com/${wizard.credentials.accountId || ''}/images/transformations`" target="_blank" rel="noreferrer">{{ t("credentials.imagesCardLink") }}</a>
-      </p>
+      <ScreenshotPlaceholder :label="t('credentials.imagesGuideScreenshot')" />
+      <a :href="`https://dash.cloudflare.com/${wizard.credentials.accountId || ''}/images/transformations`" target="_blank" rel="noreferrer" class="btn btn-secondary">
+        {{ t("credentials.imagesCardLink") }} ↗
+      </a>
     </div>
 
     <div class="step-actions">

@@ -301,6 +301,34 @@ code {
   margin: 12px 0;
 }
 
+.guide-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  background: var(--color-bg);
+  margin: 16px 0;
+}
+
+.guide-card h3 {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.guide-card ol {
+  margin: 0 0 4px;
+  padding-left: 20px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.guide-card ol li + li {
+  margin-top: 4px;
+}
+
+.guide-card .btn {
+  margin-top: 8px;
+}
+
 .kv-list {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
