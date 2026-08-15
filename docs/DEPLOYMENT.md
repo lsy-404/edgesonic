@@ -1,14 +1,36 @@
 # Deployment
 
-The **recommended** way to deploy EdgeSonic: fork this repository and run the GitHub Action, which deploys a **precompiled release** onto your Cloudflare account — no local toolchain, no build step. The local `./deploy.sh` CLI flow (see the main [README](../README.md#local-cli-deploy-development)) stays available for development.
+The **recommended** way to deploy EdgeSonic: use the guided install wizard at
+[deploy-edgesonic.wuyilingwei.com](https://deploy-edgesonic.wuyilingwei.com). No fork, no Actions tab, no
+local toolchain — enter your Cloudflare credentials, pick a release, and the wizard deploys straight from
+your browser to your own Cloudflare account.
 
-> Deploying via an AI agent instead of a human? See [`DEPLOY_BY_AGENT.md`](DEPLOY_BY_AGENT.md) — it drives the same precompiled release package from a local `wrangler`, so the agent never has to run a build.
+> Deploying via an AI agent instead of a human? See [`DEPLOY_BY_AGENT.md`](DEPLOY_BY_AGENT.md) — it drives
+> the same precompiled release package from a local `wrangler`, so the agent never has to run a build.
 
-The Cloudflare API token and in-app update options are documented in [`WORKER_SELF_UPDATE.md`](WORKER_SELF_UPDATE.md). The current release path remains the supported deployment path.
+The Cloudflare API token and in-app update options are documented in [`WORKER_SELF_UPDATE.md`](WORKER_SELF_UPDATE.md).
 
-## CI/CD (GitHub Actions)
+## Guided installer (recommended)
 
-The workflow at `.github/workflows/deploy.yml` is **manual-only** (no automatic push trigger). Instead of building from source, it **downloads a precompiled release package** (prebuilt `web/dist` + isolated `worker/node_modules`) published by `.github/workflows/release.yml`, then deploys it with `wrangler`. All credentials are supplied as workflow inputs each time — the repository itself stores nothing.
+The wizard walks through: welcome, entering and validating your Cloudflare credentials, choosing a
+deployment target, picking a release, reviewing the plan, then running the deploy. Along the way it:
+
+- validates your Cloudflare API token and account access before you commit to anything;
+- checks whether R2 and Cloudflare Images are enabled on your account, and links straight to the
+  Cloudflare dashboard page to turn them on if not, instead of failing partway through a deploy;
+- lets you pick from the last 5 published releases that support the in-browser deploy path.
+
+Because it deploys directly from your browser to your Cloudflare account with credentials you supply in
+the moment, there's no fork to maintain and nothing to configure in the Actions tab.
+
+## Advanced: manual GitHub Actions deploy
+
+Prefer a fork-based, credential-as-workflow-input flow, or want deploys triggered from CI instead of a
+browser? The workflow at `.github/workflows/deploy.yml` is **manual-only** (no automatic push trigger).
+Instead of building from source, it **downloads a precompiled release package** (prebuilt `web/dist` +
+isolated `worker/node_modules`) published by `.github/workflows/release.yml`, then deploys it with
+`wrangler`. All credentials are supplied as workflow inputs each time — the repository itself stores
+nothing.
 
 D1 databases and R2 buckets that do not yet exist are **automatically created and bound** during the run.
 
@@ -40,7 +62,12 @@ The workflow verifies the package checksum and embedded build metadata before ex
 
 ### Publishing a release
 
-The deploy action consumes releases produced by `.github/workflows/release.yml`. Push a `v*` tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`) or run **Actions → Release EdgeSonic → Run workflow** with a tag. That job builds the frontend, assembles the self-contained package, and publishes it as a GitHub Release asset — it needs **no** Cloudflare credentials. Mark a release as a *pre-release* on GitHub for it to be picked up by the `prerelease` channel.
+Both the guided installer and the manual Actions flow consume releases produced by
+`.github/workflows/release.yml`. Push a `v*` tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`) or run
+**Actions → Release EdgeSonic → Run workflow** with a tag. That job builds the frontend, assembles the
+self-contained package, and publishes it as a GitHub Release asset — it needs **no** Cloudflare
+credentials. Mark a release as a *pre-release* on GitHub for it to be picked up by the `prerelease`
+channel.
 
 ### Cron recovery
 
