@@ -45,9 +45,16 @@ EdgeSonic serves two roles simultaneously:
 
 ## Quick start
 
-### Deploy (recommended): fork + GitHub Action
+### Deploy (recommended): guided installer
 
-No local toolchain required — deploy straight from a fork using the precompiled release:
+No fork, no Actions tab, no local toolchain — a guided install wizard runs entirely in your browser and
+deploys straight to your own Cloudflare account. It validates your Cloudflare credentials, checks that R2
+and Images are enabled (with direct links if not), and lets you pick from recent releases. Full details:
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+### Advanced: fork + GitHub Action
+
+Prefer a fork-based, CI-triggered flow instead? No local toolchain required — deploy straight from a fork using the precompiled release:
 
 1. **Fork** this repository to your own GitHub account.
 2. **Create a Cloudflare API token** ([dash.cloudflare.com → API Tokens](https://dash.cloudflare.com/?to=/:account/api-tokens) → *Create Token*) with `Workers Scripts:Edit`, `D1:Edit`, and `Workers R2 Storage:Edit`, and note your **Account ID**.
@@ -140,7 +147,7 @@ The technical reference lives under [`docs/`](docs/):
 | [`DEPLOY_BY_AGENT.md`](docs/DEPLOY_BY_AGENT.md) | Self-contained deploy runbook for AI coding agents — precompiled release package, no local build |
 | [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Monorepo layout, storage backend model, adding an S3-compatible source |
 | [`DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Dev servers, type-checking, running tests, applying the DB schema |
-| [`DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Recommended fork + GitHub Action deploy (downloads a precompiled release, no build), Cloudflare resource requirements / free-tier limits |
+| [`DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Recommended guided installer deploy, advanced fork + GitHub Action deploy, Cloudflare resource requirements / free-tier limits |
 | [`worker/SECRETS.md`](worker/SECRETS.md) | Worker secrets and optional R2 presigned streaming |
 | [`worker/CF_CRON.md`](worker/CF_CRON.md) | Runtime-managed cron schedules |
 

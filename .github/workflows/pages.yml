@@ -1,0 +1,65 @@
+name: Deploy Installer to GitHub Pages
+
+# Publishes the guided install wizard (installer/) to GitHub Pages.
+#
+# One-time manual step required before this can succeed: in the repo's
+# Settings -> Pages, set "Source" to "GitHub Actions". That setting can't be
+# flipped from a workflow file.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'installer/**'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build installer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # npm workspaces monorepo — `npm ci` runs at the repo root so installer's
+      # deps resolve/hoist against the shared root lockfile, same pattern
+      # release.yml uses for the web build. A scoped install inside installer/
+      # would bypass the workspace and the root lockfile entirely.
+      - name: Install monorepo dependencies
+        run: npm ci
+
+      - name: Build installer
+        run: npm run build -w installer
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: 'installer/dist'
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
