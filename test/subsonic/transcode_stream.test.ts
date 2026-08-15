@@ -15,8 +15,8 @@
 
 //
 // Coverage:
-//  1. /rest/stream?format=wav resolves the wav-lossless profile and runs a
-//     real-time (sandbox-engine) transcode
+//  1. /rest/stream?format=wav transcodes a lossless source but does not expand
+//     a lossy source into a lossless container
 //  2. preBakeProfile() sandbox/external path: transcodes synchronously and
 //     registers a cache/transcoded/ song_instances row (mirrors
 //     work_upload.ts's browser_pool registration so /rest/stream's
@@ -166,6 +166,7 @@ async function main() {
   console.log("1. /rest/stream?format=wav — real-time transcode via sandbox engine");
   {
     const sqlite = buildDb();
+    sqlite.prepare("UPDATE song_instances SET suffix = 'flac', content_type = 'audio/flac', bit_rate = 0 WHERE id = 'si-1'").run();
     __setEngineFactoryForTest(async () => ({ engine: new FakeEngine(), kind: "sandbox" }));
     const app = new Hono<{ Bindings: any; Variables: any }>();
     app.use("*", async (c, next) => {
@@ -183,6 +184,25 @@ async function main() {
     assert(r.headers.get("Content-Type") === "audio/wav", `content-type audio/wav (got ${r.headers.get("Content-Type")})`);
     const body = await r.text();
     assert(body === "FAKE_wav-lossless_BYTES", "body is the fake-engine output");
+    __setEngineFactoryForTest(null);
+  }
+
+  console.log("\n1b. /rest/stream?format=wav — lossy source is not expanded to lossless");
+  {
+    const sqlite = buildDb();
+    __setEngineFactoryForTest(async () => ({ engine: new FakeEngine(), kind: "sandbox" }));
+    const app = new Hono<{ Bindings: any; Variables: any }>();
+    app.use("*", async (c, next) => {
+      c.set("user", { username: "alice", level: 2, enabled: 1, password: "x" });
+      c.set("authMethod", "subsonic_cred");
+      return next();
+    });
+    app.route("/rest", mediaRoutes);
+    const env: any = { DB: makeD1(sqlite), MUSIC_BUCKET: makeR2(), INSTANCE_ID: "test-instance" };
+    const r = await app.fetch(new Request("http://test/rest/stream?id=sm-1&format=wav"), env);
+    assert(r.status === 200, `raw fallback is playable (got ${r.status})`);
+    assert(r.headers.get("X-EdgeSonic-Transcoded") === null, "lossy source was not transcoded to WAV");
+    assert(await r.text() === "SOURCE_BYTES", "original lossy bytes are returned");
     __setEngineFactoryForTest(null);
   }
 

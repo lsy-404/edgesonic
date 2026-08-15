@@ -33,9 +33,21 @@ const playModeTitle = computed(() => t(`player.playMode.${player.playMode}`));
 // to build <option> elements; the format/maxBitRate mapping is the store's
 // concern.
 const QUALITY_SELECT_OPTIONS = [
-  { id: "auto" }, { id: "mp3-128" }, { id: "mp3-192" },
-  { id: "aac-128" }, { id: "opus-96" }, { id: "flac" }, { id: "wav" },
+  { id: "auto" },
+  { id: "mp3-128", mime: "audio/mpeg" },
+  { id: "mp3-192", mime: "audio/mpeg" },
+  { id: "aac-128", mime: "audio/mp4; codecs=mp4a.40.2" },
+  { id: "opus-128", mime: "audio/ogg; codecs=opus" },
+  { id: "flac", mime: "audio/flac" },
+  { id: "wav", mime: "audio/wav" },
 ];
+const supportedQualityOptions = computed(() => QUALITY_SELECT_OPTIONS.filter((option) => {
+  if (!option.mime || typeof Audio === "undefined") return true;
+  return new Audio().canPlayType(option.mime) !== "";
+}));
+watch(supportedQualityOptions, (options) => {
+  if (!options.some((option) => option.id === player.playbackQuality)) player.playbackQuality = "auto";
+}, { immediate: true });
 const expandTitle = computed(() => t(detailsOpen.value ? "player.collapse" : "player.expand"));
 
 const coverFailed = ref(false);
@@ -220,7 +232,7 @@ function removeFromQueue(i: number) {
           :title="t('player.quality.title')"
           :aria-label="t('player.quality.title')"
         >
-          <option v-for="opt in QUALITY_SELECT_OPTIONS" :key="opt.id" :value="opt.id">{{ t(`player.quality.${opt.id}`) }}</option>
+          <option v-for="opt in supportedQualityOptions" :key="opt.id" :value="opt.id">{{ t(`player.quality.${opt.id}`) }}</option>
         </select>
         <svg class="pb-quality-caret" viewBox="0 0 24 24" width="10" height="10"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
       </div>

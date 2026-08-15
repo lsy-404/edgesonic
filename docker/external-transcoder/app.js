@@ -47,10 +47,10 @@ const PROFILES = {
   "mp3-192k":     { codec: "libmp3lame", bitrate: 192, container: "mp3",  contentType: "audio/mpeg" },
   "aac-96k":      { codec: "aac",        bitrate: 96,  container: "m4a",  contentType: "audio/mp4" },
   "aac-128k":     { codec: "aac",        bitrate: 128, container: "m4a",  contentType: "audio/mp4" },
-  "opus-64k":     { codec: "libopus",    bitrate: 64,  container: "opus", contentType: "audio/opus" },
-  "opus-96k":     { codec: "libopus",    bitrate: 96,  container: "opus", contentType: "audio/opus" },
+  "opus-128k":    { codec: "libopus",    bitrate: 128, container: "opus", contentType: "audio/opus" },
   "vorbis-96k":   { codec: "libvorbis",  bitrate: 96,  container: "ogg",  contentType: "audio/ogg" },
   "flac-lossless":{ codec: "flac",       bitrate: 0,   container: "flac", contentType: "audio/flac" },
+  "wav-lossless": { codec: "pcm_s16le",  bitrate: 0,   container: "wav",  contentType: "audio/wav" },
 };
 
 function formatForContainer(c) {
@@ -60,6 +60,7 @@ function formatForContainer(c) {
     case "opus": return "opus";
     case "ogg":  return "ogg";
     case "flac": return "flac";
+    case "wav":  return "wav";
     default: throw new Error(`unknown container ${c}`);
   }
 }

@@ -59,7 +59,6 @@ interface PreloadedTrack {
   el: HTMLAudioElement;
   index: number;
   ready: boolean;
-  broken?: boolean;
 }
 
 /**
@@ -101,7 +100,7 @@ export const usePlayerStore = defineStore("player", () => {
     "mp3-128": { format: "mp3", maxBitRate: 128 },
     "mp3-192": { format: "mp3", maxBitRate: 192 },
     "aac-128": { format: "aac", maxBitRate: 128 },
-    "opus-96": { format: "opus", maxBitRate: 96 },
+    "opus-128": { format: "opus", maxBitRate: 128 },
     flac: { format: "flac" },
     wav: { format: "wav" },
   };
@@ -111,7 +110,6 @@ export const usePlayerStore = defineStore("player", () => {
       return saved in QUALITY_OPTIONS ? saved : "auto";
     })(),
   );
-  watch(playbackQuality, (v) => localStorage.setItem("edgesonic:playbackQuality", v));
   function streamQualityParams(): { format?: string; maxBitRate?: number } | undefined {
     const opts = QUALITY_OPTIONS[playbackQuality.value];
     return opts && Object.keys(opts).length ? opts : undefined;
@@ -123,32 +121,36 @@ export const usePlayerStore = defineStore("player", () => {
   function cacheKeyFor(trackId: string): string {
     return `${trackId}::${playbackQuality.value}`;
   }
-  // Coarse fidelity ordering (higher = better) so a cache lookup can accept
-  // a blob fetched at an equal-or-better quality than what's requested —
-  // e.g. a request for "mp3-128" is happily served by an already-cached
-  // "flac" blob — but never the other way around (an "mp3-128" cache entry
-  // must never silently answer a "flac" request). "auto" is ranked highest
-  // since it's whatever the source instance actually is, generally the best
-  // locally-available copy.
   const QUALITY_RANK: Record<string, number> = {
     "mp3-128": 1,
-    "aac-128": 1,
-    "opus-96": 2,
+    "aac-128": 2,
     "mp3-192": 3,
+    "opus-128": 3,
     flac: 4,
     wav: 4,
     auto: 5,
   };
-  // Candidate keys for a lookup at `quality`, ordered from the closest
-  // sufficient match to the best available — so a small mp3-192 blob is
-  // preferred over swapping in a much larger cached flac when both satisfy
-  // the request equally well.
+  const QUALITY_MIME: Record<string, string> = {
+    "mp3-128": "audio/mpeg",
+    "aac-128": "audio/mp4; codecs=mp4a.40.2",
+    "mp3-192": "audio/mpeg",
+    "opus-128": "audio/ogg; codecs=opus",
+    flac: "audio/flac",
+    wav: "audio/wav",
+  };
+  function canUseCachedQuality(candidate: string, requested: string): boolean {
+    // "auto" describes an unknown source quality, so it is only safe as an
+    // exact hit. Known higher-quality formats must also be browser-playable.
+    if (candidate === "auto") return requested === "auto";
+    if (typeof Audio === "undefined") return true;
+    return new Audio().canPlayType(QUALITY_MIME[candidate] || "") !== "";
+  }
   function cacheKeyCandidates(trackId: string, quality: string): string[] {
     const minRank = QUALITY_RANK[quality] ?? 0;
     return Object.keys(QUALITY_RANK)
-      .filter((q) => QUALITY_RANK[q] >= minRank)
+      .filter((candidate) => QUALITY_RANK[candidate] >= minRank && canUseCachedQuality(candidate, quality))
       .sort((a, b) => QUALITY_RANK[a] - QUALITY_RANK[b])
-      .map((q) => `${trackId}::${q}`);
+      .map((candidate) => `${trackId}::${candidate}`);
   }
   async function getCachedTrackAtOrAboveQuality(trackId: string): Promise<{ blob: Blob; key: string } | null> {
     for (const key of cacheKeyCandidates(trackId, playbackQuality.value)) {
@@ -157,7 +159,7 @@ export const usePlayerStore = defineStore("player", () => {
     }
     return null;
   }
-  // 093d — buffered range tracking for the PlayerBar buffer bar overlay.
+  // Buffered range tracking for the PlayerBar buffer bar overlay.
   // `bufferedRanges` is an array of [startSec, endSec] tuples representing
   // the byte ranges the browser has fetched so far. Updated on `progress`
   // events from the active <audio> element (fires ~4×/s during download).
@@ -390,7 +392,7 @@ export const usePlayerStore = defineStore("player", () => {
     return sliced;
   }
 
-  async function fetchFullBlob(trackId: string, signal?: AbortSignal): Promise<Blob> {
+  async function fetchFullBlob(trackId: string, signal?: AbortSignal, priority?: "low"): Promise<Blob> {
     const { streamUrl, downloadUrl } = useAuth();
     let lastError: unknown = null;
     // Stream first: it is the same URL the <audio> element uses, so both share
@@ -402,10 +404,12 @@ export const usePlayerStore = defineStore("player", () => {
     // expired can hang the fetch indefinitely; without a timeout the
     // background-download slot leaks and the next-track preload starves.
     const ATTEMPT_TIMEOUT_MS = 60_000;
-    // /rest/download always serves the original file — it is only reached
-    // when the quality-aware stream attempt fails, so it deliberately does
-    // not take streamQualityParams().
-    for (const [label, url] of [["stream-full", streamUrl(trackId, streamQualityParams())], ["download-full", downloadUrl(trackId)]] as const) {
+    const quality = streamQualityParams();
+    const attempts: Array<readonly [string, string]> = [["stream-full", streamUrl(trackId, quality)]];
+    // Download always returns the original file, so it is only a valid retry
+    // when the user explicitly selected automatic/original quality.
+    if (!quality) attempts.push(["download-full", downloadUrl(trackId)]);
+    for (const [label, url] of attempts) {
       const attemptController = new AbortController();
       let timedOut = false;
       const timer = setTimeout(() => { timedOut = true; attemptController.abort(); }, ATTEMPT_TIMEOUT_MS);
@@ -416,12 +420,14 @@ export const usePlayerStore = defineStore("player", () => {
       const diag = beginRequest(label, url);
       try {
         const started = performance.now();
-        const resp = await fetch(url, {
+        const requestInit: RequestInit & { priority?: "low" } = {
           credentials: "same-origin",
           signal: attemptController.signal,
           // Keep redirects followable so 302 to R2 still works; the timeout
           // above bounds the worst case.
-        });
+        };
+        if (priority) requestInit.priority = priority;
+        const resp = await fetch(url, requestInit);
         const ttfbMs = Math.round(performance.now() - started);
         // resp.url is the post-redirect URL — it exposes whether the transfer
         // went direct to object storage (presign 302) or through the Worker.
@@ -638,9 +644,7 @@ export const usePlayerStore = defineStore("player", () => {
       if (blobSrcByElement.get(el) !== failedSrc) return;
       // An unplayable blob must not stay in the manual cache, or every later
       // play would be served the same broken copy before falling back. Evict
-      // whichever key actually served this element's blob — cross-quality
-      // substitution (getCachedTrackAtOrAboveQuality) means that is not
-      // necessarily cacheKeyFor(track.id) at the *current* quality selection.
+      // the exact key that supplied this element.
       const brokenKey = cachedBlobKeyByElement.get(el);
       if (brokenKey) void deleteCachedTrack(brokenKey);
       if (state?.phase === "range") {
@@ -677,7 +681,7 @@ export const usePlayerStore = defineStore("player", () => {
       controller: new AbortController(),
     };
     fullDownloadByElement.set(el, state);
-    void fetchFullBlob(trackId, state.controller.signal)
+    void fetchFullBlob(trackId, state.controller.signal, "low")
       .then(async (blob) => {
         if (fullDownloadByElement.get(el) !== state) return;
         await onComplete(blob);
@@ -713,15 +717,10 @@ export const usePlayerStore = defineStore("player", () => {
     }
   }
 
-  // Preload the next track once the current one is within this many seconds
-  // of ending, or past this fraction played — whichever comes first. The
-  // timing gate is ANDed with "current track has finished downloading" so the
-  // next full-file fetch cannot compete with the current track's fetch.
-  const NEXT_TRACK_PRELOAD_SECONDS = 30;
-  const NEXT_TRACK_PRELOAD_FRACTION = 0.75;
-  // Hard deadline: with this little left, preload regardless of whether the
-  // current track ever finished downloading — a stream that never completes
-  // used to block the next track's preload entirely.
+  // Start the next low-priority download as soon as active playback has enough
+  // runway to absorb bandwidth fluctuations. The deadline still guarantees a
+  // late start when a browser reports sparse or discontinuous buffered ranges.
+  const NEXT_TRACK_PRELOAD_BUFFER_SECONDS = 20;
   const NEXT_TRACK_PRELOAD_FORCE_SECONDS = 15;
 
   function isFullyBuffered(el: HTMLAudioElement, dur: number): boolean {
@@ -734,11 +733,21 @@ export const usePlayerStore = defineStore("player", () => {
     }
   }
 
+  function bufferedAhead(el: HTMLAudioElement): number {
+    try {
+      for (let i = 0; i < el.buffered.length; i++) {
+        if (el.buffered.start(i) <= el.currentTime + 0.1 && el.buffered.end(i) >= el.currentTime) {
+          return Math.max(0, el.buffered.end(i) - el.currentTime);
+        }
+      }
+    } catch { /* buffered not ready yet */ }
+    return 0;
+  }
+
   function makeAudio(): HTMLAudioElement {
     const el = new Audio();
-    // `preload="auto"` is only a browser hint and Chromium may stop around a
-    // short ahead-buffer. loadCurrent() also consumes a full response and
-    // promotes it to a Blob so the active track really becomes fully local.
+    // `preload="auto"` is only a browser hint; explicit next-track preloading
+    // consumes the full response once active playback has a safe runway.
     el.preload = "auto";
     el.volume = volume.value;
     el.addEventListener("timeupdate", () => {
@@ -747,17 +756,10 @@ export const usePlayerStore = defineStore("player", () => {
       const dur = el.duration;
       if (isFinite(dur) && dur > 0) {
         const remaining = dur - el.currentTime;
-        const timingOk = remaining <= NEXT_TRACK_PRELOAD_SECONDS || el.currentTime / dur >= NEXT_TRACK_PRELOAD_FRACTION;
-        if (timingOk) {
-          // Metadata, lyrics and cover art are small and must not wait on the
-          // current track's full-file fetch; only the next audio download does.
-          prefetchNextTrackData();
-          // Preferably the current track has finished downloading, so the two
-          // fetches never compete. Once it is nearly over that no longer
-          // matters: waiting past this point trades a gapless start for
-          // bandwidth the current track no longer needs.
-          if (isFullyBuffered(el, dur) || remaining <= NEXT_TRACK_PRELOAD_FORCE_SECONDS) preloadNext();
-        }
+        prefetchNextTrackData();
+        if (isFullyBuffered(el, dur)
+            || bufferedAhead(el) >= NEXT_TRACK_PRELOAD_BUFFER_SECONDS
+            || remaining <= NEXT_TRACK_PRELOAD_FORCE_SECONDS) preloadNext();
       }
     });
     el.addEventListener("durationchange", () => {
@@ -792,13 +794,8 @@ export const usePlayerStore = defineStore("player", () => {
           fallbackAfterMediaError(el, failedSrc, shouldPlay);
         }
       } else if (preloaded?.el === el) {
-        // A speculative next track whose blob/src won't play. Mark it broken
-        // so the auto-advance skips it instead of swapping in a dead element
-        // and recovering at play time.
-        if (!preloaded.broken) {
-          showError(i18n.global.t("player.preloadFailed", { title: queue.value[preloaded.index]?.title || "" }));
-          preloaded.broken = true;
-        }
+        // A speculative failure does not prove the track is unplayable. Keep
+        // it unready so advancing retries through the normal streaming path.
         preloaded.ready = false;
         abortFullDownload(el);
       }
@@ -838,6 +835,16 @@ export const usePlayerStore = defineStore("player", () => {
       preloaded = null;
     }
   }
+
+  watch(playbackQuality, (value) => {
+    localStorage.setItem("edgesonic:playbackQuality", value);
+    invalidatePreload();
+    if (!active?.currentSrc || !hasTrack.value) return;
+    const resumeAt = Number.isFinite(active.currentTime) ? active.currentTime : currentTime.value;
+    const shouldPlay = playing.value || !active.paused;
+    _pendingRestoreTime = resumeAt;
+    loadCurrent(shouldPlay);
+  });
 
   /**
    * Index the queue will actually advance to, mirroring next(). Returns -1 when
@@ -903,15 +910,8 @@ export const usePlayerStore = defineStore("player", () => {
         },
         (error) => {
           if (preloaded === candidate) {
-            // Mark the candidate broken so next() skips it instead of
-            // waiting for the swap to fail at play time. The user can still
-            // play it manually (playAt clears preloaded); only the auto
-            // advance is redirected.
-            if (!candidate.broken) {
-              showError(i18n.global.t("player.preloadFailed", { title: nextTrack.title }));
-              candidate.broken = true;
-            }
-            console.warn("[Player] next-track full preload failed, will skip on advance:", error);
+            candidate.ready = false;
+            console.warn("[Player] next-track preload failed; normal streaming will retry on advance:", error);
           }
         },
       );
@@ -922,20 +922,6 @@ export const usePlayerStore = defineStore("player", () => {
     const track = current.value;
     if (!track) return;
     ensureElements();
-    // If the user (or auto-advance) landed on a preload we already know is
-    // broken, skip it now instead of swapping in a dead element and failing
-    // at play time. Bounded by queue length so a fully-broken queue can't
-    // loop forever.
-    if (preloaded && preloaded.index === index.value && preloaded.broken) {
-      const skipFrom = index.value;
-      invalidatePreload();
-      let guard = queue.value.length;
-      while (guard-- > 0) {
-        next();
-        if (index.value !== skipFrom) break;
-      }
-      return;
-    }
     prefetchedTrackId = null;
     // If restoring a saved position, show it immediately; otherwise reset to 0.
     currentTime.value = _pendingRestoreTime ?? 0;
@@ -960,13 +946,16 @@ export const usePlayerStore = defineStore("player", () => {
       const trackId = track.id;
       targetEl.removeAttribute("src");
       targetEl.load();
+      const requestedQuality = playbackQuality.value;
       // Manual cache first: a hit plays the whole track locally with zero
-      // network. On a miss, stream directly for fast start while a background
-      // fetch populates the cache. Clearing the old source before the async
-      // lookup prevents its media events from restoring the previous time.
+      // network. On a miss, stream directly for fast start. Do not also fetch
+      // the full file here: two transfers for the active track compete on slow
+      // links, and switching to the completed Blob interrupts live playback.
+      // Clearing the old source before the async lookup prevents its media
+      // events from restoring the previous time.
       void (async () => {
         const cached = await getCachedTrackAtOrAboveQuality(trackId);
-        if (active !== targetEl || current.value?.id !== trackId) return;
+        if (active !== targetEl || current.value?.id !== trackId || playbackQuality.value !== requestedQuality) return;
         if (cached) {
           const resumeAt = _pendingRestoreTime ?? 0;
           _pendingRestoreTime = null;
@@ -993,27 +982,6 @@ export const usePlayerStore = defineStore("player", () => {
         const sourceUrl = streamUrl(trackId, streamQualityParams());
         targetEl.src = sourceUrl;
         targetEl.load();
-        const fetchedKey = cacheKeyFor(trackId);
-        startFullDownload(
-          targetEl,
-          trackId,
-          async (blob) => {
-            if (active !== targetEl || current.value?.id !== trackId) return;
-            const playableBlob = await normalizePlayableBlob(blob);
-            void putCachedTrack(fetchedKey, playableBlob, track.duration || 0);
-            // The whole file is local now — hand playback off from the live
-            // stream to the blob so it stops depending on the browser's own
-            // buffering (which only resumes fetching once the buffered edge
-            // is nearly exhausted, and can stall audibly when it does).
-            const resumeAt = Number.isFinite(targetEl.currentTime) ? targetEl.currentTime : 0;
-            const shouldPlay = playing.value || !targetEl.paused;
-            playPreparedBlob(targetEl, playableBlob, resumeAt, shouldPlay, "background", fetchedKey);
-          },
-          (error) => {
-            console.warn("[Player] complete current-track preload failed; native stream remains active:", error);
-            showError(i18n.global.t("player.preloadFailed", { title: track.title }));
-          },
-        );
         targetEl.volume = volume.value;
 
         // One-shot seek to restored position once audio metadata is available.

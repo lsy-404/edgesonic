@@ -28,11 +28,10 @@ export const DEFAULT_PROFILES: TranscodeProfile[] = [
   { id: "mp3-192k", codec: "libmp3lame", bitrate: 192, container: "mp3",  contentType: "audio/mpeg",        priority: 2 },
   { id: "aac-96k",  codec: "aac",        bitrate: 96,  container: "m4a",  contentType: "audio/mp4",         priority: 3 },
   { id: "aac-128k", codec: "aac",        bitrate: 128, container: "m4a",  contentType: "audio/mp4",         priority: 4 },
-  { id: "opus-64k", codec: "libopus",    bitrate: 64,  container: "opus", contentType: "audio/opus",        priority: 5 },
-  { id: "opus-96k", codec: "libopus",    bitrate: 96,  container: "opus", contentType: "audio/opus",        priority: 6 },
-  { id: "vorbis-96k", codec: "libvorbis", bitrate: 96, container: "ogg",  contentType: "audio/ogg",         priority: 7 },
-  { id: "flac-lossless", codec: "flac",  bitrate: 0,   container: "flac", contentType: "audio/flac",        priority: 8 },
-  { id: "wav-lossless", codec: "pcm_s16le", bitrate: 0, container: "wav", contentType: "audio/wav",         priority: 9 },
+  { id: "opus-128k", codec: "libopus",   bitrate: 128, container: "opus", contentType: "audio/opus",        priority: 5 },
+  { id: "vorbis-96k", codec: "libvorbis", bitrate: 96, container: "ogg",  contentType: "audio/ogg",         priority: 6 },
+  { id: "flac-lossless", codec: "flac",  bitrate: 0,   container: "flac", contentType: "audio/flac",        priority: 7 },
+  { id: "wav-lossless", codec: "pcm_s16le", bitrate: 0, container: "wav", contentType: "audio/wav",         priority: 8 },
 ];
 
 const PROFILE_INDEX: Map<string, TranscodeProfile> = new Map(

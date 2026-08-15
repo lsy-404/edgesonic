@@ -736,7 +736,8 @@ CREATE TABLE IF NOT EXISTS feature_strings (
 -- 0010: 049 transcode engine defaults
 INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
   ('transcode_engine',           'disabled', '转码引擎 (sandbox|external|disabled)'),
-  ('external_transcoder_url',    '',          '外部转码器 URL（仅在 engine=external 时生效）');
+  ('external_transcoder_url',    '',          '外部转码器 URL（仅在 engine=external 时生效）'),
+  ('sandbox_idle_timeout_seconds', '150',     'Sandbox 容器空闲休眠秒数 (15|150|300)');
 
 -- transcode_mode / default_transcode_profiles were never read by any
 -- runtime code (pre-bake decisions now happen per-upload instead of via a

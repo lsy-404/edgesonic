@@ -36,7 +36,13 @@ assert(barSrc.includes("if (commit && target !== null) player.seek(target);"), "
 assert(barSrc.includes("onBeforeUnmount(() => stopProgressDrag(false));"), "drag listeners are cleaned up on unmount");
 
 assert(playerSrc.includes('el.preload = "auto";'), "native audio keeps the full-load hint");
-assert(playerSrc.includes("startFullDownload("), "current and next tracks consume complete responses");
+assert(playerSrc.includes("startFullDownload("), "next tracks consume complete responses");
+const currentCacheMiss = playerSrc.match(
+  /const sourceUrl = streamUrl\(trackId, streamQualityParams\(\)\);([\s\S]*?)targetEl\.volume = volume\.value;/,
+)?.[1] ?? "";
+assert(!currentCacheMiss.includes("startFullDownload"), "active cache misses use only one audio transfer");
+assert(playerSrc.includes("NEXT_TRACK_PRELOAD_BUFFER_SECONDS = 20"), "next-track preload starts after a short playback runway");
+assert(playerSrc.includes('requestInit.priority = priority'), "next-track fetch yields network priority to active playback");
 assert(playerSrc.includes("fullyLoadedByElement"), "full Blob state is tracked separately from native buffered ranges");
 assert(playerSrc.includes("next.push([0, dur]);"), "the buffer indicator covers the complete duration after full load");
 assert(playerSrc.includes("preloaded && preloaded.index === index.value && preloaded.ready"), "next-track swap waits for the complete Blob");
@@ -47,7 +53,8 @@ assert(playerSrc.includes("fallbackAfterMediaError"), "network, decode, and unsu
 assert(playerSrc.includes("advanceAfterFallbackFailure"), "exhausted fallback attempts have a terminal path");
 assert(playerSrc.includes("console.error(\"[Player] all playback attempts failed, skipping track:\", reason);"), "terminal playback failure skips to the next track");
 assert(playerSrc.includes('showError(i18n.global.t("player.playbackFailed"'), "terminal playback failure notifies the user");
-assert(playerSrc.includes('showError(i18n.global.t("player.preloadFailed"'), "preload failures notify the user");
+assert(!playerSrc.includes("preloaded.broken"), "speculative preload failures do not mark tracks unplayable");
+assert(playerSrc.includes("normal streaming will retry on advance"), "preload failures fall back to normal streaming");
 assert(!playerSrc.includes("fallbackAfterDemuxError"), "old demux-only error gate is removed");
 
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

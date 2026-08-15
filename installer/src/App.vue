@@ -4,9 +4,7 @@ import { computed } from "vue";
 import { useWizard } from "./stores/wizard";
 import WizardShell from "./components/WizardShell.vue";
 import StepWelcome from "./components/steps/StepWelcome.vue";
-import StepCloudflareGuide from "./components/steps/StepCloudflareGuide.vue";
 import StepCredentials from "./components/steps/StepCredentials.vue";
-import StepOptionalFeatures from "./components/steps/StepOptionalFeatures.vue";
 import StepTarget from "./components/steps/StepTarget.vue";
 import StepVersion from "./components/steps/StepVersion.vue";
 import StepReview from "./components/steps/StepReview.vue";
@@ -14,25 +12,21 @@ import StepExecute from "./components/steps/StepExecute.vue";
 import StepDone from "./components/steps/StepDone.vue";
 
 const wizard = useWizard();
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 7;
 
 const current = computed(() => {
   switch (wizard.step) {
     case 1:
       return StepWelcome;
     case 2:
-      return StepCloudflareGuide;
-    case 3:
       return StepCredentials;
-    case 4:
-      return StepOptionalFeatures;
-    case 5:
+    case 3:
       return StepTarget;
-    case 6:
+    case 4:
       return StepVersion;
-    case 7:
+    case 5:
       return StepReview;
-    case 8:
+    case 6:
       return StepExecute;
     default:
       return StepDone;

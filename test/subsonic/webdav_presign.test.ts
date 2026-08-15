@@ -457,11 +457,11 @@ async function main() {
     app.route("/edgesonic", featuresRoutes);
     const env: any = { DB: makeD1(sqlite), INSTANCE_ID: "t" };
 
-    async function postUpdate(value: string) {
+    async function postUpdate(value: string, key = "enable_webdav_presign") {
       const req = new Request("http://test/edgesonic/features/updateString", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: "enable_webdav_presign", value }),
+        body: JSON.stringify({ key, value }),
       });
       return app.fetch(req, env);
     }
@@ -471,6 +471,10 @@ async function main() {
     assert(r.status === 200, `'1' accepted (got ${r.status})`);
     r = await postUpdate("yes");
     assert(r.status === 400, `'yes' rejected (got ${r.status})`);
+    r = await postUpdate("150", "sandbox_idle_timeout_seconds");
+    assert(r.status === 200, `missing allowed string setting is inserted (got ${r.status})`);
+    const inserted = sqlite.prepare("SELECT value FROM feature_strings WHERE key = 'sandbox_idle_timeout_seconds'").get() as { value: string };
+    assert(inserted?.value === "150", "inserted string setting is persisted");
   }
 
   if (failures > 0) {

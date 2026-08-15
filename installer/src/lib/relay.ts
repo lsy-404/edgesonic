@@ -119,7 +119,7 @@ export async function callCfMultipart<T>(
 
 export interface R2VerifyParams {
   accountId: string;
-  bucketName: string;
+  bucketName?: string;
   accessKeyId: string;
   secretAccessKey: string;
 }

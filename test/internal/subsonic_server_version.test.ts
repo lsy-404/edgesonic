@@ -14,7 +14,7 @@ function assert(condition: boolean, message: string) {
 console.log("Subsonic server version:");
 assert(subsonicServerVersion("1.2.6") === "1.2.6", "release version is retained");
 assert(subsonicServerVersion("v1.2.6-dev.abc123-dirty") === "1.2.6", "development markers are hidden");
-assert(subsonicServerVersion("invalid") === "1.2.5", "invalid version uses the release fallback");
+assert(subsonicServerVersion("invalid") === "1.3.0", "invalid version uses the release fallback");
 
 const response = replaceSubsonicServerVersion(subsonicOK({}), "1.2.6-dev.abc123");
 assert(response.includes('serverVersion="1.2.6"'), "Subsonic XML envelope uses the deployed release version");

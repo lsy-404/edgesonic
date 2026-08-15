@@ -342,6 +342,7 @@ const error = ref("");
 const copied = ref(false);
 
 const transcodeEngine = ref<"sandbox" | "external" | "browser_pool" | "disabled">("disabled");
+const sandboxIdleTimeout = ref<"15" | "150" | "300">("150");
 const externalUrl = ref("");
 const externalKeyInput = ref("");
 const externalKeySet = ref(false);
@@ -367,6 +368,8 @@ async function loadFeatures() {
     }));
     // Hydrate transcode form from featureStrings.
     transcodeEngine.value = (findFeatureString("transcode_engine", "disabled") as "sandbox" | "external" | "browser_pool" | "disabled");
+    const configuredIdleTimeout = findFeatureString("sandbox_idle_timeout_seconds", "150");
+    sandboxIdleTimeout.value = configuredIdleTimeout === "15" || configuredIdleTimeout === "300" ? configuredIdleTimeout : "150";
     externalUrl.value = findFeatureString("external_transcoder_url", "");
     // Probe the secret presence (the value itself never crosses the wire).
     try {
@@ -414,6 +417,7 @@ async function saveTranscode() {
     // user-visible "Save" click. Optimistic update — fail at the first error.
     const writes = [
       { key: "transcode_engine", value: transcodeEngine.value },
+      { key: "sandbox_idle_timeout_seconds", value: sandboxIdleTimeout.value },
       { key: "external_transcoder_url", value: externalUrl.value },
     ];
     for (const w of writes) {
@@ -2031,6 +2035,16 @@ onMounted(() => {
               </select>
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.transcode.engineDesc") }}</p>
+
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.transcode.idleTimeout") }}</span>
+              <select v-model="sandboxIdleTimeout" class="form-select" :disabled="!canManageSettings">
+                <option value="15">{{ t("settings.common.transcode.idle15") }}</option>
+                <option value="150">{{ t("settings.common.transcode.idle150") }}</option>
+                <option value="300">{{ t("settings.common.transcode.idle300") }}</option>
+              </select>
+            </label>
+            <p class="feature-desc tc-desc">{{ t("settings.common.transcode.idleTimeoutDesc") }}</p>
 
             <!-- External URL -->
             <label class="tc-row">

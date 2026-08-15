@@ -8,10 +8,10 @@ const wizard = useWizard();
 
 function goNext() {
   wizard.resetExecution();
-  wizard.step = 8;
+  wizard.step = 6;
 }
 function goBack() {
-  wizard.step = 6;
+  wizard.step = 4;
 }
 </script>
 

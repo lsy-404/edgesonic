@@ -247,7 +247,6 @@
     "like": "喜欢",
     "unlike": "取消喜欢",
     "playbackFailed": "无法播放《{title}》，将跳到下一首",
-    "preloadFailed": "无法预载《{title}》",
     "starUpdateFailed": "更新喜欢状态失败",
     "artistInfoTitle": "艺术家信息",
     "artistInfoLoading": "正在自动搜刮艺术家信息…",
@@ -586,7 +585,7 @@
       "mp3-128": "MP3 128k",
       "mp3-192": "MP3 192k",
       "aac-128": "AAC 128k",
-      "opus-96": "Opus 96k",
+      "opus-128": "Opus 128k",
       "flac": "FLAC",
       "wav": "WAV"
     }
@@ -1051,6 +1050,11 @@
         "engineSandbox": "Sandbox (Cloudflare 容器)",
         "engineExternal": "外部容器",
         "engineBrowserPool": "浏览器工作池",
+        "idleTimeout": "容器空闲休眠",
+        "idleTimeoutDesc": "没有转码活动后，容器将在此时间后休眠。时间越短，空闲成本越低，但下次冷启动越多。",
+        "idle15": "15 秒 - 最低成本",
+        "idle150": "150 秒 - 平衡",
+        "idle300": "300 秒 - 连续响应更快",
         "externalUrl": "外部容器 URL",
         "externalUrlPlaceholder": "https://transcoder.example.com",
         "externalKey": "外部容器密钥",

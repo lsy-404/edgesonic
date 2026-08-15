@@ -100,6 +100,7 @@ featuresRoutes.post("/features/update", async (c) => {
 const STRING_FEATURE_KEYS = new Set([
   "transcode_engine",
   "external_transcoder_url",
+  "sandbox_idle_timeout_seconds",
   "scrape_enabled_sources",
   // getArtistInfo / getAlbumInfo / getSimilarSongs / getTopSongs proxies.
   "lastfm_api_key",
@@ -209,6 +210,9 @@ function validateFeatureString(key: string, value: string): string | null {
       return null;
     case "external_transcoder_url":
       if (value && !/^https?:\/\//.test(value)) return "external_transcoder_url must start with http:// or https://";
+      return null;
+    case "sandbox_idle_timeout_seconds":
+      if (!["15", "150", "300"].includes(value)) return "sandbox_idle_timeout_seconds must be 15|150|300";
       return null;
     case "lastfm_api_key":
       // Empty string is explicitly allowed — that's how the admin turns the
@@ -432,12 +436,10 @@ featuresRoutes.post("/features/updateString", async (c) => {
     return c.json({ ok: false, error: validation }, 400);
   }
 
-  const result = await c.env.DB.prepare(
-    "UPDATE feature_strings SET value = ?, updated_at = ? WHERE key = ?"
-  ).bind(body.value, Math.floor(Date.now() / 1000), body.key).run();
-  if (result.meta.changes === 0) {
-    return c.json({ ok: false, error: `Unknown feature: ${body.key}` }, 404);
-  }
+  await c.env.DB.prepare(
+    `INSERT INTO feature_strings (key, value, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+  ).bind(body.key, body.value, Math.floor(Date.now() / 1000)).run();
 
   await invalidateFeatureString(c.env, body.key);
   return c.json({ ok: true });

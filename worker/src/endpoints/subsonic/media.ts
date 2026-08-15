@@ -247,33 +247,40 @@ const streamHandler = async (c: Context) => {
         // storage_uri is r2://cache/transcoded/... so the r2 adapter handles
         // it directly, identical to serving an original.
       } else {
-    // hand its workers a same-origin /rest/stream URL to fetch from (the
-    // session cookie carries through). Synthesise once here so both
-    // browser_pool and any future engine that wants a raw URL share it.
-    const reqUrl = new URL(c.req.url);
-    const origin = `${reqUrl.protocol}//${reqUrl.host}`;
-    // ExecutionContext access throws in test contexts that didn't pass one;
-    // we treat its absence as "no pre-bake plumbing available" so the
-    // browser_pool path just falls back to raw without trying to enqueue.
-    let executionCtx: ExecutionContext<unknown> | null = null;
-    // Hono's c.executionCtx type and the global ExecutionContext<unknown> (newer
-    // @cloudflare/workers-types) differ only by the phantom `tracing` prop; the
-    // runtime object has waitUntil, so a type-only cast is safe here.
-    try { executionCtx = c.executionCtx as unknown as ExecutionContext<unknown>; } catch { executionCtx = null; }
-    const transcoded = await tryTranscodeStream(
-      env,
-      selected.storage_uri,
-      format,
-      maxBitRate,
-      timeOffset,
-      estimateContentLength ? selected : null,
-      // browser_pool needs these to enqueue a pre-bake job + sign the
-      // upload URL; ignored by sandbox/external.
-      executionCtx ? { instanceId: id, executionCtx, origin } : undefined,
-    );
-    if (transcoded) return transcoded;
-    // engine disabled / no matching profile / source open failed / engine
-    // is browser_pool (async-only) → fall back to the original byte stream.
+        const sourceIsLossy = ["mp3", "m4a", "aac", "ogg", "opus"].includes(selected.suffix.toLowerCase());
+        const targetIsLossless = targetProfile.bitrate === 0;
+        const sourceBitRate = selected.bit_rate || 0;
+        const shouldTranscode = !sourceIsLossy
+          || (!targetIsLossless && (sourceBitRate === 0 || sourceBitRate > targetProfile.bitrate));
+        if (shouldTranscode) {
+          // hand its workers a same-origin /rest/stream URL to fetch from (the
+          // session cookie carries through). Synthesise once here so both
+          // browser_pool and any future engine that wants a raw URL share it.
+          const reqUrl = new URL(c.req.url);
+          const origin = `${reqUrl.protocol}//${reqUrl.host}`;
+          // ExecutionContext access throws in test contexts that didn't pass one;
+          // we treat its absence as "no pre-bake plumbing available" so the
+          // browser_pool path just falls back to raw without trying to enqueue.
+          let executionCtx: ExecutionContext<unknown> | null = null;
+          // Hono's c.executionCtx type and the global ExecutionContext<unknown> (newer
+          // @cloudflare/workers-types) differ only by the phantom `tracing` prop; the
+          // runtime object has waitUntil, so a type-only cast is safe here.
+          try { executionCtx = c.executionCtx as unknown as ExecutionContext<unknown>; } catch { executionCtx = null; }
+          const transcoded = await tryTranscodeStream(
+            env,
+            selected.storage_uri,
+            format,
+            maxBitRate,
+            timeOffset,
+            estimateContentLength ? selected : null,
+            // browser_pool needs these to enqueue a pre-bake job + sign the
+            // upload URL; ignored by sandbox/external.
+            executionCtx ? { instanceId: id, executionCtx, origin } : undefined,
+          );
+          if (transcoded) return transcoded;
+          // engine disabled / no matching profile / source open failed / engine
+          // is browser_pool (async-only) → fall back to the original byte stream.
+        }
       } // end else (no cached transcoded instance)
     } else if (!selectedBySource) {
       // pickProfile returned null → no profile in catalogue matches the

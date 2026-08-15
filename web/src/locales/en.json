@@ -246,7 +246,6 @@
     "like": "Like",
     "unlike": "Unlike",
     "playbackFailed": "Unable to play {title}; skipping to the next track",
-    "preloadFailed": "Unable to preload {title}",
     "starUpdateFailed": "Failed to update liked state",
     "artistInfoTitle": "Artist information",
     "artistInfoLoading": "Looking up artist information…",
@@ -589,7 +588,7 @@
       "mp3-128": "MP3 128k",
       "mp3-192": "MP3 192k",
       "aac-128": "AAC 128k",
-      "opus-96": "Opus 96k",
+      "opus-128": "Opus 128k",
       "flac": "FLAC",
       "wav": "WAV"
     }
@@ -1068,6 +1067,11 @@
         "engineSandbox": "Sandbox (Cloudflare container)",
         "engineExternal": "External container",
         "engineBrowserPool": "Browser pool",
+        "idleTimeout": "Container idle timeout",
+        "idleTimeoutDesc": "The container sleeps after this period without transcode activity. Shorter values reduce idle cost but increase cold starts.",
+        "idle15": "15 seconds - lowest cost",
+        "idle150": "150 seconds - balanced",
+        "idle300": "300 seconds - fastest repeat response",
         "externalUrl": "External Transcoder URL",
         "externalUrlPlaceholder": "https://transcoder.example.com",
         "externalKey": "External Transcoder Shared Key",

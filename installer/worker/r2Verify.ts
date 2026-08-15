@@ -22,15 +22,15 @@ type RelayContext = Context<{ Bindings: Env }>;
 
 interface VerifyKeysRequest {
   accountId: string;
-  bucketName: string;
+  bucketName?: string;
   accessKeyId: string;
   secretAccessKey: string;
 }
 
 // Cloudflare account IDs are 32 lowercase hex chars; R2/S3 bucket names are a
 // restricted charset. Validating both keeps the accountId that lands in the
-// signed request's *hostname* (not just its path) from being anything but
-// what it's supposed to be.
+// signed request's hostname (not just its path) from being anything but what
+// it is supposed to be.
 const ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i;
 const BUCKET_NAME_RE = /^[a-z0-9]([a-z0-9.-]{1,61}[a-z0-9])?$/;
 
@@ -39,7 +39,7 @@ function isVerifyKeysRequest(body: unknown): body is VerifyKeysRequest {
   const b = body as Record<string, unknown>;
   return (
     typeof b.accountId === "string" &&
-    typeof b.bucketName === "string" &&
+    (b.bucketName === undefined || typeof b.bucketName === "string") &&
     typeof b.accessKeyId === "string" &&
     typeof b.secretAccessKey === "string" &&
     b.accessKeyId.length > 0 &&
@@ -86,7 +86,7 @@ export async function handleVerifyR2Keys(c: RelayContext): Promise<Response> {
   if (!ACCOUNT_ID_RE.test(accountId)) {
     return jsonResponse(c, 400, { ok: false, error: "Invalid accountId" });
   }
-  if (!BUCKET_NAME_RE.test(bucketName)) {
+  if (bucketName && !BUCKET_NAME_RE.test(bucketName)) {
     return jsonResponse(c, 400, { ok: false, error: "Invalid bucketName" });
   }
 
@@ -100,8 +100,8 @@ export async function handleVerifyR2Keys(c: RelayContext): Promise<Response> {
   let upstream: Response;
   try {
     upstream = await client.fetch(
-      `https://${accountId}.r2.cloudflarestorage.com/${bucketName}`,
-      { method: "HEAD" },
+      `https://${accountId}.r2.cloudflarestorage.com${bucketName ? `/${bucketName}` : ""}`,
+      { method: bucketName ? "HEAD" : "GET" },
     );
   } catch {
     return jsonResponse(c, 200, {

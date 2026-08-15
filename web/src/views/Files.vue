@@ -105,7 +105,7 @@ const PRE_TRANSCODE_PROFILES: { id: string; label: string }[] = [
   { id: "mp3-128k", label: "MP3 128 kbps" },
   { id: "mp3-192k", label: "MP3 192 kbps" },
   { id: "aac-128k", label: "AAC 128 kbps" },
-  { id: "opus-96k", label: "Opus 96 kbps" },
+  { id: "opus-128k", label: "Opus 128 kbps" },
   { id: "flac-lossless", label: "FLAC" },
   { id: "wav-lossless", label: "WAV" },
 ];
@@ -971,7 +971,7 @@ onMounted(async () => {
       <div class="corner corner-br"></div>
     </div>
 
-    <div class="card browser-card">
+    <section class="file-browser">
       <div class="breadcrumb">
         <button class="crumb" :disabled="!path" @click="goCrumb(-1)">{{ t("files.root") }}</button>
         <template v-for="(seg, i) in crumbs" :key="i">
@@ -1087,9 +1087,7 @@ onMounted(async () => {
           <div v-if="!dirs.length && !files.length" class="empty-state">{{ t("files.empty") }}</div>
         </template>
       </div>
-      <div class="corner corner-tr"></div>
-      <div class="corner corner-bl"></div>
-    </div>
+    </section>
 
     <!-- Move / Copy modal — generalized to N files (batch move); the
          free-text destination input became a lazy-loaded folder tree: expand
@@ -1558,10 +1556,15 @@ onMounted(async () => {
 .cross-queue-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); }
 .cross-queue-error { color: var(--color-status-error); font-size: var(--fs-xs); }
 
-.browser-card { padding: 0; overflow: hidden; }
+.file-browser {
+  margin: 0 -1.75rem;
+  border-top: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-secondary);
+}
 .breadcrumb {
   display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1.75rem;
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   border-bottom: 1px solid var(--color-border-subtle);
@@ -1585,7 +1588,7 @@ onMounted(async () => {
   letter-spacing: 0.08em;
 }
 
-.entry-list { max-height: 65vh; overflow-y: auto; }
+.entry-list { min-height: 12rem; }
 .list-loading {
   padding: 1.5rem; text-align: center;
   font-family: var(--font-mono); font-size: var(--fs-sm);
@@ -1594,7 +1597,7 @@ onMounted(async () => {
 }
 .entry-row {
   display: flex; align-items: center; gap: 0.7rem;
-  padding: 0.45rem 1rem;
+  padding: 0.55rem 1.75rem;
   border-bottom: 1px solid var(--color-border-subtle);
   border-left: 2px solid transparent;
   font-family: var(--font-mono);
@@ -1618,6 +1621,11 @@ onMounted(async () => {
 .dir-row:hover .entry-name { color: var(--color-accent-primary); }
 .entry-size { flex-shrink: 0; font-size: var(--fs-xs); color: var(--color-text-muted); }
 .empty-state { padding: 2rem; text-align: center; }
+
+@media (max-width: 960px) {
+  .file-browser { margin: 0 -1rem; }
+  .breadcrumb, .entry-row { padding-left: 1rem; padding-right: 1rem; }
+}
 
 /* R2 operation buttons */
 .op-btn {

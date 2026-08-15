@@ -91,7 +91,7 @@ export function esc(s: string): string {
 // ---------------------------------------------------------------------------
 
 export const SERVER_TYPE = "edgeSonic";
-export const SERVER_VERSION = "1.2.5";
+export const SERVER_VERSION = "1.3.0";
 
 // Subsonic clients use this as a release identifier. Development revisions and
 // dirty-worktree markers remain available from /edgesonic/version, but are not

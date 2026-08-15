@@ -66,7 +66,7 @@ export async function buildTranscodeEngine(env: Env): Promise<ResolvedEngine | n
     const ns = (env as unknown as { Sandbox?: DurableObjectNamespace<Sandbox<any>> }).Sandbox;
     if (!ns) return null;
     const { SandboxTranscodeEngine } = await import("./sandbox");
-    return { engine: new SandboxTranscodeEngine({ Sandbox: ns }), kind };
+    return { engine: new SandboxTranscodeEngine({ ...env, Sandbox: ns }), kind };
   }
 
   if (kind === "external") {

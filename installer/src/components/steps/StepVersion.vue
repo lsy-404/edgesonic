@@ -42,10 +42,10 @@ function formatDate(value: string | null): string {
 }
 
 function goNext() {
-  wizard.step = 7;
+  wizard.step = 5;
 }
 function goBack() {
-  wizard.step = 5;
+  wizard.step = 3;
 }
 </script>
 

@@ -29,6 +29,7 @@
 import { getSandbox, type Sandbox } from "@cloudflare/sandbox";
 import type { TranscodeEngine, TranscodeInput, TranscodeJobRow, TranscodeOutput, TranscodeProfile } from "./engine";
 import { buildFfmpegArgs } from "./profiles";
+import { getFeatureString } from "../utils/features";
 
 // Bindings provided by wrangler.toml. The Sandbox class is re-exported from
 // src/index.ts; this is its DurableObjectNamespace binding. The unknown
@@ -57,15 +58,21 @@ export class SandboxTranscodeEngine implements TranscodeEngine {
   private readonly port: number;
 
   constructor(
-    private readonly env: SandboxBindings,
+    private readonly env: Env & SandboxBindings,
     opts: SandboxEngineOptions = {},
   ) {
     this.sandboxId = opts.sandboxId ?? "edgesonic-transcoder";
     this.port = opts.port ?? 8080;
   }
 
+  private async getSandbox(): Promise<Sandbox> {
+    const configured = await getFeatureString(this.env, "sandbox_idle_timeout_seconds", "150");
+    const sleepAfter = ["15", "150", "300"].includes(configured) ? Number(configured) : 150;
+    return getSandbox(this.env.Sandbox, this.sandboxId, { sleepAfter });
+  }
+
   async transcode(input: TranscodeInput, profile: TranscodeProfile): Promise<TranscodeOutput> {
-    const sb = getSandbox(this.env.Sandbox, this.sandboxId);
+    const sb = await this.getSandbox();
 
     const args = buildFfmpegArgs(profile);
     const argsParam = encodeURIComponent(JSON.stringify(args));
@@ -122,7 +129,7 @@ export class SandboxTranscodeEngine implements TranscodeEngine {
   // on first invocation; subsequent calls return in single-digit ms.
   async healthCheck(): Promise<boolean> {
     try {
-      const sb = getSandbox(this.env.Sandbox, this.sandboxId);
+      const sb = await this.getSandbox();
       const resp = await sb.containerFetch("http://sandbox/health", { method: "GET" }, this.port);
       if (!resp.ok) return false;
       const txt = await resp.text();

@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, onUnmounted, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
-import { callCfJson } from "../../lib/relay";
+import { callCfJson, verifyR2Keys } from "../../lib/relay";
 import { listBucketNames } from "../../lib/deploy/r2";
 import { describeCfError } from "../../lib/cf/errors";
 
@@ -12,8 +12,6 @@ const wizard = useWizard();
 
 const verifying = ref(false);
 const hasAttempted = ref(false);
-const showToken = ref(false);
-const showR2Secret = ref(false);
 
 type CheckStatus = "pending" | "checking" | "ok" | "missing" | "error";
 interface PermissionCheck {
@@ -30,6 +28,7 @@ const checks = reactive<PermissionCheck[]>([
   { key: "workersScripts", status: "pending", detail: "" },
   { key: "d1", status: "pending", detail: "" },
   { key: "r2", status: "pending", detail: "" },
+  { key: "r2Keys", status: "pending", detail: "" },
   { key: "dns", status: "pending", detail: "" },
 ]);
 
@@ -45,7 +44,8 @@ const canVerify = computed(
   () =>
     wizard.credentials.accountId.trim().length > 0 &&
     wizard.credentials.apiToken.trim().length > 0 &&
-    !verifying.value,
+    wizard.credentials.r2AccessKeyId.trim().length > 0 &&
+    wizard.credentials.r2SecretAccessKey.trim().length > 0,
 );
 
 const allRequiredOk = computed(() => checks.every((c) => c.status === "ok") && wizard.r2Enabled === true);
@@ -58,7 +58,33 @@ const canContinue = computed(
     wizard.credentials.r2SecretAccessKey.trim().length > 0,
 );
 
+let verifyTimer: ReturnType<typeof setTimeout> | undefined;
+let verifyGeneration = 0;
+watch(
+  () => [wizard.credentials.accountId, wizard.credentials.apiToken, wizard.credentials.r2AccessKeyId, wizard.credentials.r2SecretAccessKey].join("\0"),
+  () => {
+    verifyGeneration++;
+    clearTimeout(verifyTimer);
+    verifying.value = false;
+    wizard.credentialsVerified = false;
+    wizard.r2Enabled = null;
+    for (const check of checks) {
+      check.status = "pending";
+      check.detail = "";
+    }
+    if (!canVerify.value) return;
+    verifyTimer = setTimeout(() => {
+      void verify();
+    }, 400);
+  },
+);
+onUnmounted(() => {
+  verifyGeneration++;
+  clearTimeout(verifyTimer);
+});
+
 async function verify() {
+  const generation = ++verifyGeneration;
   verifying.value = true;
   hasAttempted.value = true;
   wizard.credentialsVerified = false;
@@ -67,13 +93,16 @@ async function verify() {
     c.status = "pending";
     c.detail = "";
   }
-  const { accountId, apiToken } = wizard.credentials;
+  const { accountId, apiToken, r2AccessKeyId, r2SecretAccessKey } = wizard.credentials;
+  const isStale = () => generation !== verifyGeneration;
 
   setCheck("token", "checking");
   try {
     await callCfJson(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
+    if (isStale()) return;
     setCheck("token", "ok");
   } catch (e) {
+    if (isStale()) return;
     setCheck("token", "error", describeCfError(e, "an active Account API Token").message);
     verifying.value = false;
     return;
@@ -84,60 +113,93 @@ async function verify() {
   setCheck("workersScripts", "checking");
   try {
     await callCfJson(apiToken, `/accounts/${accountId}/workers/scripts`, undefined, "Workers Scripts Edit");
+    if (isStale()) return;
     setCheck("workersScripts", "ok");
   } catch (e) {
+    if (isStale()) return;
     setCheck("workersScripts", "missing", describeCfError(e, "Workers Scripts Edit").message);
   }
 
   setCheck("dns", "checking");
   try {
     await callCfJson(apiToken, "/zones?per_page=1", undefined, "DNS Edit");
+    if (isStale()) return;
     setCheck("dns", "ok");
   } catch (e) {
+    if (isStale()) return;
     setCheck("dns", "missing", describeCfError(e, "DNS Edit").message);
   }
 
   setCheck("d1", "checking");
   try {
     await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Edit");
+    if (isStale()) return;
     setCheck("d1", "ok");
   } catch (e) {
+    if (isStale()) return;
     setCheck("d1", "missing", describeCfError(e, "D1 Edit").message);
   }
 
   setCheck("r2", "checking");
   try {
     await listBucketNames(apiToken, accountId);
+    if (isStale()) return;
     setCheck("r2", "ok");
     wizard.r2Enabled = true;
+    setCheck("r2Keys", "checking");
+    const r2Keys = await verifyR2Keys({
+      accountId,
+      accessKeyId: r2AccessKeyId,
+      secretAccessKey: r2SecretAccessKey,
+    });
+    if (isStale()) return;
+    if (r2Keys.ok) {
+      setCheck("r2Keys", "ok");
+    } else {
+      setCheck("r2Keys", "missing", t("credentials.r2KeyInvalid"));
+    }
   } catch (e) {
+    if (isStale()) return;
     const described = describeCfError(e, "Workers R2 Storage Edit");
     if (described.r2NotSubscribed) {
       setCheck("r2", "missing", t("credentials.r2NotEnabled"));
       wizard.r2Enabled = false;
+      setCheck("r2Keys", "pending");
     } else {
       setCheck("r2", "error", described.message);
       wizard.r2Enabled = false;
+      setCheck("r2Keys", "pending");
     }
   }
 
-  wizard.credentialsVerified = true;
-  verifying.value = false;
+  if (!isStale()) {
+    wizard.credentialsVerified = true;
+    verifying.value = false;
+  }
 }
 
 function goNext() {
-  wizard.step = 4;
+  wizard.step = 3;
 }
 function goBack() {
-  wizard.step = 2;
+  wizard.step = 1;
 }
+
 </script>
 
 <template>
   <div>
     <h1 class="step-title">{{ t("credentials.title") }}</h1>
     <p class="step-subtitle">{{ t("credentials.subtitle") }}</p>
-    <div class="alert alert-warning">{{ t("credentials.sensitiveWarning") }}</div>
+
+    <div class="guide-card credential-setup">
+      <h3>{{ t("credentials.setupTitle") }}</h3>
+      <ol>
+        <li><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noreferrer">{{ t("credentials.createAccount") }} ↗</a></li>
+        <li>{{ t("credentials.setupToken") }} <a href="https://dash.cloudflare.com/?to=/:account/api-tokens" target="_blank" rel="noreferrer">{{ t("credentials.apiTokenCreateLink") }} ↗</a></li>
+        <li>{{ t("credentials.setupPermissions") }}</li>
+      </ol>
+    </div>
 
     <div class="field">
       <label for="accountId">{{ t("credentials.accountId") }}<span class="field-tag required">{{ t("common.required") }}</span></label>
@@ -147,27 +209,21 @@ function goBack() {
 
     <div class="field">
       <label for="apiToken">{{ t("credentials.apiToken") }}<span class="field-tag required">{{ t("common.required") }}</span></label>
-      <input id="apiToken" v-model.trim="wizard.credentials.apiToken" :type="showToken ? 'text' : 'password'" autocomplete="off" spellcheck="false" />
-      <p class="field-help">
-        {{ t("credentials.apiTokenHelp") }}
-        · <button type="button" class="btn-secondary" style="padding: 2px 8px; font-size: 0.75rem" @click="showToken = !showToken">{{ showToken ? t("common.hide") : t("common.show") }}</button>
-      </p>
+      <input id="apiToken" v-model.trim="wizard.credentials.apiToken" type="password" autocomplete="off" spellcheck="false" />
+      <p class="field-help">{{ t("credentials.apiTokenHelp") }}</p>
     </div>
 
     <div class="field">
       <label for="r2Key">{{ t("credentials.r2AccessKeyId") }}<span class="field-tag required">{{ t("common.required") }}</span></label>
-      <input id="r2Key" v-model.trim="wizard.credentials.r2AccessKeyId" type="text" autocomplete="off" spellcheck="false" />
+      <input id="r2Key" v-model.trim="wizard.credentials.r2AccessKeyId" type="password" autocomplete="off" spellcheck="false" />
     </div>
     <div class="field">
       <label for="r2Secret">{{ t("credentials.r2SecretAccessKey") }}<span class="field-tag required">{{ t("common.required") }}</span></label>
-      <input id="r2Secret" v-model.trim="wizard.credentials.r2SecretAccessKey" :type="showR2Secret ? 'text' : 'password'" autocomplete="off" spellcheck="false" />
-      <p class="field-help">
-        {{ t("credentials.r2KeyHelp") }}
-        · <button type="button" class="btn-secondary" style="padding: 2px 8px; font-size: 0.75rem" @click="showR2Secret = !showR2Secret">{{ showR2Secret ? t("common.hide") : t("common.show") }}</button>
-      </p>
+      <input id="r2Secret" v-model.trim="wizard.credentials.r2SecretAccessKey" type="password" autocomplete="off" spellcheck="false" />
+      <p class="field-help">{{ t("credentials.r2KeyHelp") }}</p>
     </div>
 
-    <button type="button" class="btn btn-secondary" :disabled="!canVerify" @click="verify">
+    <button type="button" class="btn btn-secondary" :disabled="!canVerify || verifying" @click="verify">
       {{ verifying ? t("credentials.verifying") : t("credentials.verify") }}
     </button>
 
@@ -197,7 +253,6 @@ function goBack() {
           {{ t("credentials.r2EnableLink") }} ↗
         </a>
       </div>
-      <p v-else-if="wizard.r2Enabled === true" class="field-help">{{ t("credentials.r2KeysUnverifiedNote") }}</p>
     </template>
 
     <div class="step-actions">

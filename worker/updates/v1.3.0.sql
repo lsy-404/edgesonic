@@ -4,3 +4,6 @@
 -- worker_max_concurrent all still apply and are left alone.
 DELETE FROM feature_strings
  WHERE key IN ('worker_poll_interval_seconds', 'worker_batch_size');
+
+INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
+  ('sandbox_idle_timeout_seconds', '150', 'Sandbox container idle timeout in seconds (15|150|300)');
