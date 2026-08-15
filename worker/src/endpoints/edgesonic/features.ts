@@ -99,8 +99,6 @@ featuresRoutes.post("/features/update", async (c) => {
 // keys is constrained server-side so we never write into an unknown row.
 const STRING_FEATURE_KEYS = new Set([
   "transcode_engine",
-  "transcode_mode",
-  "default_transcode_profiles",
   "external_transcoder_url",
   "scrape_enabled_sources",
   // getArtistInfo / getAlbumInfo / getSimilarSongs / getTopSongs proxies.
@@ -209,23 +207,6 @@ function validateFeatureString(key: string, value: string): string | null {
         return "transcode_engine must be sandbox|external|browser_pool|disabled";
       }
       return null;
-    case "transcode_mode":
-      if (!["on_demand", "pre_bake", "both"].includes(value)) {
-        return "transcode_mode must be on_demand|pre_bake|both";
-      }
-      return null;
-    case "default_transcode_profiles": {
-      // Must be a JSON array of strings. Profile ids are validated when used.
-      try {
-        const parsed = JSON.parse(value);
-        if (!Array.isArray(parsed) || !parsed.every((v) => typeof v === "string")) {
-          return "default_transcode_profiles must be a JSON array of strings";
-        }
-      } catch {
-        return "default_transcode_profiles must be valid JSON";
-      }
-      return null;
-    }
     case "external_transcoder_url":
       if (value && !/^https?:\/\//.test(value)) return "external_transcoder_url must start with http:// or https://";
       return null;

@@ -120,6 +120,7 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
   await guarded("secrets", report, async () => {
     await pushSecret(apiToken, accountId, script, "WORK_UPLOAD_HMAC_KEY", generateHmacKeyBase64());
     await pushSecret(apiToken, accountId, script, "CF_ACCOUNT_ID", accountId);
+    await pushSecret(apiToken, accountId, script, "CF_API_TOKEN", apiToken);
     // The R2 key pair was already verified against the bucket in the "r2"
     // step — push it and flip the flag so the presign short-circuit
     // (worker/SECRETS.md §3) is live immediately instead of leaving the
@@ -156,5 +157,5 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
     // reports success so it doesn't mask an otherwise-complete deployment.
   });
 
-  return { url, adminUsername: ADMIN_USERNAME, adminPassword, version: manifest.version };
+  return { accountId, url, adminUsername: ADMIN_USERNAME, adminPassword, version: manifest.version };
 }

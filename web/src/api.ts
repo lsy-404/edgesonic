@@ -335,8 +335,11 @@ export function useAuth() {
     return `${REST_BASE}/${path}?${signedParams(params).toString()}`;
   }
 
-  function streamUrl(songId: string): string {
-    return restUrl("stream", { id: songId });
+  function streamUrl(songId: string, quality?: { format?: string; maxBitRate?: number }): string {
+    const params: Record<string, string> = { id: songId };
+    if (quality?.format) params.format = quality.format;
+    if (quality?.maxBitRate) params.maxBitRate = String(quality.maxBitRate);
+    return restUrl("stream", params);
   }
 
   function coverArtUrl(coverId: string, size?: number): string {
@@ -661,13 +664,14 @@ export function useAuth() {
     file: File,
     target: string,
     path?: string,
-    opts?: { masterId?: string; onProgress?: (loaded: number, total: number) => void },
+    opts?: { masterId?: string; profiles?: string[]; onProgress?: (loaded: number, total: number) => void },
   ): Promise<string> {
     const qs = signedParams();
     qs.set("name", file.name);
     qs.set("source", target);
     if (path) qs.set("path", path);
     if (opts?.masterId) qs.set("master_id", opts.masterId);
+    if (opts?.profiles?.length) qs.set("profiles", opts.profiles.join(","));
     return new Promise<string>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${STORAGE_BASE}/files/upload?${qs.toString()}`);

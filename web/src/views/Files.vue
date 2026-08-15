@@ -94,6 +94,22 @@ const uploadAccept = computed(() => (uploadAcceptMode.value === "audio" ? "audio
 const uploadParseMetadata = ref(true);
 const canSelectAllFiles = computed(() => demoMode.allowAllFileTypes);
 
+// Pre-transcode options, asked per-upload instead of as a global Settings
+// default (nothing ever consumed the old global setting — see profiles.ts).
+// Collapsed by default; expanding it lets the uploader pick which
+// additional playback qualities should be pre-generated right away instead
+// of waiting for the first /rest/stream request at that quality.
+const showPreTranscode = ref(false);
+const preTranscodeProfiles = ref<string[]>([]);
+const PRE_TRANSCODE_PROFILES: { id: string; label: string }[] = [
+  { id: "mp3-128k", label: "MP3 128 kbps" },
+  { id: "mp3-192k", label: "MP3 192 kbps" },
+  { id: "aac-128k", label: "AAC 128 kbps" },
+  { id: "opus-96k", label: "Opus 96 kbps" },
+  { id: "flac-lossless", label: "FLAC" },
+  { id: "wav-lossless", label: "WAV" },
+];
+
 const canUpload = computed(() => hasPerm("upload"));
 const canScan = computed(() => hasPerm("manage_files"));
 const isR2 = computed(() => currentSource.value === "r2");
@@ -230,6 +246,7 @@ async function doUpload() {
       uploadMsg.value = t("files.uploadingFile", { current: i + 1, total });
       try {
         const raw = await uploadFile(file, uploadTarget.value, path.value || undefined, {
+          profiles: preTranscodeProfiles.value.length ? preTranscodeProfiles.value : undefined,
           onProgress: (loaded, size) => {
             uploadProgressList.value[i] = size > 0 ? Math.round((loaded / size) * 100) : 0;
           },
@@ -918,6 +935,21 @@ onMounted(async () => {
         <span class="upload-options-label">{{ t("files.parseMetadata") }}</span>
         <span class="upload-options-hint">{{ t("files.parseMetadataHint") }}</span>
       </div>
+      <div class="pre-transcode-block">
+        <button type="button" class="pre-transcode-toggle" @click="showPreTranscode = !showPreTranscode">
+          <span>{{ t("files.preTranscode.title") }}</span>
+          <span class="pre-transcode-caret">{{ showPreTranscode ? '−' : '+' }}</span>
+        </button>
+        <div v-show="showPreTranscode" class="pre-transcode-body">
+          <p class="upload-options-hint">{{ t("files.preTranscode.hint") }}</p>
+          <div class="pre-transcode-profiles">
+            <label v-for="p in PRE_TRANSCODE_PROFILES" :key="p.id" class="pre-transcode-pill">
+              <input type="checkbox" :value="p.id" v-model="preTranscodeProfiles" />
+              <span>{{ p.label }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
       <!-- Upload queue list with per-file progress bars -->
       <div v-if="uploadQueue.length || uploadBusy" class="upload-queue">
         <div class="mono-label upload-queue-header">{{ t("files.uploadQueue") }}</div>
@@ -1380,6 +1412,36 @@ onMounted(async () => {
 }
 .upload-options-label { font-size: var(--fs-sm); color: var(--color-text-secondary); }
 .upload-options-hint { font-size: var(--fs-xs); color: var(--color-text-muted); }
+.pre-transcode-block { margin-top: 0.4rem; }
+.pre-transcode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  padding: 0.3rem 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.pre-transcode-toggle:hover { color: var(--color-text-primary); }
+.pre-transcode-caret { color: var(--color-accent-primary); }
+.pre-transcode-body { padding: 0.3rem 0 0.2rem; }
+.pre-transcode-profiles { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.4rem; }
+.pre-transcode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  user-select: none;
+}
+.pre-transcode-pill input { margin: 0; }
 .upload-msg { font-family: var(--font-mono); font-size: var(--fs-sm); margin-top: 0.5rem; color: var(--color-status-success); }
 .upload-msg.error { color: var(--color-status-error); }
 

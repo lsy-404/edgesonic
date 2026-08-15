@@ -30,11 +30,10 @@ interface FreshBindingsInput {
 // from via keep_bindings, so this declares the full set wrangler.toml.example
 // needs at runtime: DB (d1), MUSIC_BUCKET (r2), ASSETS, and the plain_text
 // vars worker/src/types/env.d.ts reads unconditionally. CF_ACCOUNT_ID is
-// intentionally absent — it's pushed as a Workers Secret, not a var, matching
-// docs/DEPLOY_BY_AGENT.md §3.4. Images and the Sandbox container/DO are
-// skipped: no way to build a container image from a browser, and both are
-// optional at runtime (getCoverArt falls back to original bytes; transcoding
-// falls back to browser_pool).
+// intentionally absent — it's pushed as a Workers Secret, not a var. Images
+// is safe to bind for every installation: cover art falls back to original
+// bytes until the selected zone enables Transformations. The Sandbox
+// container/DO remains excluded because a browser cannot build its image.
 export function freshBindings(input: FreshBindingsInput): Binding[] {
   return [
     { type: "d1", name: "DB", database_id: input.databaseId },
@@ -45,6 +44,7 @@ export function freshBindings(input: FreshBindingsInput): Binding[] {
     { type: "plain_text", name: "EDGESONIC_VERSION", text: input.version },
     { type: "plain_text", name: "EDGESONIC_BUILD_TIME", text: input.buildTime },
     { type: "plain_text", name: "WORKER_NAME", text: input.workerName },
+    { type: "images", name: "IMAGES" },
     { type: "assets", name: "ASSETS" },
   ];
 }

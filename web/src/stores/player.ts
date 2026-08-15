@@ -90,6 +90,73 @@ export const usePlayerStore = defineStore("player", () => {
     localStorage.getItem("edgesonic_volume") ||
     "0.8"
   ));
+  // Playback quality — a persistent personal preference like volume, not
+  // per-session playback state. "auto" means no format/maxBitRate params:
+  // the server serves the stored instance as-is. Any other value maps to a
+  // /rest/stream format+maxBitRate pair (see QUALITY_OPTIONS); the server
+  // gracefully falls back to raw when the engine can't honour it, so an
+  // invalid/stale saved preference is never a hard failure.
+  const QUALITY_OPTIONS: Record<string, { format?: string; maxBitRate?: number }> = {
+    auto: {},
+    "mp3-128": { format: "mp3", maxBitRate: 128 },
+    "mp3-192": { format: "mp3", maxBitRate: 192 },
+    "aac-128": { format: "aac", maxBitRate: 128 },
+    "opus-96": { format: "opus", maxBitRate: 96 },
+    flac: { format: "flac" },
+    wav: { format: "wav" },
+  };
+  const playbackQuality = ref(
+    (() => {
+      const saved = localStorage.getItem("edgesonic:playbackQuality") || "auto";
+      return saved in QUALITY_OPTIONS ? saved : "auto";
+    })(),
+  );
+  watch(playbackQuality, (v) => localStorage.setItem("edgesonic:playbackQuality", v));
+  function streamQualityParams(): { format?: string; maxBitRate?: number } | undefined {
+    const opts = QUALITY_OPTIONS[playbackQuality.value];
+    return opts && Object.keys(opts).length ? opts : undefined;
+  }
+  // The IndexedDB blob cache (audioCache.ts) is keyed by whatever string we
+  // hand it — folding the quality selection in means a cached blob is never
+  // served for a different quality than it was fetched at, and switching
+  // quality naturally starts a fresh fetch instead of replaying stale audio.
+  function cacheKeyFor(trackId: string): string {
+    return `${trackId}::${playbackQuality.value}`;
+  }
+  // Coarse fidelity ordering (higher = better) so a cache lookup can accept
+  // a blob fetched at an equal-or-better quality than what's requested —
+  // e.g. a request for "mp3-128" is happily served by an already-cached
+  // "flac" blob — but never the other way around (an "mp3-128" cache entry
+  // must never silently answer a "flac" request). "auto" is ranked highest
+  // since it's whatever the source instance actually is, generally the best
+  // locally-available copy.
+  const QUALITY_RANK: Record<string, number> = {
+    "mp3-128": 1,
+    "aac-128": 1,
+    "opus-96": 2,
+    "mp3-192": 3,
+    flac: 4,
+    wav: 4,
+    auto: 5,
+  };
+  // Candidate keys for a lookup at `quality`, ordered from the closest
+  // sufficient match to the best available — so a small mp3-192 blob is
+  // preferred over swapping in a much larger cached flac when both satisfy
+  // the request equally well.
+  function cacheKeyCandidates(trackId: string, quality: string): string[] {
+    const minRank = QUALITY_RANK[quality] ?? 0;
+    return Object.keys(QUALITY_RANK)
+      .filter((q) => QUALITY_RANK[q] >= minRank)
+      .sort((a, b) => QUALITY_RANK[a] - QUALITY_RANK[b])
+      .map((q) => `${trackId}::${q}`);
+  }
+  async function getCachedTrackAtOrAboveQuality(trackId: string): Promise<{ blob: Blob; key: string } | null> {
+    for (const key of cacheKeyCandidates(trackId, playbackQuality.value)) {
+      const blob = await getCachedTrack(key);
+      if (blob) return { blob, key };
+    }
+    return null;
+  }
   // 093d — buffered range tracking for the PlayerBar buffer bar overlay.
   // `bufferedRanges` is an array of [startSec, endSec] tuples representing
   // the byte ranges the browser has fetched so far. Updated on `progress`
@@ -184,8 +251,8 @@ export const usePlayerStore = defineStore("player", () => {
       await tryLocalCoverFrom(inMemory, tr.id);
       if (localCoverUrl.value) return;
     }
-    const cached = await getCachedTrack(tr.id);
-    if (cached) await tryLocalCoverFrom(cached, tr.id);
+    const cached = await getCachedTrackAtOrAboveQuality(tr.id);
+    if (cached) await tryLocalCoverFrom(cached.blob, tr.id);
   }
 
   let elA: HTMLAudioElement | null = null;
@@ -205,6 +272,12 @@ export const usePlayerStore = defineStore("player", () => {
   const fullDownloadByElement = new WeakMap<HTMLAudioElement, FullDownloadState>();
   const fullBlobOriginByElement = new WeakMap<HTMLAudioElement, "background" | "fallback">();
   const fullyLoadedByElement = new WeakSet<HTMLAudioElement>();
+  // Tracks which manual-cache key (see cacheKeyFor) actually supplied the
+  // blob currently loaded into an element, when it came from that cache at
+  // all. Lets fallbackAfterMediaError evict the exact broken entry instead
+  // of guessing at the current quality selection, which can differ from
+  // what was actually served once cross-quality substitution is in play.
+  const cachedBlobKeyByElement = new WeakMap<HTMLAudioElement, string>();
   const fallbackInFlight = new WeakSet<HTMLAudioElement>();
 
   window.addEventListener("pagehide", () => {
@@ -260,6 +333,7 @@ export const usePlayerStore = defineStore("player", () => {
     fallbackTerminalTrackByElement.delete(el);
     fullBlobOriginByElement.delete(el);
     fullyLoadedByElement.delete(el);
+    cachedBlobKeyByElement.delete(el);
   }
 
   async function blobHeadHex(blob: Blob): Promise<string> {
@@ -328,7 +402,10 @@ export const usePlayerStore = defineStore("player", () => {
     // expired can hang the fetch indefinitely; without a timeout the
     // background-download slot leaks and the next-track preload starves.
     const ATTEMPT_TIMEOUT_MS = 60_000;
-    for (const [label, url] of [["stream-full", streamUrl(trackId)], ["download-full", downloadUrl(trackId)]] as const) {
+    // /rest/download always serves the original file — it is only reached
+    // when the quality-aware stream attempt fails, so it deliberately does
+    // not take streamQualityParams().
+    for (const [label, url] of [["stream-full", streamUrl(trackId, streamQualityParams())], ["download-full", downloadUrl(trackId)]] as const) {
       const attemptController = new AbortController();
       let timedOut = false;
       const timer = setTimeout(() => { timedOut = true; attemptController.abort(); }, ATTEMPT_TIMEOUT_MS);
@@ -398,8 +475,11 @@ export const usePlayerStore = defineStore("player", () => {
     resumeAt: number,
     shouldPlay: boolean,
     completeOrigin: "background" | "fallback" | null,
+    cacheKey?: string,
   ) {
     revokeBlobSrc(el);
+    if (cacheKey) cachedBlobKeyByElement.set(el, cacheKey);
+    else cachedBlobKeyByElement.delete(el);
     if (completeOrigin) {
       fullyLoadedByElement.add(el);
       fullBlobOriginByElement.set(el, completeOrigin);
@@ -535,7 +615,7 @@ export const usePlayerStore = defineStore("player", () => {
     const { streamUrl } = useAuth();
     const state: IncrementalFallbackState = {
       trackId,
-      sourceUrl: streamUrl(trackId),
+      sourceUrl: streamUrl(trackId, streamQualityParams()),
       chunks: [],
       downloaded: 0,
       stepIndex: 0,
@@ -557,8 +637,12 @@ export const usePlayerStore = defineStore("player", () => {
       const state = fallbackStateByElement.get(el);
       if (blobSrcByElement.get(el) !== failedSrc) return;
       // An unplayable blob must not stay in the manual cache, or every later
-      // play would be served the same broken copy before falling back.
-      void deleteCachedTrack(track.id);
+      // play would be served the same broken copy before falling back. Evict
+      // whichever key actually served this element's blob — cross-quality
+      // substitution (getCachedTrackAtOrAboveQuality) means that is not
+      // necessarily cacheKeyFor(track.id) at the *current* quality selection.
+      const brokenKey = cachedBlobKeyByElement.get(el);
+      if (brokenKey) void deleteCachedTrack(brokenKey);
       if (state?.phase === "range") {
         void continueIncrementalFallback(el, state, resumeAt, shouldPlay);
       } else if (state?.phase === "full") {
@@ -799,21 +883,22 @@ export const usePlayerStore = defineStore("player", () => {
     // the inactive element for an instant swap. A hit in the manual cache
     // skips the download entirely.
     void (async () => {
-      const cached = await getCachedTrack(nextTrack.id);
+      const cached = await getCachedTrackAtOrAboveQuality(nextTrack.id);
       if (preloaded !== candidate || el === active) return;
       if (cached) {
-        playPreparedBlob(el, cached, 0, false, "background");
+        playPreparedBlob(el, cached.blob, 0, false, "background", cached.key);
         candidate.ready = true;
         return;
       }
+      const fetchedKey = cacheKeyFor(nextTrack.id);
       startFullDownload(
         el,
         nextTrack.id,
         async (blob) => {
           const playableBlob = await normalizePlayableBlob(blob);
-          void putCachedTrack(nextTrack.id, playableBlob, nextTrack.duration || 0);
+          void putCachedTrack(fetchedKey, playableBlob, nextTrack.duration || 0);
           if (preloaded !== candidate || el === active) return;
-          playPreparedBlob(el, playableBlob, 0, false, "background");
+          playPreparedBlob(el, playableBlob, 0, false, "background", fetchedKey);
           candidate.ready = true;
         },
         (error) => {
@@ -880,13 +965,13 @@ export const usePlayerStore = defineStore("player", () => {
       // fetch populates the cache. Clearing the old source before the async
       // lookup prevents its media events from restoring the previous time.
       void (async () => {
-        const cached = await getCachedTrack(trackId);
+        const cached = await getCachedTrackAtOrAboveQuality(trackId);
         if (active !== targetEl || current.value?.id !== trackId) return;
         if (cached) {
           const resumeAt = _pendingRestoreTime ?? 0;
           _pendingRestoreTime = null;
           targetEl.volume = volume.value;
-          playPreparedBlob(targetEl, cached, resumeAt, autoplay, "background");
+          playPreparedBlob(targetEl, cached.blob, resumeAt, autoplay, "background", cached.key);
           syncBuffered(targetEl);
           // Blob URLs don't fire `progress` (no network fetch), and
           // `durationchange` only fires on an actual duration change. When
@@ -905,23 +990,24 @@ export const usePlayerStore = defineStore("player", () => {
           return;
         }
         const { streamUrl } = useAuth();
-        const sourceUrl = streamUrl(trackId);
+        const sourceUrl = streamUrl(trackId, streamQualityParams());
         targetEl.src = sourceUrl;
         targetEl.load();
+        const fetchedKey = cacheKeyFor(trackId);
         startFullDownload(
           targetEl,
           trackId,
           async (blob) => {
             if (active !== targetEl || current.value?.id !== trackId) return;
             const playableBlob = await normalizePlayableBlob(blob);
-            void putCachedTrack(trackId, playableBlob, track.duration || 0);
+            void putCachedTrack(fetchedKey, playableBlob, track.duration || 0);
             // The whole file is local now — hand playback off from the live
             // stream to the blob so it stops depending on the browser's own
             // buffering (which only resumes fetching once the buffered edge
             // is nearly exhausted, and can stall audibly when it does).
             const resumeAt = Number.isFinite(targetEl.currentTime) ? targetEl.currentTime : 0;
             const shouldPlay = playing.value || !targetEl.paused;
-            playPreparedBlob(targetEl, playableBlob, resumeAt, shouldPlay, "background");
+            playPreparedBlob(targetEl, playableBlob, resumeAt, shouldPlay, "background", fetchedKey);
           },
           (error) => {
             console.warn("[Player] complete current-track preload failed; native stream remains active:", error);
@@ -1174,7 +1260,7 @@ export const usePlayerStore = defineStore("player", () => {
 
   return {
     queue, index, playing, currentTime, duration, volume, bufferedRanges,
-    current, hasTrack, playMode, starred, localCoverUrl,
+    current, hasTrack, playMode, starred, localCoverUrl, playbackQuality,
     setQueue, playNext, playAt, toggle, next, prev, seek, setVolume,
     cyclePlayMode, toggleStar, clear, resumePlaybackIfNeeded, reportCoverMissing,
   };

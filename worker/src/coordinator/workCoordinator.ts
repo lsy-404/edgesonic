@@ -131,6 +131,21 @@ export class WorkCoordinator implements DurableObject {
         // Freed capacity is the cheapest moment to look for more work.
         await this.dispatch();
         break;
+      case "release":
+        if (msg.id && agent.holding.includes(msg.id)) {
+          // A local capacity change prevented this task from starting. No
+          // /work/submit request exists yet, so return the claimed row here.
+          await this.env.DB.prepare(
+            `UPDATE work_queue
+                SET status = 'queued', claimed_by = NULL, claimed_at = NULL,
+                    heartbeat_at = NULL, attempts = MAX(0, attempts - 1)
+              WHERE id = ? AND status = 'claimed' AND claimed_by = ?`,
+          ).bind(msg.id, agent.username).run();
+          agent.holding = agent.holding.filter((id) => id !== msg.id);
+          ws.serializeAttachment(agent);
+          await this.dispatch();
+        }
+        break;
       case "config":
         if (Array.isArray(msg.caps)) agent.caps = msg.caps.filter((c) => typeof c === "string");
         if (msg.maxConcurrent !== undefined) {

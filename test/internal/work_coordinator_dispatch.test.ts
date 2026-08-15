@@ -68,6 +68,8 @@ function main(): void {
     assert(release(["a", "b"], "b").join() === "a", "the right slot is freed, not just the last");
     assert(release(release(["a"], "a"), "a").length === 0,
       "a duplicate ack cannot free a slot twice");
+    assert(release(["a", "b"], "a").join() === "b",
+      "an unstarted task can release its slot without a completion ack");
   }
 
   console.log("\nsource contract:");
@@ -101,6 +103,8 @@ function main(): void {
       "both a freed slot and a config change re-run dispatch");
     assert(src.includes("releaseHeld"),
       "a disconnect releases the rows that agent was holding");
+    assert(src.includes('case "release"'),
+      "an unstarted task is returned to queued instead of acknowledged as done");
     assert(/worker_pool_enabled[\s\S]{0,120}return \{ dispatched: 0/.test(src),
       "dispatch re-reads the kill switch, so an admin can stop a connected fleet");
   }

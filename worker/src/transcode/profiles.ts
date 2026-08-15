@@ -32,6 +32,7 @@ export const DEFAULT_PROFILES: TranscodeProfile[] = [
   { id: "opus-96k", codec: "libopus",    bitrate: 96,  container: "opus", contentType: "audio/opus",        priority: 6 },
   { id: "vorbis-96k", codec: "libvorbis", bitrate: 96, container: "ogg",  contentType: "audio/ogg",         priority: 7 },
   { id: "flac-lossless", codec: "flac",  bitrate: 0,   container: "flac", contentType: "audio/flac",        priority: 8 },
+  { id: "wav-lossless", codec: "pcm_s16le", bitrate: 0, container: "wav", contentType: "audio/wav",         priority: 9 },
 ];
 
 const PROFILE_INDEX: Map<string, TranscodeProfile> = new Map(
@@ -78,5 +79,6 @@ function formatForContainer(c: TranscodeProfile["container"]): string {
     case "opus": return "opus";
     case "ogg":  return "ogg";
     case "flac": return "flac";
+    case "wav":  return "wav";
   }
 }

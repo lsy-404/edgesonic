@@ -52,6 +52,8 @@ filesRoutes.use("*", async (c, next) => {
 import { dispatchWork } from "../edgesonic/work";
 import { getFeatureString } from "../../utils/features";
 import { isDemoMode, demoMaxUploadBytes, r2MaxStorageBytes, demoR2TotalBytes, allowAllFileTypes, isAudioSuffix } from "../../utils/demoMode";
+import { getProfile } from "../../transcode/profiles";
+import { preBakeProfile } from "../../transcode/preBake";
 
 filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   const env = c.env as Env;
@@ -174,6 +176,23 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     }
   } catch (e) {
     console.error(`[upload] dispatchWork failed for ${instanceId}:`, e);
+  }
+
+  // Optional pre-transcode: the upload UI's expandable "pre-transcode
+  // options" panel lets the uploader pick which profiles to pre-bake for
+  // this file, replacing the old (never-wired) global transcode_mode /
+  // default_transcode_profiles settings. Comma-separated profile ids;
+  // unknown ids are silently dropped. Best-effort, same as the metadata
+  // dispatch above — a failure here never fails the upload itself.
+  const profilesParam = c.req.query("profiles") || "";
+  if (profilesParam) {
+    const reqUrl = new URL(c.req.url);
+    const origin = `${reqUrl.protocol}//${reqUrl.host}`;
+    const requested = profilesParam.split(",").map((p) => p.trim()).filter(Boolean);
+    for (const profileId of requested) {
+      if (!getProfile(profileId)) continue;
+      c.executionCtx.waitUntil(preBakeProfile(env, origin, instanceId, profileId));
+    }
   }
 
   return c.json({ ok: true, key: r2Key, id: instanceId, storageUri });

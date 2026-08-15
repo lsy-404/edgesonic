@@ -229,7 +229,7 @@ INSERT OR REPLACE INTO user_permissions (level, permission, enabled, max_rph) VA
   (2, 'search',              1, 0),
 
   -- Level 1 (User): playback + download + browse + self annotations + own
-  -- playlists + sharing + work-pool participation
+  -- playlists + sharing
   (1, 'stream',              1, 0),
   (1, 'download',            1, 100),
   (1, 'upload',              0, 0),
@@ -250,7 +250,7 @@ INSERT OR REPLACE INTO user_permissions (level, permission, enabled, max_rph) VA
   (1, 'maintenance_cleanup', 0, 0),
   (1, 'maintenance_reclaim', 0, 0),
   (1, 'maintenance_reset',  0, 0),
-  (1, 'participate_work',    1, 0),
+  (1, 'participate_work',    0, 0),
   (1, 'dispatch_work',       0, 0),
   (1, 'view_all_users_items',0, 0),
   (1, 'manage_activation',   0, 0),
@@ -736,9 +736,12 @@ CREATE TABLE IF NOT EXISTS feature_strings (
 -- 0010: 049 transcode engine defaults
 INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
   ('transcode_engine',           'disabled', '转码引擎 (sandbox|external|disabled)'),
-  ('transcode_mode',             'on_demand', '转码触发模式 (on_demand|pre_bake|both)'),
-  ('default_transcode_profiles', '[]',        '默认预生成档位 JSON 数组（profile id 列表）'),
   ('external_transcoder_url',    '',          '外部转码器 URL（仅在 engine=external 时生效）');
+
+-- transcode_mode / default_transcode_profiles were never read by any
+-- runtime code (pre-bake decisions now happen per-upload instead of via a
+-- global setting) — drop any row a prior deploy already seeded.
+DELETE FROM feature_strings WHERE key IN ('transcode_mode', 'default_transcode_profiles');
 
 -- 0011: scrape source priority
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES

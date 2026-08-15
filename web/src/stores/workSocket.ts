@@ -88,7 +88,7 @@ export const useWorkSocket = defineStore("workSocket", () => {
   const recent = ref<RecentTask[]>([]);
   // Opt-in, persisted: a work-mode machine that reloads or crashes comes back
   // working instead of sitting idle waiting for somebody to click Start.
-  const enabled = ref(localStorage.getItem(STORAGE_KEY) === "true");
+  const enabled = ref(localStorage.getItem(STORAGE_KEY) !== "false");
   // Ceiling (per-browser, from the settings slider). `currentConcurrency` is
   // the adaptive value actually advertised to the coordinator.
   const maxConcurrent = ref(
@@ -255,9 +255,10 @@ export const useWorkSocket = defineStore("workSocket", () => {
   async function execute(task: QueuedTask): Promise<void> {
     // Backstop against over-subscription: the coordinator tracks our budget,
     // but a config frame in flight or a stale attachment could put one task
-    // too many on the wire. Hand it straight back rather than running it.
+    // too many on the wire. Release it rather than acknowledging completion:
+    // no result has reached /work/submit yet.
     if (running.value.size >= currentConcurrency.value) {
-      send({ type: "done", id: task.id });
+      send({ type: "release", id: task.id });
       return;
     }
     const fileName = fileNameFrom(task);

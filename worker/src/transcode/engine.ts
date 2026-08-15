@@ -26,7 +26,7 @@
 // selection is driven by the `transcode_engine` feature string, so it is
 // switchable at runtime from the Settings UI without redeploying.
 
-export type TranscodeContainer = "mp3" | "m4a" | "opus" | "ogg" | "flac";
+export type TranscodeContainer = "mp3" | "m4a" | "opus" | "ogg" | "flac" | "wav";
 export type TranscodeStatus = "pending" | "processing" | "completed" | "failed";
 
 // A single transcode target — codec + bitrate + container. The id is what the

@@ -17,8 +17,10 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { createQueries } from "../../db/queries";
 import { subsonicOK } from "../../utils/xml";
+import { subsonicError } from "../../auth";
 import { mapArtist, mapAlbum, mapSong, type AnnotationLite } from "../../types/subsonic";
 import type { User, Annotation } from "../../types/entities";
+import { mapSongSources, selectSongSource } from "./sources";
 
 export const browsingRoutes = new Hono<{
   Bindings: Env;
@@ -128,15 +130,36 @@ const getAlbumHandler = async (c: Context) => {
 
 const getSongHandler = async (c: Context) => {
   const id = c.req.query("id");
+  const source = c.req.query("source") || undefined;
+  const includeSources = c.req.query("includeSources") === "true";
   if (!id) return c.text(subsonicOK({}), 200, XML);
 
-  const queries = createQueries((c.env as Env).DB);
+  const env = c.env as Env;
+  const queries = createQueries(env.DB);
   const song = await queries.getSongMaster(id);
   if (!song) return c.text(subsonicOK({}), 200, XML);
 
+  const instances = await queries.getSongInstances(id);
+  const selected = selectSongSource(instances, source, env.INSTANCE_ID);
+  if (source && !selected) {
+    return c.text(subsonicError(70, "Song not available from requested source"), 404, XML);
+  }
+
   const ann = await queries.getAnnotationsMap(currentUserId(c), "song", [id]);
+  const mappedSong = mapSong({
+    ...song,
+    inst_suffix: selected?.suffix ?? song.inst_suffix,
+    inst_content_type: selected?.content_type ?? song.inst_content_type,
+    inst_bit_rate: selected?.bit_rate ?? song.inst_bit_rate,
+    inst_size: selected?.size ?? song.inst_size,
+    inst_duration: selected?.duration ?? song.inst_duration,
+    inst_storage_uri: selected?.storage_uri ?? song.inst_storage_uri,
+  }, song.album_id, liteOf(ann.get(`song:${id}`)));
   return c.text(
-    subsonicOK({ song: attrs(mapSong(song, song.album_id, liteOf(ann.get(`song:${id}`)))) }),
+    subsonicOK({ song: {
+      _attributes: mappedSong,
+      ...(includeSources ? { source: mapSongSources(instances, env.INSTANCE_ID).map(attrs) } : {}),
+    } }),
     200, XML
   );
 };

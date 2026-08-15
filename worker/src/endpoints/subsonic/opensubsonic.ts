@@ -75,6 +75,11 @@ const EXTENSIONS: Array<{ name: string; versions: number[]; attrs?: Record<strin
     versions: [1],
     attrs: { proxy: "true", autoMerge: "true", fuzzyMerge: "true" },
   },
+  {
+    name: "edgeSonicSourceRouting",
+    versions: [1],
+    attrs: { songSources: "true", sourceSelection: "true", localPresence: "true" },
+  },
 ];
 
 const extensionsHandler = async (c: import("hono").Context) => {

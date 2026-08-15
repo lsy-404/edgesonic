@@ -27,10 +27,10 @@ interface PermissionCheck {
 // user exactly which permission to go back and add instead of one opaque error.
 const checks = reactive<PermissionCheck[]>([
   { key: "token", status: "pending", detail: "" },
-  { key: "account", status: "pending", detail: "" },
   { key: "workersScripts", status: "pending", detail: "" },
   { key: "d1", status: "pending", detail: "" },
   { key: "r2", status: "pending", detail: "" },
+  { key: "dns", status: "pending", detail: "" },
 ]);
 
 function setCheck(key: string, status: CheckStatus, detail = "") {
@@ -48,7 +48,7 @@ const canVerify = computed(
     !verifying.value,
 );
 
-const allRequiredOk = computed(() => checks.filter((c) => c.key !== "r2").every((c) => c.status === "ok") && wizard.r2Enabled === true);
+const allRequiredOk = computed(() => checks.every((c) => c.status === "ok") && wizard.r2Enabled === true);
 
 const canContinue = computed(
   () =>
@@ -71,24 +71,15 @@ async function verify() {
 
   setCheck("token", "checking");
   try {
-    await callCfJson(apiToken, "/user/tokens/verify", undefined, "a valid token");
+    await callCfJson(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
     setCheck("token", "ok");
   } catch (e) {
-    setCheck("token", "error", describeCfError(e, "a valid token").message);
+    setCheck("token", "error", describeCfError(e, "an active Account API Token").message);
     verifying.value = false;
     return;
   }
 
-  setCheck("account", "checking");
-  try {
-    const account = await callCfJson<{ id?: string; name?: string }>(apiToken, `/accounts/${accountId}`, undefined, "Account Settings Read");
-    wizard.accountName = account.name || accountId;
-    setCheck("account", "ok");
-  } catch (e) {
-    setCheck("account", "error", describeCfError(e, "Account Settings Read").message);
-    verifying.value = false;
-    return;
-  }
+  wizard.accountName = accountId;
 
   setCheck("workersScripts", "checking");
   try {
@@ -96,6 +87,14 @@ async function verify() {
     setCheck("workersScripts", "ok");
   } catch (e) {
     setCheck("workersScripts", "missing", describeCfError(e, "Workers Scripts Edit").message);
+  }
+
+  setCheck("dns", "checking");
+  try {
+    await callCfJson(apiToken, "/zones?per_page=1", undefined, "DNS Edit");
+    setCheck("dns", "ok");
+  } catch (e) {
+    setCheck("dns", "missing", describeCfError(e, "DNS Edit").message);
   }
 
   setCheck("d1", "checking");

@@ -26,7 +26,7 @@ interface Rule {
 }
 
 const ALLOWLIST: Rule[] = [
-  { method: "GET", segments: ["user", "tokens", "verify"] },
+  { method: "GET", segments: ["accounts", null, "tokens", "verify"] },
   { method: "GET", segments: ["accounts", null] },
   { method: "GET", segments: ["accounts", null, "r2", "buckets"] },
   { method: "POST", segments: ["accounts", null, "r2", "buckets"] },
@@ -46,6 +46,7 @@ const ALLOWLIST: Rule[] = [
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null, "schedules"] },
   { method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "schedules"] },
   { method: "GET", segments: ["zones"] },
+  { method: "GET", segments: ["zones", null, "settings", "image_resizing"] },
   { method: "POST", segments: ["accounts", null, "workers", "assets", "upload"] },
   { method: "GET", segments: ["accounts", null, "images", "v1", "stats"] },
   { method: "GET", segments: ["accounts", null, "workers", "domains"] },

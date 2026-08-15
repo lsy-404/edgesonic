@@ -60,7 +60,7 @@ async function fetchRelay(url: string, init: RequestInit): Promise<Response> {
 
 /**
  * Calls `RELAY_URL/cf/<path>` with the given bearer token. `token` isn't
- * always the user's CF_API_TOKEN — the asset upload completion call reuses
+ * always the Account API Token — the asset upload completion call reuses
  * this same helper with the short-lived JWT the upload session returns, per
  * CONTRACT.md §1's note that the relay forwards whatever bearer it's
  * handed.

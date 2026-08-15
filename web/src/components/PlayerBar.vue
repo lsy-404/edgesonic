@@ -28,6 +28,14 @@ function goNowPlaying() {
 }
 
 const playModeTitle = computed(() => t(`player.playMode.${player.playMode}`));
+// Mirrors the QUALITY_OPTIONS keys in stores/player.ts — kept as a plain id
+// list here (rather than importing the map) since the UI only needs the ids
+// to build <option> elements; the format/maxBitRate mapping is the store's
+// concern.
+const QUALITY_SELECT_OPTIONS = [
+  { id: "auto" }, { id: "mp3-128" }, { id: "mp3-192" },
+  { id: "aac-128" }, { id: "opus-96" }, { id: "flac" }, { id: "wav" },
+];
 const expandTitle = computed(() => t(detailsOpen.value ? "player.collapse" : "player.expand"));
 
 const coverFailed = ref(false);
@@ -205,6 +213,17 @@ function removeFromQueue(i: number) {
 
     <!-- Volume + Queue toggle -->
     <div class="pb-right">
+      <div class="pb-quality-wrap">
+        <select
+          class="pb-quality"
+          v-model="player.playbackQuality"
+          :title="t('player.quality.title')"
+          :aria-label="t('player.quality.title')"
+        >
+          <option v-for="opt in QUALITY_SELECT_OPTIONS" :key="opt.id" :value="opt.id">{{ t(`player.quality.${opt.id}`) }}</option>
+        </select>
+        <svg class="pb-quality-caret" viewBox="0 0 24 24" width="10" height="10"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+      </div>
       <input
         class="pb-volume"
         type="range" min="0" max="1" step="0.02"
@@ -410,8 +429,36 @@ function removeFromQueue(i: number) {
   pointer-events: none;
 }
 
-/* --- right: volume + queue --- */
-.pb-right { display: flex; align-items: center; gap: 0.6rem; width: 180px; flex-shrink: 0; justify-content: flex-end; }
+/* --- right: quality + volume + queue --- */
+.pb-right { display: flex; align-items: center; gap: 0.6rem; width: 270px; flex-shrink: 0; justify-content: flex-end; }
+.pb-quality-wrap { position: relative; flex-shrink: 0; }
+.pb-quality {
+  appearance: none;
+  width: 96px;
+  height: 28px;
+  background: none;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  padding: 0 1.3rem 0 0.55rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.pb-quality:hover, .pb-quality:focus { color: var(--color-accent-primary); border-color: var(--color-accent-dim); }
+.pb-quality:focus { outline: none; }
+.pb-quality option { background: var(--color-bg-elevated); color: var(--color-text-primary); }
+.pb-quality-caret {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+.pb-quality:hover ~ .pb-quality-caret,
+.pb-quality:focus ~ .pb-quality-caret { color: var(--color-accent-primary); }
 .pb-volume { width: 80px; accent-color: var(--color-accent-primary); cursor: pointer; }
 .pb-queue-btn {
   position: relative;
@@ -519,6 +566,7 @@ function removeFromQueue(i: number) {
   .pb-track { width: auto; flex: 1; }
   .pb-right { width: auto; gap: 0.3rem; }
   .pb-volume { display: none; }
+  .pb-quality-wrap { display: none; }
   .player-bar:not(.details-open) .pb-progress-row { display: none; }
   .pb-center { flex: 0 0 auto; }
   .pb-queue-panel { width: calc(100vw - 1rem); }

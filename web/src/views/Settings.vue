@@ -342,22 +342,10 @@ const error = ref("");
 const copied = ref(false);
 
 const transcodeEngine = ref<"sandbox" | "external" | "browser_pool" | "disabled">("disabled");
-const transcodeMode = ref<"on_demand" | "pre_bake" | "both">("on_demand");
-const defaultProfiles = ref<string[]>([]);
 const externalUrl = ref("");
 const externalKeyInput = ref("");
 const externalKeySet = ref(false);
 const transcodeBusy = ref(false);
-const PROFILE_OPTIONS: { id: string; label: string }[] = [
-  { id: "mp3-128k", label: "MP3 128 kbps" },
-  { id: "mp3-192k", label: "MP3 192 kbps" },
-  { id: "aac-96k",  label: "AAC 96 kbps" },
-  { id: "aac-128k", label: "AAC 128 kbps" },
-  { id: "opus-64k", label: "Opus 64 kbps" },
-  { id: "opus-96k", label: "Opus 96 kbps" },
-  { id: "vorbis-96k", label: "Vorbis 96 kbps" },
-  { id: "flac-lossless", label: "FLAC (lossless)" },
-];
 
 function findFeatureString(key: string, fallback: string): string {
   return featureStrings.value.find((f) => f.key === key)?.value ?? fallback;
@@ -379,11 +367,6 @@ async function loadFeatures() {
     }));
     // Hydrate transcode form from featureStrings.
     transcodeEngine.value = (findFeatureString("transcode_engine", "disabled") as "sandbox" | "external" | "browser_pool" | "disabled");
-    transcodeMode.value = (findFeatureString("transcode_mode", "on_demand") as "on_demand" | "pre_bake" | "both");
-    try {
-      const parsed = JSON.parse(findFeatureString("default_transcode_profiles", "[]"));
-      defaultProfiles.value = Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
-    } catch { defaultProfiles.value = []; }
     externalUrl.value = findFeatureString("external_transcoder_url", "");
     // Probe the secret presence (the value itself never crosses the wire).
     try {
@@ -424,20 +407,13 @@ async function loadFeatures() {
   loading.value = false;
 }
 
-function toggleProfile(id: string, checked: boolean) {
-  if (checked && !defaultProfiles.value.includes(id)) defaultProfiles.value.push(id);
-  else if (!checked) defaultProfiles.value = defaultProfiles.value.filter((p) => p !== id);
-}
-
 async function saveTranscode() {
   transcodeBusy.value = true;
   try {
-    // updateFeatureString validates server-side; we batch four calls for one
+    // updateFeatureString validates server-side; we batch calls for one
     // user-visible "Save" click. Optimistic update — fail at the first error.
     const writes = [
       { key: "transcode_engine", value: transcodeEngine.value },
-      { key: "transcode_mode", value: transcodeMode.value },
-      { key: "default_transcode_profiles", value: JSON.stringify(defaultProfiles.value) },
       { key: "external_transcoder_url", value: externalUrl.value },
     ];
     for (const w of writes) {
@@ -2056,34 +2032,6 @@ onMounted(() => {
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.transcode.engineDesc") }}</p>
 
-            <!-- Mode -->
-            <label class="tc-row">
-              <span class="tc-key">{{ t("settings.common.transcode.mode") }}</span>
-              <select v-model="transcodeMode" class="form-select" :disabled="!canManageSettings">
-                <option value="on_demand">{{ t("settings.common.transcode.modeOnDemand") }}</option>
-                <option value="pre_bake">{{ t("settings.common.transcode.modePreBake") }}</option>
-                <option value="both">{{ t("settings.common.transcode.modeBoth") }}</option>
-              </select>
-            </label>
-            <p class="feature-desc tc-desc">{{ t("settings.common.transcode.modeDesc") }}</p>
-
-            <!-- Default profiles (multi) -->
-            <div class="tc-row tc-row-block">
-              <span class="tc-key">{{ t("settings.common.transcode.profiles") }}</span>
-              <div class="tc-profiles">
-                <label v-for="p in PROFILE_OPTIONS" :key="p.id" class="tc-profile-pill">
-                  <input
-                    type="checkbox"
-                    :checked="defaultProfiles.includes(p.id)"
-                    :disabled="!canManageSettings"
-                    @change="toggleProfile(p.id, ($event.target as HTMLInputElement).checked)"
-                  />
-                  <span>{{ p.label }}</span>
-                </label>
-              </div>
-            </div>
-            <p class="feature-desc tc-desc">{{ t("settings.common.transcode.profilesDesc") }}</p>
-
             <!-- External URL -->
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.transcode.externalUrl") }}</span>
@@ -3495,7 +3443,6 @@ onMounted(() => {
 .tc-row .form-select,
 .tc-row .form-input { flex: 1; min-width: 220px; }
 .tc-desc { margin-left: 180px; }
-.tc-profiles { display: flex; flex-wrap: wrap; gap: 0.5rem; flex: 1; min-width: 0; }
 .tc-profile-pill {
   display: inline-flex;
   align-items: center;

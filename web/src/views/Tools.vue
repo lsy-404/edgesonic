@@ -1,99 +1,15 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
-import { useWorkSocket } from "../stores/workSocket";
 import { mapConcurrent } from "../lib/concurrency";
 import Icon from "../components/Icon.vue";
 import { normalizeForMatch } from "../lib/trackMatch";
 
 const { t } = useI18n();
 const { isSuperAdmin, isAdmin, isUser, isGuest, hasPerm, username: currentUsername, edgesonicPost, edgesonicFetch, rescanSongs, md5, signedParams, restUrl } = useAuth();
-const workPool = useWorkSocket();
-
-interface WorkCounts { queued: number; claimed: number; completed: number; failed: number; canceled: number }
-interface WorkLoadRow { username: string; n: number }
-const workCounts = ref<WorkCounts>({ queued: 0, claimed: 0, completed: 0, failed: 0, canceled: 0 });
-const workLoad = ref<WorkLoadRow[]>([]);
-const totalTasks = computed(() => workCounts.value.queued + workCounts.value.claimed + workCounts.value.completed + workCounts.value.failed);
-const progressPct = computed(() => totalTasks.value > 0 ? Math.round((workCounts.value.completed / totalTasks.value) * 100) : 0);
-
-const SPEED_WINDOW_MS = 15 * 60 * 1000;
-const SAMPLE_LIMIT = 120;
-const globalSamples = ref<Array<{ ts: number; count: number }>>([]);
-function recordGlobalSample() {
-  globalSamples.value.push({ ts: Date.now(), count: workCounts.value.completed });
-  if (globalSamples.value.length > SAMPLE_LIMIT) {
-    globalSamples.value.splice(0, globalSamples.value.length - SAMPLE_LIMIT);
-  }
-}
-const globalSpeedPerMin = computed<number | null>(() => {
-  const samples = globalSamples.value;
-  if (samples.length < 2) return null;
-  const now = Date.now();
-  const cutoff = now - SPEED_WINDOW_MS;
-  let oldest = samples[0];
-  for (const s of samples) { if (s.ts >= cutoff) { oldest = s; break; } }
-  const elapsed = now - oldest.ts;
-  if (elapsed < 1000) return null;
-  const delta = workCounts.value.completed - oldest.count;
-  if (delta <= 0) return null;
-  return Math.round((delta * 60_000) / elapsed * 10) / 10;
-});
-const etaText = computed<string>(() => {
-  const speed = globalSpeedPerMin.value;
-  const remaining = workCounts.value.queued + workCounts.value.claimed;
-  if (remaining <= 0) return "—";
-  if (!speed) return "—";
-  // 0.8 conservative coefficient — see comment above.
-  const effectiveSpeed = speed * 0.8;
-  if (effectiveSpeed <= 0) return "—";
-  const minutes = Math.ceil(remaining / effectiveSpeed);
-  if (minutes < 60) return t("common.minutes", { n: minutes });
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? t("common.hoursMinutes", { h: hours, m: mins }) : t("common.hours", { n: hours });
-});
-
-async function loadWorkStatus() {
-  try {
-    const text = await edgesonicFetch("work/status");
-    const parsed = JSON.parse(text) as { ok?: boolean; counts?: Partial<WorkCounts>; load?: WorkLoadRow[] };
-    if (parsed.ok) {
-      workCounts.value = { queued: parsed.counts?.queued ?? 0, claimed: parsed.counts?.claimed ?? 0, completed: parsed.counts?.completed ?? 0, failed: parsed.counts?.failed ?? 0, canceled: parsed.counts?.canceled ?? 0 };
-      workLoad.value = Array.isArray(parsed.load) ? parsed.load : [];
-      recordGlobalSample();
-    }
-  } catch { /* stay quiet */ }
-}
-
-// Several tasks can be in flight at once now, so there is no single "current"
-// one — show the first, which is what the old single-slot readout showed.
-const currentFileName = computed(() => [...workPool.running.values()][0]?.fileName ?? "");
-
-const maxConcurrentInput = ref<number>(workPool.maxConcurrent);
-const maxConcurrentBusy = ref(false);
-function saveMaxConcurrent() {
-  const n = Math.max(1, Math.min(8, Math.floor(Number(maxConcurrentInput.value) || 0)));
-  maxConcurrentInput.value = n;
-  maxConcurrentBusy.value = true;
-  try {
-    workPool.setMaxConcurrent(n);
-    showToast(t("tools.workPool.concurrencySaved"));
-  } finally {
-    maxConcurrentBusy.value = false;
-  }
-}
-
-async function onResetFailedWork() {
-  try { await edgesonicPost("maintenance/resetFailedWork", {}); await loadWorkStatus(); } catch { /* */ }
-}
-async function onReclaimStaleWork() {
-  try { await edgesonicPost("maintenance/reclaimStaleWork", {}); await loadWorkStatus(); } catch { /* */ }
-}
-
 interface StorageRow { source_type: string; count: number; bytes: number }
 interface StorageStats { breakdown: StorageRow[]; r2CoverCount: number; r2CoverBytes: number; freeAllocationGb: number }
 const storageStats = ref<StorageStats | null>(null);
@@ -254,16 +170,10 @@ async function saveSyncConfig(nextEnabled?: boolean) {
   }
 }
 
-let workStatusPollHandle: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
-  void loadWorkStatus();
   void loadStorageStats();
   void loadOrphanSongs();
   if (!isGuest.value) void loadSyncConfig();
-  workStatusPollHandle = window.setInterval(() => { if (!document.hidden) void loadWorkStatus(); }, 10000);
-});
-onUnmounted(() => {
-  if (workStatusPollHandle !== null) { clearInterval(workStatusPollHandle); workStatusPollHandle = null; }
 });
 
 const toast = ref({ show: false, msg: "", type: "success" });
@@ -272,8 +182,8 @@ function showToast(msg: string, type = "success") {
   setTimeout(() => { toast.value.show = false; }, 3000);
 }
 
-type SectionKey = "migrate" | "peerSync" | "workPool" | "storage" | "orphanSongs";
-const open = ref<Record<SectionKey, boolean>>({ migrate: false, peerSync: false, workPool: false, storage: false, orphanSongs: false });
+type SectionKey = "migrate" | "peerSync" | "storage" | "orphanSongs";
+const open = ref<Record<SectionKey, boolean>>({ migrate: false, peerSync: false, storage: false, orphanSongs: false });
 function toggleSection(key: SectionKey) { open.value[key] = !open.value[key]; }
 const migrateMode = ref<"clone" | "push">("clone");
 
@@ -1614,6 +1524,9 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
         <div class="mono-label">{{ t("tools.label") }}</div>
         <h1 class="page-title">{{ t("tools.title") }}</h1>
       </div>
+      <RouterLink v-if="hasPerm('participate_work')" to="/work" class="btn-primary btn-sm">
+        {{ t("tools.workMode") }}
+      </RouterLink>
     </div>
 
     <div v-if="!isUser" class="empty-state">
@@ -1622,6 +1535,15 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
     </div>
 
     <template v-else>
+      <section v-if="hasPerm('participate_work')" class="settings-section card work-mode-entry">
+        <RouterLink to="/work" class="work-mode-entry-link">
+          <span>
+            <span class="section-title">{{ t("tools.workMode") }}</span>
+            <span class="work-mode-entry-desc">{{ t("tools.workModeDesc") }}</span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </RouterLink>
+      </section>
       <!-- Sections mirror Settings.vue's .settings-section pattern
            (button header + v-show body, no transition) instead of the
            bespoke .tools-accordion this page used to have. -->
@@ -1917,108 +1839,6 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
         </div>
       </section>
 
-      <!-- ============ Work pool ============ -->
-      <section v-if="workPool.eligible" class="settings-section card" :class="{ open: open.workPool }">
-        <button class="section-header" @click="toggleSection('workPool')">
-          <span class="section-title">{{ t("tools.sections.workPool") }}</span>
-          <span class="section-caret">{{ open.workPool ? '−' : '+' }}</span>
-        </button>
-        <div v-show="open.workPool" class="section-body">
-      <!-- Work pool card -->
-      <div class="card tools-work-pool-card">
-        <div class="card-header">
-          <span class="card-title">{{ t("tools.workPool.title") }}</span>
-          <div class="wp-header-actions">
-            <span v-if="workPool.isWorking" class="wp-auto-status wp-auto-status-running">{{ t("tools.workPool.running") }}</span>
-            <button class="wp-refresh" :disabled="workPool.isWorking" @click="workPool.nudge()">{{ t("tools.workPool.startNow") }}</button>
-          </div>
-        </div>
-        <div class="wp-progress-line">
-          <span class="wp-progress-label">{{ t("tools.workPool.progress") }}</span>
-          <span class="wp-progress-num">{{ workCounts.completed }} / {{ totalTasks }} ({{ progressPct }}%)</span>
-        </div>
-        <div class="wp-progress-bar">
-          <div class="wp-progress-fill" :style="{ width: progressPct + '%' }"></div>
-        </div>
-        <!-- Real-time: which song this browser is parsing right now. -->
-        <div v-if="currentFileName" class="wp-current-song mono-label">
-          <span class="wp-current-dot" aria-hidden="true"></span>
-          {{ t("tools.workPool.parsing") }}{{ currentFileName }}
-        </div>
-        <div class="wp-counts">
-          <div class="wp-count"><span class="wp-count-label">{{ t("tools.workPool.queue") }}</span><span class="wp-count-num">{{ workCounts.queued }}</span></div>
-          <div class="wp-count"><span class="wp-count-label">{{ t("tools.workPool.inProgress") }}</span><span class="wp-count-num">{{ workCounts.claimed }}</span></div>
-          <div class="wp-count"><span class="wp-count-label">{{ t("tools.workPool.completed") }}</span><span class="wp-count-num">{{ workCounts.completed }}</span></div>
-          <div class="wp-count" :class="{ 'wp-count-emphasis': workCounts.failed > 0 }"><span class="wp-count-label">{{ t("tools.workPool.failed") }}</span><span class="wp-count-num">{{ workCounts.failed }}</span></div>
-        </div>
-        <div class="wp-speed-row">
-          <div class="wp-speed-item">
-            <span class="wp-count-label">{{ t("tools.workPool.localSpeed") }}</span>
-            <span class="wp-count-num">{{ workPool.speedPerMin === null ? '—' : `${workPool.speedPerMin}${t("tools.workPool.perMinute")}` }}</span>
-          </div>
-          <div class="wp-speed-item">
-            <span class="wp-count-label">{{ t("tools.workPool.totalSpeed") }}</span>
-            <span class="wp-count-num">{{ globalSpeedPerMin === null ? '—' : `${globalSpeedPerMin}${t("tools.workPool.perMinute")}` }}</span>
-          </div>
-          <div class="wp-speed-item">
-            <span class="wp-count-label">{{ t("tools.workPool.eta") }}</span>
-            <span class="wp-count-num">{{ etaText }}</span>
-          </div>
-        </div>
-        <div class="wp-workers">
-          <div class="wp-workers-title">{{ t("tools.workPool.activeWorkers") }}</div>
-          <div v-if="workLoad.length === 0" class="wp-workers-empty">{{ t("tools.workPool.noWorkers") }}</div>
-          <ul v-else class="wp-workers-list">
-            <li v-for="row in workLoad" :key="row.username" class="wp-worker-row">
-              <span class="wp-worker-name">{{ row.username }}</span>
-              <span class="wp-worker-load">{{ t("tools.workPool.tasks", { n: row.n }) }}</span>
-            </li>
-          </ul>
-        </div>
-        <div v-if="workCounts.failed > 0 || workCounts.claimed > 0" class="wp-actions">
-          <button v-if="workCounts.failed > 0 && hasPerm('maintenance_reset')" class="btn-secondary btn-sm" @click="onResetFailedWork()">{{ t("tools.workPool.resetFailed") }}</button>
-          <button v-if="workCounts.claimed > 0 && hasPerm('maintenance_reclaim')" class="btn-secondary btn-sm" @click="onReclaimStaleWork()">{{ t("tools.workPool.reclaimStale") }}</button>
-        </div>
-
-        <!-- Local settings: participation toggle, local stats, capabilities, concurrency. -->
-        <div class="wp-worker-toggle">
-          <label class="wp-toggle-label">
-            <label class="toggle">
-              <input type="checkbox" :checked="workPool.enabled" @change="workPool.setEnabled(($event.target as HTMLInputElement).checked)" />
-              <span class="toggle-slider"></span>
-            </label>
-            <span>{{ t("tools.workPool.workerEnabled", { state: workPool.enabled ? t("tools.workPool.enabled") : t("tools.workPool.disabled") }) }}</span>
-          </label>
-        </div>
-        <div class="wp-local-stats">
-          <span class="wp-count-label">{{ t("tools.workPool.localStats") }}</span>
-          <span class="wp-local-stat wp-local-stat-ok">{{ t("tools.workPool.ok") }} {{ workPool.stats.completed }}</span>
-          <span class="wp-local-stat wp-local-stat-fail">{{ t("tools.workPool.failed") }} {{ workPool.stats.failed }}</span>
-        </div>
-        <div class="wp-caps">
-          <span class="wp-count-label">{{ t("tools.workPool.currentCaps") }}</span>
-          <span v-for="cap in workPool.caps" :key="cap" class="wp-cap-pill">{{ cap }}</span>
-          <span v-if="workPool.caps.length === 0" class="text-muted">—</span>
-        </div>
-        <div class="wp-concurrency">
-          <span class="wp-count-label">{{ t("tools.workPool.concurrency") }}</span>
-          <input
-            type="number" min="1" max="8" step="1"
-            v-model.number="maxConcurrentInput"
-            class="form-input wp-concurrency-input"
-          />
-          <button class="btn-secondary btn-sm" :disabled="maxConcurrentBusy" @click="saveMaxConcurrent">{{ t("tools.workPool.save") }}</button>
-          <span class="wp-concurrency-hint">{{ t("tools.workPool.concurrencyHint") }}</span>
-          <span class="wp-count-label" style="margin-left: 0.6rem">{{ t("tools.workPool.currentConcurrency", { cur: workPool.currentConcurrency, max: workPool.maxConcurrent }) }}</span>
-        </div>
-
-        <div v-if="workPool.lastError" class="wp-last-error">
-          <span>{{ t("tools.workPool.errorPrefix") }}</span> <code>{{ workPool.lastError }}</code>
-        </div>
-      </div>
-        </div>
-      </section>
-
       <template v-if="isSuperAdmin">
       <!-- ============ Storage & R2 cost ============ -->
       <section class="settings-section card" :class="{ open: open.storage }">
@@ -2288,63 +2108,18 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
   font-size: var(--fs-sm);
 }
 .tools-toast.error { border-color: #e5484d; }
+.work-mode-entry { margin-bottom: 1rem; }
+.work-mode-entry-link { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.2rem; color: inherit; text-decoration: none; }
+.work-mode-entry-link:hover { color: var(--color-accent-primary); }
+.work-mode-entry-desc { display: block; margin-top: 0.25rem; color: var(--color-text-secondary); font-size: var(--fs-sm); }
 .toast-enter-active, .toast-leave-active { transition: opacity 0.2s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; }
 
-.tools-work-pool-card, .tools-storage-card { padding: 1rem 1.2rem; margin-top: 0; }
+.tools-storage-card { padding: 1rem 1.2rem; margin-top: 0; }
 .wp-refresh { background: none; border: 1px solid var(--color-border-subtle); border-radius: 4px; color: var(--color-text-secondary); cursor: pointer; font-size: var(--fs-sm); padding: 0.2rem 0.6rem; }
 .wp-refresh:hover { border-color: var(--color-accent-dim); color: var(--color-text-primary); }
 .wp-refresh:disabled { opacity: 0.5; cursor: default; }
-/* countdown/running status sits left of the manual poll button */
-.wp-header-actions { display: flex; align-items: center; gap: 0.6rem; }
-.wp-auto-status { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-text-muted); white-space: nowrap; }
-.wp-auto-status-running { color: var(--color-accent-primary); }
-.wp-progress-line { display: flex; justify-content: space-between; font-size: var(--fs-sm); margin-bottom: 0.3rem; }
-.wp-progress-bar { height: 4px; background: var(--color-border); border-radius: 2px; overflow: hidden; margin-bottom: 0.8rem; }
-.wp-progress-fill { height: 100%; background: var(--color-accent-primary); transition: width 0.3s; }
-.wp-counts { display: flex; gap: 1.5rem; margin-bottom: 0.8rem; }
-.wp-count { display: flex; flex-direction: column; align-items: center; }
-.wp-count-label { font-size: var(--fs-xs); color: var(--color-text-muted); }
-.wp-count-num { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600; color: var(--color-text-primary); }
-.wp-count-emphasis .wp-count-num { color: #e5484d; }
-.wp-workers { margin-bottom: 0.6rem; }
-.wp-workers-title { font-size: var(--fs-xs); color: var(--color-text-muted); margin-bottom: 0.3rem; }
-.wp-workers-empty { font-size: var(--fs-sm); color: var(--color-text-muted); }
-.wp-workers-list { list-style: none; padding: 0; margin: 0; }
-.wp-worker-row { display: flex; justify-content: space-between; padding: 0.2rem 0; font-size: var(--fs-sm); }
-.wp-worker-name { color: var(--color-text-primary); }
-.wp-worker-load { color: var(--color-text-muted); }
-.wp-actions { display: flex; gap: 0.6rem; margin-bottom: 0.6rem; }
-.wp-worker-toggle { padding-top: 0.5rem; border-top: 1px solid var(--color-border-subtle); }
 .wp-toggle-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: var(--fs-sm); }
-.wp-last-error { margin-top: 0.4rem; font-size: var(--fs-xs); color: #e5484d; }
-.wp-current-song {
-  display: flex; align-items: center; gap: 0.5rem;
-  margin-bottom: 0.7rem; padding: 0.35rem 0.6rem;
-  background: var(--color-bg-primary); border: 1px solid var(--color-border-subtle);
-  border-radius: 4px; font-size: var(--fs-xs); color: var(--color-text-secondary);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.wp-current-dot {
-  flex-shrink: 0; width: 6px; height: 6px; border-radius: 50%;
-  background: var(--color-accent-primary); animation: wp-pulse 1.4s ease-in-out infinite;
-}
-@keyframes wp-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-.wp-speed-row { display: flex; gap: 1.5rem; margin-bottom: 0.8rem; padding-bottom: 0.8rem; border-bottom: 1px solid var(--color-border-subtle); }
-.wp-speed-item { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; }
-.wp-local-stats { display: flex; align-items: center; gap: 0.6rem; padding-top: 0.6rem; font-size: var(--fs-sm); }
-.wp-local-stat { font-family: var(--font-mono); font-size: var(--fs-xs); }
-.wp-local-stat-ok { color: var(--color-text-secondary); }
-.wp-local-stat-fail { color: #e5484d; }
-.wp-caps { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; padding-top: 0.5rem; }
-.wp-cap-pill {
-  font-family: var(--font-mono); font-size: var(--fs-xs);
-  padding: 0.1rem 0.5rem; border: 1px solid var(--color-border-subtle); border-radius: 999px;
-  color: var(--color-text-secondary);
-}
-.wp-concurrency { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding-top: 0.6rem; }
-.wp-concurrency-input { width: 5rem; }
-.wp-concurrency-hint { font-size: var(--fs-xs); color: var(--color-text-muted); flex-basis: 100%; }
 .storage-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
 .storage-table th, .storage-table td { padding: 0.4rem 0.6rem; text-align: left; border-bottom: 1px solid var(--color-border-subtle); font-size: var(--fs-sm); }
 .storage-table .num-col { text-align: right; font-family: var(--font-mono); }

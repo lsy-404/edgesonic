@@ -20,8 +20,6 @@ const DEMO_DISABLED_PERM_SET = new Set<string>(DEMO_DISABLED_PERMS);
 // change transcoding strategy, or disable the worker pool is off-limits.
 export const DEMO_LOCKED_FEATURE_KEYS = new Set<string>([
   "transcode_engine",
-  "transcode_mode",
-  "default_transcode_profiles",
   "external_transcoder_url",
   "enable_r2_presign",
   "enable_webdav_presign",

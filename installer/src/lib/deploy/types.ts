@@ -54,6 +54,7 @@ export interface DeployTarget {
 }
 
 export interface DeployResult {
+  accountId: string;
   url: string;
   adminUsername: string;
   adminPassword: string;

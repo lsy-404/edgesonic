@@ -27,8 +27,7 @@ non-empty and contain no `/`, don't further validate their format):
 
 | Method | Path pattern | Used for |
 |---|---|---|
-| GET | `/user/tokens/verify` | token sanity check |
-| GET | `/accounts/{accountId}` | token validity + account name display |
+| GET | `/accounts/{accountId}/tokens/verify` | Account API Token sanity check |
 | GET | `/accounts/{accountId}/r2/buckets` | R2 enabled? + list existing |
 | POST | `/accounts/{accountId}/r2/buckets` | create bucket (fresh install) |
 | GET | `/accounts/{accountId}/d1/database` | list D1 databases |
@@ -44,6 +43,7 @@ non-empty and contain no `/`, don't further validate their format):
 | GET | `/accounts/{accountId}/workers/scripts/{scriptName}/schedules` | read cron |
 | PUT | `/accounts/{accountId}/workers/scripts/{scriptName}/schedules` | write cron (default `0 */1 * * *`) |
 | GET | `/zones?name={domain}` | resolve zone for a custom domain (only if user supplied one) |
+| GET | `/zones/{zoneId}/settings/image_resizing` | check whether cover transformations are enabled |
 | POST | `/accounts/{accountId}/workers/assets/upload` (query `base64=true`) | upload asset bytes for the session |
 | GET | `/accounts/{accountId}/images/v1/stats` | Images enabled? (call fails/errors when the account has no Images subscription; `result.count.{current,allowed}` on success) |
 | GET | `/accounts/{accountId}/workers/domains` | list Custom Domains (detect existing binding before overwrite) |

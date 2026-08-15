@@ -30,8 +30,10 @@ onMounted(checkCollision);
 interface ZoneLookup {
   status: "idle" | "checking" | "found" | "not-found";
   zoneName: string;
+  zoneId: string;
 }
-const zoneLookup = ref<ZoneLookup>({ status: "idle", zoneName: "" });
+const zoneLookup = ref<ZoneLookup>({ status: "idle", zoneName: "", zoneId: "" });
+const transformations = ref<"idle" | "checking" | "on" | "off" | "unavailable">("idle");
 let zoneLookupTimer: ReturnType<typeof setTimeout> | undefined;
 
 watch(
@@ -40,25 +42,45 @@ watch(
     clearTimeout(zoneLookupTimer);
     const domain = value.trim();
     if (!domain) {
-      zoneLookup.value = { status: "idle", zoneName: "" };
+      zoneLookup.value = { status: "idle", zoneName: "", zoneId: "" };
+      transformations.value = "idle";
       return;
     }
     zoneLookupTimer = setTimeout(async () => {
-      zoneLookup.value = { status: "checking", zoneName: "" };
+        zoneLookup.value = { status: "checking", zoneName: "", zoneId: "" };
       try {
-        const result = await callCfJson<Array<{ name?: string }>>(
+        const result = await callCfJson<Array<{ id?: string; name?: string }>>(
           wizard.credentials.apiToken,
           `/zones?name=${encodeURIComponent(domain)}`,
           undefined,
           "Zone Read",
         );
         if (result.length > 0) {
-          zoneLookup.value = { status: "found", zoneName: result[0].name || domain };
+          const zone = result[0];
+          zoneLookup.value = { status: "found", zoneName: zone.name || domain, zoneId: zone.id || "" };
+          if (!zone.id) {
+            transformations.value = "unavailable";
+            return;
+          }
+          transformations.value = "checking";
+          try {
+            const setting = await callCfJson<{ value?: string }>(
+              wizard.credentials.apiToken,
+              `/zones/${zone.id}/settings/image_resizing`,
+              undefined,
+              "Zone Settings Read",
+            );
+            transformations.value = setting.value === "on" ? "on" : "off";
+          } catch {
+            transformations.value = "unavailable";
+          }
         } else {
-          zoneLookup.value = { status: "not-found", zoneName: "" };
+          zoneLookup.value = { status: "not-found", zoneName: "", zoneId: "" };
+          transformations.value = "idle";
         }
       } catch (e) {
-        zoneLookup.value = { status: "not-found", zoneName: describeCfError(e).message };
+        zoneLookup.value = { status: "not-found", zoneName: describeCfError(e).message, zoneId: "" };
+        transformations.value = "idle";
       }
     }, 600);
   },
@@ -107,6 +129,13 @@ function goBack() {
       <p class="field-help">{{ t("target.domainHelp") }}</p>
       <p v-if="zoneLookup.status === 'found'" class="field-help" style="color: var(--color-success)">{{ t("target.domainZoneFound", { zone: zoneLookup.zoneName }) }}</p>
       <p v-else-if="zoneLookup.status === 'not-found'" class="field-help" style="color: var(--color-warning)">{{ t("target.domainZoneNotFound", { domain: wizard.domain }) }}</p>
+      <p v-if="transformations === 'checking'" class="field-help">{{ t("target.transformationsChecking") }}</p>
+      <p v-else-if="transformations === 'on'" class="field-help" style="color: var(--color-success)">{{ t("target.transformationsOn") }}</p>
+      <template v-else-if="transformations === 'off'">
+        <p class="field-help" style="color: var(--color-warning)">{{ t("target.transformationsOff") }}</p>
+        <a :href="`https://dash.cloudflare.com/${wizard.credentials.accountId}/images/transformations`" target="_blank" rel="noreferrer">{{ t("target.transformationsLink") }} ↗</a>
+      </template>
+      <p v-else-if="transformations === 'unavailable'" class="field-help">{{ t("target.transformationsUnavailable") }}</p>
     </div>
 
     <div class="step-actions">

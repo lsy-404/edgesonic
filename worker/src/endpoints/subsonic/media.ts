@@ -37,6 +37,7 @@ import {
 } from "../../utils/httpCache";
 import type { TranscodeProfile, TranscodeInput } from "../../transcode/engine";
 import { presignR2Get } from "../../utils/r2presign";
+import { selectSongSource } from "./sources";
 
 import type { User } from "../../types/entities";
 
@@ -100,6 +101,7 @@ function pickProfile(format: string, maxBitRate: number): TranscodeProfile | nul
     case "aac":
     case "m4a":          container = "m4a";  break;
     case "flac":         container = "flac"; break;
+    case "wav":          container = "wav";  break;
     default:             container = null;
   }
   if (!container) return null;
@@ -128,7 +130,7 @@ function pickProfile(format: string, maxBitRate: number): TranscodeProfile | nul
 
 // Open a streaming read of the chosen instance for transcoding. Unlike the
 // happy-path stream this never honours Range — ffmpeg needs the whole file.
-async function openSourceForTranscode(
+export async function openSourceForTranscode(
   env: Env,
   storageUri: string,
 ): Promise<{ body: ReadableStream<Uint8Array>; contentType: string } | null> {
@@ -180,6 +182,7 @@ async function openSourceForTranscode(
 // ============================================================================
 const streamHandler = async (c: Context) => {
   const id = c.req.query("id");
+  const source = c.req.query("source") || undefined;
   const format = c.req.query("format") || "raw";
   const maxBitRate = parseInt(c.req.query("maxBitRate") || "0", 10) || 0;
   const timeOffset = parseInt(c.req.query("timeOffset") || "0", 10) || 0;
@@ -204,15 +207,21 @@ const streamHandler = async (c: Context) => {
 
   if (instances.length === 0) return c.text(subsonicError(70, "Song not found"), 404, { "Content-Type": "application/xml; charset=UTF-8" });
 
-  let selected = instances[0];
-  for (const inst of instances) {
-    if (format !== "raw" && inst.suffix === format) { selected = inst; break; }
-    if (inst.suffix === selected.suffix && (inst.bit_rate || 0) > (selected.bit_rate || 0)) selected = inst;
-    if (inst.suffix === "flac" && selected.suffix !== "flac") selected = inst;
-    // eligible). This used to check source_id === 'local' which never matched
-    // the actual R2 source_id 'r2-local', so R2 copies were never preferred.
-    if (inst.storage_uri.startsWith("r2://") && !selected.storage_uri.startsWith("r2://")) selected = inst;
-    if (maxBitRate > 0 && (inst.bit_rate || 0) <= maxBitRate && (selected.bit_rate || 0) > maxBitRate) selected = inst;
+  let selected = selectSongSource(instances, source, env.INSTANCE_ID);
+  if (!selected) {
+    return c.text(subsonicError(70, "Song not available from requested source"), 404, { "Content-Type": "application/xml; charset=UTF-8" });
+  }
+  const selectedBySource = !!source;
+  if (!selectedBySource) {
+    for (const inst of instances) {
+      if (format !== "raw" && inst.suffix === format) { selected = inst; break; }
+      if (inst.suffix === selected.suffix && (inst.bit_rate || 0) > (selected.bit_rate || 0)) selected = inst;
+      if (inst.suffix === "flac" && selected.suffix !== "flac") selected = inst;
+      // eligible). This used to check source_id === 'local' which never matched
+      // the actual R2 source_id 'r2-local', so R2 copies were never preferred.
+      if (inst.storage_uri.startsWith("r2://") && !selected.storage_uri.startsWith("r2://")) selected = inst;
+      if (maxBitRate > 0 && (inst.bit_rate || 0) <= maxBitRate && (selected.bit_rate || 0) > maxBitRate) selected = inst;
+    }
   }
 
   // ---- Decide whether we need to transcode ---------------------------------
@@ -229,7 +238,7 @@ const streamHandler = async (c: Context) => {
     // row matching the profile the client wants. When it has, we just
     // serve that instance verbatim — no engine call, no waitUntil.
     const targetProfile = pickProfile(format, maxBitRate);
-    if (targetProfile) {
+    if (targetProfile && !selectedBySource) {
       const queries2 = createQueries(env.DB);
       const cached = await queries2.findTranscodedInstance(selected.master_id, targetProfile.id);
       if (cached) {
@@ -266,7 +275,7 @@ const streamHandler = async (c: Context) => {
     // engine disabled / no matching profile / source open failed / engine
     // is browser_pool (async-only) → fall back to the original byte stream.
       } // end else (no cached transcoded instance)
-    } else {
+    } else if (!selectedBySource) {
       // pickProfile returned null → no profile in catalogue matches the
       // client's (format, maxBitRate). Same fallback as the browser pool: serve raw.
     }
