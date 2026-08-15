@@ -1,0 +1,38 @@
+# EdgeSonic Installer — wrangler config template
+# ---------------------------------------------------------------------------
+# This is the public, committable template. The real installer/wrangler.toml
+# carries a private account_id and is excluded via .gitignore.
+#
+# First-time setup:
+#   cp installer/wrangler.toml.example installer/wrangler.toml
+#   Replace the <placeholders> below with your own Cloudflare identifiers.
+#
+# This Worker serves the built wizard (installer/dist, built by `npm run
+# build -w installer`) and the CORS relay it talks to — one deployment,
+# one origin. See CONTRACT.md for what the relay routes do.
+#
+# ALLOWED_ORIGINS is a comma-separated, exact-match allowlist of *other*
+# origins permitted to call this Worker's /cf and /r2 routes cross-origin
+# (the wizard's own same-origin calls don't need it — see CONTRACT.md §3).
+# It can stay a plain [vars] entry, or be pushed as a Worker secret instead
+# (`wrangler secret put ALLOWED_ORIGINS`) to change it without a redeploy.
+# ---------------------------------------------------------------------------
+name = "edgesonic-installer"
+main = "worker/index.ts"
+compatibility_date = "2025-05-24"
+compatibility_flags = ["nodejs_compat"]
+account_id = "<YOUR_CLOUDFLARE_ACCOUNT_ID>"
+
+[[routes]]
+pattern = "deploy-edgesonic.wuyilingwei.com"
+custom_domain = true
+
+[assets]
+directory = "dist"
+binding = "ASSETS"
+
+[vars]
+ALLOWED_ORIGINS = ""
+
+[observability]
+enabled = true
