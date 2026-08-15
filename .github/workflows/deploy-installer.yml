@@ -1,11 +1,19 @@
 name: Deploy Installer
 
-# Manual-only trigger. Builds the wizard frontend and deploys the whole
+# Runs after installer-related changes reach main, or manually. Builds the wizard frontend and deploys the whole
 # installer/ Worker (frontend + its backend routes, one origin) to the
 # project's own Cloudflare account (repo secrets CLOUDFLARE_API_TOKEN /
 # CLOUDFLARE_ACCOUNT_ID) — this is shared infrastructure the project hosts,
 # not something an end user deploying EdgeSonic itself needs to run.
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-installer.yml'
+      - 'installer/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
   workflow_dispatch:
     inputs:
       allowed_origins:

@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
-import ScreenshotPlaceholder from "../ScreenshotPlaceholder.vue";
+import ConsoleClickGuide from "../ConsoleClickGuide.vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -36,9 +36,27 @@ function goBack() {
     </dl>
 
     <div class="guide-card">
+      <h3>{{ t("guide.step0Title") }}</h3>
+      <p class="field-help">{{ t("guide.step0Desc") }}</p>
+      <ConsoleClickGuide :heading="t('guide.loginScreenshotTitle')" :action="t('guide.loginScreenshotAction')" :detail="t('guide.loginScreenshotDetail')" :masked="t('guide.maskedEmail')" />
+      <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noreferrer" class="btn btn-secondary">
+        {{ t("guide.signUpLink") }} ↗
+      </a>
+    </div>
+
+    <div class="guide-card">
       <h3>{{ t("guide.step1Title") }}</h3>
       <p class="field-help">{{ t("guide.step1Desc") }}</p>
-      <ScreenshotPlaceholder :label="t('guide.step1Screenshot')" />
+      <ConsoleClickGuide :heading="t('guide.accountScreenshotTitle')" :action="t('guide.accountScreenshotAction')" :detail="t('guide.accountScreenshotDetail')" :masked="t('guide.maskedAccount')" />
+    </div>
+
+    <div class="guide-card">
+      <h3>{{ t("guide.stepR2Title") }}</h3>
+      <p class="field-help">{{ t("guide.stepR2Desc") }}</p>
+      <ConsoleClickGuide :heading="t('guide.r2EnableScreenshotTitle')" :action="t('guide.r2EnableScreenshotAction')" :detail="t('guide.r2EnableScreenshotDetail')" />
+      <a href="https://dash.cloudflare.com/?to=/:account/r2" target="_blank" rel="noreferrer" class="btn btn-secondary">
+        {{ t("guide.r2EnableLink") }} ↗
+      </a>
     </div>
 
     <div class="guide-card">
@@ -47,10 +65,28 @@ function goBack() {
         <li>{{ t("credentials.tokenGuideStep1") }}</li>
         <li>{{ t("credentials.tokenGuideStep2") }}</li>
         <li>{{ t("credentials.tokenGuideStep3") }}</li>
+        <li>{{ t("credentials.tokenGuideStep4") }}</li>
       </ol>
-      <ScreenshotPlaceholder :label="t('credentials.tokenGuideScreenshot')" />
+      <ConsoleClickGuide :heading="t('guide.tokenScreenshotTitle')" :action="t('guide.tokenScreenshotAction')" :detail="t('guide.tokenScreenshotDetail')" />
+      <ConsoleClickGuide :heading="t('guide.permissionScreenshotTitle')" :action="t('guide.permissionScreenshotAction')" :detail="t('guide.permissionScreenshotDetail')" />
+      <ConsoleClickGuide :heading="t('guide.tokenResultScreenshotTitle')" :action="t('guide.tokenResultScreenshotAction')" :detail="t('guide.tokenResultScreenshotDetail')" :masked="t('guide.maskedToken')" />
       <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer" class="btn btn-secondary">
         {{ t("credentials.apiTokenCreateLink") }} ↗
+      </a>
+    </div>
+
+    <div class="guide-card">
+      <h3>{{ t("guide.step3Title") }}</h3>
+      <ol>
+        <li>{{ t("guide.r2KeyStep1") }}</li>
+        <li>{{ t("guide.r2KeyStep2") }}</li>
+        <li>{{ t("guide.r2KeyStep3") }}</li>
+      </ol>
+      <ConsoleClickGuide :heading="t('guide.r2ScreenshotTitle')" :action="t('guide.r2ScreenshotAction')" :detail="t('guide.r2ScreenshotDetail')" />
+      <ConsoleClickGuide :heading="t('guide.r2PermissionScreenshotTitle')" :action="t('guide.r2PermissionScreenshotAction')" :detail="t('guide.r2PermissionScreenshotDetail')" />
+      <ConsoleClickGuide :heading="t('guide.r2ResultScreenshotTitle')" :action="t('guide.r2ResultScreenshotAction')" :detail="t('guide.r2ResultScreenshotDetail')" :masked="t('guide.maskedR2Secret')" />
+      <a href="https://dash.cloudflare.com/?to=/:account/r2" target="_blank" rel="noreferrer" class="btn btn-secondary">
+        {{ t("guide.r2TokenCreateLink") }} ↗
       </a>
     </div>
 

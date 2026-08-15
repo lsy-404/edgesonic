@@ -46,10 +46,7 @@ EdgeSonic 同时承担两个角色：
 
 ### 部署（推荐）：引导式安装向导
 
-无需 fork，无需打开 Actions 页面，也不需要本地工具链——一个引导式安装向导完全在你的浏览器中运行，直接部署到你自己的 Cloudflare 账号。它会校验你的 Cloudflare 凭据，检查 R2 和 Images 是否已启用（未启用会给出直达链接），并让你从近期 release 中选择。完整说明见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)（英文）。
-
-
-该工作流会下载最新的预编译 release（已构建好的前端 + Worker——**不再本地 build**），自动创建缺失的 D1/KV/R2 资源并部署。完整输入项说明见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)（英文）。
+无需 fork、GitHub 账号、Actions 页面或本地工具链。打开 [EdgeSonic 安装向导](https://deploy-edgesonic.wuyilingwei.com)，它会在网页内完成注册、令牌、R2 和部署引导，并自动创建 D1 和 R2 资源。
 
 ### 本地 CLI 部署（开发用）
 
@@ -136,7 +133,6 @@ npx wrangler d1 execute edgesonic-db --remote --command \
 | [`DEPLOY_BY_AGENT.md`](docs/DEPLOY_BY_AGENT.md) | 面向 AI agent 的自包含部署手册——用预编译 release 包，无需本地构建 |
 | [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Monorepo 目录结构、存储后端模型、如何添加 S3 兼容存储源 |
 | [`DEVELOPMENT.md`](docs/DEVELOPMENT.md) | 开发服务器、类型检查、运行测试、应用数据库 Schema |
-| [`DEPLOYMENT.md`](docs/DEPLOYMENT.md) | 引导式安装向导部署、Cloudflare 资源需求与免费额度 |
 | [`worker/SECRETS.md`](worker/SECRETS.md) | Worker Secrets 与可选 R2 预签名播放 |
 | [`worker/CF_CRON.md`](worker/CF_CRON.md) | 运行时管理的 Cron 计划 |
 

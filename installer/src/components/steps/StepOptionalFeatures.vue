@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
-import ScreenshotPlaceholder from "../ScreenshotPlaceholder.vue";
+import ConsoleClickGuide from "../ConsoleClickGuide.vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -26,7 +26,7 @@ function goBack() {
         <span class="field-tag recommended">{{ t("common.recommended") }}</span>
       </h3>
       <p>{{ t("credentials.imagesCardDesc") }}</p>
-      <ScreenshotPlaceholder :label="t('credentials.imagesGuideScreenshot')" />
+      <ConsoleClickGuide :heading="t('guide.imagesScreenshotTitle')" :action="t('guide.imagesScreenshotAction')" :detail="t('guide.imagesScreenshotDetail')" />
       <a :href="`https://dash.cloudflare.com/${wizard.credentials.accountId || ''}/images/transformations`" target="_blank" rel="noreferrer" class="btn btn-secondary">
         {{ t("credentials.imagesCardLink") }} ↗
       </a>

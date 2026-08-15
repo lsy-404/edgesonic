@@ -50,7 +50,7 @@ The existing deploy workflow downloads a GitHub Release, extracts it, creates or
 ## Current Repository State
 
 - `./deploy.sh` is the local Wrangler deployment path.
-- The guided installer (see `docs/DEPLOYMENT.md`) is the supported deploy path for everyone else — it
+- The [guided installer](https://deploy-edgesonic.wuyilingwei.com) is the supported deploy path for everyone else — it
   replaced the old manual `deploy.yml` GitHub Actions workflow.
 - `.github/workflows/release.yml` publishes the package and the direct Workers API module artifact.
 - `worker/src/endpoints/edgesonic/cf.ts` already stores and uses `CF_API_TOKEN` for Cloudflare API operations.

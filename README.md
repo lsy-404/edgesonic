@@ -47,12 +47,9 @@ EdgeSonic serves two roles simultaneously:
 
 ### Deploy (recommended): guided installer
 
-No fork, no Actions tab, no local toolchain — a guided install wizard runs entirely in your browser and
-deploys straight to your own Cloudflare account. It validates your Cloudflare credentials, checks that R2
-and Images are enabled (with direct links if not), and lets you pick from recent releases. Full details:
-[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
-
-The workflow downloads the latest precompiled release (prebuilt frontend + Worker — **no build step**), auto-creates any missing D1/KV/R2 resources, and deploys. Full input reference: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+No fork, no Actions tab, no local toolchain, and no GitHub account. Open the
+[EdgeSonic Installer](https://deploy-edgesonic.wuyilingwei.com): it guides account setup, tokens, R2, and
+deployment in the browser, then creates the D1 and R2 resources automatically.
 
 ### Local CLI deploy (development)
 
@@ -139,7 +136,6 @@ The technical reference lives under [`docs/`](docs/):
 | [`DEPLOY_BY_AGENT.md`](docs/DEPLOY_BY_AGENT.md) | Self-contained deploy runbook for AI coding agents — precompiled release package, no local build |
 | [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Monorepo layout, storage backend model, adding an S3-compatible source |
 | [`DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Dev servers, type-checking, running tests, applying the DB schema |
-| [`DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Guided installer deploy, Cloudflare resource requirements / free-tier limits |
 | [`worker/SECRETS.md`](worker/SECRETS.md) | Worker secrets and optional R2 presigned streaming |
 | [`worker/CF_CRON.md`](worker/CF_CRON.md) | Runtime-managed cron schedules |
 
