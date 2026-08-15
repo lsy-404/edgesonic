@@ -4,7 +4,8 @@
   "private": true,
   "workspaces": [
     "worker",
-    "web"
+    "web",
+    "installer"
   ],
   "scripts": {
     "dev:worker": "npm run dev -w worker",

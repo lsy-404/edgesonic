@@ -10,6 +10,7 @@ worker/.wrangler/
 worker/.dev.vars
 .env
 .env.*
+!installer/.env.example
 
 # --- 构建产物 / 依赖 ---
 node_modules/
