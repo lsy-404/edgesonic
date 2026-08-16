@@ -66,7 +66,9 @@ export async function uploadAssets(
     "Workers Scripts Edit",
   );
   let completionJwt = session.jwt || "";
-  for (const bucket of session.buckets || []) {
+  const buckets = (session.buckets || []).filter((bucket) => Array.isArray(bucket) && bucket.length > 0);
+  for (let index = 0; index < buckets.length; index++) {
+    const bucket = buckets[index];
     if (!Array.isArray(bucket) || bucket.length === 0) continue;
     if (!completionJwt) throw new Error("Cloudflare did not return an asset upload token");
     const form = new FormData();
@@ -83,8 +85,11 @@ export async function uploadAssets(
       form,
       "Workers Scripts Edit",
     );
-    if (!result.jwt) throw new Error("Cloudflare asset upload didn't return a continuation token");
-    completionJwt = result.jwt;
+    if (result.jwt) {
+      completionJwt = result.jwt;
+    } else if (index !== buckets.length - 1) {
+      throw new Error("Cloudflare asset upload didn't return a continuation token");
+    }
   }
   if (!completionJwt) throw new Error("Cloudflare did not return a completed asset upload token");
   return completionJwt;
