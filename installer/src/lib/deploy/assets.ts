@@ -85,11 +85,7 @@ export async function uploadAssets(
       form,
       "Workers Scripts Edit",
     );
-    if (result.jwt) {
-      completionJwt = result.jwt;
-    } else if (index !== buckets.length - 1) {
-      throw new Error("Cloudflare asset upload didn't return a continuation token");
-    }
+    if (result.jwt) completionJwt = result.jwt;
   }
   if (!completionJwt) throw new Error("Cloudflare did not return a completed asset upload token");
   return completionJwt;
