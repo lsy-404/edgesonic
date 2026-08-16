@@ -8,11 +8,13 @@ const credentials = read("installer/src/components/steps/StepCredentials.vue");
 const target = read("installer/src/components/steps/StepTarget.vue");
 const version = read("installer/src/components/steps/StepVersion.vue");
 const review = read("installer/src/components/steps/StepReview.vue");
+const done = read("installer/src/components/steps/StepDone.vue");
 const orchestrate = read("installer/src/lib/deploy/orchestrate.ts");
 const deployTypes = read("installer/src/lib/deploy/types.ts");
 const tokenPolicies = read("installer/src/lib/cf/tokenPolicies.ts");
 const allowlist = read("installer/worker/cfAllowlist.ts");
 const manifest = read("installer/src/lib/deploy/manifest.ts");
+const assets = read("installer/src/lib/deploy/assets.ts");
 const en = JSON.parse(read("installer/src/locales/en.json"));
 const zh = JSON.parse(read("installer/src/locales/zh-CN.json"));
 
@@ -39,6 +41,8 @@ const checks: Array<[string, boolean]> = [
   ["core deployment permissions fall back to non-mutating API checks", ["/workers/scripts", "/d1/database"].every((path) => credentials.includes(path))],
   ["saved credentials are checked on page entry", credentials.includes("{ immediate: true }")],
   ["local ZIP packages are checksum-validated before deployment", manifest.includes("readLocalUpdatePackage") && manifest.includes("validateManifestAndArtifact") && version.includes("localPackage")],
+  ["completion link opens the deployed Worker production page", done.includes("/workers/services/view/") && done.includes("/production")],
+  ["asset uploads preserve JavaScript MIME types", assets.includes('return "text/javascript"') && assets.includes("new File([base64Bytes(bytes)]")],
 ];
 
 let failures = 0;

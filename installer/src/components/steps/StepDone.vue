@@ -36,8 +36,8 @@ function startOver() {
         <dt>{{ t("done.urlLabel") }}</dt>
         <dd>
           <a v-if="wizard.result?.url" :href="wizard.result.url" target="_blank" rel="noreferrer">{{ wizard.result.url }}</a>
-          <a v-else :href="`https://dash.cloudflare.com/${wizard.result?.accountId}/workers-and-pages`" target="_blank" rel="noreferrer">
-            dash.cloudflare.com → Workers &amp; Pages → {{ wizard.workerName }}
+          <a v-else :href="`https://dash.cloudflare.com/${wizard.result?.accountId}/workers/services/view/${wizard.workerName}/production`" target="_blank" rel="noreferrer">
+            dash.cloudflare.com → {{ wizard.workerName }} → production
           </a>
         </dd>
       </div>

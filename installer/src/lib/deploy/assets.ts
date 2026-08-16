@@ -39,6 +39,26 @@ function assetFileName(assetPath: string): string {
   return `assets/${clean}`;
 }
 
+function assetContentType(assetPath: string): string {
+  const extension = assetPath.split(".").pop()?.toLowerCase();
+  switch (extension) {
+    case "js":
+    case "mjs": return "text/javascript";
+    case "css": return "text/css";
+    case "html": return "text/html";
+    case "json": return "application/json";
+    case "svg": return "image/svg+xml";
+    case "png": return "image/png";
+    case "jpg":
+    case "jpeg": return "image/jpeg";
+    case "webp": return "image/webp";
+    case "ico": return "image/x-icon";
+    case "woff": return "font/woff";
+    case "woff2": return "font/woff2";
+    default: return "application/octet-stream";
+  }
+}
+
 export async function uploadAssets(
   token: string,
   accountId: string,
@@ -77,7 +97,7 @@ export async function uploadAssets(
       if (!found) throw new Error("Cloudflare requested an unknown asset hash");
       const bytes = files.get(assetFileName(found.path));
       if (!bytes) throw new Error(`Asset disappeared during upload: ${found.path}`);
-      form.append(hash, base64Bytes(bytes));
+      form.append(hash, new File([base64Bytes(bytes)], hash, { type: assetContentType(found.path) }));
     }
     const result = await callCfMultipart<{ jwt?: string }>(
       completionJwt,

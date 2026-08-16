@@ -292,7 +292,7 @@
     "adminTitle": "Superadmin login",
     "adminUsername": "Username",
     "adminPassword": "Password",
-    "saveWarning": "This password is shown once and is not stored anywhere. Save it now — a password manager works well.",
+    "saveWarning": "This password is shown once and is not stored anywhere. Save it now.",
     "nextStepsTitle": "Optional next steps",
     "nextStepsDesc": "LastFM, email delivery, and other optional integrations aren't set up by this installer. Configure them from within EdgeSonic's own Settings after you log in, or see the secrets reference.",
     "secretsLink": "Secrets reference",
