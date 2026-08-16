@@ -9,6 +9,19 @@ import { describeCfError } from "../../lib/cf/errors";
 
 const { t } = useI18n();
 const wizard = useWizard();
+const permissionRows = [
+  { key: "scripts", required: true, scope: "account", level: "edit" },
+  { key: "d1", required: true, scope: "account", level: "edit" },
+  { key: "r2", required: true, scope: "account", level: "edit" },
+  { key: "r2Keys", required: false, scope: "allBuckets", level: "readWrite" },
+  { key: "ci", required: false, scope: "account", level: "edit" },
+  { key: "containers", required: false, scope: "account", level: "edit" },
+  { key: "observability", required: false, scope: "account", level: "edit" },
+  { key: "accountAnalytics", required: false, scope: "account", level: "read" },
+  { key: "accountSettings", required: false, scope: "account", level: "read" },
+  { key: "zoneRead", required: false, scope: "targetZone", level: "read" },
+  { key: "zoneSettings", required: false, scope: "targetZone", level: "read" },
+] as const;
 
 const verifying = ref(false);
 const hasAttempted = ref(false);
@@ -29,7 +42,6 @@ const checks = reactive<PermissionCheck[]>([
   { key: "d1", status: "pending", detail: "" },
   { key: "r2", status: "pending", detail: "" },
   { key: "r2Keys", status: "pending", detail: "" },
-  { key: "dns", status: "pending", detail: "" },
 ]);
 
 function setCheck(key: string, status: CheckStatus, detail = "") {
@@ -43,19 +55,24 @@ function setCheck(key: string, status: CheckStatus, detail = "") {
 const canVerify = computed(
   () =>
     wizard.credentials.accountId.trim().length > 0 &&
-    wizard.credentials.apiToken.trim().length > 0 &&
-    wizard.credentials.r2AccessKeyId.trim().length > 0 &&
-    wizard.credentials.r2SecretAccessKey.trim().length > 0,
+    wizard.credentials.apiToken.trim().length > 0,
 );
+const r2KeysComplete = computed(() => {
+  const accessKey = wizard.credentials.r2AccessKeyId.trim();
+  const secret = wizard.credentials.r2SecretAccessKey.trim();
+  return (!accessKey && !secret) || (!!accessKey && !!secret);
+});
 
-const allRequiredOk = computed(() => checks.every((c) => c.status === "ok") && wizard.r2Enabled === true);
+const requiredCheckKeys = new Set(["token", "workersScripts", "d1", "r2"]);
+const allRequiredOk = computed(
+  () => checks.filter((check) => requiredCheckKeys.has(check.key)).every((check) => check.status === "ok")
+    && wizard.r2Enabled === true,
+);
 
 const canContinue = computed(
   () =>
     wizard.credentialsVerified &&
-    allRequiredOk.value &&
-    wizard.credentials.r2AccessKeyId.trim().length > 0 &&
-    wizard.credentials.r2SecretAccessKey.trim().length > 0,
+    allRequiredOk.value && r2KeysComplete.value,
 );
 
 let verifyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -120,16 +137,6 @@ async function verify() {
     setCheck("workersScripts", "missing", describeCfError(e, "Workers Scripts Edit").message);
   }
 
-  setCheck("dns", "checking");
-  try {
-    await callCfJson(apiToken, "/zones?per_page=1", undefined, "DNS Edit");
-    if (isStale()) return;
-    setCheck("dns", "ok");
-  } catch (e) {
-    if (isStale()) return;
-    setCheck("dns", "missing", describeCfError(e, "DNS Edit").message);
-  }
-
   setCheck("d1", "checking");
   try {
     await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Edit");
@@ -146,17 +153,14 @@ async function verify() {
     if (isStale()) return;
     setCheck("r2", "ok");
     wizard.r2Enabled = true;
-    setCheck("r2Keys", "checking");
-    const r2Keys = await verifyR2Keys({
-      accountId,
-      accessKeyId: r2AccessKeyId,
-      secretAccessKey: r2SecretAccessKey,
-    });
-    if (isStale()) return;
-    if (r2Keys.ok) {
-      setCheck("r2Keys", "ok");
+    if (r2AccessKeyId && r2SecretAccessKey) {
+      setCheck("r2Keys", "checking");
+      const r2Keys = await verifyR2Keys({ accountId, accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey });
+      if (isStale()) return;
+      if (r2Keys.ok) setCheck("r2Keys", "ok");
+      else setCheck("r2Keys", "missing", t("credentials.r2KeyInvalid"));
     } else {
-      setCheck("r2Keys", "missing", t("credentials.r2KeyInvalid"));
+      setCheck("r2Keys", "pending", t("credentials.r2KeysOptionalSkipped"));
     }
   } catch (e) {
     if (isStale()) return;
@@ -192,12 +196,42 @@ function goBack() {
     <h1 class="step-title">{{ t("credentials.title") }}</h1>
     <p class="step-subtitle">{{ t("credentials.subtitle") }}</p>
 
+    <div v-if="wizard.mode === 'overwrite'" class="alert alert-warning">
+      <strong>{{ t("overwriteAdvice.title") }}</strong>
+      <p>{{ t("overwriteAdvice.message") }}</p>
+    </div>
+
     <div class="guide-card credential-setup">
       <h3>{{ t("credentials.setupTitle") }}</h3>
       <ol>
         <li><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noreferrer">{{ t("credentials.createAccount") }} ↗</a></li>
         <li>{{ t("credentials.setupToken") }} <a href="https://dash.cloudflare.com/?to=/:account/api-tokens" target="_blank" rel="noreferrer">{{ t("credentials.apiTokenCreateLink") }} ↗</a></li>
-        <li>{{ t("credentials.setupPermissions") }}</li>
+        <li>
+          {{ t("credentials.setupPermissions") }}
+          <div class="permission-table-wrap">
+            <table class="permission-table">
+              <thead>
+                <tr>
+                  <th>{{ t("credentials.permissionResource") }}</th>
+                  <th>{{ t("credentials.permissionRequired") }}</th>
+                  <th>{{ t("credentials.permissionScenario") }}</th>
+                  <th>{{ t("credentials.permissionScope") }}</th>
+                  <th>{{ t("credentials.permissionLevel") }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="permission in permissionRows" :key="permission.key">
+                  <td>{{ t(`credentials.permissions.${permission.key}.resource`) }}</td>
+                  <td>{{ permission.required ? t("credentials.required") : t("credentials.optional") }}</td>
+                  <td>{{ t(`credentials.permissions.${permission.key}.scenario`) }}</td>
+                  <td>{{ t(`credentials.permissionScopes.${permission.scope}`) }}</td>
+                  <td>{{ t(`credentials.permissionLevels.${permission.level}`) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="field-help">{{ t("credentials.dnsNotNeeded") }}</p>
+        </li>
       </ol>
     </div>
 
@@ -214,13 +248,14 @@ function goBack() {
     </div>
 
     <div class="field">
-      <label for="r2Key">{{ t("credentials.r2AccessKeyId") }}<span class="field-tag required">{{ t("common.required") }}</span></label>
+      <label for="r2Key">{{ t("credentials.r2AccessKeyId") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
       <input id="r2Key" v-model.trim="wizard.credentials.r2AccessKeyId" type="password" autocomplete="off" spellcheck="false" />
     </div>
     <div class="field">
-      <label for="r2Secret">{{ t("credentials.r2SecretAccessKey") }}<span class="field-tag required">{{ t("common.required") }}</span></label>
+      <label for="r2Secret">{{ t("credentials.r2SecretAccessKey") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
       <input id="r2Secret" v-model.trim="wizard.credentials.r2SecretAccessKey" type="password" autocomplete="off" spellcheck="false" />
       <p class="field-help">{{ t("credentials.r2KeyHelp") }}</p>
+      <p v-if="!r2KeysComplete" class="field-help" style="color: var(--color-danger)">{{ t("credentials.r2KeysPairRequired") }}</p>
     </div>
 
     <button type="button" class="btn btn-secondary" :disabled="!canVerify || verifying" @click="verify">

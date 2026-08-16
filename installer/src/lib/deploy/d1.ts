@@ -20,6 +20,11 @@ interface D1Database {
   name?: string;
 }
 
+export async function listDatabaseNames(token: string, accountId: string): Promise<string[]> {
+  const databases = await callCfJson<D1Database[]>(token, `/accounts/${accountId}/d1/database?per_page=100`, undefined, "D1 Edit");
+  return databases.map((database) => database.name || "").filter(Boolean);
+}
+
 export async function getOrCreateDatabase(token: string, accountId: string, name: string): Promise<string> {
   const existing = await callCfJson<D1Database[]>(
     token,

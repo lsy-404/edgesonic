@@ -57,16 +57,15 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
 
   await guarded("r2", report, async () => {
     await getOrCreateBucket(apiToken, accountId, target.bucketName);
-    // CONTRACT.md §2 — the key pair can only be verified against a
-    // bucket that already exists, so this has to run after creation, not
-    // back in the credentials step.
-    const verified = await verifyR2Keys({
-      accountId,
-      bucketName: target.bucketName,
-      accessKeyId: creds.r2AccessKeyId,
-      secretAccessKey: creds.r2SecretAccessKey,
-    });
-    if (!verified.ok) throw new Error(verified.message || "R2 access key pair didn't verify against the bucket");
+    if (creds.r2AccessKeyId && creds.r2SecretAccessKey) {
+      const verified = await verifyR2Keys({
+        accountId,
+        bucketName: target.bucketName,
+        accessKeyId: creds.r2AccessKeyId,
+        secretAccessKey: creds.r2SecretAccessKey,
+      });
+      if (!verified.ok) throw new Error(verified.message || "R2 access key pair didn't verify against the bucket");
+    }
   });
 
   await guarded("schema", report, async () => {
@@ -121,18 +120,18 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
     await pushSecret(apiToken, accountId, script, "WORK_UPLOAD_HMAC_KEY", generateHmacKeyBase64());
     await pushSecret(apiToken, accountId, script, "CF_ACCOUNT_ID", accountId);
     await pushSecret(apiToken, accountId, script, "CF_API_TOKEN", apiToken);
-    // The R2 key pair was already verified against the bucket in the "r2"
-    // step — push it and flip the flag so the presign short-circuit
-    // (worker/SECRETS.md §3) is live immediately instead of leaving the
-    // wizard's R2 credentials step collect values nothing then uses.
-    await pushSecret(apiToken, accountId, script, "R2_ACCESS_KEY_ID", creds.r2AccessKeyId);
-    await pushSecret(apiToken, accountId, script, "R2_SECRET_ACCESS_KEY", creds.r2SecretAccessKey);
+    // Optional R2 keys enable direct presigned playback. Without them the
+    // complete installation still uses the normal Worker proxy path.
+    if (creds.r2AccessKeyId && creds.r2SecretAccessKey) {
+      await pushSecret(apiToken, accountId, script, "R2_ACCESS_KEY_ID", creds.r2AccessKeyId);
+      await pushSecret(apiToken, accountId, script, "R2_SECRET_ACCESS_KEY", creds.r2SecretAccessKey);
+    }
     // worker/src/endpoints/subsonic/media.ts signs presigned GETs against the
     // literal bucket name "edgesonic-music", not whatever's actually bound —
     // flipping this on for any other bucket name would 404 every presigned
     // stream instead of just skipping the optimization, so only auto-enable
     // it on the one bucket name the feature actually works with.
-    if (target.bucketName === "edgesonic-music") {
+    if (creds.r2AccessKeyId && creds.r2SecretAccessKey && target.bucketName === "edgesonic-music") {
       await runQuery(
         apiToken,
         accountId,

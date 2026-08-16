@@ -39,6 +39,8 @@ function loadCredentials(): DeployCredentials {
 export const useWizard = defineStore("wizard", () => {
   const step = ref(1);
   const mode = ref<"fresh" | "overwrite">("fresh");
+  const overwriteConfirmed = ref(false);
+  watch(mode, () => { overwriteConfirmed.value = false; });
 
   // Credentials — sessionStorage only, per this project's rule that the CF
   // token and R2 keys are never persisted past the browser tab. Cleared
@@ -131,6 +133,7 @@ export const useWizard = defineStore("wizard", () => {
   return {
     step,
     mode,
+    overwriteConfirmed,
     credentials,
     credentialsVerified,
     accountName,

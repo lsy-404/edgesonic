@@ -54,6 +54,11 @@ function goBack() {
     <h1 class="step-title">{{ t("version.title") }}</h1>
     <p class="step-subtitle">{{ t("version.subtitle") }}</p>
 
+    <div v-if="wizard.mode === 'overwrite'" class="alert alert-warning">
+      <strong>{{ t("overwriteAdvice.title") }}</strong>
+      <p>{{ t("overwriteAdvice.message") }}</p>
+    </div>
+
     <div class="field">
       <label for="sourceRepo">{{ t("version.sourceRepo") }}</label>
       <input id="sourceRepo" v-model.trim="wizard.sourceRepo" type="text" spellcheck="false" @change="load" />

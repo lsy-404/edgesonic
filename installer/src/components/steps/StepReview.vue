@@ -20,6 +20,11 @@ function goBack() {
     <h1 class="step-title">{{ t("review.title") }}</h1>
     <p class="step-subtitle">{{ t("review.subtitle") }}</p>
 
+    <div v-if="wizard.mode === 'overwrite'" class="alert alert-warning">
+      <strong>{{ t("overwriteAdvice.title") }}</strong>
+      <p>{{ t("overwriteAdvice.message") }}</p>
+    </div>
+
     <dl class="kv-list">
       <div class="kv-row">
         <dt>{{ t("review.modeLabel") }}</dt>

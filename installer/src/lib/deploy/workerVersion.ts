@@ -118,8 +118,12 @@ export async function switchTraffic(token: string, accountId: string, script: st
 }
 
 export async function scriptExists(token: string, accountId: string, script: string): Promise<boolean> {
+  return (await listScriptNames(token, accountId)).includes(script);
+}
+
+export async function listScriptNames(token: string, accountId: string): Promise<string[]> {
   const list = await callCfJson<Array<{ id?: string }>>(token, `/accounts/${accountId}/workers/scripts`, undefined, "Workers Scripts Edit");
-  return list.some((entry) => entry.id === script);
+  return list.map((entry) => entry.id || "").filter(Boolean);
 }
 
 export async function readCrons(token: string, accountId: string, script: string): Promise<string[]> {

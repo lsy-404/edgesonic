@@ -24,12 +24,16 @@
     "freshTitle": "Fresh install",
     "freshDesc": "I don't have EdgeSonic running yet. Create everything from scratch.",
     "overwriteTitle": "Overwrite an existing install",
-    "overwriteDesc": "I already have an EdgeSonic Worker and want to update it or redeploy onto it.",
+    "overwriteDesc": "Recovery only. If the existing app opens, use Settings → Cloudflare → Update inside EdgeSonic instead.",
     "start": "Get started",
     "requirementsTitle": "Before you start",
     "requirement1": "A Cloudflare account (free tier is enough to try it).",
-    "requirement2": "A Cloudflare API Token and R2 access keys — the next step walks you through creating them.",
+    "requirement2": "A Cloudflare Account API Token. Optional R2 access keys enable direct playback.",
     "requirement3": "About 5 minutes."
+  },
+  "overwriteAdvice": {
+    "title": "Use in-app update whenever possible",
+    "message": "If the existing EdgeSonic app still opens, stop this overwrite flow and use Settings → Cloudflare → Update. Overwrite deployment is only for recovery when in-app update is unavailable."
   },
   "guide": {
     "title": "What you'll need",
@@ -79,11 +83,62 @@
   },
   "credentials": {
     "title": "Cloudflare credentials",
-    "subtitle": "Pasting credentials automatically checks permissions, R2 status, and R2 keys. Credentials remain only in this browser tab.",
+    "subtitle": "The minimum API Token permissions deploy a complete working instance. Optional permissions enable advanced Cloudflare features later.",
     "setupTitle": "Three steps",
     "createAccount": "Create or sign in to Cloudflare",
     "setupToken": "Create a Custom Token in the target account's Account API Tokens.",
-    "setupPermissions": "Choose All accounts. Set every Workers permission, D1, Workers R2 Storage, and DNS to Edit. The token page also shows the R2 Access Key ID and Secret.",
+    "setupPermissions": "Configure the Account API Token permissions:",
+    "permissionResource": "Resource",
+    "permissionRequired": "Required",
+    "permissionScenario": "Use",
+    "permissionScope": "Scope",
+    "permissionLevel": "Permission",
+    "required": "Required",
+    "optional": "Optional",
+    "permissionScopes": {
+      "account": "Target account",
+      "allBuckets": "All buckets",
+      "targetZone": "Target Zone"
+    },
+    "permissionLevels": {
+      "read": "Read",
+      "edit": "Edit",
+      "readWrite": "Read & Write"
+    },
+    "dnsNotNeeded": "The installer never creates or changes DNS records, so DNS Edit is not needed.",
+    "permissions": {
+      "scripts": { "resource": "Workers Scripts", "scenario": "Deploy the Worker, assets, Secrets, and Cron" },
+      "d1": { "resource": "D1", "scenario": "Create the database and apply its schema" },
+      "r2": { "resource": "Workers R2 Storage", "scenario": "Create and list the music bucket" },
+      "r2Keys": { "resource": "R2 S3 API Key", "scenario": "R2 presigned direct playback" },
+      "ci": { "resource": "Workers CI", "scenario": "In-app CI integration" },
+      "containers": { "resource": "Workers Containers", "scenario": "Container transcoding" },
+      "observability": { "resource": "Workers Observability", "scenario": "Worker logs and observability troubleshooting" },
+      "accountAnalytics": { "resource": "Account Analytics", "scenario": "In-app request, error, and CPU analytics" },
+      "accountSettings": { "resource": "Account Settings", "scenario": "In-app Cloudflare connection checks" },
+      "zoneRead": { "resource": "Zone", "scenario": "Check custom-domain ownership" },
+      "zoneSettings": { "resource": "Zone Settings", "scenario": "Check cover Images Transformations status" }
+    },
+    "minimumPermissionsTitle": "Minimum deployment permissions under Developer Platform",
+    "permissionEdit": "Edit",
+    "permissionAccountScope": "Account resources: Include → the target account only. If the account-owned token screen only offers All accounts, use that scope.",
+    "permissionR2Scope": "Optional R2 presigned playback keys: Bucket Item → Read, Include → All buckets. The bucket does not exist until deployment.",
+    "advancedPermissionsTitle": "Optional advanced-feature permissions",
+    "advancedPermissionsDesc": "The installer stores this API Token as the Worker's CF_API_TOKEN secret. Add only the capabilities you want EdgeSonic to use from inside the app:",
+    "requiredPermissions": {
+      "d1": "D1",
+      "r2": "Workers R2 Storage",
+      "ci": "Workers CI",
+      "scripts": "Workers Scripts"
+    },
+    "advancedPermissions": {
+      "containers": "Workers Containers → Edit — Sandbox container transcoding",
+      "observability": "Workers Observability → Edit — Worker observability (not Observability Telemetry)",
+      "accountAnalytics": "Account Analytics → Read — in-app request and error analytics",
+      "accountSettings": "Account Settings → Read — in-app Cloudflare connection checks",
+      "zoneRead": "Zone → Read — optional custom-domain lookup",
+      "zoneSettings": "Zone Settings → Read — optional Images Transformations status"
+    },
     "accountId": "Account ID",
     "accountIdHelp": "Found on the right sidebar of any Cloudflare dashboard page.",
     "apiToken": "API Token",
@@ -91,13 +146,15 @@
     "apiTokenCreateLink": "Open Account API Tokens",
     "tokenGuideTitle": "How to create this token",
     "tokenGuideStep1": "Open Manage Account > Account API Tokens. Do not use My Profile > API Tokens. Select Create Token.",
-    "tokenGuideStep2": "Select all Workers permissions needed for deployment: Workers CI, Workers Containers, Workers Observability, and Workers Scripts, all set to Edit. Add D1 and Workers R2 Storage, set to Edit.",
-    "tokenGuideStep3": "Add DNS Edit for the target zone. Add Workers R2 Storage Bucket Item Read for all buckets; the bucket does not exist until deployment.",
+    "tokenGuideStep2": "For minimum deployment, set D1, Workers R2 Storage, Workers CI, and Workers Scripts to Edit under Developer Platform.",
+    "tokenGuideStep3": "Optionally add Containers, Observability, Account Analytics Read, Account Settings Read, Zone Read, and Zone Settings Read for advanced in-app features.",
     "tokenGuideStep4": "Continue to the summary and create the token. Copy the displayed Token, Access Key ID, and Secret Access Key; all three are required below.",
     "r2AccessKeyId": "R2 Access Key ID",
     "r2SecretAccessKey": "R2 Secret Access Key",
-    "r2KeyHelp": "Use the keys shown on the same Custom Token page.",
+    "r2KeyHelp": "Optional. Add both keys to enable direct R2 presigned playback; leave both empty for normal proxied playback.",
     "r2KeyInvalid": "The R2 keys are invalid or do not have account-level R2 access.",
+    "r2KeysOptionalSkipped": "Optional R2 direct-play keys were not provided; deployment can continue.",
+    "r2KeysPairRequired": "Provide both R2 key fields or leave both empty.",
     "verify": "Verify",
     "verifying": "Verifying…",
     "verified": "Verified",
@@ -119,8 +176,7 @@
       "workersScripts": "Workers Scripts permission",
       "d1": "D1 permission",
       "r2": "R2 is enabled",
-      "r2Keys": "R2 Access Key permission",
-      "dns": "DNS permission"
+      "r2Keys": "R2 Access Key permission (optional)"
     },
     "checkStatus": {
       "pending": "Not checked yet",
@@ -147,8 +203,18 @@
     "transformationsOff": "Cover transformations are off. Covers still work, but thumbnails use original bytes.",
     "transformationsLink": "Enable transformations",
     "transformationsUnavailable": "Could not check cover transformations. Add Zone Settings Read to this Account API Token, or check it in Cloudflare.",
+    "discoveryTitle": "Possible existing EdgeSonic resources",
+    "discoveryChecking": "Searching Worker, D1, and R2 resource names for EdgeSonic keywords…",
+    "discoveryFound": "Review these keyword matches. Select the resources that belong to the existing installation.",
+    "discoveryNone": "No Worker, D1 database, or R2 bucket with an EdgeSonic-like name was found. Verify the names before proceeding.",
+    "discoveryFailed": "Could not search all account resources. Check the minimum token permissions and enter the names manually.",
+    "suspectedWorkers": "Possible Workers",
+    "suspectedDatabases": "Possible D1 databases",
+    "suspectedBuckets": "Possible R2 buckets",
     "collisionWarning": "A Worker named \"{name}\" already exists on this account. Since you chose fresh install, pick a different name or go back and choose overwrite instead.",
-    "collisionOkOverwrite": "A Worker named \"{name}\" already exists — this matches overwrite mode."
+    "collisionOkOverwrite": "A Worker named \"{name}\" exists. Confirm it is the intended EdgeSonic instance before continuing.",
+    "overwriteMissing": "No Worker named \"{name}\" exists. Overwrite mode cannot continue without an existing target.",
+    "overwriteConfirm": "I verified this existing Worker and its D1/R2 names belong to the EdgeSonic installation I intend to recover."
   },
   "version": {
     "title": "Choose a release",

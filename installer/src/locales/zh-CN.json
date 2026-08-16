@@ -24,12 +24,16 @@
     "freshTitle": "全新安装",
     "freshDesc": "我还没有部署过 EdgeSonic，从零创建所有资源。",
     "overwriteTitle": "覆盖已有安装",
-    "overwriteDesc": "我已经有一个 EdgeSonic Worker，想更新或重新部署到它上面。",
+    "overwriteDesc": "仅用于恢复。现有应用能打开时，请在 EdgeSonic 的“设置 → Cloudflare → 更新”中自升级。",
     "start": "开始",
     "requirementsTitle": "开始之前",
     "requirement1": "一个 Cloudflare 账号（免费套餐即可体验）。",
-    "requirement2": "一个 Cloudflare API 令牌和 R2 访问密钥——下一步会引导你创建它们。",
+    "requirement2": "一个 Cloudflare Account API Token；可选 R2 访问密钥用于直连播放。",
     "requirement3": "大约 5 分钟时间。"
+  },
+  "overwriteAdvice": {
+    "title": "始终优先使用应用内更新",
+    "message": "如果现有 EdgeSonic 还能打开，请停止覆盖流程，进入“设置 → Cloudflare → 更新”。只有应用内更新不可用、需要恢复实例时才使用覆盖部署。"
   },
   "guide": {
     "title": "你需要准备什么",
@@ -79,11 +83,62 @@
   },
   "credentials": {
     "title": "Cloudflare 凭证",
-    "subtitle": "粘贴后会自动检查权限、R2 状态和 R2 密钥。凭证仅保存在当前浏览器标签页中。",
+    "subtitle": "最小 API Token 权限即可部署完整可用实例；可选权限用于之后在应用内启用 Cloudflare 高级功能。",
     "setupTitle": "只需三步",
     "createAccount": "注册或登录 Cloudflare",
-    "setupToken": "在目标组织的 Account API Tokens 创建 Custom Token。",
-    "setupPermissions": "权限范围选择 All accounts；Workers 下所有权限、D1、Workers R2 Storage 和 DNS 均选择 Edit。令牌页面会同时给出 R2 Access Key ID 与 Secret。",
+    "setupToken": "在目标账号的 Account API Tokens 创建 Custom Token。",
+    "setupPermissions": "配置 Account API Token 权限：",
+    "permissionResource": "资源",
+    "permissionRequired": "必需",
+    "permissionScenario": "应用场景",
+    "permissionScope": "范围",
+    "permissionLevel": "权限",
+    "required": "必需",
+    "optional": "非必需",
+    "permissionScopes": {
+      "account": "目标账号",
+      "allBuckets": "全部存储桶",
+      "targetZone": "目标 Zone"
+    },
+    "permissionLevels": {
+      "read": "Read",
+      "edit": "Edit",
+      "readWrite": "Read & Write"
+    },
+    "dnsNotNeeded": "安装器不会创建或修改 DNS 记录，因此不需要 DNS Edit。",
+    "permissions": {
+      "scripts": { "resource": "Workers Scripts", "scenario": "部署 Worker、资源、Secrets 和 Cron" },
+      "d1": { "resource": "D1", "scenario": "创建数据库并写入数据库结构" },
+      "r2": { "resource": "Workers R2 Storage", "scenario": "创建和列出音乐存储桶" },
+      "r2Keys": { "resource": "R2 S3 API Key", "scenario": "R2 预签名直连播放" },
+      "ci": { "resource": "Workers CI", "scenario": "应用内 CI 集成" },
+      "containers": { "resource": "Workers Containers", "scenario": "容器转码" },
+      "observability": { "resource": "Workers Observability", "scenario": "Worker 日志与可观测性排障" },
+      "accountAnalytics": { "resource": "Account Analytics", "scenario": "应用内请求量、错误和 CPU 分析" },
+      "accountSettings": { "resource": "Account Settings", "scenario": "应用内 Cloudflare 连接检测" },
+      "zoneRead": { "resource": "Zone", "scenario": "检查自定义域名归属" },
+      "zoneSettings": { "resource": "Zone Settings", "scenario": "检查封面 Images Transformations 状态" }
+    },
+    "minimumPermissionsTitle": "Developer Platform 下的最小部署权限",
+    "permissionEdit": "Edit",
+    "permissionAccountScope": "Account resources：Include → 仅目标账号；如果组织级 Token 页面只提供 All accounts，则使用该范围。",
+    "permissionR2Scope": "可选 R2 预签名播放密钥：Bucket Item → Read，Include → All buckets；此时存储桶尚未创建。",
+    "advancedPermissionsTitle": "可选高级功能权限",
+    "advancedPermissionsDesc": "安装器会把此 API Token 保存为 Worker 的 CF_API_TOKEN Secret。只添加希望 EdgeSonic 在应用内使用的能力：",
+    "requiredPermissions": {
+      "d1": "D1",
+      "r2": "Workers R2 Storage",
+      "ci": "Workers CI",
+      "scripts": "Workers Scripts"
+    },
+    "advancedPermissions": {
+      "containers": "Workers Containers → Edit — Sandbox 容器转码",
+      "observability": "Workers Observability → Edit — Worker 可观测性（不是 Observability Telemetry）",
+      "accountAnalytics": "Account Analytics → Read — 应用内请求量与错误统计",
+      "accountSettings": "Account Settings → Read — 应用内 Cloudflare 连接检测",
+      "zoneRead": "Zone → Read — 可选自定义域名查询",
+      "zoneSettings": "Zone Settings → Read — 可选 Images Transformations 状态检查"
+    },
     "accountId": "账号 ID (Account ID)",
     "accountIdHelp": "可在任意 Cloudflare 控制台页面的右侧边栏找到。",
     "apiToken": "API 令牌",
@@ -91,13 +146,15 @@
     "apiTokenCreateLink": "打开 Account API Tokens",
     "tokenGuideTitle": "如何创建这个令牌",
     "tokenGuideStep1": "打开 Manage Account > Account API Tokens。不要使用 My Profile > API Tokens，点击 Create Token。",
-    "tokenGuideStep2": "选择部署所需的全部 Workers 权限：Workers CI、Workers Containers、Workers Observability、Workers Scripts，均选 Edit；再添加 D1 和 Workers R2 Storage，均选 Edit。",
-    "tokenGuideStep3": "为目标 Zone 添加 DNS Edit。为预签名播放添加 Workers R2 Storage Bucket Item Read，范围选 All buckets；此时存储桶尚未创建。",
+    "tokenGuideStep2": "最小部署只需在 Developer Platform 下将 D1、Workers R2 Storage、Workers CI、Workers Scripts 设为 Edit。",
+    "tokenGuideStep3": "如需高级应用内功能，再添加 Containers、Observability、Account Analytics Read、Account Settings Read、Zone Read 和 Zone Settings Read。",
     "tokenGuideStep4": "继续到汇总并创建 Token，复制 Token、Access Key ID、Secret Access Key；下页三项都需要。",
     "r2AccessKeyId": "R2 Access Key ID",
     "r2SecretAccessKey": "R2 Secret Access Key",
-    "r2KeyHelp": "使用同一个 Custom Token 页面显示的密钥。",
+    "r2KeyHelp": "可选。同时填写两项可启用 R2 预签名直连播放；两项都留空则使用普通代理播放。",
     "r2KeyInvalid": "R2 密钥无效或没有账户级 R2 访问权限。",
+    "r2KeysOptionalSkipped": "未提供可选的 R2 直连密钥，可以继续部署。",
+    "r2KeysPairRequired": "请同时填写两项 R2 密钥，或将两项都留空。",
     "verify": "校验",
     "verifying": "校验中…",
     "verified": "已校验",
@@ -119,8 +176,7 @@
       "workersScripts": "Workers Scripts 权限",
       "d1": "D1 权限",
       "r2": "R2 已启用",
-      "r2Keys": "R2 Access Key 权限",
-      "dns": "DNS 权限"
+      "r2Keys": "R2 Access Key 权限（可选）"
     },
     "checkStatus": {
       "pending": "尚未检查",
@@ -147,8 +203,18 @@
     "transformationsOff": "封面 Transformations 未启用。封面仍可用，但缩略图将使用原始字节。",
     "transformationsLink": "启用 Transformations",
     "transformationsUnavailable": "无法检查封面 Transformations。为 Account API Token 添加 Zone Settings Read，或在 Cloudflare 中手动检查。",
+    "discoveryTitle": "疑似已有的 EdgeSonic 资源",
+    "discoveryChecking": "正在按 EdgeSonic 关键词搜索 Worker、D1 和 R2 资源名称…",
+    "discoveryFound": "以下是关键词匹配结果。请选择属于现有安装的资源。",
+    "discoveryNone": "没有找到名称疑似 EdgeSonic 的 Worker、D1 数据库或 R2 存储桶，请核对名称后再继续。",
+    "discoveryFailed": "无法搜索全部账号资源。请检查最小 Token 权限并手动填写名称。",
+    "suspectedWorkers": "疑似 Worker",
+    "suspectedDatabases": "疑似 D1 数据库",
+    "suspectedBuckets": "疑似 R2 存储桶",
     "collisionWarning": "此账号下已存在名为 “{name}” 的 Worker。你选择的是全新安装，请换一个名称，或返回选择覆盖安装。",
-    "collisionOkOverwrite": "已存在名为 “{name}” 的 Worker——与覆盖安装模式相符。"
+    "collisionOkOverwrite": "已存在名为 “{name}” 的 Worker，请确认它就是准备恢复的 EdgeSonic 实例。",
+    "overwriteMissing": "不存在名为 “{name}” 的 Worker。覆盖模式必须选择一个现有目标。",
+    "overwriteConfirm": "我已确认此 Worker 及填写的 D1/R2 名称属于准备恢复的 EdgeSonic 安装。"
   },
   "version": {
     "title": "选择版本",
