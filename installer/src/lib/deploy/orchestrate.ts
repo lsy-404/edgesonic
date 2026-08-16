@@ -19,6 +19,8 @@ import { getOrCreateDatabase, runQuery } from "./d1";
 import { getOrCreateBucket, listBucketNames } from "./r2";
 import { callCfJson, verifyR2Keys } from "../relay";
 import { fetchManifestAndArtifact } from "./manifest";
+import type { LocalUpdatePackage } from "./manifest";
+import { hasTokenPermission, readTokenPermissionGroups } from "../cf/tokenPolicies";
 import { unpackArtifact, textFile } from "./tar";
 import { uploadAssets, type AssetManifest } from "./assets";
 import { uploadWorkerVersion, switchTraffic, readCrons } from "./workerVersion";
@@ -50,11 +52,16 @@ async function guarded<T>(step: DeployStep, report: StepReporter, run: () => Pro
 
 async function verifyDeploymentAccess(creds: DeployCredentials): Promise<string> {
   const { accountId, apiToken, r2AccessKeyId, r2SecretAccessKey } = creds;
-  await callCfJson(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
+  const verified = await callCfJson<{ id?: string }>(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
+  if (!verified.id) throw new Error("Cloudflare did not return the API Token identifier");
+  const groups = await readTokenPermissionGroups(apiToken, accountId, verified.id);
+  for (const key of ["apiTokens", "scripts", "d1", "r2"] as const) {
+    if (!hasTokenPermission(groups, key)) throw new Error(`Missing required token permission: ${key}`);
+  }
   await callCfJson(apiToken, `/accounts/${accountId}/workers/scripts`, undefined, "Workers Scripts Edit");
   await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Edit");
   await listBucketNames(apiToken, accountId);
-  const permissionSummary = ["Account API Token", "Workers Scripts", "D1", "Workers R2 Storage"];
+  const permissionSummary = ["Account API Token", "Account API Tokens", "Workers Scripts", "D1", "Workers R2 Storage"];
   const optionalChecks = await Promise.all([
     callCfJson(apiToken, `/accounts/${accountId}`, undefined, "Account Settings Read").then(
       () => "Account Settings: enabled",
@@ -76,10 +83,10 @@ async function verifyDeploymentAccess(creds: DeployCredentials): Promise<string>
   return `Verified: ${permissionSummary.join(", ")}`;
 }
 
-export async function runDeploy(creds: DeployCredentials, target: DeployTarget, release: GithubRelease, report: StepReporter): Promise<DeployResult> {
+export async function runDeploy(creds: DeployCredentials, target: DeployTarget, release: GithubRelease | LocalUpdatePackage, report: StepReporter): Promise<DeployResult> {
   const { accountId, apiToken } = creds;
   const script = target.workerName;
-  const tag = release.tag_name || target.releaseTag;
+  const tag = "kind" in release ? release.manifest.tag : release.tag_name || target.releaseTag;
 
   report("preflight", "running");
   try {
@@ -112,7 +119,7 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
   });
 
   const { manifest, files, workerBytes, assetsManifest } = await guarded("download", report, async () => {
-    const { manifest, archive } = await fetchManifestAndArtifact(release);
+    const { manifest, archive } = "kind" in release ? release : await fetchManifestAndArtifact(release);
     const files = await unpackArtifact(archive);
     const workerBytes = files.get(manifest.workerModule);
     if (!workerBytes) throw new DeployError("download", "Update artifact has no Worker module");

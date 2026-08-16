@@ -20,7 +20,7 @@ async function start() {
   failedStep.value = "";
   failedMessage.value = "";
 
-  const release = wizard.selectedRelease();
+  const release = wizard.localPackage || wizard.selectedRelease();
   if (!release) {
     failedStep.value = "download";
     failedMessage.value = t("execute.releaseUnavailable");

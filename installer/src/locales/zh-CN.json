@@ -107,6 +107,7 @@
     },
     "dnsNotNeeded": "安装器不会创建或修改 DNS 记录，因此不需要 DNS Edit。",
     "permissions": {
+      "apiTokens": { "resource": "Account API Tokens", "scenario": "部署前读取此令牌的权限策略" },
       "scripts": { "resource": "Workers Scripts", "scenario": "部署 Worker、资源、Secrets 和 Cron" },
       "d1": { "resource": "D1", "scenario": "创建数据库并写入数据库结构" },
       "r2": { "resource": "Workers R2 Storage", "scenario": "创建和列出音乐存储桶" },
@@ -146,7 +147,7 @@
     "apiTokenCreateLink": "打开 Account API Tokens",
     "tokenGuideTitle": "如何创建这个令牌",
     "tokenGuideStep1": "打开 Manage Account > Account API Tokens。不要使用 My Profile > API Tokens，点击 Create Token。",
-    "tokenGuideStep2": "最小部署只需在 Developer Platform 下将 D1、Workers R2 Storage、Workers CI、Workers Scripts 设为 Edit。",
+    "tokenGuideStep2": "最小部署先将 Account API Tokens 设为 Read，再将 D1、Workers R2 Storage、Workers CI、Workers Scripts 设为 Edit。",
     "tokenGuideStep3": "如需高级应用内功能，再添加 Containers、Observability、Account Analytics Read、Account Settings Read、Zone Read 和 Zone Settings Read。",
     "tokenGuideStep4": "继续到汇总并创建 Token，复制 Token、Access Key ID、Secret Access Key；下页三项都需要。",
     "r2AccessKeyId": "R2 Access Key ID",
@@ -173,12 +174,18 @@
     "genericError": "与 Cloudflare 通信时出错：{message}",
     "checks": {
       "token": "令牌有效",
-      "workersScripts": "Workers Scripts 权限",
+      "apiTokens": "Account API Tokens Read 权限",
+      "scripts": "Workers Scripts 权限",
       "d1": "D1 权限",
       "r2": "R2 已启用",
       "r2Keys": "R2 Access Key 权限（可选）",
+      "ci": "Workers CI 权限（可选）",
+      "containers": "Workers Containers 权限（可选）",
+      "observability": "Workers Observability 权限（可选）",
+      "accountAnalytics": "Account Analytics 权限（可选）",
       "accountSettings": "Account Settings 权限（可选）",
-      "zoneRead": "Zone Read 权限（可选）"
+      "zoneRead": "Zone Read 权限（可选）",
+      "zoneSettings": "Zone Settings 权限（可选）"
     },
     "checkStatus": {
       "pending": "尚未检查",
@@ -225,6 +232,9 @@
     "subtitle": "实时从 GitHub 拉取——只显示带有可直接部署更新包的发布版本。",
     "sourceRepo": "源仓库",
     "sourceRepoHelp": "仅在你要部署自己 fork 仓库发布的版本时才需要修改。",
+    "localPackage": "自定义安装包",
+    "localPackageHelp": "选择同时包含 edgesonic-update-manifest.json 和 edgesonic-update.tar.gz 的 ZIP。",
+    "localPackageWarning": "正在使用本地包 {name}（{version}）。安装器会按其自身清单验证校验和，但 ZIP 没有签名，无法确认其是否为官方包。",
     "reload": "重新加载版本列表",
     "noneEligible": "此仓库没有找到带可部署更新包的发布版本。",
     "prerelease": "预发布",

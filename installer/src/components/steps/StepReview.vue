@@ -52,7 +52,7 @@ function goBack() {
       </div>
       <div class="kv-row">
         <dt>{{ t("review.versionLabel") }}</dt>
-        <dd>{{ wizard.selectedTag }}</dd>
+          <dd>{{ wizard.localPackage ? `${wizard.localPackage.manifest.tag} (${wizard.localPackage.fileName})` : wizard.selectedTag }}</dd>
       </div>
     </dl>
 

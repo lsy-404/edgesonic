@@ -107,6 +107,7 @@
     },
     "dnsNotNeeded": "The installer never creates or changes DNS records, so DNS Edit is not needed.",
     "permissions": {
+      "apiTokens": { "resource": "Account API Tokens", "scenario": "Read this token's policies before deployment" },
       "scripts": { "resource": "Workers Scripts", "scenario": "Deploy the Worker, assets, Secrets, and Cron" },
       "d1": { "resource": "D1", "scenario": "Create the database and apply its schema" },
       "r2": { "resource": "Workers R2 Storage", "scenario": "Create and list the music bucket" },
@@ -146,7 +147,7 @@
     "apiTokenCreateLink": "Open Account API Tokens",
     "tokenGuideTitle": "How to create this token",
     "tokenGuideStep1": "Open Manage Account > Account API Tokens. Do not use My Profile > API Tokens. Select Create Token.",
-    "tokenGuideStep2": "For minimum deployment, set D1, Workers R2 Storage, Workers CI, and Workers Scripts to Edit under Developer Platform.",
+    "tokenGuideStep2": "For minimum deployment, set Account API Tokens to Read, then set D1, Workers R2 Storage, Workers CI, and Workers Scripts to Edit under Developer Platform.",
     "tokenGuideStep3": "Optionally add Containers, Observability, Account Analytics Read, Account Settings Read, Zone Read, and Zone Settings Read for advanced in-app features.",
     "tokenGuideStep4": "Continue to the summary and create the token. Copy the displayed Token, Access Key ID, and Secret Access Key; all three are required below.",
     "r2AccessKeyId": "R2 Access Key ID",
@@ -173,12 +174,18 @@
     "genericError": "Something went wrong talking to Cloudflare: {message}",
     "checks": {
       "token": "Token is valid",
-      "workersScripts": "Workers Scripts permission",
+      "apiTokens": "Account API Tokens Read permission",
+      "scripts": "Workers Scripts permission",
       "d1": "D1 permission",
       "r2": "R2 is enabled",
       "r2Keys": "R2 Access Key permission (optional)",
+      "ci": "Workers CI permission (optional)",
+      "containers": "Workers Containers permission (optional)",
+      "observability": "Workers Observability permission (optional)",
+      "accountAnalytics": "Account Analytics permission (optional)",
       "accountSettings": "Account Settings permission (optional)",
-      "zoneRead": "Zone Read permission (optional)"
+      "zoneRead": "Zone Read permission (optional)",
+      "zoneSettings": "Zone Settings permission (optional)"
     },
     "checkStatus": {
       "pending": "Not checked yet",
@@ -225,6 +232,9 @@
     "subtitle": "Pulled live from GitHub — only releases with a ready-to-deploy update package are shown.",
     "sourceRepo": "Source repository",
     "sourceRepoHelp": "Only change this if you're deploying from your own fork's releases.",
+    "localPackage": "Custom installation package",
+    "localPackageHelp": "Choose a ZIP containing edgesonic-update-manifest.json and edgesonic-update.tar.gz.",
+    "localPackageWarning": "Using local package {name} ({version}). Its checksum is verified against its own manifest, but ZIP packages are not signed and cannot be confirmed as official.",
     "reload": "Reload releases",
     "noneEligible": "No releases with a deployable update package were found for this repository.",
     "prerelease": "Prerelease",

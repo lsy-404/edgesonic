@@ -6,10 +6,12 @@ import { useWizard } from "../../stores/wizard";
 import { callCfJson, verifyR2Keys } from "../../lib/relay";
 import { listBucketNames } from "../../lib/deploy/r2";
 import { describeCfError } from "../../lib/cf/errors";
+import { hasTokenPermission, readTokenPermissionGroups, TOKEN_PERMISSION_GROUPS } from "../../lib/cf/tokenPolicies";
 
 const { t } = useI18n();
 const wizard = useWizard();
 const permissionRows = [
+  { key: "apiTokens", required: true, scope: "account", level: "read" },
   { key: "scripts", required: true, scope: "account", level: "edit" },
   { key: "d1", required: true, scope: "account", level: "edit" },
   { key: "r2", required: true, scope: "account", level: "edit" },
@@ -38,12 +40,9 @@ interface PermissionCheck {
 // user exactly which permission to go back and add instead of one opaque error.
 const checks = reactive<PermissionCheck[]>([
   { key: "token", status: "pending", detail: "" },
-  { key: "workersScripts", status: "pending", detail: "" },
-  { key: "d1", status: "pending", detail: "" },
-  { key: "r2", status: "pending", detail: "" },
+  { key: "apiTokens", status: "pending", detail: "" },
+  ...Object.keys(TOKEN_PERMISSION_GROUPS).filter((key) => key !== "apiTokens").map((key) => ({ key, status: "pending" as CheckStatus, detail: "" })),
   { key: "r2Keys", status: "pending", detail: "" },
-  { key: "accountSettings", status: "pending", detail: "" },
-  { key: "zoneRead", status: "pending", detail: "" },
 ]);
 
 function setCheck(key: string, status: CheckStatus, detail = "") {
@@ -68,7 +67,7 @@ const r2KeysComplete = computed(() => {
   return (!accessKey && !secret) || (!!accessKey && !!secret);
 });
 
-const requiredCheckKeys = new Set(["token", "workersScripts", "d1", "r2"]);
+const requiredCheckKeys = new Set(["token", "apiTokens", "scripts", "d1", "r2"]);
 const allRequiredOk = computed(
   () => checks.filter((check) => requiredCheckKeys.has(check.key)).every((check) => check.status === "ok")
     && wizard.r2Enabled === true,
@@ -139,57 +138,26 @@ async function verify() {
 
   setCheck("token", "checking");
   try {
-    await callCfJson(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
+    const token = await callCfJson<{ id?: string }>(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
     if (isStale()) return;
     setCheck("token", "ok");
+    if (!token.id) throw new Error("Cloudflare did not return the API Token identifier");
+    setCheck("apiTokens", "checking");
+    const groups = await readTokenPermissionGroups(apiToken, accountId, token.id);
+    if (isStale()) return;
+    for (const key of Object.keys(TOKEN_PERMISSION_GROUPS) as Array<keyof typeof TOKEN_PERMISSION_GROUPS>) {
+      setCheck(key, hasTokenPermission(groups, key) ? "ok" : "missing");
+    }
   } catch (e) {
     if (isStale()) return;
-    setCheck("token", "error", describeCfError(e, "an active Account API Token").message);
+    const context = describeCfError(e, "Account API Tokens Read").message;
+    setCheck("apiTokens", "missing", context);
+    if (checks.find((check) => check.key === "token")?.status === "checking") setCheck("token", "error", context);
     verifying.value = false;
     return;
   }
 
   wizard.accountName = accountId;
-
-  setCheck("accountSettings", "checking");
-  try {
-    await callCfJson(apiToken, `/accounts/${accountId}`, undefined, "Account Settings Read");
-    if (isStale()) return;
-    setCheck("accountSettings", "ok");
-  } catch (e) {
-    if (isStale()) return;
-    setCheck("accountSettings", "missing", describeCfError(e, "Account Settings Read").message);
-  }
-
-  setCheck("zoneRead", "checking");
-  try {
-    await callCfJson(apiToken, "/zones?per_page=1", undefined, "Zone Read");
-    if (isStale()) return;
-    setCheck("zoneRead", "ok");
-  } catch (e) {
-    if (isStale()) return;
-    setCheck("zoneRead", "missing", describeCfError(e, "Zone Read").message);
-  }
-
-  setCheck("workersScripts", "checking");
-  try {
-    await callCfJson(apiToken, `/accounts/${accountId}/workers/scripts`, undefined, "Workers Scripts Edit");
-    if (isStale()) return;
-    setCheck("workersScripts", "ok");
-  } catch (e) {
-    if (isStale()) return;
-    setCheck("workersScripts", "missing", describeCfError(e, "Workers Scripts Edit").message);
-  }
-
-  setCheck("d1", "checking");
-  try {
-    await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Edit");
-    if (isStale()) return;
-    setCheck("d1", "ok");
-  } catch (e) {
-    if (isStale()) return;
-    setCheck("d1", "missing", describeCfError(e, "D1 Edit").message);
-  }
 
   setCheck("r2", "checking");
   try {

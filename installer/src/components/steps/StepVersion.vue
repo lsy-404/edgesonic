@@ -5,12 +5,14 @@ import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { fetchReleases } from "../../lib/github";
 import { buildReleaseOptions, ZERO_VERSION } from "../../../../shared/autoupdate";
+import { readLocalUpdatePackage } from "../../lib/deploy/manifest";
 
 const { t } = useI18n();
 const wizard = useWizard();
 
 const loading = ref(false);
 const errorMessage = ref("");
+const localError = ref("");
 
 async function load() {
   loading.value = true;
@@ -30,7 +32,19 @@ async function load() {
 
 onMounted(load);
 
-const canContinue = computed(() => wizard.selectedTag.length > 0);
+const canContinue = computed(() => wizard.selectedTag.length > 0 && (!!wizard.localPackage || !!wizard.selectedRelease()));
+
+async function selectLocalPackage(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  localError.value = "";
+  try {
+    wizard.selectLocalPackage(await readLocalUpdatePackage(file));
+  } catch (error) {
+    wizard.selectLocalPackage(null);
+    localError.value = error instanceof Error ? error.message : String(error);
+  }
+}
 
 function formatDate(value: string | null): string {
   if (!value) return "";
@@ -43,6 +57,10 @@ function formatDate(value: string | null): string {
 
 function goNext() {
   wizard.step = 5;
+}
+function selectRelease(tag: string) {
+  wizard.selectLocalPackage(null);
+  wizard.selectedTag = tag;
 }
 function goBack() {
   wizard.step = 3;
@@ -76,7 +94,7 @@ function goBack() {
         type="button"
         class="card-option"
         :class="{ selected: wizard.selectedTag === release.tag }"
-        @click="wizard.selectedTag = release.tag"
+        @click="selectRelease(release.tag)"
       >
         <h3>
           {{ release.name || release.tag }}
@@ -86,6 +104,16 @@ function goBack() {
         <p>{{ release.tag }} · {{ formatDate(release.publishedAt) }}</p>
       </button>
     </template>
+
+    <div class="field" style="margin-top: 24px">
+      <label for="localPackage">{{ t("version.localPackage") }}</label>
+      <input id="localPackage" type="file" accept=".zip,application/zip" @change="selectLocalPackage" />
+      <p class="field-help">{{ t("version.localPackageHelp") }}</p>
+      <div v-if="wizard.localPackage" class="alert alert-warning">
+        {{ t("version.localPackageWarning", { name: wizard.localPackage.fileName, version: wizard.localPackage.manifest.version }) }}
+      </div>
+      <div v-if="localError" class="alert alert-danger">{{ localError }}</div>
+    </div>
 
     <button type="button" class="btn btn-secondary" style="margin-top: 8px" :disabled="loading" @click="load">{{ t("version.reload") }}</button>
 

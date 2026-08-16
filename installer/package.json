@@ -14,6 +14,7 @@
   "dependencies": {
     "@vitejs/plugin-vue": "^6.0.7",
     "aws4fetch": "^1.0.20",
+    "fflate": "^0.8.3",
     "hono": "^4.12.22",
     "pinia": "^3.0.4",
     "vite": "^8.0.14",

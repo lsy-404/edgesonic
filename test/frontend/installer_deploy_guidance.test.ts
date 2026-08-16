@@ -10,6 +10,9 @@ const version = read("installer/src/components/steps/StepVersion.vue");
 const review = read("installer/src/components/steps/StepReview.vue");
 const orchestrate = read("installer/src/lib/deploy/orchestrate.ts");
 const deployTypes = read("installer/src/lib/deploy/types.ts");
+const tokenPolicies = read("installer/src/lib/cf/tokenPolicies.ts");
+const allowlist = read("installer/worker/cfAllowlist.ts");
+const manifest = read("installer/src/lib/deploy/manifest.ts");
 const en = JSON.parse(read("installer/src/locales/en.json"));
 const zh = JSON.parse(read("installer/src/locales/zh-CN.json"));
 
@@ -29,6 +32,9 @@ const checks: Array<[string, boolean]> = [
   ["overwrite discovery uses EdgeSonic keywords", target.includes("looksLikeEdgeSonic")],
   ["overwrite requires an existing confirmed worker", target.includes("collision.value === true && wizard.overwriteConfirmed")],
   ["overwrite guidance prefers in-app updates", [credentials, target, version, review].every((source) => source.includes("overwriteAdvice.message"))],
+  ["token policies cover every deployment and post-deploy permission", ["apiTokens", "scripts", "d1", "r2", "ci", "containers", "observability", "accountAnalytics", "accountSettings", "zoneRead", "zoneSettings"].every((key) => tokenPolicies.includes(key) && credentials.includes(`key: "${key}"`))],
+  ["token policy read route is relay allowlisted", allowlist.includes('["accounts", null, "tokens", null]')],
+  ["local ZIP packages are checksum-validated before deployment", manifest.includes("readLocalUpdatePackage") && manifest.includes("validateManifestAndArtifact") && version.includes("localPackage")],
 ];
 
 let failures = 0;

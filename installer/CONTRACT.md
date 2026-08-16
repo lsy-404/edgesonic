@@ -32,6 +32,7 @@ non-empty and contain no `/`, don't further validate their format):
 | Method | Path pattern | Used for |
 |---|---|---|
 | GET | `/accounts/{accountId}/tokens/verify` | Account API Token sanity check |
+| GET | `/accounts/{accountId}/tokens/{tokenId}` | Read the token policies for the permission audit |
 | GET | `/accounts/{accountId}/r2/buckets` | R2 enabled? + list existing |
 | POST | `/accounts/{accountId}/r2/buckets` | create bucket (fresh install) |
 | GET | `/accounts/{accountId}/d1/database` | list D1 databases |

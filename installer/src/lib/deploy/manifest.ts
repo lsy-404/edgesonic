@@ -25,6 +25,7 @@ import {
 import { sha256Hex } from "./crypto";
 import { DeployError } from "./types";
 import { fetchGithubReleaseAsset } from "../relay";
+import { unzipSync } from "fflate";
 
 const MAX_ARTIFACT_BYTES = 24 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 256 * 1024;
@@ -42,6 +43,13 @@ export interface UpdateManifest {
   compatibilityFlags?: string[];
 }
 
+export interface LocalUpdatePackage {
+  kind: "local";
+  fileName: string;
+  manifest: UpdateManifest;
+  archive: Uint8Array;
+}
+
 async function downloadBytes(url: string, maxBytes: number, label: string): Promise<Uint8Array> {
   let response: Response;
   try {
@@ -57,13 +65,7 @@ async function downloadBytes(url: string, maxBytes: number, label: string): Prom
   return bytes;
 }
 
-export async function fetchManifestAndArtifact(release: GithubRelease): Promise<{ manifest: UpdateManifest; archive: Uint8Array }> {
-  const manifestAsset = assetOf(release, UPDATE_MANIFEST_NAME);
-  const artifactAsset = assetOf(release, UPDATE_ARTIFACT_NAME);
-  if (!manifestAsset || !artifactAsset) {
-    throw new DeployError("download", "Selected release has no browser-deployable update package");
-  }
-  const manifestBytes = await downloadBytes(manifestAsset.browser_download_url as string, MAX_MANIFEST_BYTES, "Update manifest");
+async function validateManifestAndArtifact(manifestBytes: Uint8Array, archive: Uint8Array, expectedTag?: string): Promise<{ manifest: UpdateManifest; archive: Uint8Array }> {
   let manifest: UpdateManifest;
   try {
     manifest = JSON.parse(new TextDecoder().decode(manifestBytes)) as UpdateManifest;
@@ -71,24 +73,53 @@ export async function fetchManifestAndArtifact(release: GithubRelease): Promise<
     throw new DeployError("download", "Update manifest is not valid JSON");
   }
   const parsedVersion = typeof manifest.version === "string" ? parseSemver(manifest.version) : null;
-  const releaseVersion = parseSemver(release.tag_name || "");
+  const expectedVersion = expectedTag ? parseSemver(expectedTag) : parsedVersion;
   if (
     manifest.schema !== 1 ||
     !parsedVersion ||
-    !releaseVersion ||
-    compareSemver(parsedVersion, releaseVersion) !== 0 ||
-    normalizeTag(manifest.tag || "") !== normalizeTag(release.tag_name || "") ||
+    !expectedVersion ||
+    compareSemver(parsedVersion, expectedVersion) !== 0 ||
+    normalizeTag(manifest.tag || "") !== normalizeTag(expectedTag || manifest.tag || "") ||
     manifest.artifact !== UPDATE_ARTIFACT_NAME ||
     typeof manifest.artifactSha256 !== "string" ||
     !/^[0-9a-f]{64}$/i.test(manifest.artifactSha256)
   ) {
     throw new DeployError("download", "Update manifest doesn't match the selected release");
   }
-
-  const archive = await downloadBytes(artifactAsset.browser_download_url as string, MAX_ARTIFACT_BYTES, "Update artifact");
+  if (archive.byteLength > MAX_ARTIFACT_BYTES) throw new DeployError("download", "Update artifact is too large");
   const digest = await sha256Hex(archive);
   if (digest !== manifest.artifactSha256.toLowerCase()) {
     throw new DeployError("download", "Update artifact checksum mismatch");
   }
   return { manifest, archive };
+}
+
+export async function fetchManifestAndArtifact(release: GithubRelease): Promise<{ manifest: UpdateManifest; archive: Uint8Array }> {
+  const manifestAsset = assetOf(release, UPDATE_MANIFEST_NAME);
+  const artifactAsset = assetOf(release, UPDATE_ARTIFACT_NAME);
+  if (!manifestAsset || !artifactAsset) {
+    throw new DeployError("download", "Selected release has no browser-deployable update package");
+  }
+  const manifestBytes = await downloadBytes(manifestAsset.browser_download_url as string, MAX_MANIFEST_BYTES, "Update manifest");
+  const archive = await downloadBytes(artifactAsset.browser_download_url as string, MAX_ARTIFACT_BYTES, "Update artifact");
+  return validateManifestAndArtifact(manifestBytes, archive, release.tag_name);
+}
+
+export async function readLocalUpdatePackage(file: File): Promise<LocalUpdatePackage> {
+  if (!file.name.toLowerCase().endsWith(".zip")) throw new DeployError("download", "Choose a ZIP package");
+  if (file.size > MAX_ARTIFACT_BYTES + MAX_MANIFEST_BYTES) throw new DeployError("download", "Local package is too large");
+  let entries: Record<string, Uint8Array>;
+  try {
+    entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
+  } catch {
+    throw new DeployError("download", "Local package is not a valid ZIP archive");
+  }
+  const manifestBytes = entries[UPDATE_MANIFEST_NAME];
+  const archive = entries[UPDATE_ARTIFACT_NAME];
+  if (!manifestBytes || !archive || Object.keys(entries).length !== 2) {
+    throw new DeployError("download", "Local ZIP must contain only the update manifest and artifact");
+  }
+  if (manifestBytes.byteLength > MAX_MANIFEST_BYTES) throw new DeployError("download", "Update manifest is too large");
+  const { manifest } = await validateManifestAndArtifact(manifestBytes, archive);
+  return { kind: "local", fileName: file.name, manifest, archive };
 }
