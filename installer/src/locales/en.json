@@ -176,7 +176,9 @@
       "workersScripts": "Workers Scripts permission",
       "d1": "D1 permission",
       "r2": "R2 is enabled",
-      "r2Keys": "R2 Access Key permission (optional)"
+      "r2Keys": "R2 Access Key permission (optional)",
+      "accountSettings": "Account Settings permission (optional)",
+      "zoneRead": "Zone Read permission (optional)"
     },
     "checkStatus": {
       "pending": "Not checked yet",

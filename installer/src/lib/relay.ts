@@ -58,6 +58,10 @@ async function fetchRelay(url: string, init: RequestInit): Promise<Response> {
   }
 }
 
+export async function fetchGithubReleaseAsset(url: string): Promise<Response> {
+  return fetchRelay(`${relayBase()}/github/release-asset?url=${encodeURIComponent(url)}`, { headers: { Accept: "application/octet-stream" } });
+}
+
 /**
  * Calls `RELAY_URL/cf/<path>` with the given bearer token. `token` isn't
  * always the Account API Token — the asset upload completion call reuses

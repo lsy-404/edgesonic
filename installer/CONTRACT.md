@@ -13,6 +13,10 @@ Non-goals: no logging of `Authorization` headers or request/response bodies (Wor
 go to observability — do not log secrets, ever, even at debug level). No persistence — pure passthrough,
 stateless.
 
+## GitHub release assets
+
+`GET /github/release-asset?url=` only accepts HTTPS `github.com/{owner}/{repo}/releases/download/...` URLs. The relay follows GitHub's asset redirect and streams up to 24 MiB back with CORS headers, avoiding browser CORS restrictions on the final asset host.
+
 ## 1. Transparent CF API passthrough — `/cf/*`
 
 Client calls `RELAY_URL/cf/<cf-api-path>` with the same method/body/`Authorization: Bearer <token>` header

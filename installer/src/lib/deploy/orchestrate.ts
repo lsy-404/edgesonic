@@ -55,6 +55,17 @@ async function verifyDeploymentAccess(creds: DeployCredentials): Promise<string>
   await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Edit");
   await listBucketNames(apiToken, accountId);
   const permissionSummary = ["Account API Token", "Workers Scripts", "D1", "Workers R2 Storage"];
+  const optionalChecks = await Promise.all([
+    callCfJson(apiToken, `/accounts/${accountId}`, undefined, "Account Settings Read").then(
+      () => "Account Settings: enabled",
+      () => "Account Settings: not enabled",
+    ),
+    callCfJson(apiToken, "/zones?per_page=1", undefined, "Zone Read").then(
+      () => "Zone Read: enabled",
+      () => "Zone Read: not enabled",
+    ),
+  ]);
+  permissionSummary.push(...optionalChecks);
   if (r2AccessKeyId && r2SecretAccessKey) {
     const verified = await verifyR2Keys({ accountId, accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey });
     if (!verified.ok) throw new Error(verified.message || "R2 access key pair did not verify");

@@ -176,7 +176,9 @@
       "workersScripts": "Workers Scripts 权限",
       "d1": "D1 权限",
       "r2": "R2 已启用",
-      "r2Keys": "R2 Access Key 权限（可选）"
+      "r2Keys": "R2 Access Key 权限（可选）",
+      "accountSettings": "Account Settings 权限（可选）",
+      "zoneRead": "Zone Read 权限（可选）"
     },
     "checkStatus": {
       "pending": "尚未检查",

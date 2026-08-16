@@ -24,6 +24,7 @@ import {
 } from "../../../../shared/autoupdate";
 import { sha256Hex } from "./crypto";
 import { DeployError } from "./types";
+import { fetchGithubReleaseAsset } from "../relay";
 
 const MAX_ARTIFACT_BYTES = 24 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 256 * 1024;
@@ -41,25 +42,12 @@ export interface UpdateManifest {
   compatibilityFlags?: string[];
 }
 
-// GitHub release asset bytes are served from a redirect chain that ends on
-// release-assets.githubusercontent.com (an Azure Blob endpoint), confirmed
-// live to send no Access-Control-Allow-Origin header — unlike api.github.com
-// and raw.githubusercontent.com, which do. A plain browser fetch() of
-// `browser_download_url` (or the api.github.com asset-by-id alias, which
-// redirects to the same host) throws "Failed to fetch" with no further detail.
-// CONTRACT.md doesn't cover this host — it's scoped to api.cloudflare.com
-// and R2's S3 endpoint only. Until the relay (or something else) adds a
-// passthrough for it, this call fails in every real browser; the try/catch
-// below exists to turn that opaque TypeError into an actionable message
-// instead of pretending the request almost worked.
 async function downloadBytes(url: string, maxBytes: number, label: string): Promise<Uint8Array> {
   let response: Response;
   try {
-    response = await fetch(url, { headers: { Accept: "application/octet-stream" } });
+    response = await fetchGithubReleaseAsset(url);
   } catch {
-    throw new Error(
-      `${label} download was blocked by the browser (likely missing CORS headers on GitHub's release asset storage — this isn't covered by the installer relay yet).`,
-    );
+    throw new Error(`${label} download could not reach the installer relay`);
   }
   if (!response.ok) throw new Error(`${label} download failed (HTTP ${response.status})`);
   const length = Number(response.headers.get("content-length") || "0");

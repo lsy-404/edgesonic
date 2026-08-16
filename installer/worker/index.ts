@@ -32,6 +32,7 @@ import { Hono } from "hono";
 import { handleCfProxy } from "./cfProxy";
 import { applyCorsHeaders, preflightResponse } from "./cors";
 import { handleVerifyR2Keys } from "./r2Verify";
+import { handleGithubAsset } from "./githubAsset";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -44,6 +45,7 @@ app.use("*", async (c, next) => {
 
 app.all("/cf/*", handleCfProxy);
 app.post("/r2/verify-keys", handleVerifyR2Keys);
+app.get("/github/release-asset", handleGithubAsset);
 
 // Reaching here means neither a static asset nor an API route matched —
 // let the asset binding produce its own 404 page instead of a bare JSON body.
