@@ -43,7 +43,7 @@ function startOver() {
       </div>
     </div>
 
-    <div class="alert alert-success">
+    <div v-if="wizard.result?.adminPassword" class="alert alert-success">
       <strong>{{ t("done.adminTitle") }}</strong>
       <div class="kv-list" style="margin-top: 10px; background: transparent">
         <div class="kv-row">

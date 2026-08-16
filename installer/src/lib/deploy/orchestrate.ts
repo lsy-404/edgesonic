@@ -188,7 +188,10 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
 
   await guarded("cron", report, () => setCron(apiToken, accountId, script, existingCrons.length > 0 ? existingCrons : [DEFAULT_CRON]));
 
-  const adminPassword = await guarded("admin", report, () => createSuperadmin(apiToken, accountId, databaseId));
+  const adminPassword = target.mode === "fresh" || target.resetAdmin
+    ? await guarded("admin", report, () => createSuperadmin(apiToken, accountId, databaseId, target.adminPassword))
+    : undefined;
+  if (!adminPassword) report("admin", "success", "Existing superadmin preserved");
 
   const url = target.domain ? `https://${target.domain}` : "";
   await guarded("health", report, async () => {
@@ -201,5 +204,5 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
     // reports success so it doesn't mask an otherwise-complete deployment.
   });
 
-  return { accountId, url, adminUsername: ADMIN_USERNAME, adminPassword, version: manifest.version };
+  return { accountId, url, adminUsername: adminPassword ? ADMIN_USERNAME : undefined, adminPassword, version: manifest.version };
 }

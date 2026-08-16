@@ -52,7 +52,11 @@ function goBack() {
       </div>
       <div class="kv-row">
         <dt>{{ t("review.versionLabel") }}</dt>
-          <dd>{{ wizard.localPackage ? `${wizard.localPackage.manifest.tag} (${wizard.localPackage.fileName})` : wizard.selectedTag }}</dd>
+        <dd>{{ wizard.localPackage ? `${wizard.localPackage.manifest.tag} (${wizard.localPackage.fileName})` : wizard.selectedTag }}</dd>
+      </div>
+      <div v-if="wizard.mode === 'overwrite'" class="kv-row">
+        <dt>{{ t("review.adminResetLabel") }}</dt>
+        <dd>{{ wizard.resetAdmin ? t("review.adminResetYes") : t("review.adminResetNo") }}</dd>
       </div>
     </dl>
 

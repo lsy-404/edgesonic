@@ -1,11 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
-import { listScriptNames, scriptExists } from "../../lib/deploy/workerVersion";
-import { listDatabaseNames } from "../../lib/deploy/d1";
-import { listBucketNames } from "../../lib/deploy/r2";
+import { scriptExists } from "../../lib/deploy/workerVersion";
 import { callCfJson } from "../../lib/relay";
 import { describeCfError } from "../../lib/cf/errors";
 
@@ -14,15 +12,6 @@ const wizard = useWizard();
 
 const collision = ref<boolean | null>(null);
 const checkingCollision = ref(false);
-const discovering = ref(false);
-const discoveryFailed = ref(false);
-const suspectedWorkers = ref<string[]>([]);
-const suspectedDatabases = ref<string[]>([]);
-const suspectedBuckets = ref<string[]>([]);
-const hasSuspectedResources = computed(
-  () => suspectedWorkers.value.length + suspectedDatabases.value.length + suspectedBuckets.value.length > 0,
-);
-const looksLikeEdgeSonic = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "").includes("edgesonic");
 let collisionGeneration = 0;
 
 async function checkCollision() {
@@ -32,7 +21,10 @@ async function checkCollision() {
   checkingCollision.value = true;
   try {
     const exists = await scriptExists(wizard.credentials.apiToken, wizard.credentials.accountId, workerName);
-    if (generation === collisionGeneration && wizard.workerName.trim() === workerName) collision.value = exists;
+    if (generation === collisionGeneration && wizard.workerName.trim() === workerName) {
+      collision.value = exists;
+      wizard.mode = exists ? "overwrite" : "fresh";
+    }
   } catch {
     if (generation === collisionGeneration) collision.value = null;
   } finally {
@@ -41,25 +33,6 @@ async function checkCollision() {
 }
 
 onMounted(checkCollision);
-onMounted(async () => {
-  if (wizard.mode !== "overwrite") return;
-  discovering.value = true;
-  discoveryFailed.value = false;
-  try {
-    const [workers, databases, buckets] = await Promise.all([
-      listScriptNames(wizard.credentials.apiToken, wizard.credentials.accountId),
-      listDatabaseNames(wizard.credentials.apiToken, wizard.credentials.accountId),
-      listBucketNames(wizard.credentials.apiToken, wizard.credentials.accountId),
-    ]);
-    suspectedWorkers.value = workers.filter(looksLikeEdgeSonic);
-    suspectedDatabases.value = databases.filter(looksLikeEdgeSonic);
-    suspectedBuckets.value = buckets.filter(looksLikeEdgeSonic);
-  } catch {
-    discoveryFailed.value = true;
-  } finally {
-    discovering.value = false;
-  }
-});
 
 let collisionTimer: ReturnType<typeof setTimeout> | undefined;
 watch(
@@ -76,12 +49,6 @@ onUnmounted(() => {
   collisionGeneration++;
   clearTimeout(collisionTimer);
 });
-
-function selectResource(kind: "worker" | "database" | "bucket", name: string) {
-  if (kind === "worker") wizard.workerName = name;
-  else if (kind === "database") wizard.dbName = name;
-  else wizard.bucketName = name;
-}
 
 interface ZoneLookup {
   status: "idle" | "checking" | "found" | "not-found";
@@ -144,7 +111,7 @@ watch(
 
 const canContinue = () => wizard.workerName.trim().length > 0
   && (wizard.mode === "fresh"
-    ? collision.value !== true
+    ? collision.value === false
     : collision.value === true && wizard.overwriteConfirmed);
 
 function goNext() {
@@ -163,28 +130,6 @@ function goBack() {
     <div v-if="wizard.mode === 'overwrite'" class="alert alert-warning">
       <strong>{{ t("overwriteAdvice.title") }}</strong>
       <p>{{ t("overwriteAdvice.message") }}</p>
-    </div>
-
-    <div v-if="wizard.mode === 'overwrite'" class="guide-card">
-      <h3>{{ t("target.discoveryTitle") }}</h3>
-      <p v-if="discovering">{{ t("target.discoveryChecking") }}</p>
-      <p v-else-if="discoveryFailed" class="field-help">{{ t("target.discoveryFailed") }}</p>
-      <p v-else-if="!hasSuspectedResources" class="field-help">{{ t("target.discoveryNone") }}</p>
-      <template v-else>
-        <p class="field-help">{{ t("target.discoveryFound") }}</p>
-        <div v-if="suspectedWorkers.length" class="field">
-          <label>{{ t("target.suspectedWorkers") }}</label>
-          <button v-for="name in suspectedWorkers" :key="name" type="button" class="btn btn-secondary" @click="selectResource('worker', name)">{{ name }}</button>
-        </div>
-        <div v-if="suspectedDatabases.length" class="field">
-          <label>{{ t("target.suspectedDatabases") }}</label>
-          <button v-for="name in suspectedDatabases" :key="name" type="button" class="btn btn-secondary" @click="selectResource('database', name)">{{ name }}</button>
-        </div>
-        <div v-if="suspectedBuckets.length" class="field">
-          <label>{{ t("target.suspectedBuckets") }}</label>
-          <button v-for="name in suspectedBuckets" :key="name" type="button" class="btn btn-secondary" @click="selectResource('bucket', name)">{{ name }}</button>
-        </div>
-      </template>
     </div>
 
     <div class="field">
@@ -206,6 +151,16 @@ function goBack() {
       <input v-model="wizard.overwriteConfirmed" type="checkbox" />
       <span>{{ t("target.overwriteConfirm") }}</span>
     </label>
+    <label v-if="wizard.mode === 'overwrite' && collision === true" class="check-row">
+      <input v-model="wizard.resetAdmin" type="checkbox" />
+      <span>{{ t("target.resetAdmin") }}</span>
+    </label>
+
+    <div class="field">
+      <label for="adminPassword">{{ t("target.adminPassword") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
+      <input id="adminPassword" v-model="wizard.adminPassword" type="password" autocomplete="new-password" spellcheck="false" />
+      <p class="field-help">{{ t("target.adminPasswordHelp") }}</p>
+    </div>
 
     <div class="field">
       <label for="dbName">D1 — {{ t("target.dbNameHelp") }}</label>

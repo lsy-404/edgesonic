@@ -41,6 +41,7 @@ export const useWizard = defineStore("wizard", () => {
   const step = ref(1);
   const mode = ref<"fresh" | "overwrite">("fresh");
   const overwriteConfirmed = ref(false);
+  const resetAdmin = ref(false);
   watch(mode, () => { overwriteConfirmed.value = false; });
 
   // Credentials — sessionStorage only, per this project's rule that the CF
@@ -77,6 +78,7 @@ export const useWizard = defineStore("wizard", () => {
   const dbName = ref("edgesonic-db");
   const bucketName = ref("edgesonic-music");
   const domain = ref("");
+  const adminPassword = ref("");
   const sourceRepo = ref(GITHUB_REPO);
 
   // Only follows workerName while the db/bucket fields still hold the
@@ -141,6 +143,7 @@ export const useWizard = defineStore("wizard", () => {
     step,
     mode,
     overwriteConfirmed,
+    resetAdmin,
     credentials,
     credentialsVerified,
     accountName,
@@ -150,6 +153,7 @@ export const useWizard = defineStore("wizard", () => {
     dbName,
     bucketName,
     domain,
+    adminPassword,
     sourceRepo,
     releases,
     rawReleases,

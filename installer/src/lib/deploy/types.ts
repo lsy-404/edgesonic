@@ -52,13 +52,15 @@ export interface DeployTarget {
   domain: string;
   sourceRepo: string;
   releaseTag: string;
+  resetAdmin: boolean;
+  adminPassword?: string;
 }
 
 export interface DeployResult {
   accountId: string;
   url: string;
-  adminUsername: string;
-  adminPassword: string;
+  adminUsername?: string;
+  adminPassword?: string;
   version: string;
 }
 

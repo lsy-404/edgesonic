@@ -19,17 +19,15 @@
     "stepOf": "Step {current} of {total}"
   },
   "welcome": {
-    "title": "Let's deploy EdgeSonic",
-    "subtitle": "This wizard talks to your Cloudflare account directly from your browser and sets up a working EdgeSonic instance in a few guided steps.",
-    "freshTitle": "Fresh install",
-    "freshDesc": "I don't have EdgeSonic running yet. Create everything from scratch.",
-    "overwriteTitle": "Overwrite an existing install",
-    "overwriteDesc": "Recovery only. If the existing app opens, use Settings → Cloudflare → Update inside EdgeSonic instead.",
-    "start": "Get started",
-    "requirementsTitle": "Before you start",
-    "requirement1": "A Cloudflare account (free tier is enough to try it).",
-    "requirement2": "A Cloudflare Account API Token. Optional R2 access keys enable direct playback.",
-    "requirement3": "About 5 minutes."
+    "title": "Quick deploy EdgeSonic",
+    "subtitle": "A public, browser-only deployment flow for getting started without local tooling.",
+    "termsTitle": "Before continuing",
+    "termAccount": "You own and are authorized to use the Cloudflare account and API token entered here.",
+    "termData": "This installer creates or recovers the Worker, D1 database, and R2 bucket named on the next pages.",
+    "termSupport": "Existing Workers are never replaced without a separate confirmation.",
+    "advancedDeploy": "Need the regular clone + deploy workflow? Use the deployment guide",
+    "acceptTerms": "I understand and want to continue",
+    "start": "Continue"
   },
   "overwriteAdvice": {
     "title": "Use in-app update whenever possible",
@@ -221,18 +219,13 @@
     "transformationsOff": "Cover transformations are off. Covers still work, but thumbnails use original bytes.",
     "transformationsLink": "Enable transformations",
     "transformationsUnavailable": "Could not check cover transformations. Add Zone Settings Read to this Account API Token, or check it in Cloudflare.",
-    "discoveryTitle": "Possible existing EdgeSonic resources",
-    "discoveryChecking": "Searching Worker, D1, and R2 resource names for EdgeSonic keywords…",
-    "discoveryFound": "Review these keyword matches. Select the resources that belong to the existing installation.",
-    "discoveryNone": "No Worker, D1 database, or R2 bucket with an EdgeSonic-like name was found. Verify the names before proceeding.",
-    "discoveryFailed": "Could not search all account resources. Check the minimum token permissions and enter the names manually.",
-    "suspectedWorkers": "Possible Workers",
-    "suspectedDatabases": "Possible D1 databases",
-    "suspectedBuckets": "Possible R2 buckets",
-    "collisionWarning": "A Worker named \"{name}\" already exists on this account. Since you chose fresh install, pick a different name or go back and choose overwrite instead.",
-    "collisionOkOverwrite": "A Worker named \"{name}\" exists. Confirm it is the intended EdgeSonic instance before continuing.",
-    "overwriteMissing": "No Worker named \"{name}\" exists. Overwrite mode cannot continue without an existing target.",
-    "overwriteConfirm": "I verified this existing Worker and its D1/R2 names belong to the EdgeSonic installation I intend to recover."
+    "collisionWarning": "A Worker named \"{name}\" already exists on this account.",
+    "collisionOkOverwrite": "An existing Worker named \"{name}\" was found. Confirm it is the intended EdgeSonic instance before recovery.",
+    "overwriteMissing": "No Worker named \"{name}\" exists.",
+    "overwriteConfirm": "I verified this existing Worker and its D1/R2 names belong to the EdgeSonic installation I intend to recover.",
+    "resetAdmin": "Reset the superadmin account and issue a new password",
+    "adminPassword": "Initial superadmin password",
+    "adminPasswordHelp": "Optional. Leave empty to generate a random password. Recovery applies it only when superadmin reset is selected."
   },
   "version": {
     "title": "Choose a release",
@@ -260,6 +253,9 @@
     "domainLabel": "Custom domain",
     "domainNone": "None (use *.workers.dev)",
     "versionLabel": "Version",
+    "adminResetLabel": "Superadmin account",
+    "adminResetYes": "Reset and issue a new password",
+    "adminResetNo": "Keep the existing account",
     "willCreate": "Will be created",
     "willReuse": "Will reuse existing",
     "confirm": "Deploy now"

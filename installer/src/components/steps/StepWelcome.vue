@@ -1,13 +1,14 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
+import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 
 const { t } = useI18n();
 const wizard = useWizard();
+const accepted = ref(false);
 
-function choose(mode: "fresh" | "overwrite") {
-  wizard.mode = mode;
+function start() {
   wizard.step = 2;
 }
 </script>
@@ -17,22 +18,24 @@ function choose(mode: "fresh" | "overwrite") {
     <h1 class="step-title">{{ t("welcome.title") }}</h1>
     <p class="step-subtitle">{{ t("welcome.subtitle") }}</p>
 
-    <button type="button" class="card-option" :class="{ selected: wizard.mode === 'fresh' }" @click="choose('fresh')">
-      <h3>{{ t("welcome.freshTitle") }}</h3>
-      <p>{{ t("welcome.freshDesc") }}</p>
-    </button>
-    <button type="button" class="card-option" :class="{ selected: wizard.mode === 'overwrite' }" @click="choose('overwrite')">
-      <h3>{{ t("welcome.overwriteTitle") }}</h3>
-      <p>{{ t("welcome.overwriteDesc") }}</p>
-    </button>
-
-    <div class="alert alert-info" style="margin-top: 24px">
-      <strong>{{ t("welcome.requirementsTitle") }}</strong>
+    <div class="guide-card">
+      <h3>{{ t("welcome.termsTitle") }}</h3>
       <ul style="margin: 8px 0 0; padding-left: 20px">
-        <li>{{ t("welcome.requirement1") }}</li>
-        <li>{{ t("welcome.requirement2") }}</li>
-        <li>{{ t("welcome.requirement3") }}</li>
+        <li>{{ t("welcome.termAccount") }}</li>
+        <li>{{ t("welcome.termData") }}</li>
+        <li>{{ t("welcome.termSupport") }}</li>
       </ul>
+      <p class="field-help"><a href="https://github.com/wuyilingwei/edgesonic/blob/main/docs/DEPLOY_BY_AGENT.md" target="_blank" rel="noreferrer">{{ t("welcome.advancedDeploy") }} ↗</a></p>
+    </div>
+
+    <label class="check-row" style="margin-top: 20px">
+      <input v-model="accepted" type="checkbox" />
+      <span>{{ t("welcome.acceptTerms") }}</span>
+    </label>
+
+    <div class="step-actions">
+      <div class="spacer" />
+      <button type="button" class="btn btn-primary" :disabled="!accepted" @click="start">{{ t("welcome.start") }}</button>
     </div>
   </div>
 </template>

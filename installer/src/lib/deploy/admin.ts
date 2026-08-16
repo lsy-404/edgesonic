@@ -18,8 +18,8 @@ import { generatePassword, sha256Hex } from "./crypto";
 
 export const ADMIN_USERNAME = "admin";
 
-export async function createSuperadmin(token: string, accountId: string, databaseId: string): Promise<string> {
-  const password = generatePassword(10);
+export async function createSuperadmin(token: string, accountId: string, databaseId: string, requestedPassword?: string): Promise<string> {
+  const password = requestedPassword || generatePassword(10);
   const hash = await sha256Hex(new TextEncoder().encode(password));
   await runQuery(
     token,

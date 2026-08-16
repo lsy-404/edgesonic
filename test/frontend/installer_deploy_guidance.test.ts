@@ -9,6 +9,7 @@ const target = read("installer/src/components/steps/StepTarget.vue");
 const version = read("installer/src/components/steps/StepVersion.vue");
 const review = read("installer/src/components/steps/StepReview.vue");
 const done = read("installer/src/components/steps/StepDone.vue");
+const welcome = read("installer/src/components/steps/StepWelcome.vue");
 const orchestrate = read("installer/src/lib/deploy/orchestrate.ts");
 const deployTypes = read("installer/src/lib/deploy/types.ts");
 const tokenPolicies = read("installer/src/lib/cf/tokenPolicies.ts");
@@ -30,10 +31,11 @@ const checks: Array<[string, boolean]> = [
     && orchestrate.includes("if (creds.r2AccessKeyId && creds.r2SecretAccessKey)")],
   ["permissions are checked before resource creation", deployTypes.includes('"preflight"')
     && orchestrate.indexOf('guarded("preflight"') < orchestrate.indexOf('guarded("d1"')],
-  ["overwrite searches worker, D1, and R2 names", target.includes("listScriptNames")
-    && target.includes("listDatabaseNames") && target.includes("listBucketNames")],
-  ["overwrite discovery uses EdgeSonic keywords", target.includes("looksLikeEdgeSonic")],
-  ["overwrite requires an existing confirmed worker", target.includes("collision.value === true && wizard.overwriteConfirmed")],
+  ["target detection chooses creation or recovery", target.includes('wizard.mode = exists ? "overwrite" : "fresh"')],
+  ["existing Workers require confirmation before recovery", target.includes("collision.value === true && wizard.overwriteConfirmed")],
+  ["public quick deploy starts from terms acceptance", welcome.includes("acceptTerms") && welcome.includes("DEPLOY_BY_AGENT.md") && !welcome.includes("freshTitle")],
+  ["recovery can preserve or reset the superadmin", target.includes("wizard.resetAdmin") && orchestrate.includes("target.mode === \"fresh\" || target.resetAdmin")],
+  ["initial superadmin password is optional", target.includes("wizard.adminPassword") && orchestrate.includes("target.adminPassword")],
   ["overwrite guidance prefers in-app updates", [credentials, target, version, review].every((source) => source.includes("overwriteAdvice.message"))],
   ["token policies cover every deployment and post-deploy permission", ["apiTokens", "scripts", "d1", "r2", "ci", "containers", "observability", "accountAnalytics", "accountSettings", "zoneRead", "zoneSettings"].every((key) => tokenPolicies.includes(key) && credentials.includes(`key: "${key}"`))],
   ["token policy read route is relay allowlisted", allowlist.includes('["accounts", null, "tokens", null]')],

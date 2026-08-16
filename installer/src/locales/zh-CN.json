@@ -19,17 +19,15 @@
     "stepOf": "第 {current} / {total} 步"
   },
   "welcome": {
-    "title": "开始部署 EdgeSonic",
-    "subtitle": "本向导会直接在你的浏览器里与 Cloudflare 账号通信，引导你几步完成一个可用的 EdgeSonic 实例。",
-    "freshTitle": "全新安装",
-    "freshDesc": "我还没有部署过 EdgeSonic，从零创建所有资源。",
-    "overwriteTitle": "覆盖已有安装",
-    "overwriteDesc": "仅用于恢复。现有应用能打开时，请在 EdgeSonic 的“设置 → Cloudflare → 更新”中自升级。",
-    "start": "开始",
-    "requirementsTitle": "开始之前",
-    "requirement1": "一个 Cloudflare 账号（免费套餐即可体验）。",
-    "requirement2": "一个 Cloudflare Account API Token；可选 R2 访问密钥用于直连播放。",
-    "requirement3": "大约 5 分钟时间。"
+    "title": "快速部署 EdgeSonic",
+    "subtitle": "面向新手和图省事用户的公开浏览器部署流程，无需本地工具。",
+    "termsTitle": "继续前请确认",
+    "termAccount": "你拥有并获授权使用接下来填写的 Cloudflare 账号和 API Token。",
+    "termData": "安装器会创建或恢复后续页面指定名称的 Worker、D1 数据库和 R2 存储桶。",
+    "termSupport": "检测到已有 Worker 时，安装器不会未经单独确认就覆盖它。",
+    "advancedDeploy": "需要常规 clone + deploy 流程？查看部署指南",
+    "acceptTerms": "我已理解并希望继续",
+    "start": "继续"
   },
   "overwriteAdvice": {
     "title": "始终优先使用应用内更新",
@@ -221,18 +219,13 @@
     "transformationsOff": "封面 Transformations 未启用。封面仍可用，但缩略图将使用原始字节。",
     "transformationsLink": "启用 Transformations",
     "transformationsUnavailable": "无法检查封面 Transformations。为 Account API Token 添加 Zone Settings Read，或在 Cloudflare 中手动检查。",
-    "discoveryTitle": "疑似已有的 EdgeSonic 资源",
-    "discoveryChecking": "正在按 EdgeSonic 关键词搜索 Worker、D1 和 R2 资源名称…",
-    "discoveryFound": "以下是关键词匹配结果。请选择属于现有安装的资源。",
-    "discoveryNone": "没有找到名称疑似 EdgeSonic 的 Worker、D1 数据库或 R2 存储桶，请核对名称后再继续。",
-    "discoveryFailed": "无法搜索全部账号资源。请检查最小 Token 权限并手动填写名称。",
-    "suspectedWorkers": "疑似 Worker",
-    "suspectedDatabases": "疑似 D1 数据库",
-    "suspectedBuckets": "疑似 R2 存储桶",
-    "collisionWarning": "此账号下已存在名为 “{name}” 的 Worker。你选择的是全新安装，请换一个名称，或返回选择覆盖安装。",
-    "collisionOkOverwrite": "已存在名为 “{name}” 的 Worker，请确认它就是准备恢复的 EdgeSonic 实例。",
-    "overwriteMissing": "不存在名为 “{name}” 的 Worker。覆盖模式必须选择一个现有目标。",
-    "overwriteConfirm": "我已确认此 Worker 及填写的 D1/R2 名称属于准备恢复的 EdgeSonic 安装。"
+    "collisionWarning": "此账号下已存在名为 “{name}” 的 Worker。",
+    "collisionOkOverwrite": "已找到名为 “{name}” 的 Worker，请确认它就是准备恢复的 EdgeSonic 实例。",
+    "overwriteMissing": "不存在名为 “{name}” 的 Worker。",
+    "overwriteConfirm": "我已确认此 Worker 及填写的 D1/R2 名称属于准备恢复的 EdgeSonic 安装。",
+    "resetAdmin": "重置超级管理员账号并签发新密码",
+    "adminPassword": "初始超级管理员密码",
+    "adminPasswordHelp": "可选。留空会生成随机密码；恢复部署仅在勾选重置超级管理员时应用此密码。"
   },
   "version": {
     "title": "选择版本",
@@ -260,6 +253,9 @@
     "domainLabel": "自定义域名",
     "domainNone": "无（使用 *.workers.dev）",
     "versionLabel": "版本",
+    "adminResetLabel": "超级管理员账号",
+    "adminResetYes": "重置并签发新密码",
+    "adminResetNo": "保留已有账号",
     "willCreate": "将会创建",
     "willReuse": "将复用已有",
     "confirm": "立即部署"

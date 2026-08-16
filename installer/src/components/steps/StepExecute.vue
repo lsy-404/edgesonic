@@ -38,6 +38,8 @@ async function start() {
     domain: wizard.domain.trim(),
     sourceRepo: wizard.sourceRepo.trim(),
     releaseTag: wizard.selectedTag,
+    resetAdmin: wizard.resetAdmin,
+    adminPassword: wizard.adminPassword,
   };
 
   try {
