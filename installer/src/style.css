@@ -330,7 +330,7 @@ code {
 }
 
 .permission-table {
-  min-width: 620px;
+  min-width: 800px;
   border-collapse: collapse;
   margin-top: 12px;
   font-size: 0.76rem;

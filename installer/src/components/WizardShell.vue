@@ -52,7 +52,7 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
 
 .shell-header {
   width: 100%;
-  max-width: 720px;
+  max-width: 1040px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -98,7 +98,7 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
 
 .progress-track {
   width: 100%;
-  max-width: 720px;
+  max-width: 1040px;
   height: 6px;
   background: var(--color-bg-sunken);
   border-radius: 999px;
@@ -113,7 +113,7 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
 
 .step-caption {
   width: 100%;
-  max-width: 720px;
+  max-width: 1040px;
   margin: 8px 0 0;
   font-size: 0.8rem;
   color: var(--color-text-muted);
@@ -121,7 +121,7 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
 
 .shell-card {
   width: 100%;
-  max-width: 720px;
+  max-width: 1040px;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);

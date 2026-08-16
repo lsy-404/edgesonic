@@ -93,6 +93,7 @@
     "permissionScenario": "应用场景",
     "permissionScope": "范围",
     "permissionLevel": "权限",
+    "permissionCheck": "校验结果",
     "required": "必需",
     "optional": "非必需",
     "permissionScopes": {
@@ -183,7 +184,8 @@
       "checking": "检查中…",
       "ok": "正常",
       "missing": "缺失或未启用",
-      "error": "检查失败"
+      "error": "检查失败",
+      "deferred": "启用功能时验证"
     }
   },
   "target": {

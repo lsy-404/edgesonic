@@ -42,6 +42,8 @@ const checks = reactive<PermissionCheck[]>([
   { key: "d1", status: "pending", detail: "" },
   { key: "r2", status: "pending", detail: "" },
   { key: "r2Keys", status: "pending", detail: "" },
+  { key: "accountSettings", status: "pending", detail: "" },
+  { key: "zoneRead", status: "pending", detail: "" },
 ]);
 
 function setCheck(key: string, status: CheckStatus, detail = "") {
@@ -50,6 +52,15 @@ function setCheck(key: string, status: CheckStatus, detail = "") {
     entry.status = status;
     entry.detail = detail;
   }
+}
+
+function permissionCheck(key: string): PermissionCheck | undefined {
+  const checkKey = key === "scripts" ? "workersScripts" : key;
+  return checks.find((check) => check.key === checkKey);
+}
+
+function isDeferredPermission(key: string): boolean {
+  return ["ci", "containers", "observability", "accountAnalytics", "zoneSettings"].includes(key);
 }
 
 const canVerify = computed(
@@ -126,6 +137,26 @@ async function verify() {
   }
 
   wizard.accountName = accountId;
+
+  setCheck("accountSettings", "checking");
+  try {
+    await callCfJson(apiToken, `/accounts/${accountId}`, undefined, "Account Settings Read");
+    if (isStale()) return;
+    setCheck("accountSettings", "ok");
+  } catch (e) {
+    if (isStale()) return;
+    setCheck("accountSettings", "missing", describeCfError(e, "Account Settings Read").message);
+  }
+
+  setCheck("zoneRead", "checking");
+  try {
+    await callCfJson(apiToken, "/zones?per_page=1", undefined, "Zone Read");
+    if (isStale()) return;
+    setCheck("zoneRead", "ok");
+  } catch (e) {
+    if (isStale()) return;
+    setCheck("zoneRead", "missing", describeCfError(e, "Zone Read").message);
+  }
 
   setCheck("workersScripts", "checking");
   try {
@@ -217,6 +248,7 @@ function goBack() {
                   <th>{{ t("credentials.permissionScenario") }}</th>
                   <th>{{ t("credentials.permissionScope") }}</th>
                   <th>{{ t("credentials.permissionLevel") }}</th>
+                  <th>{{ t("credentials.permissionCheck") }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -226,6 +258,10 @@ function goBack() {
                   <td>{{ t(`credentials.permissions.${permission.key}.scenario`) }}</td>
                   <td>{{ t(`credentials.permissionScopes.${permission.scope}`) }}</td>
                   <td>{{ t(`credentials.permissionLevels.${permission.level}`) }}</td>
+                  <td>
+                    <template v-if="isDeferredPermission(permission.key)">{{ t("credentials.checkStatus.deferred") }}</template>
+                    <template v-else>{{ t(`credentials.checkStatus.${permissionCheck(permission.key)?.status || 'pending'}`) }}</template>
+                  </td>
                 </tr>
               </tbody>
             </table>

@@ -93,6 +93,7 @@
     "permissionScenario": "Use",
     "permissionScope": "Scope",
     "permissionLevel": "Permission",
+    "permissionCheck": "Check",
     "required": "Required",
     "optional": "Optional",
     "permissionScopes": {
@@ -183,7 +184,8 @@
       "checking": "Checking…",
       "ok": "OK",
       "missing": "Missing or not enabled",
-      "error": "Couldn't check"
+      "error": "Couldn't check",
+      "deferred": "Verified when enabled"
     }
   },
   "target": {
