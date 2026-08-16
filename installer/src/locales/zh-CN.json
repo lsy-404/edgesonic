@@ -185,7 +185,8 @@
       "ok": "正常",
       "missing": "缺失或未启用",
       "error": "检查失败",
-      "deferred": "启用功能时验证"
+      "deferred": "启用功能时验证",
+      "notEnabled": "未启用"
     }
   },
   "target": {

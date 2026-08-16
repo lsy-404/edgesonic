@@ -59,8 +59,8 @@ function permissionCheck(key: string): PermissionCheck | undefined {
   return checks.find((check) => check.key === checkKey);
 }
 
-function isDeferredPermission(key: string): boolean {
-  return ["ci", "containers", "observability", "accountAnalytics", "zoneSettings"].includes(key);
+function permissionStatus(key: string): string {
+  return permissionCheck(key)?.status || "notEnabled";
 }
 
 const canVerify = computed(
@@ -259,8 +259,7 @@ function goBack() {
                   <td>{{ t(`credentials.permissionScopes.${permission.scope}`) }}</td>
                   <td>{{ t(`credentials.permissionLevels.${permission.level}`) }}</td>
                   <td>
-                    <template v-if="isDeferredPermission(permission.key)">{{ t("credentials.checkStatus.deferred") }}</template>
-                    <template v-else>{{ t(`credentials.checkStatus.${permissionCheck(permission.key)?.status || 'pending'}`) }}</template>
+                    {{ t(`credentials.checkStatus.${permissionStatus(permission.key)}`) }}
                   </td>
                 </tr>
               </tbody>
