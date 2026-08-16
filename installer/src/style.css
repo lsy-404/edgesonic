@@ -353,6 +353,20 @@ code {
   font-weight: 600;
 }
 
+.requirement-required,
+.requirement-optional {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.requirement-required {
+  color: var(--color-success);
+}
+
+.requirement-optional {
+  color: var(--color-text-muted);
+}
+
 .permission-checklist {
   list-style: none;
   margin: 16px 0 0;

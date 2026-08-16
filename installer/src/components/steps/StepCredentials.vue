@@ -13,6 +13,7 @@ const permissionRows = [
   { key: "scripts", required: true, scope: "account", level: "edit" },
   { key: "d1", required: true, scope: "account", level: "edit" },
   { key: "r2", required: true, scope: "account", level: "edit" },
+  { key: "accountTokens", required: true, scope: "account", level: "read" },
   { key: "r2Keys", required: false, scope: "allBuckets", level: "readWrite" },
   { key: "ci", required: false, scope: "account", level: "edit" },
   { key: "containers", required: false, scope: "account", level: "edit" },
@@ -54,13 +55,9 @@ function setCheck(key: string, status: CheckStatus, detail = "") {
   }
 }
 
-function permissionCheck(key: string): PermissionCheck | undefined {
-  const checkKey = key === "scripts" ? "workersScripts" : key;
-  return checks.find((check) => check.key === checkKey);
-}
-
 function permissionStatus(key: string): string {
-  return permissionCheck(key)?.status || "notEnabled";
+  void key;
+  return "deploy";
 }
 
 const canVerify = computed(
@@ -254,7 +251,13 @@ function goBack() {
               <tbody>
                 <tr v-for="permission in permissionRows" :key="permission.key">
                   <td>{{ t(`credentials.permissions.${permission.key}.resource`) }}</td>
-                  <td>{{ permission.required ? t("credentials.required") : t("credentials.optional") }}</td>
+                  <td>
+                    <span
+                      :class="permission.required ? 'requirement-required' : 'requirement-optional'"
+                      :title="permission.required ? t('credentials.required') : t('credentials.optional')"
+                      :aria-label="permission.required ? t('credentials.required') : t('credentials.optional')"
+                    >{{ permission.required ? '✓' : '×' }}</span>
+                  </td>
                   <td>{{ t(`credentials.permissions.${permission.key}.scenario`) }}</td>
                   <td>{{ t(`credentials.permissionScopes.${permission.scope}`) }}</td>
                   <td>{{ t(`credentials.permissionLevels.${permission.level}`) }}</td>

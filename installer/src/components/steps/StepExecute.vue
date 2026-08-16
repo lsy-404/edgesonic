@@ -92,7 +92,10 @@ function retry() {
           />
           {{ t(`execute.steps.${entry.step}`) }}
         </dt>
-        <dd>{{ t(`execute.status.${entry.status}`) }}</dd>
+        <dd>
+          {{ t(`execute.status.${entry.status}`) }}
+          <p v-if="entry.detail" class="field-help" style="margin: 4px 0 0">{{ entry.detail }}</p>
+        </dd>
       </li>
     </ul>
 

@@ -111,6 +111,7 @@
       "scripts": { "resource": "Workers Scripts", "scenario": "Deploy the Worker, assets, Secrets, and Cron" },
       "d1": { "resource": "D1", "scenario": "Create the database and apply its schema" },
       "r2": { "resource": "Workers R2 Storage", "scenario": "Create and list the music bucket" },
+      "accountTokens": { "resource": "Account API Tokens", "scenario": "Read token scopes for the deployment preflight audit" },
       "r2Keys": { "resource": "R2 S3 API Key", "scenario": "R2 presigned direct playback" },
       "ci": { "resource": "Workers CI", "scenario": "In-app CI integration" },
       "containers": { "resource": "Workers Containers", "scenario": "Container transcoding" },
@@ -186,7 +187,8 @@
       "missing": "Missing or not enabled",
       "error": "Couldn't check",
       "deferred": "Verified when enabled",
-      "notEnabled": "Not enabled"
+      "notEnabled": "Not enabled",
+      "deploy": "Checked before deployment"
     }
   },
   "target": {
