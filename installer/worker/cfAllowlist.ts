@@ -27,7 +27,6 @@ interface Rule {
 
 const ALLOWLIST: Rule[] = [
   { method: "GET", segments: ["accounts", null, "tokens", "verify"] },
-  { method: "GET", segments: ["accounts", null, "tokens", null] },
   { method: "GET", segments: ["accounts", null] },
   { method: "GET", segments: ["accounts", null, "r2", "buckets"] },
   { method: "POST", segments: ["accounts", null, "r2", "buckets"] },

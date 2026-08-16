@@ -31,15 +31,6 @@ import { DeployError, type DeployCredentials, type DeployResult, type DeployStep
 
 export type StepReporter = (step: DeployStep, status: StepStatus, detail?: string) => void;
 
-interface AccountToken {
-  id?: string;
-  status?: string;
-  policies?: Array<{ effect?: string; permission_groups?: Array<{ name?: string }> }>;
-}
-
-const REQUIRED_PERMISSION_GROUPS = ["Workers Scripts", "D1", "Workers R2 Storage", "Account API Tokens"];
-const OPTIONAL_PERMISSION_GROUPS = ["Workers CI", "Workers Containers", "Workers Observability", "Account Analytics", "Account Settings", "Zone", "Zone Settings"];
-
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -59,31 +50,19 @@ async function guarded<T>(step: DeployStep, report: StepReporter, run: () => Pro
 
 async function verifyDeploymentAccess(creds: DeployCredentials): Promise<string> {
   const { accountId, apiToken, r2AccessKeyId, r2SecretAccessKey } = creds;
-  const token = await callCfJson<AccountToken>(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
-  if (!token.id) throw new Error("Cloudflare did not return the Account API Token id");
-  const details = await callCfJson<AccountToken>(apiToken, `/accounts/${accountId}/tokens/${token.id}`, undefined, "Account API Tokens Read");
-  const granted = new Set(
-    (details.policies || [])
-      .filter((policy) => policy.effect === "allow")
-      .flatMap((policy) => policy.permission_groups || [])
-      .map((group) => group.name)
-      .filter((name): name is string => Boolean(name)),
-  );
-  const missingRequired = REQUIRED_PERMISSION_GROUPS.filter((name) => !granted.has(name));
-  if (missingRequired.length > 0) throw new Error(`Missing required permissions: ${missingRequired.join(", ")}`);
+  await callCfJson(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
   await callCfJson(apiToken, `/accounts/${accountId}/workers/scripts`, undefined, "Workers Scripts Edit");
   await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Edit");
   await listBucketNames(apiToken, accountId);
-  const permissionSummary = [...REQUIRED_PERMISSION_GROUPS, ...OPTIONAL_PERMISSION_GROUPS]
-    .map((name) => `${name}: ${granted.has(name) ? "enabled" : "not enabled"}`);
+  const permissionSummary = ["Account API Token", "Workers Scripts", "D1", "Workers R2 Storage"];
   if (r2AccessKeyId && r2SecretAccessKey) {
     const verified = await verifyR2Keys({ accountId, accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey });
     if (!verified.ok) throw new Error(verified.message || "R2 access key pair did not verify");
-    permissionSummary.push("R2 S3 API key: enabled");
+    permissionSummary.push("R2 S3 API key");
   } else {
-    permissionSummary.push("R2 S3 API key: not configured");
+    permissionSummary.push("R2 S3 API key not configured");
   }
-  return permissionSummary.join("; ");
+  return `Verified: ${permissionSummary.join(", ")}`;
 }
 
 export async function runDeploy(creds: DeployCredentials, target: DeployTarget, release: GithubRelease, report: StepReporter): Promise<DeployResult> {

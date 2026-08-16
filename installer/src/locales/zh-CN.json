@@ -93,7 +93,6 @@
     "permissionScenario": "应用场景",
     "permissionScope": "范围",
     "permissionLevel": "权限",
-    "permissionCheck": "校验结果",
     "required": "必需",
     "optional": "非必需",
     "permissionScopes": {
@@ -111,7 +110,6 @@
       "scripts": { "resource": "Workers Scripts", "scenario": "部署 Worker、资源、Secrets 和 Cron" },
       "d1": { "resource": "D1", "scenario": "创建数据库并写入数据库结构" },
       "r2": { "resource": "Workers R2 Storage", "scenario": "创建和列出音乐存储桶" },
-      "accountTokens": { "resource": "Account API Tokens", "scenario": "读取 Token 权限范围并完成部署前审计" },
       "r2Keys": { "resource": "R2 S3 API Key", "scenario": "R2 预签名直连播放" },
       "ci": { "resource": "Workers CI", "scenario": "应用内 CI 集成" },
       "containers": { "resource": "Workers Containers", "scenario": "容器转码" },
@@ -187,8 +185,7 @@
       "missing": "缺失或未启用",
       "error": "检查失败",
       "deferred": "启用功能时验证",
-      "notEnabled": "未启用",
-      "deploy": "部署前检查"
+      "notEnabled": "未启用"
     }
   },
   "target": {

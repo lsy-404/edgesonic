@@ -13,7 +13,6 @@ const permissionRows = [
   { key: "scripts", required: true, scope: "account", level: "edit" },
   { key: "d1", required: true, scope: "account", level: "edit" },
   { key: "r2", required: true, scope: "account", level: "edit" },
-  { key: "accountTokens", required: true, scope: "account", level: "read" },
   { key: "r2Keys", required: false, scope: "allBuckets", level: "readWrite" },
   { key: "ci", required: false, scope: "account", level: "edit" },
   { key: "containers", required: false, scope: "account", level: "edit" },
@@ -55,15 +54,13 @@ function setCheck(key: string, status: CheckStatus, detail = "") {
   }
 }
 
-function permissionStatus(key: string): string {
-  void key;
-  return "deploy";
-}
+const ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i;
+const API_TOKEN_RE = /^cfat_[A-Za-z0-9_-]{20,}$/;
 
 const canVerify = computed(
   () =>
-    wizard.credentials.accountId.trim().length > 0 &&
-    wizard.credentials.apiToken.trim().length > 0,
+    ACCOUNT_ID_RE.test(wizard.credentials.accountId.trim()) &&
+    API_TOKEN_RE.test(wizard.credentials.apiToken.trim()),
 );
 const r2KeysComplete = computed(() => {
   const accessKey = wizard.credentials.r2AccessKeyId.trim();
@@ -86,7 +83,7 @@ const canContinue = computed(
 let verifyTimer: ReturnType<typeof setTimeout> | undefined;
 let verifyGeneration = 0;
 watch(
-  () => [wizard.credentials.accountId, wizard.credentials.apiToken, wizard.credentials.r2AccessKeyId, wizard.credentials.r2SecretAccessKey].join("\0"),
+  () => [wizard.credentials.accountId, wizard.credentials.apiToken].join("\0"),
   () => {
     verifyGeneration++;
     clearTimeout(verifyTimer);
@@ -101,6 +98,25 @@ watch(
     verifyTimer = setTimeout(() => {
       void verify();
     }, 400);
+  },
+);
+
+watch(
+  () => [wizard.credentials.r2AccessKeyId, wizard.credentials.r2SecretAccessKey].join("\0"),
+  () => {
+    if (!wizard.credentialsVerified || wizard.r2Enabled !== true) return;
+    const { accountId, r2AccessKeyId, r2SecretAccessKey } = wizard.credentials;
+    if (!r2AccessKeyId || !r2SecretAccessKey) {
+      setCheck("r2Keys", r2AccessKeyId || r2SecretAccessKey ? "missing" : "pending", r2AccessKeyId || r2SecretAccessKey ? t("credentials.r2KeysPairRequired") : t("credentials.r2KeysOptionalSkipped"));
+      return;
+    }
+    setCheck("r2Keys", "checking");
+    void verifyR2Keys({ accountId, accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey })
+      .then((result) => {
+        if (wizard.credentials.r2AccessKeyId !== r2AccessKeyId || wizard.credentials.r2SecretAccessKey !== r2SecretAccessKey) return;
+        setCheck("r2Keys", result.ok ? "ok" : "missing", result.ok ? "" : t("credentials.r2KeyInvalid"));
+      })
+      .catch(() => setCheck("r2Keys", "error", t("credentials.r2KeyInvalid")));
   },
 );
 onUnmounted(() => {
@@ -118,7 +134,7 @@ async function verify() {
     c.status = "pending";
     c.detail = "";
   }
-  const { accountId, apiToken, r2AccessKeyId, r2SecretAccessKey } = wizard.credentials;
+  const { accountId, apiToken } = wizard.credentials;
   const isStale = () => generation !== verifyGeneration;
 
   setCheck("token", "checking");
@@ -181,6 +197,7 @@ async function verify() {
     if (isStale()) return;
     setCheck("r2", "ok");
     wizard.r2Enabled = true;
+    const { r2AccessKeyId, r2SecretAccessKey } = wizard.credentials;
     if (r2AccessKeyId && r2SecretAccessKey) {
       setCheck("r2Keys", "checking");
       const r2Keys = await verifyR2Keys({ accountId, accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey });
@@ -245,7 +262,6 @@ function goBack() {
                   <th>{{ t("credentials.permissionScenario") }}</th>
                   <th>{{ t("credentials.permissionScope") }}</th>
                   <th>{{ t("credentials.permissionLevel") }}</th>
-                  <th>{{ t("credentials.permissionCheck") }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -261,9 +277,6 @@ function goBack() {
                   <td>{{ t(`credentials.permissions.${permission.key}.scenario`) }}</td>
                   <td>{{ t(`credentials.permissionScopes.${permission.scope}`) }}</td>
                   <td>{{ t(`credentials.permissionLevels.${permission.level}`) }}</td>
-                  <td>
-                    {{ t(`credentials.checkStatus.${permissionStatus(permission.key)}`) }}
-                  </td>
                 </tr>
               </tbody>
             </table>
@@ -295,10 +308,6 @@ function goBack() {
       <p class="field-help">{{ t("credentials.r2KeyHelp") }}</p>
       <p v-if="!r2KeysComplete" class="field-help" style="color: var(--color-danger)">{{ t("credentials.r2KeysPairRequired") }}</p>
     </div>
-
-    <button type="button" class="btn btn-secondary" :disabled="!canVerify || verifying" @click="verify">
-      {{ verifying ? t("credentials.verifying") : t("credentials.verify") }}
-    </button>
 
     <ul v-if="hasAttempted" class="permission-checklist">
       <li v-for="c in checks" :key="c.key" :class="['permission-row', `permission-${c.status}`]">
