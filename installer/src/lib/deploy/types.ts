@@ -14,6 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 export const DEPLOY_STEPS = [
+  "preflight",
   "d1",
   "r2",
   "schema",

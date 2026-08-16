@@ -259,6 +259,7 @@
       "failed": "失败"
     },
     "steps": {
+      "preflight": "验证 Cloudflare 凭证与部署权限",
       "d1": "创建或复用 D1 数据库",
       "r2": "创建或复用 R2 存储桶",
       "schema": "应用数据库结构",

@@ -16,8 +16,8 @@
 import type { GithubRelease } from "../../../../shared/autoupdate";
 import { fetchSchemaSql } from "../github";
 import { getOrCreateDatabase, runQuery } from "./d1";
-import { getOrCreateBucket } from "./r2";
-import { verifyR2Keys } from "../relay";
+import { getOrCreateBucket, listBucketNames } from "./r2";
+import { callCfJson, verifyR2Keys } from "../relay";
 import { fetchManifestAndArtifact } from "./manifest";
 import { unpackArtifact, textFile } from "./tar";
 import { uploadAssets, type AssetManifest } from "./assets";
@@ -48,10 +48,24 @@ async function guarded<T>(step: DeployStep, report: StepReporter, run: () => Pro
   }
 }
 
+async function verifyDeploymentAccess(creds: DeployCredentials): Promise<void> {
+  const { accountId, apiToken, r2AccessKeyId, r2SecretAccessKey } = creds;
+  await callCfJson(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
+  await callCfJson(apiToken, `/accounts/${accountId}/workers/scripts`, undefined, "Workers Scripts Edit");
+  await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Edit");
+  await listBucketNames(apiToken, accountId);
+  if (r2AccessKeyId && r2SecretAccessKey) {
+    const verified = await verifyR2Keys({ accountId, accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey });
+    if (!verified.ok) throw new Error(verified.message || "R2 access key pair did not verify");
+  }
+}
+
 export async function runDeploy(creds: DeployCredentials, target: DeployTarget, release: GithubRelease, report: StepReporter): Promise<DeployResult> {
   const { accountId, apiToken } = creds;
   const script = target.workerName;
   const tag = release.tag_name || target.releaseTag;
+
+  await guarded("preflight", report, () => verifyDeploymentAccess(creds));
 
   const databaseId = await guarded("d1", report, () => getOrCreateDatabase(apiToken, accountId, target.dbName));
 

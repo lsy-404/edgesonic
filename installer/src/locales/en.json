@@ -259,6 +259,7 @@
       "failed": "Failed"
     },
     "steps": {
+      "preflight": "Verify Cloudflare credentials and deployment permissions",
       "d1": "Create or reuse D1 database",
       "r2": "Create or reuse R2 bucket",
       "schema": "Apply database schema",

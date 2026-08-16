@@ -9,6 +9,7 @@ const target = read("installer/src/components/steps/StepTarget.vue");
 const version = read("installer/src/components/steps/StepVersion.vue");
 const review = read("installer/src/components/steps/StepReview.vue");
 const orchestrate = read("installer/src/lib/deploy/orchestrate.ts");
+const deployTypes = read("installer/src/lib/deploy/types.ts");
 const en = JSON.parse(read("installer/src/locales/en.json"));
 const zh = JSON.parse(read("installer/src/locales/zh-CN.json"));
 
@@ -21,6 +22,8 @@ const checks: Array<[string, boolean]> = [
   ["DNS is not a minimum verification gate", !credentials.includes('key: "dns"')],
   ["R2 direct-play keys are optional", credentials.includes("r2KeysComplete")
     && orchestrate.includes("if (creds.r2AccessKeyId && creds.r2SecretAccessKey)")],
+  ["permissions are checked before resource creation", deployTypes.includes('"preflight"')
+    && orchestrate.indexOf('guarded("preflight"') < orchestrate.indexOf('guarded("d1"')],
   ["overwrite searches worker, D1, and R2 names", target.includes("listScriptNames")
     && target.includes("listDatabaseNames") && target.includes("listBucketNames")],
   ["overwrite discovery uses EdgeSonic keywords", target.includes("looksLikeEdgeSonic")],
