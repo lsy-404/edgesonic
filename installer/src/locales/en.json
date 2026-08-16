@@ -89,6 +89,7 @@
     "setupToken": "Create a Custom Token in the target account's Account API Tokens.",
     "setupPermissions": "Configure the Account API Token permissions:",
     "permissionResource": "Resource",
+    "permissionCategory": "Category",
     "permissionRequired": "Required",
     "permissionScenario": "Use",
     "permissionScope": "Scope",
@@ -102,8 +103,14 @@
     },
     "permissionLevels": {
       "read": "Read",
-      "edit": "Edit",
+      "write": "Write",
       "readWrite": "Read & Write"
+    },
+    "permissionCategories": {
+      "developer": "Developer Platform",
+      "analytics": "Analytics & Logs",
+      "account": "Account & Billing",
+      "zone": "Zone & DNS"
     },
     "dnsNotNeeded": "The installer never creates or changes DNS records, so DNS Edit is not needed.",
     "permissions": {
@@ -121,7 +128,7 @@
       "zoneSettings": { "resource": "Zone Settings", "scenario": "Check cover Images Transformations status" }
     },
     "minimumPermissionsTitle": "Minimum deployment permissions under Developer Platform",
-    "permissionEdit": "Edit",
+    "permissionEdit": "Write",
     "permissionAccountScope": "Account resources: Include → the target account only. If the account-owned token screen only offers All accounts, use that scope.",
     "permissionR2Scope": "Optional R2 presigned playback keys: Bucket Item → Read, Include → All buckets. The bucket does not exist until deployment.",
     "advancedPermissionsTitle": "Optional advanced-feature permissions",
@@ -133,8 +140,8 @@
       "scripts": "Workers Scripts"
     },
     "advancedPermissions": {
-      "containers": "Workers Containers → Edit — Sandbox container transcoding",
-      "observability": "Workers Observability → Edit — Worker observability (not Observability Telemetry)",
+      "containers": "Workers Containers → Write — Sandbox container transcoding",
+      "observability": "Workers Observability → Write — Worker observability (not Observability Telemetry)",
       "accountAnalytics": "Account Analytics → Read — in-app request and error analytics",
       "accountSettings": "Account Settings → Read — in-app Cloudflare connection checks",
       "zoneRead": "Zone → Read — optional custom-domain lookup",
@@ -147,7 +154,7 @@
     "apiTokenCreateLink": "Open Account API Tokens",
     "tokenGuideTitle": "How to create this token",
     "tokenGuideStep1": "Open Manage Account > Account API Tokens. Do not use My Profile > API Tokens. Select Create Token.",
-    "tokenGuideStep2": "For minimum deployment, set Account API Tokens to Read, then set D1, Workers R2 Storage, Workers CI, and Workers Scripts to Edit under Developer Platform.",
+    "tokenGuideStep2": "For minimum deployment, set Account API Tokens to Read, then set D1, Workers R2 Storage, Workers CI, and Workers Scripts to Write under Developer Platform.",
     "tokenGuideStep3": "Optionally add Containers, Observability, Account Analytics Read, Account Settings Read, Zone Read, and Zone Settings Read for advanced in-app features.",
     "tokenGuideStep4": "Continue to the summary and create the token. Copy the displayed Token, Access Key ID, and Secret Access Key; all three are required below.",
     "r2AccessKeyId": "R2 Access Key ID",
@@ -184,7 +191,7 @@
       "observability": "Workers Observability permission (optional)",
       "accountAnalytics": "Account Analytics permission (optional)",
       "accountSettings": "Account Settings permission (optional)",
-      "zoneRead": "Zone Read permission (optional)",
+      "zoneRead": "Zone permission (optional)",
       "zoneSettings": "Zone Settings permission (optional)"
     },
     "checkStatus": {

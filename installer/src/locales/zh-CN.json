@@ -89,6 +89,7 @@
     "setupToken": "在目标账号的 Account API Tokens 创建 Custom Token。",
     "setupPermissions": "配置 Account API Token 权限：",
     "permissionResource": "资源",
+    "permissionCategory": "分类",
     "permissionRequired": "必需",
     "permissionScenario": "应用场景",
     "permissionScope": "范围",
@@ -102,8 +103,14 @@
     },
     "permissionLevels": {
       "read": "Read",
-      "edit": "Edit",
+      "write": "Write",
       "readWrite": "Read & Write"
+    },
+    "permissionCategories": {
+      "developer": "Developer Platform",
+      "analytics": "Analytics & Logs",
+      "account": "Account & Billing",
+      "zone": "Zone & DNS"
     },
     "dnsNotNeeded": "安装器不会创建或修改 DNS 记录，因此不需要 DNS Edit。",
     "permissions": {
@@ -121,7 +128,7 @@
       "zoneSettings": { "resource": "Zone Settings", "scenario": "检查封面 Images Transformations 状态" }
     },
     "minimumPermissionsTitle": "Developer Platform 下的最小部署权限",
-    "permissionEdit": "Edit",
+    "permissionEdit": "Write",
     "permissionAccountScope": "Account resources：Include → 仅目标账号；如果组织级 Token 页面只提供 All accounts，则使用该范围。",
     "permissionR2Scope": "可选 R2 预签名播放密钥：Bucket Item → Read，Include → All buckets；此时存储桶尚未创建。",
     "advancedPermissionsTitle": "可选高级功能权限",
@@ -133,8 +140,8 @@
       "scripts": "Workers Scripts"
     },
     "advancedPermissions": {
-      "containers": "Workers Containers → Edit — Sandbox 容器转码",
-      "observability": "Workers Observability → Edit — Worker 可观测性（不是 Observability Telemetry）",
+      "containers": "Workers Containers → Write — Sandbox 容器转码",
+      "observability": "Workers Observability → Write — Worker 可观测性（不是 Observability Telemetry）",
       "accountAnalytics": "Account Analytics → Read — 应用内请求量与错误统计",
       "accountSettings": "Account Settings → Read — 应用内 Cloudflare 连接检测",
       "zoneRead": "Zone → Read — 可选自定义域名查询",
@@ -147,7 +154,7 @@
     "apiTokenCreateLink": "打开 Account API Tokens",
     "tokenGuideTitle": "如何创建这个令牌",
     "tokenGuideStep1": "打开 Manage Account > Account API Tokens。不要使用 My Profile > API Tokens，点击 Create Token。",
-    "tokenGuideStep2": "最小部署先将 Account API Tokens 设为 Read，再将 D1、Workers R2 Storage、Workers CI、Workers Scripts 设为 Edit。",
+    "tokenGuideStep2": "最小部署先将 Account API Tokens 设为 Read，再将 D1、Workers R2 Storage、Workers CI、Workers Scripts 设为 Write。",
     "tokenGuideStep3": "如需高级应用内功能，再添加 Containers、Observability、Account Analytics Read、Account Settings Read、Zone Read 和 Zone Settings Read。",
     "tokenGuideStep4": "继续到汇总并创建 Token，复制 Token、Access Key ID、Secret Access Key；下页三项都需要。",
     "r2AccessKeyId": "R2 Access Key ID",
@@ -184,7 +191,7 @@
       "observability": "Workers Observability 权限（可选）",
       "accountAnalytics": "Account Analytics 权限（可选）",
       "accountSettings": "Account Settings 权限（可选）",
-      "zoneRead": "Zone Read 权限（可选）",
+      "zoneRead": "Zone 权限（可选）",
       "zoneSettings": "Zone Settings 权限（可选）"
     },
     "checkStatus": {

@@ -11,18 +11,18 @@ import { hasTokenPermission, readTokenPermissionGroups, TOKEN_PERMISSION_GROUPS 
 const { t } = useI18n();
 const wizard = useWizard();
 const permissionRows = [
-  { key: "apiTokens", required: true, scope: "account", level: "read" },
-  { key: "scripts", required: true, scope: "account", level: "edit" },
-  { key: "d1", required: true, scope: "account", level: "edit" },
-  { key: "r2", required: true, scope: "account", level: "edit" },
-  { key: "r2Keys", required: false, scope: "allBuckets", level: "readWrite" },
-  { key: "ci", required: false, scope: "account", level: "edit" },
-  { key: "containers", required: false, scope: "account", level: "edit" },
-  { key: "observability", required: false, scope: "account", level: "edit" },
-  { key: "accountAnalytics", required: false, scope: "account", level: "read" },
-  { key: "accountSettings", required: false, scope: "account", level: "read" },
-  { key: "zoneRead", required: false, scope: "targetZone", level: "read" },
-  { key: "zoneSettings", required: false, scope: "targetZone", level: "read" },
+  { key: "apiTokens", category: "account", required: true, scope: "account", level: "read" },
+  { key: "scripts", category: "developer", required: true, scope: "account", level: "write" },
+  { key: "d1", category: "developer", required: true, scope: "account", level: "write" },
+  { key: "r2", category: "developer", required: true, scope: "account", level: "write" },
+  { key: "r2Keys", category: "developer", required: false, scope: "allBuckets", level: "readWrite" },
+  { key: "ci", category: "developer", required: false, scope: "account", level: "write" },
+  { key: "containers", category: "developer", required: false, scope: "account", level: "write" },
+  { key: "observability", category: "analytics", required: false, scope: "account", level: "write" },
+  { key: "accountAnalytics", category: "analytics", required: false, scope: "account", level: "read" },
+  { key: "accountSettings", category: "account", required: false, scope: "account", level: "read" },
+  { key: "zoneRead", category: "zone", required: false, scope: "targetZone", level: "read" },
+  { key: "zoneSettings", category: "zone", required: false, scope: "targetZone", level: "read" },
 ] as const;
 
 const verifying = ref(false);
@@ -254,6 +254,7 @@ function goBack() {
               <thead>
                 <tr>
                   <th>{{ t("credentials.permissionResource") }}</th>
+                  <th>{{ t("credentials.permissionCategory") }}</th>
                   <th>{{ t("credentials.permissionRequired") }}</th>
                   <th>{{ t("credentials.permissionScenario") }}</th>
                   <th>{{ t("credentials.permissionScope") }}</th>
@@ -263,6 +264,7 @@ function goBack() {
               <tbody>
                 <tr v-for="permission in permissionRows" :key="permission.key">
                   <td>{{ t(`credentials.permissions.${permission.key}.resource`) }}</td>
+                  <td>{{ t(`credentials.permissionCategories.${permission.category}`) }}</td>
                   <td>
                     <span
                       :class="permission.required ? 'requirement-required' : 'requirement-optional'"

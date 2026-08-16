@@ -330,7 +330,7 @@ code {
 }
 
 .permission-table {
-  min-width: 800px;
+  width: 100%;
   border-collapse: collapse;
   margin-top: 12px;
   font-size: 0.76rem;
@@ -346,6 +346,7 @@ code {
   border: 1px solid var(--color-border);
   text-align: left;
   vertical-align: top;
+  overflow-wrap: anywhere;
 }
 
 .permission-table th {

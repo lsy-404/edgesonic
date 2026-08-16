@@ -15,13 +15,14 @@ const tokenPolicies = read("installer/src/lib/cf/tokenPolicies.ts");
 const allowlist = read("installer/worker/cfAllowlist.ts");
 const manifest = read("installer/src/lib/deploy/manifest.ts");
 const assets = read("installer/src/lib/deploy/assets.ts");
+const installerStyle = read("installer/src/style.css");
 const en = JSON.parse(read("installer/src/locales/en.json"));
 const zh = JSON.parse(read("installer/src/locales/zh-CN.json"));
 
 const checks: Array<[string, boolean]> = [
   ["minimum permissions cover deploy resources", ["d1", "r2", "ci", "scripts"].every((key) => credentials.includes(`"${key}"`))],
-  ["container and observability permissions are optional", credentials.includes('{ key: "containers", required: false')
-    && credentials.includes('{ key: "observability", required: false')],
+  ["container and observability permissions are optional", /key: "containers"[\s\S]*?required: false/.test(credentials)
+    && /key: "observability"[\s\S]*?required: false/.test(credentials)],
   ["stored token purpose is disclosed", en.credentials.advancedPermissionsDesc.includes("CF_API_TOKEN")
     && zh.credentials.advancedPermissionsDesc.includes("CF_API_TOKEN")],
   ["DNS is not a minimum verification gate", !credentials.includes('key: "dns"')],
@@ -43,6 +44,7 @@ const checks: Array<[string, boolean]> = [
   ["local ZIP packages are checksum-validated before deployment", manifest.includes("readLocalUpdatePackage") && manifest.includes("validateManifestAndArtifact") && version.includes("localPackage")],
   ["completion link opens the deployed Worker production page", done.includes("/workers/services/view/") && done.includes("/production")],
   ["asset uploads preserve JavaScript MIME types", assets.includes('return "text/javascript"') && assets.includes("new File([base64Bytes(bytes)]")],
+  ["permission table includes categories and wraps content", credentials.includes("permissionCategory") && credentials.includes("permission.category") && installerStyle.includes("overflow-wrap: anywhere")],
 ];
 
 let failures = 0;
