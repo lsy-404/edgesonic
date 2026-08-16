@@ -35,7 +35,9 @@ const checks: Array<[string, boolean]> = [
   ["token policies cover every deployment and post-deploy permission", ["apiTokens", "scripts", "d1", "r2", "ci", "containers", "observability", "accountAnalytics", "accountSettings", "zoneRead", "zoneSettings"].every((key) => tokenPolicies.includes(key) && credentials.includes(`key: "${key}"`))],
   ["token policy read route is relay allowlisted", allowlist.includes('["accounts", null, "tokens", null]')],
   ["Account API Tokens Read policy name is recognized", tokenPolicies.includes('"Account API Tokens Read"')],
-  ["write policy names include their required access level", ["Workers Scripts Edit", "D1 Edit", "Workers R2 Storage Edit"].every((name) => tokenPolicies.includes(`"${name}"`))],
+  ["write policy names use Cloudflare's current access level", ["Workers Scripts Write", "D1 Write", "Workers R2 Storage Write"].every((name) => tokenPolicies.includes(`"${name}"`))],
+  ["core deployment permissions fall back to non-mutating API checks", ["/workers/scripts", "/d1/database"].every((path) => credentials.includes(path))],
+  ["saved credentials are checked on page entry", credentials.includes("{ immediate: true }")],
   ["local ZIP packages are checksum-validated before deployment", manifest.includes("readLocalUpdatePackage") && manifest.includes("validateManifestAndArtifact") && version.includes("localPackage")],
 ];
 

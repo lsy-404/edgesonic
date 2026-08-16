@@ -4,12 +4,12 @@ import { callCfJson } from "../relay";
 // calls that use CF_API_TOKEN. Cloudflare policy inspection is non-mutating.
 export const TOKEN_PERMISSION_GROUPS = {
   apiTokens: ["Account API Tokens Read", "Account API Tokens"],
-  scripts: ["Workers Scripts Edit", "Workers Scripts"],
-  d1: ["D1 Edit", "D1"],
-  r2: ["Workers R2 Storage Edit", "Workers R2 Storage"],
-  ci: ["Workers CI Edit", "Workers CI"],
-  containers: ["Workers Containers Edit", "Workers Containers"],
-  observability: ["Workers Observability Edit", "Workers Observability"],
+  scripts: ["Workers Scripts Write", "Workers Scripts Edit", "Workers Scripts"],
+  d1: ["D1 Write", "D1 Edit", "D1"],
+  r2: ["Workers R2 Storage Write", "Workers R2 Storage Edit", "Workers R2 Storage"],
+  ci: ["Workers CI Write", "Workers CI Edit", "Workers CI"],
+  containers: ["Workers Containers Write", "Workers Containers Edit", "Workers Containers"],
+  observability: ["Workers Observability Write", "Workers Observability Edit", "Workers Observability"],
   accountAnalytics: ["Account Analytics Read", "Account Analytics"],
   accountSettings: ["Account Settings Read", "Account Settings"],
   zoneRead: ["Zone Read", "Zone"],

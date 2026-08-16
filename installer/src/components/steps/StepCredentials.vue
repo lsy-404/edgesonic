@@ -98,6 +98,7 @@ watch(
       void verify();
     }, 400);
   },
+  { immediate: true },
 );
 
 watch(
@@ -137,13 +138,23 @@ async function verify() {
   const isStale = () => generation !== verifyGeneration;
 
   setCheck("token", "checking");
+  let tokenId: string | undefined;
   try {
     const token = await callCfJson<{ id?: string }>(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
     if (isStale()) return;
     setCheck("token", "ok");
     if (!token.id) throw new Error("Cloudflare did not return the API Token identifier");
+    tokenId = token.id;
+  } catch (e) {
+    if (isStale()) return;
+    setCheck("token", "error", describeCfError(e, "an active Account API Token").message);
+    verifying.value = false;
+    return;
+  }
+
+  try {
     setCheck("apiTokens", "checking");
-    const groups = await readTokenPermissionGroups(apiToken, accountId, token.id);
+    const groups = await readTokenPermissionGroups(apiToken, accountId, tokenId);
     if (isStale()) return;
     for (const key of Object.keys(TOKEN_PERMISSION_GROUPS) as Array<keyof typeof TOKEN_PERMISSION_GROUPS>) {
       setCheck(key, hasTokenPermission(groups, key) ? "ok" : "missing");
@@ -152,12 +163,29 @@ async function verify() {
     if (isStale()) return;
     const context = describeCfError(e, "Account API Tokens Read").message;
     setCheck("apiTokens", "missing", context);
-    if (checks.find((check) => check.key === "token")?.status === "checking") setCheck("token", "error", context);
-    verifying.value = false;
-    return;
   }
 
   wizard.accountName = accountId;
+
+  setCheck("scripts", "checking");
+  try {
+    await callCfJson(apiToken, `/accounts/${accountId}/workers/scripts`, undefined, "Workers Scripts Write");
+    if (isStale()) return;
+    setCheck("scripts", "ok");
+  } catch (e) {
+    if (isStale()) return;
+    setCheck("scripts", "missing", describeCfError(e, "Workers Scripts Write").message);
+  }
+
+  setCheck("d1", "checking");
+  try {
+    await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Write");
+    if (isStale()) return;
+    setCheck("d1", "ok");
+  } catch (e) {
+    if (isStale()) return;
+    setCheck("d1", "missing", describeCfError(e, "D1 Write").message);
+  }
 
   setCheck("r2", "checking");
   try {
