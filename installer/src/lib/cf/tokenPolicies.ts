@@ -3,17 +3,17 @@ import { callCfJson } from "../relay";
 // These groups cover every installer write and the optional post-deploy API
 // calls that use CF_API_TOKEN. Cloudflare policy inspection is non-mutating.
 export const TOKEN_PERMISSION_GROUPS = {
-  apiTokens: ["Account API Tokens"],
-  scripts: ["Workers Scripts"],
-  d1: ["D1"],
-  r2: ["Workers R2 Storage"],
-  ci: ["Workers CI"],
-  containers: ["Workers Containers"],
-  observability: ["Workers Observability"],
-  accountAnalytics: ["Account Analytics"],
-  accountSettings: ["Account Settings"],
-  zoneRead: ["Zone"],
-  zoneSettings: ["Zone Settings"],
+  apiTokens: ["Account API Tokens Read", "Account API Tokens"],
+  scripts: ["Workers Scripts Edit", "Workers Scripts"],
+  d1: ["D1 Edit", "D1"],
+  r2: ["Workers R2 Storage Edit", "Workers R2 Storage"],
+  ci: ["Workers CI Edit", "Workers CI"],
+  containers: ["Workers Containers Edit", "Workers Containers"],
+  observability: ["Workers Observability Edit", "Workers Observability"],
+  accountAnalytics: ["Account Analytics Read", "Account Analytics"],
+  accountSettings: ["Account Settings Read", "Account Settings"],
+  zoneRead: ["Zone Read", "Zone"],
+  zoneSettings: ["Zone Settings Read", "Zone Settings"],
 } as const;
 
 interface TokenDetails {
