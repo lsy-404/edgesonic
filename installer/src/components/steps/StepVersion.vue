@@ -6,7 +6,7 @@ import { useWizard } from "../../stores/wizard";
 import { fetchReleases } from "../../lib/github";
 import { buildReleaseOptions, ZERO_VERSION } from "../../../../shared/autoupdate";
 import { readLocalUpdateArtifact, readLocalUpdatePackage } from "../../lib/deploy/manifest";
-import { WinButton, WinInfoBar } from "../../vendor/winui";
+import { WinButton, WinInfoBar, WinProgressRing } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -81,7 +81,10 @@ function goBack() {
       <p class="field-help">{{ t("version.sourceRepoHelp") }}</p>
     </div>
 
-    <p v-if="loading">{{ t("common.loading") }}</p>
+    <div v-if="loading" class="version-loading">
+      <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
+      <span>{{ t("common.loading") }}</span>
+    </div>
     <WinInfoBar v-else-if="errorMessage" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">{{ errorMessage }}</WinInfoBar>
     <WinInfoBar v-else-if="wizard.releases.length === 0" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">{{ t("version.noneEligible") }}</WinInfoBar>
 
@@ -124,3 +127,13 @@ function goBack() {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.version-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  margin-bottom: 1em;
+}
+</style>
