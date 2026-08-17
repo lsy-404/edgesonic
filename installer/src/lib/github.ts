@@ -30,18 +30,20 @@ async function githubJson<T>(url: string): Promise<T> {
 // when they are served from this repository's own release downloads, so a
 // deploy could never have come from anywhere else anyway.
 export async function fetchReleases(): Promise<GithubRelease[]> {
-  const releases = await githubJson<GithubRelease[]>(`${GITHUB_API}/releases?per_page=50`);
-  if (releases.length > 0) return releases;
-  // The list endpoint answers 200 with an empty array during GitHub API
-  // incidents while single-release lookups keep working, which strands the
-  // wizard on "no deployable package". Fall back to the latest release so a
-  // deploy is still possible; a repository that genuinely has no releases
-  // 404s here and the caller sees the same empty list either way.
+  // The list endpoint is the flakier of the two: GitHub API incidents have had
+  // it answer 200 with an empty array, and later serve an HTML error page the
+  // browser rejects outright, while single-release lookups kept working. Treat
+  // an empty list and a failed request the same way and fall back to the
+  // latest release so a deploy is still possible.
   try {
-    return [await githubJson<GithubRelease>(`${GITHUB_API}/releases/latest`)];
+    const releases = await githubJson<GithubRelease[]>(`${GITHUB_API}/releases?per_page=50`);
+    if (releases.length > 0) return releases;
   } catch {
-    return [];
+    // Fall through to the single-release lookup below.
   }
+  // A repository that genuinely has no releases 404s here, so the caller ends
+  // up with the same empty list either way.
+  return [await githubJson<GithubRelease>(`${GITHUB_API}/releases/latest`)];
 }
 
 export async function fetchSchemaSql(tag: string): Promise<string> {
