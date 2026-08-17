@@ -119,8 +119,14 @@ export const useWizard = defineStore("wizard", () => {
     if (entry) {
       entry.status = status;
       entry.detail = detail;
+      if (status !== "running") entry.progress = undefined;
     }
     if (status === "failed") deployFailed.value = true;
+  }
+
+  function setStepProgress(deployStep: DeployStep, fraction: number) {
+    const entry = stepStates.value.find((s) => s.step === deployStep);
+    if (entry) entry.progress = Math.min(1, Math.max(0, fraction));
   }
 
   function resetExecution() {
@@ -169,6 +175,7 @@ export const useWizard = defineStore("wizard", () => {
     result,
     deployFailed,
     setStepStatus,
+    setStepProgress,
     resetExecution,
     finishSuccess,
     finishFailure,

@@ -66,6 +66,7 @@ export async function uploadAssets(
   script: string,
   files: Map<string, Uint8Array>,
   manifest: AssetManifest,
+  onProgress?: (loaded: number, total: number) => void,
 ): Promise<string> {
   const hashes = new Map<string, { path: string; entry: AssetEntry }>();
   let totalBytes = 0;
@@ -88,6 +89,12 @@ export async function uploadAssets(
   );
   let completionJwt = session.jwt || "";
   const buckets = (session.buckets || []).filter((bucket) => Array.isArray(bucket) && bucket.length > 0);
+  // Cloudflare only asks for hashes it doesn't already store, so progress is
+  // measured against what it actually requested rather than the whole manifest.
+  const bucketBytes = buckets.map((bucket) => bucket.reduce((sum, hash) => sum + (hashes.get(hash)?.entry.size || 0), 0));
+  const requestedBytes = bucketBytes.reduce((sum, size) => sum + size, 0);
+  let uploadedBytes = 0;
+  onProgress?.(0, requestedBytes);
   for (let index = 0; index < buckets.length; index++) {
     const bucket = buckets[index];
     if (!Array.isArray(bucket) || bucket.length === 0) continue;
@@ -107,6 +114,8 @@ export async function uploadAssets(
       "Workers Scripts Edit",
     );
     if (result.jwt) completionJwt = result.jwt;
+    uploadedBytes += bucketBytes[index];
+    onProgress?.(uploadedBytes, requestedBytes);
   }
   if (!completionJwt) throw new Error("Cloudflare did not return a completed asset upload token");
   return completionJwt;

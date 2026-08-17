@@ -81,4 +81,6 @@ export interface StepState {
   step: DeployStep;
   status: StepStatus;
   detail?: string;
+  /** 0–1, only set by steps that move a known number of bytes. */
+  progress?: number;
 }

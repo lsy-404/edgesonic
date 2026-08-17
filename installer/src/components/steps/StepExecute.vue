@@ -50,9 +50,13 @@ async function start() {
   };
 
   try {
-    const result = await runDeploy(wizard.credentials, target, release, (step, status, detail) => {
-      wizard.setStepStatus(step, status, detail);
-    });
+    const result = await runDeploy(
+      wizard.credentials,
+      target,
+      release,
+      (step, status, detail) => wizard.setStepStatus(step, status, detail),
+      (step, fraction) => wizard.setStepProgress(step, fraction),
+    );
     wizard.finishSuccess(result);
     await delay(1200);
     wizard.step = 8;
@@ -95,9 +99,18 @@ function retry() {
           {{ t(`execute.steps.${entry.step}`) }}
         </dt>
         <dd>
-          {{ t(`execute.status.${entry.status}`) }}
+          <template v-if="entry.status === 'running' && entry.progress !== undefined">
+            {{ Math.round(entry.progress * 100) }}%
+          </template>
+          <template v-else>{{ t(`execute.status.${entry.status}`) }}</template>
           <p v-if="entry.detail" class="field-help" style="margin: 4px 0 0">{{ entry.detail }}</p>
-          <WinProgressBar v-if="entry.status === 'running'" :IsIndeterminate="true" style="margin-top: 6px" />
+          <!-- Only steps that transfer a known number of bytes get a bar; the
+               rest are quick enough that the spinner alone reads better. -->
+          <WinProgressBar
+            v-if="entry.status === 'running' && entry.progress !== undefined"
+            :Value="entry.progress * 100"
+            style="margin-top: 6px"
+          />
         </dd>
       </li>
     </ul>

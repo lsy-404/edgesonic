@@ -50,7 +50,9 @@ export interface LocalUpdatePackage {
   archive: Uint8Array;
 }
 
-async function downloadBytes(url: string, maxBytes: number, label: string): Promise<Uint8Array> {
+export type ByteProgress = (loaded: number, total: number) => void;
+
+async function downloadBytes(url: string, maxBytes: number, label: string, onProgress?: ByteProgress): Promise<Uint8Array> {
   let response: Response;
   try {
     response = await fetchGithubReleaseAsset(url);
@@ -60,6 +62,30 @@ async function downloadBytes(url: string, maxBytes: number, label: string): Prom
   if (!response.ok) throw new Error(`${label} download failed (HTTP ${response.status})`);
   const length = Number(response.headers.get("content-length") || "0");
   if (length > maxBytes) throw new Error(`${label} is too large`);
+  // Read the body in chunks so a slow download can report real progress
+  // instead of sitting on an indeterminate spinner. Without a content-length
+  // there is nothing to divide by, so fall back to the buffered read.
+  if (onProgress && length > 0 && response.body) {
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let loaded = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      loaded += value.byteLength;
+      if (loaded > maxBytes) throw new Error(`${label} is too large`);
+      chunks.push(value);
+      onProgress(loaded, length);
+    }
+    const bytes = new Uint8Array(loaded);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return bytes;
+  }
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength > maxBytes) throw new Error(`${label} is too large`);
   return bytes;
@@ -94,14 +120,15 @@ async function validateManifestAndArtifact(manifestBytes: Uint8Array, archive: U
   return { manifest, archive };
 }
 
-export async function fetchManifestAndArtifact(release: GithubRelease): Promise<{ manifest: UpdateManifest; archive: Uint8Array }> {
+export async function fetchManifestAndArtifact(release: GithubRelease, onProgress?: ByteProgress): Promise<{ manifest: UpdateManifest; archive: Uint8Array }> {
   const manifestAsset = assetOf(release, UPDATE_MANIFEST_NAME);
   const artifactAsset = assetOf(release, UPDATE_ARTIFACT_NAME);
   if (!manifestAsset || !artifactAsset) {
     throw new DeployError("download", "Selected release has no browser-deployable update package");
   }
+  // Only the artifact is worth tracking — the manifest beside it is under a kilobyte.
   const manifestBytes = await downloadBytes(manifestAsset.browser_download_url as string, MAX_MANIFEST_BYTES, "Update manifest");
-  const archive = await downloadBytes(artifactAsset.browser_download_url as string, MAX_ARTIFACT_BYTES, "Update artifact");
+  const archive = await downloadBytes(artifactAsset.browser_download_url as string, MAX_ARTIFACT_BYTES, "Update artifact", onProgress);
   return validateManifestAndArtifact(manifestBytes, archive, release.tag_name);
 }
 

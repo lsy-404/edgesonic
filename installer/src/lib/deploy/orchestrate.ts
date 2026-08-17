@@ -34,6 +34,9 @@ import { DeployError, type DeployCredentials, type DeployResult, type DeployStep
 
 export type StepReporter = (step: DeployStep, status: StepStatus, detail?: string) => void;
 
+/** Only the steps that move a known number of bytes report a fraction. */
+export type ProgressReporter = (step: DeployStep, fraction: number) => void;
+
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -79,7 +82,13 @@ async function verifyDeploymentAccess(creds: DeployCredentials): Promise<string>
   return `Verified: ${permissionSummary.join(", ")}`;
 }
 
-export async function runDeploy(creds: DeployCredentials, target: DeployTarget, release: GithubRelease | LocalUpdatePackage, report: StepReporter): Promise<DeployResult> {
+export async function runDeploy(
+  creds: DeployCredentials,
+  target: DeployTarget,
+  release: GithubRelease | LocalUpdatePackage,
+  report: StepReporter,
+  reportProgress: ProgressReporter = () => {},
+): Promise<DeployResult> {
   const { accountId, apiToken } = creds;
   const script = target.workerName;
   const tag = "kind" in release ? release.manifest.tag : release.tag_name || target.releaseTag;
@@ -115,7 +124,10 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
   });
 
   const { manifest, files, workerBytes, assetsManifest, assetHeaders } = await guarded("download", report, async () => {
-    const { manifest, archive } = "kind" in release ? release : await fetchManifestAndArtifact(release);
+    const { manifest, archive } =
+      "kind" in release
+        ? release
+        : await fetchManifestAndArtifact(release, (loaded, total) => reportProgress("download", total ? loaded / total : 0));
     const files = await unpackArtifact(archive);
     const workerBytes = files.get(manifest.workerModule);
     if (!workerBytes) throw new DeployError("download", "Update artifact has no Worker module");
@@ -153,7 +165,9 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
     report("rebuild", "success", "Full rebuild not requested");
   }
 
-  const assetJwt = await guarded("assets", report, () => uploadAssets(apiToken, accountId, script, files, assetsManifest));
+  const assetJwt = await guarded("assets", report, () =>
+    uploadAssets(apiToken, accountId, script, files, assetsManifest, (loaded, total) => reportProgress("assets", total ? loaded / total : 1)),
+  );
 
   const versionId = await guarded("worker", report, () =>
     uploadWorkerVersion({
