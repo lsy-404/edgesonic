@@ -212,7 +212,7 @@
   },
   "version": {
     "title": "选择版本",
-    "subtitle": "实时从 GitHub 拉取——只显示带有可直接部署更新包的发布版本。",
+    "subtitle": "只显示带有可直接部署更新包的发布版本。",
     "sourceRepo": "源仓库",
     "sourceRepoHelp": "仅在你要部署自己 fork 仓库发布的版本时才需要修改。",
     "localPackage": "自定义安装包",
@@ -222,7 +222,6 @@
     "noneEligible": "此仓库没有找到带可部署更新包的发布版本。",
     "prerelease": "预发布",
     "recommended": "推荐",
-    "freeNotice": "EdgeSonic 完全开源免费，本安装向导从未、也不会以任何形式收费。",
     "localPackageSelected": "将部署自定义安装包 {name}。"
   },
   "license": {

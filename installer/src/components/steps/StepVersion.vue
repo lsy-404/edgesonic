@@ -75,7 +75,6 @@ function goBack() {
   <div>
     <h1 class="step-title">{{ t("version.title") }}</h1>
     <p class="step-subtitle">{{ t("version.subtitle") }}</p>
-    <p class="field-help">{{ t("version.freeNotice") }}</p>
 
     <div class="field">
       <label for="sourceRepo">{{ t("version.sourceRepo") }}</label>

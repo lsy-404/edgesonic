@@ -212,7 +212,7 @@
   },
   "version": {
     "title": "Choose a release",
-    "subtitle": "Pulled live from GitHub — only releases with a ready-to-deploy update package are shown.",
+    "subtitle": "Only releases that ship a ready-to-deploy update package are listed.",
     "sourceRepo": "Source repository",
     "sourceRepoHelp": "Only change this if you're deploying from your own fork's releases.",
     "localPackage": "Custom installation package",
@@ -222,7 +222,6 @@
     "noneEligible": "No releases with a deployable update package were found for this repository.",
     "prerelease": "Prerelease",
     "recommended": "Recommended",
-    "freeNotice": "EdgeSonic is entirely free and open source. This installer has never charged for it, and never will.",
     "localPackageSelected": "Deploying custom package {name}."
   },
   "license": {
