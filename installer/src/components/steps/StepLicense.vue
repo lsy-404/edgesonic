@@ -5,14 +5,13 @@ import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { GITHUB_REPO } from "../../../../shared/autoupdate";
 import officialLicense from "../../../../LICENSE?raw";
-import { WinButton, WinInfoBar } from "../../vendor/winui";
+import { WinButton } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
 
 // Releases only ever come from the official repository, so the bundled text is
-// the licence of the code being deployed. A custom package is the one case the
-// installer can't vouch for.
+// always the licence of the code being deployed.
 const licenseUrl = computed(() => `https://github.com/${GITHUB_REPO}/blob/${wizard.selectedTag || "main"}/LICENSE`);
 
 function goNext() {
@@ -27,11 +26,6 @@ function goBack() {
   <div class="step-license-fill">
     <h1 class="step-title">{{ t("license.title") }}</h1>
     <p class="step-subtitle">{{ t("license.subtitle") }}</p>
-
-    <WinInfoBar v-if="wizard.localPackage" Severity="Warning" :IsOpen="true" :IsClosable="false" :IsIconVisible="false">
-      <strong>{{ t("license.sourceThirdPartyTitle") }}</strong>
-      <p>{{ t("license.sourceLocalBody") }}</p>
-    </WinInfoBar>
 
     <div class="license-pane" role="region" :aria-label="t('license.title')" tabindex="0">
       <pre>{{ officialLicense }}</pre>

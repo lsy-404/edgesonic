@@ -5,7 +5,6 @@ import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { fetchReleases } from "../../lib/github";
 import { buildReleaseOptions, ZERO_VERSION } from "../../../../shared/autoupdate";
-import { readLocalUpdateArtifact } from "../../lib/deploy/manifest";
 import { WinButton, WinInfoBar, WinProgressRing } from "../../vendor/winui";
 
 const { t } = useI18n();
@@ -13,7 +12,6 @@ const wizard = useWizard();
 
 const loading = ref(false);
 const errorMessage = ref("");
-const localError = ref("");
 
 async function load() {
   loading.value = true;
@@ -23,8 +21,7 @@ async function load() {
     wizard.rawReleases = releases;
     const listing = buildReleaseOptions(releases, ZERO_VERSION);
     wizard.releases = listing.releases.filter((r) => r.hasArtifact).slice(0, 5);
-    // Pointing at another repository invalidates whatever tag was picked from the previous one.
-    if (!wizard.localPackage && !wizard.releases.some((r) => r.tag === wizard.selectedTag)) {
+    if (!wizard.releases.some((r) => r.tag === wizard.selectedTag)) {
       wizard.selectedTag = listing.defaultTag || "";
     }
   } catch (e) {
@@ -36,19 +33,7 @@ async function load() {
 
 onMounted(load);
 
-const canContinue = computed(() => wizard.selectedTag.length > 0 && (!!wizard.localPackage || !!wizard.selectedRelease()));
-
-async function selectLocalPackage(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file) return;
-  localError.value = "";
-  try {
-    wizard.selectLocalPackage(await readLocalUpdateArtifact(file));
-  } catch (error) {
-    wizard.selectLocalPackage(null);
-    localError.value = error instanceof Error ? error.message : String(error);
-  }
-}
+const canContinue = computed(() => wizard.selectedTag.length > 0 && !!wizard.selectedRelease());
 
 function formatDate(value: string | null): string {
   if (!value) return "";
@@ -63,7 +48,6 @@ function goNext() {
   wizard.step = 5;
 }
 function selectRelease(tag: string) {
-  wizard.selectLocalPackage(null);
   wizard.selectedTag = tag;
 }
 function goBack() {
@@ -100,17 +84,6 @@ function goBack() {
         <p>{{ release.tag }} · {{ formatDate(release.publishedAt) }}</p>
       </button>
     </template>
-
-    <div class="field" style="margin-top: 24px">
-      <label for="localPackage">{{ t("version.localPackage") }}</label>
-      <input id="localPackage" type="file" accept=".tar.gz,.tgz" @change="selectLocalPackage" />
-      <p class="field-help">{{ t("version.localPackageHelp") }}</p>
-      <WinInfoBar :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">{{ t("version.localPackageWarning") }}</WinInfoBar>
-      <WinInfoBar v-if="wizard.localPackage" :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false">
-        {{ t("version.localPackageSelected", { name: wizard.localPackage.fileName }) }}
-      </WinInfoBar>
-      <WinInfoBar v-if="localError" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">{{ localError }}</WinInfoBar>
-    </div>
 
     <WinButton style="margin-top: 8px" :IsEnabled="!loading" @Click="load">{{ t("version.reload") }}</WinButton>
 

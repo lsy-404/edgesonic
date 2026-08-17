@@ -19,7 +19,6 @@ import { getOrCreateDatabase, runQuery } from "./d1";
 import { getOrCreateBucket, listBucketNames } from "./r2";
 import { callCfJson, verifyR2Keys } from "../relay";
 import { fetchManifestAndArtifact } from "./manifest";
-import type { LocalUpdatePackage } from "./manifest";
 import { hasTokenPermission, readTokenPermissionGroups } from "../cf/tokenPolicies";
 import { unpackArtifact, textFile } from "./tar";
 import { uploadAssets, type AssetManifest } from "./assets";
@@ -85,13 +84,13 @@ async function verifyDeploymentAccess(creds: DeployCredentials): Promise<string>
 export async function runDeploy(
   creds: DeployCredentials,
   target: DeployTarget,
-  release: GithubRelease | LocalUpdatePackage,
+  release: GithubRelease,
   report: StepReporter,
   reportProgress: ProgressReporter = () => {},
 ): Promise<DeployResult> {
   const { accountId, apiToken } = creds;
   const script = target.workerName;
-  const tag = "kind" in release ? release.manifest.tag : release.tag_name || target.releaseTag;
+  const tag = release.tag_name || target.releaseTag;
 
   report("preflight", "running");
   try {
@@ -124,10 +123,9 @@ export async function runDeploy(
   });
 
   const { manifest, files, workerBytes, assetsManifest, assetHeaders } = await guarded("download", report, async () => {
-    const { manifest, archive } =
-      "kind" in release
-        ? release
-        : await fetchManifestAndArtifact(release, (loaded, total) => reportProgress("download", total ? loaded / total : 0));
+    const { manifest, archive } = await fetchManifestAndArtifact(release, (loaded, total) =>
+      reportProgress("download", total ? loaded / total : 0),
+    );
     const files = await unpackArtifact(archive);
     const workerBytes = files.get(manifest.workerModule);
     if (!workerBytes) throw new DeployError("download", "Update artifact has no Worker module");

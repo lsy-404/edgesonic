@@ -25,7 +25,6 @@ import {
 import { sha256Hex } from "./crypto";
 import { DeployError } from "./types";
 import { fetchGithubReleaseAsset } from "../relay";
-import { unpackArtifact } from "./tar";
 
 const MAX_ARTIFACT_BYTES = 24 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 256 * 1024;
@@ -41,13 +40,6 @@ export interface UpdateManifest {
   assetsManifest: string;
   compatibilityDate?: string;
   compatibilityFlags?: string[];
-}
-
-export interface LocalUpdatePackage {
-  kind: "local";
-  fileName: string;
-  manifest: UpdateManifest;
-  archive: Uint8Array;
 }
 
 export type ByteProgress = (loaded: number, total: number) => void;
@@ -130,37 +122,4 @@ export async function fetchManifestAndArtifact(release: GithubRelease, onProgres
   const manifestBytes = await downloadBytes(manifestAsset.browser_download_url as string, MAX_MANIFEST_BYTES, "Update manifest");
   const archive = await downloadBytes(artifactAsset.browser_download_url as string, MAX_ARTIFACT_BYTES, "Update artifact", onProgress);
   return validateManifestAndArtifact(manifestBytes, archive, release.tag_name);
-}
-
-// A bare update artifact (no manifest wrapper, no signed checksum) — for a
-// tar.gz built locally rather than pulled from a signed release. There's
-// nothing external to validate the checksum against, so this only confirms
-// the archive actually contains what the deploy pipeline expects to find.
-export async function readLocalUpdateArtifact(file: File): Promise<LocalUpdatePackage> {
-  const lower = file.name.toLowerCase();
-  if (!lower.endsWith(".tar.gz") && !lower.endsWith(".tgz")) {
-    throw new DeployError("download", "Choose a .tar.gz update artifact");
-  }
-  if (file.size > MAX_ARTIFACT_BYTES) throw new DeployError("download", "Local artifact is too large");
-  const archive = new Uint8Array(await file.arrayBuffer());
-  let files: Map<string, Uint8Array>;
-  try {
-    files = await unpackArtifact(archive);
-  } catch {
-    throw new DeployError("download", "Local artifact is not a valid tar.gz update package");
-  }
-  if (!files.has("worker.js") || !files.has("assets-manifest.json")) {
-    throw new DeployError("download", "Local artifact is missing worker.js or assets-manifest.json");
-  }
-  const manifest: UpdateManifest = {
-    schema: 1,
-    tag: "local",
-    version: "0.0.0-local",
-    buildTime: new Date().toISOString(),
-    artifact: UPDATE_ARTIFACT_NAME,
-    artifactSha256: await sha256Hex(archive),
-    workerModule: "worker.js",
-    assetsManifest: "assets-manifest.json",
-  };
-  return { kind: "local", fileName: file.name, manifest, archive };
 }

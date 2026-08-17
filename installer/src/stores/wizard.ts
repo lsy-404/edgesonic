@@ -17,7 +17,6 @@ import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import type { GithubRelease, ReleaseOption } from "../../../shared/autoupdate";
 import { DEPLOY_STEPS, type ContainerMode, type DeployCredentials, type DeployResult, type DeployStep, type StepState, type StepStatus } from "../lib/deploy/types";
-import type { LocalUpdatePackage } from "../lib/deploy/manifest";
 
 const CREDS_KEY = "edgesonic_installer_creds";
 
@@ -98,15 +97,9 @@ export const useWizard = defineStore("wizard", () => {
   const releases = ref<ReleaseOption[]>([]);
   const rawReleases = ref<GithubRelease[]>([]);
   const selectedTag = ref("");
-  const localPackage = ref<LocalUpdatePackage | null>(null);
 
   function selectedRelease(): GithubRelease | null {
     return rawReleases.value.find((r) => r.tag_name === selectedTag.value) || null;
-  }
-
-  function selectLocalPackage(pkg: LocalUpdatePackage | null) {
-    localPackage.value = pkg;
-    if (pkg) selectedTag.value = pkg.manifest.tag;
   }
 
   // Execute step
@@ -168,9 +161,7 @@ export const useWizard = defineStore("wizard", () => {
     releases,
     rawReleases,
     selectedTag,
-    localPackage,
     selectedRelease,
-    selectLocalPackage,
     stepStates,
     result,
     deployFailed,

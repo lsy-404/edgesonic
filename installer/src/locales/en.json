@@ -209,20 +209,14 @@
   "version": {
     "title": "Choose a release",
     "subtitle": "Only releases that ship a ready-to-deploy update package are listed.",
-    "localPackage": "Custom installation package",
-    "localPackageHelp": "A .tar.gz deploy artifact containing worker.js and assets-manifest.json.",
-    "localPackageWarning": "A custom package can't be checked against any release, and the installer cannot confirm that its contents are safe. Only use a file you built yourself or fully trust.",
     "reload": "Reload releases",
     "noneEligible": "No releases with a deployable update package were found for this repository.",
     "prerelease": "Prerelease",
-    "recommended": "Recommended",
-    "localPackageSelected": "Deploying custom package {name}."
+    "recommended": "Recommended"
   },
   "license": {
     "title": "Licence",
     "subtitle": "EdgeSonic is licensed under the GNU Affero General Public License v3.0. The full text of the licence covering the release you selected is below.",
-    "sourceThirdPartyTitle": "Third-party source",
-    "sourceLocalBody": "A local package's source and licence compliance can't be verified automatically — only use one from a source you trust.",
     "viewOnGithub": "View LICENSE on GitHub"
   },
   "review": {

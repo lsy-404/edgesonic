@@ -209,20 +209,14 @@
   "version": {
     "title": "选择版本",
     "subtitle": "只显示带有可直接部署更新包的发布版本。",
-    "localPackage": "自定义安装包",
-    "localPackageHelp": "包含 worker.js 和 assets-manifest.json 的 .tar.gz 部署包。",
-    "localPackageWarning": "自定义安装包无法与任何发布版本核对，安装器也无法确认其内容是否安全。请仅使用你自己构建或完全信任的文件。",
     "reload": "重新加载版本列表",
     "noneEligible": "此仓库没有找到带可部署更新包的发布版本。",
     "prerelease": "预发布",
-    "recommended": "推荐",
-    "localPackageSelected": "将部署自定义安装包 {name}。"
+    "recommended": "推荐"
   },
   "license": {
     "title": "开源许可证",
     "subtitle": "EdgeSonic 采用 GNU Affero General Public License v3.0 开源。以下是你所选版本对应的许可证全文。",
-    "sourceThirdPartyTitle": "第三方来源",
-    "sourceLocalBody": "本地包无法自动核实来源与开源协议合规性，请仅在信任该来源时使用。",
     "viewOnGithub": "在 GitHub 查看 LICENSE"
   },
   "review": {
