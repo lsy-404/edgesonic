@@ -157,6 +157,9 @@ async function verify() {
     return;
   }
 
+  // A token that can read its own policies states every permission it holds,
+  // which settles the whole table in one call.
+  let policiesRead = false;
   try {
     setCheck("apiTokens", "checking");
     const groups = await readTokenPermissionGroups(apiToken, accountId, tokenId);
@@ -164,6 +167,8 @@ async function verify() {
     for (const key of Object.keys(TOKEN_PERMISSION_GROUPS) as Array<keyof typeof TOKEN_PERMISSION_GROUPS>) {
       setCheck(key, hasTokenPermission(groups, key) ? "ok" : "missing");
     }
+    policiesRead = true;
+    wizard.r2Enabled = hasTokenPermission(groups, "r2");
   } catch (e) {
     if (isStale()) return;
     const context = describeCfError(e, "Account API Tokens Read").message;
@@ -172,54 +177,62 @@ async function verify() {
 
   wizard.accountName = accountId;
 
-  setCheck("scripts", "checking");
-  try {
-    await callCfJson(apiToken, `/accounts/${accountId}/workers/scripts`, undefined, "Workers Scripts Write");
-    if (isStale()) return;
-    setCheck("scripts", "ok");
-  } catch (e) {
-    if (isStale()) return;
-    setCheck("scripts", "missing", describeCfError(e, "Workers Scripts Write").message);
+  // Fallback only: probing each API costs a request per permission and is the
+  // only way left to tell what a token holds once its policies are unreadable.
+  if (!policiesRead) {
+    setCheck("scripts", "checking");
+    try {
+      await callCfJson(apiToken, `/accounts/${accountId}/workers/scripts`, undefined, "Workers Scripts Write");
+      if (isStale()) return;
+      setCheck("scripts", "ok");
+    } catch (e) {
+      if (isStale()) return;
+      setCheck("scripts", "missing", describeCfError(e, "Workers Scripts Write").message);
+    }
+
+    setCheck("d1", "checking");
+    try {
+      await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Write");
+      if (isStale()) return;
+      setCheck("d1", "ok");
+    } catch (e) {
+      if (isStale()) return;
+      setCheck("d1", "missing", describeCfError(e, "D1 Write").message);
+    }
+
+    setCheck("r2", "checking");
+    try {
+      await listBucketNames(apiToken, accountId);
+      if (isStale()) return;
+      setCheck("r2", "ok");
+      wizard.r2Enabled = true;
+    } catch (e) {
+      if (isStale()) return;
+      const described = describeCfError(e, "Workers R2 Storage Edit");
+      setCheck("r2", described.r2NotSubscribed ? "missing" : "error", described.r2NotSubscribed ? t("credentials.r2NotEnabled") : described.message);
+      wizard.r2Enabled = false;
+    }
   }
 
-  setCheck("d1", "checking");
-  try {
-    await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Write");
-    if (isStale()) return;
-    setCheck("d1", "ok");
-  } catch (e) {
-    if (isStale()) return;
-    setCheck("d1", "missing", describeCfError(e, "D1 Write").message);
-  }
-
-  setCheck("r2", "checking");
-  try {
-    await listBucketNames(apiToken, accountId);
-    if (isStale()) return;
-    setCheck("r2", "ok");
-    wizard.r2Enabled = true;
+  // The R2 access keys are S3 credentials of their own, so neither the token's
+  // policies nor any probe above says anything about them.
+  if (wizard.r2Enabled === true) {
     const { r2AccessKeyId, r2SecretAccessKey } = wizard.credentials;
     if (r2AccessKeyId && r2SecretAccessKey) {
       setCheck("r2Keys", "checking");
-      const r2Keys = await verifyR2Keys({ accountId, accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey });
-      if (isStale()) return;
-      if (r2Keys.ok) setCheck("r2Keys", "ok");
-      else setCheck("r2Keys", "missing", t("credentials.r2KeyInvalid"));
+      try {
+        const r2Keys = await verifyR2Keys({ accountId, accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey });
+        if (isStale()) return;
+        setCheck("r2Keys", r2Keys.ok ? "ok" : "missing", r2Keys.ok ? "" : t("credentials.r2KeyInvalid"));
+      } catch {
+        if (isStale()) return;
+        setCheck("r2Keys", "error", t("credentials.r2KeyInvalid"));
+      }
     } else {
       setCheck("r2Keys", "pending", t("credentials.r2KeysOptionalSkipped"));
     }
-  } catch (e) {
-    if (isStale()) return;
-    const described = describeCfError(e, "Workers R2 Storage Edit");
-    if (described.r2NotSubscribed) {
-      setCheck("r2", "missing", t("credentials.r2NotEnabled"));
-      wizard.r2Enabled = false;
-      setCheck("r2Keys", "pending");
-    } else {
-      setCheck("r2", "error", described.message);
-      wizard.r2Enabled = false;
-      setCheck("r2Keys", "pending");
-    }
+  } else {
+    setCheck("r2Keys", "pending");
   }
 
   if (!isStale()) {
