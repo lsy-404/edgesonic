@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { WinButton, WinInfoBar } from "../../vendor/winui";
@@ -9,6 +9,10 @@ const { t } = useI18n();
 const wizard = useWizard();
 
 const copiedField = ref("");
+
+const instanceUrl = computed(
+  () => wizard.result?.url || `https://dash.cloudflare.com/${wizard.result?.accountId}/workers/services/view/${wizard.workerName}/production`,
+);
 
 async function copy(text: string, field: string) {
   try {
@@ -23,6 +27,27 @@ async function copy(text: string, field: string) {
   }
 }
 
+function openInstance() {
+  window.open(instanceUrl.value, "_blank", "noreferrer");
+}
+
+function downloadInfo() {
+  const lines = [
+    `${t("done.urlLabel")}: ${instanceUrl.value}`,
+    `${t("done.adminUsername")}: ${wizard.result?.adminUsername || ""}`,
+    `${t("done.adminPassword")}: ${wizard.result?.adminPassword || ""}`,
+  ];
+  const blob = new Blob([lines.join("\n") + "\n"], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `edgesonic-${wizard.workerName || "instance"}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function startOver() {
   location.reload();
 }
@@ -32,44 +57,33 @@ function startOver() {
   <div>
     <h1 class="step-title">{{ t("done.title") }}</h1>
 
-    <div class="kv-list">
-      <div class="kv-row">
-        <dt>{{ t("done.urlLabel") }}</dt>
-        <dd>
-          <a v-if="wizard.result?.url" :href="wizard.result.url" target="_blank" rel="noreferrer">{{ wizard.result.url }}</a>
-          <a v-else :href="`https://dash.cloudflare.com/${wizard.result?.accountId}/workers/services/view/${wizard.workerName}/production`" target="_blank" rel="noreferrer">
-            dash.cloudflare.com → {{ wizard.workerName }} → production
-          </a>
-        </dd>
-      </div>
-    </div>
+    <p class="field-help">{{ t("done.urlLabel") }}</p>
+    <p style="margin: 4px 0 16px; word-break: break-all">{{ instanceUrl }}</p>
+    <WinButton Style="AccentButtonStyle" style="width: 100%" @Click="openInstance">
+      {{ t("done.openLink") }} ↗
+    </WinButton>
 
-    <WinInfoBar v-if="wizard.result?.adminPassword" :IsOpen="true" Severity="Success" :IsClosable="false" :IsIconVisible="false">
+    <WinInfoBar v-if="wizard.result?.adminPassword" :IsOpen="true" Severity="Success" :IsClosable="false" :IsIconVisible="false" style="margin-top: 20px">
       <strong>{{ t("done.adminTitle") }}</strong>
-      <div class="kv-list" style="margin-top: 10px; background: transparent">
-        <div class="kv-row">
-          <dt>{{ t("done.adminUsername") }}</dt>
-          <dd>
-            {{ wizard.result?.adminUsername }}
-            <WinButton style="padding: 2px 10px; font-size: 0.75rem" @Click="copy(wizard.result?.adminUsername || '', 'user')">
-              {{ copiedField === "user" ? t("common.copied") : t("common.copy") }}
-            </WinButton>
-          </dd>
-        </div>
-        <div class="kv-row">
-          <dt>{{ t("done.adminPassword") }}</dt>
-          <dd>
-            <code>{{ wizard.result?.adminPassword }}</code>
-            <WinButton style="padding: 2px 10px; font-size: 0.75rem" @Click="copy(wizard.result?.adminPassword || '', 'pass')">
-              {{ copiedField === "pass" ? t("common.copied") : t("common.copy") }}
-            </WinButton>
-          </dd>
-        </div>
+      <div class="credential-row">
+        <span class="credential-label">{{ t("done.adminUsername") }}</span>
+        <span class="credential-value">{{ wizard.result?.adminUsername }}</span>
+        <WinButton style="padding: 2px 10px; font-size: 0.75rem" @Click="copy(wizard.result?.adminUsername || '', 'user')">
+          {{ copiedField === "user" ? t("common.copied") : t("common.copy") }}
+        </WinButton>
+      </div>
+      <div class="credential-row">
+        <span class="credential-label">{{ t("done.adminPassword") }}</span>
+        <code class="credential-value">{{ wizard.result?.adminPassword }}</code>
+        <WinButton style="padding: 2px 10px; font-size: 0.75rem" @Click="copy(wizard.result?.adminPassword || '', 'pass')">
+          {{ copiedField === "pass" ? t("common.copied") : t("common.copy") }}
+        </WinButton>
       </div>
       <p style="margin: 10px 0 0">{{ t("done.saveWarning") }}</p>
+      <WinButton style="margin-top: 10px" @Click="downloadInfo">{{ t("done.downloadInfo") }}</WinButton>
     </WinInfoBar>
 
-    <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false">
+    <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false" style="margin-top: 16px">
       <strong>{{ t("done.nextStepsTitle") }}</strong>
       <p style="margin: 6px 0 0">{{ t("done.nextStepsDesc") }}</p>
       <a :href="`https://github.com/${wizard.sourceRepo}/blob/${wizard.selectedTag}/worker/SECRETS.md`" target="_blank" rel="noreferrer">{{ t("done.secretsLink") }}</a>

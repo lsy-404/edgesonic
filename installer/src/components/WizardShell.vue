@@ -108,7 +108,7 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--brand-accent-soft), var(--accent-base));
+  background: var(--accent-base);
   transition: width var(--normal-duration, 0.2s) var(--fast-out-slow-in, ease);
 }
 

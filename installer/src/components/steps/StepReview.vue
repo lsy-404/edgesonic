@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
+import { onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { DEFAULT_ADMIN_USERNAME } from "../../lib/deploy/admin";
@@ -7,6 +8,18 @@ import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
+
+const CONFIRM_LOCK_SECONDS = 3;
+const lockSecondsLeft = ref(CONFIRM_LOCK_SECONDS);
+let lockTimer: ReturnType<typeof setInterval> | undefined;
+
+onMounted(() => {
+  lockTimer = setInterval(() => {
+    lockSecondsLeft.value -= 1;
+    if (lockSecondsLeft.value <= 0) clearInterval(lockTimer);
+  }, 1000);
+});
+onUnmounted(() => clearInterval(lockTimer));
 
 function goNext() {
   wizard.resetExecution();
@@ -77,7 +90,9 @@ function goBack() {
     <div class="step-actions">
       <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
       <div class="spacer" />
-      <WinButton Style="AccentButtonStyle" @Click="goNext">{{ t("review.confirm") }}</WinButton>
+      <WinButton Style="AccentButtonStyle" :IsEnabled="lockSecondsLeft <= 0" @Click="goNext">
+        {{ lockSecondsLeft > 0 ? t("review.confirmWait", { seconds: lockSecondsLeft }) : t("review.confirm") }}
+      </WinButton>
     </div>
   </div>
 </template>

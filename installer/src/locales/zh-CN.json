@@ -232,8 +232,7 @@
     "sourceUnclear": "已读取到该来源的 LICENSE 文件，但未在其中发现 AGPL 声明，请谨慎使用并自行核实其开源协议。",
     "sourceUnavailable": "未能读取到该来源的 LICENSE 文件，请自行前往仓库核实其开源协议。",
     "showingOfficialFallback": "以下正文是官方项目的许可证，并非该来源自身的许可证——它未能被读取。",
-    "viewOnGithub": "在 GitHub 查看 LICENSE",
-    "viewCanonical": "AGPL-3.0 权威原文"
+    "viewOnGithub": "在 GitHub 查看 LICENSE"
   },
   "review": {
     "title": "部署前确认",
@@ -258,7 +257,8 @@
     "adminUsernameLabel": "初始超级管理员用户名",
     "willCreate": "将会创建",
     "willReuse": "将复用已有",
-    "confirm": "立即部署"
+    "confirm": "立即部署",
+    "confirmWait": "立即部署（{seconds}s）"
   },
   "execute": {
     "title": "部署中",
@@ -300,6 +300,7 @@
     "nextStepsTitle": "可选的后续步骤",
     "nextStepsDesc": "LastFM、邮件发送等可选集成本向导不会配置，登录后可在 EdgeSonic 自身的设置页里配置，也可以参考密钥说明文档。",
     "secretsLink": "密钥说明文档",
+    "downloadInfo": "下载实例信息（.txt）",
     "startOver": "再部署一个实例"
   },
   "errors": {

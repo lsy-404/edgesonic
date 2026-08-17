@@ -232,8 +232,7 @@
     "sourceUnclear": "This source's LICENSE file was read but doesn't mention AGPL — use with caution and verify its licence yourself.",
     "sourceUnavailable": "Couldn't read this source's LICENSE file — check the repository yourself to verify its licence.",
     "showingOfficialFallback": "The text below is the official project's licence, not this source's own — it could not be read.",
-    "viewOnGithub": "View LICENSE on GitHub",
-    "viewCanonical": "Authoritative AGPL-3.0 text"
+    "viewOnGithub": "View LICENSE on GitHub"
   },
   "review": {
     "title": "Review before deploying",
@@ -258,7 +257,8 @@
     "adminUsernameLabel": "Initial superadmin username",
     "willCreate": "Will be created",
     "willReuse": "Will reuse existing",
-    "confirm": "Deploy now"
+    "confirm": "Deploy now",
+    "confirmWait": "Deploy now ({seconds}s)"
   },
   "execute": {
     "title": "Deploying",
@@ -300,6 +300,7 @@
     "nextStepsTitle": "Optional next steps",
     "nextStepsDesc": "LastFM, email delivery, and other optional integrations aren't set up by this installer. Configure them from within EdgeSonic's own Settings after you log in, or see the secrets reference.",
     "secretsLink": "Secrets reference",
+    "downloadInfo": "Download instance info (.txt)",
     "startOver": "Deploy another instance"
   },
   "errors": {
