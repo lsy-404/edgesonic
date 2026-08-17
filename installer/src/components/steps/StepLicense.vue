@@ -24,7 +24,7 @@ function goBack() {
 </script>
 
 <template>
-  <div>
+  <div class="step-license-fill">
     <h1 class="step-title">{{ t("license.title") }}</h1>
     <p class="step-subtitle">{{ t("license.subtitle") }}</p>
 
@@ -37,7 +37,7 @@ function goBack() {
       <pre>{{ officialLicense }}</pre>
     </div>
 
-    <p class="field-help">
+    <p class="field-help license-link">
       <a :href="licenseUrl" target="_blank" rel="noreferrer">{{ t("license.viewOnGithub") }} ↗</a>
     </p>
 
@@ -52,14 +52,29 @@ function goBack() {
 </template>
 
 <style scoped>
+/* Like the welcome step's terms box: the licence text takes whatever height is
+   left over in the fixed-height card, and it is the only thing that scrolls. */
+.step-license-fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .license-pane {
-  max-height: 260px;
+  flex: 1;
+  /* Below this the pane stops shrinking and the card scrolls instead — a few
+     visible lines beat a sliver on a short window. */
+  min-height: 140px;
   overflow: auto;
   margin-top: 16px;
   padding: 16px;
   background: var(--card-bg-secondary);
   border: 1px solid var(--card-stroke);
   border-radius: var(--radius-lg);
+}
+
+.license-link {
+  flex: none;
 }
 
 .license-pane pre {
@@ -73,7 +88,6 @@ function goBack() {
 
 @media (max-width: 560px) {
   .license-pane {
-    max-height: 220px;
     padding: 12px;
   }
 
