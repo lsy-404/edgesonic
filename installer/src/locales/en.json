@@ -45,10 +45,6 @@
     "start": "Continue",
     "startWait": "Continue ({seconds}s)"
   },
-  "overwriteAdvice": {
-    "title": "Use in-app update whenever possible",
-    "message": "If the existing EdgeSonic app still opens, stop this overwrite flow and use Settings → Cloudflare → Update. Overwrite deployment is only for recovery when in-app update is unavailable."
-  },
   "credentials": {
     "title": "Cloudflare credentials",
     "subtitle": "The minimum API Token permissions deploy a complete working instance. Optional permissions enable advanced Cloudflare features later.",

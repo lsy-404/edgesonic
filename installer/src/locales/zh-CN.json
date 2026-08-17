@@ -45,10 +45,6 @@
     "start": "继续",
     "startWait": "继续（{seconds}s）"
   },
-  "overwriteAdvice": {
-    "title": "始终优先使用应用内更新",
-    "message": "如果现有 EdgeSonic 还能打开，请停止覆盖流程，进入“设置 → Cloudflare → 更新”。只有应用内更新不可用、需要恢复实例时才使用覆盖部署。"
-  },
   "credentials": {
     "title": "Cloudflare 凭证",
     "subtitle": "最小 API Token 权限即可部署完整可用实例；可选权限用于之后在应用内启用 Cloudflare 高级功能。",

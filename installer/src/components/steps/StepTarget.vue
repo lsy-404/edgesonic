@@ -9,7 +9,7 @@ import { listBucketNames } from "../../lib/deploy/r2";
 import { ADMIN_USERNAME_RE } from "../../lib/deploy/admin";
 import { callCfJson } from "../../lib/relay";
 import { describeCfError } from "../../lib/cf/errors";
-import { WinButton, WinCheckBox, WinInfoBar } from "../../vendor/winui";
+import { WinButton, WinCheckBox } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -189,11 +189,6 @@ function goBack() {
   <div>
     <h1 class="step-title">{{ t("target.title") }}</h1>
     <p class="step-subtitle">{{ t("target.subtitle") }}</p>
-
-    <WinInfoBar v-if="wizard.mode === 'overwrite'" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
-      <strong>{{ t("overwriteAdvice.title") }}</strong>
-      <p>{{ t("overwriteAdvice.message") }}</p>
-    </WinInfoBar>
 
     <div class="field">
       <label for="workerName">{{ t("target.workerName") }}</label>
