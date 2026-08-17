@@ -45,6 +45,10 @@ function start() {
           <h4>{{ t("welcome.section4Title") }}</h4>
           <p>{{ t("welcome.section4Body") }}</p>
         </section>
+        <section class="tos-section">
+          <h4>{{ t("welcome.section5Title") }}</h4>
+          <p>{{ t("welcome.section5Body") }}</p>
+        </section>
       </div>
       <p class="field-help"><a href="https://github.com/wuyilingwei/edgesonic/blob/main/docs/DEPLOY_BY_AGENT.md" target="_blank" rel="noreferrer">{{ t("welcome.advancedDeploy") }} ↗</a></p>
     </div>

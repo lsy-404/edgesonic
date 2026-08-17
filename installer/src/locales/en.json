@@ -34,6 +34,8 @@
     "section3Item3": "\"Recover an existing instance\" makes a best effort to preserve data, but we cannot guarantee full recovery from damage caused by user error, concurrent deployments, Cloudflare-side failures, or other factors outside our control — keep your own independent backup of anything that matters.",
     "section4Title": "4. Service availability",
     "section4Body": "This installer and its relay are provided as-is, with no guarantee of availability, uptime, or continuity. The service may become temporarily or permanently unavailable due to maintenance, changes on Cloudflare's side, anti-abuse measures being triggered, or other reasons, without prior notice — don't treat it as infrastructure you can permanently depend on.",
+    "section5Title": "5. Purpose of this service",
+    "section5Body": "This installer and its relay are entirely free. They exist only to help you deploy your own EdgeSonic instance, and to serve as the source-availability demonstration required by this project's AGPL licence. We have never charged for this, and never will. If you paid someone for \"access\" or a \"deployment service\" to reach this page, you were scammed — please demand a refund and leave them a bad review.",
     "advancedDeploy": "Need the regular clone + deploy workflow? Use the deployment guide",
     "acceptTerms": "I have read and agree to the terms above",
     "start": "Continue"
