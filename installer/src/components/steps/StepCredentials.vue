@@ -252,8 +252,8 @@ function goBack() {
             <table class="permission-table">
               <thead>
                 <tr>
-                  <th>{{ t("credentials.permissionResource") }}</th>
                   <th>{{ t("credentials.permissionCategory") }}</th>
+                  <th>{{ t("credentials.permissionResource") }}</th>
                   <th>{{ t("credentials.permissionRequired") }}</th>
                   <th>{{ t("credentials.permissionScenario") }}</th>
                   <th>{{ t("credentials.permissionScope") }}</th>
@@ -262,8 +262,8 @@ function goBack() {
               </thead>
               <tbody>
                 <tr v-for="permission in permissionRows" :key="permission.key">
-                  <td>{{ t(`credentials.permissions.${permission.key}.resource`) }}</td>
                   <td>{{ t(`credentials.permissionCategories.${permission.category}`) }}</td>
+                  <td>{{ t(`credentials.permissions.${permission.key}.resource`) }}</td>
                   <td>
                     <span
                       :class="permission.required ? 'requirement-required' : 'requirement-optional'"
