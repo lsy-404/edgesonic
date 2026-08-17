@@ -29,7 +29,7 @@ export interface CustomDomain {
 }
 
 interface ScriptSettings {
-  bindings?: Array<{ type?: string; name?: string; text?: string }>;
+  bindings?: Array<{ type?: string; name?: string; text?: string; class_name?: string }>;
 }
 
 interface DomainRow {
@@ -39,20 +39,34 @@ interface DomainRow {
   environment?: string;
 }
 
-/**
- * INSTANCE_ID is the anti-loop chain marker and the OpenSubsonic server id,
- * and D1 rows attribute song sources to it — a rebuilt Worker that generates a
- * fresh one would make the instance's own songs look like a peer's.
- */
-export async function readInstanceId(token: string, accountId: string, script: string): Promise<string> {
+export interface ScriptFacts {
+  /**
+   * INSTANCE_ID is the anti-loop chain marker and the OpenSubsonic server id,
+   * and D1 rows attribute song sources to it — a rebuilt Worker that generates
+   * a fresh one would make the instance's own songs look like a peer's.
+   */
+  instanceId: string;
+  /**
+   * Whether the live script declares the Sandbox transcoding container. A
+   * version that omits it orphans the Durable Object, but declaring one the
+   * script never had is rejected: the image can only be built by wrangler on a
+   * machine with Docker, never from this wizard.
+   */
+  hasSandboxContainer: boolean;
+}
+
+export async function readScriptFacts(token: string, accountId: string, script: string): Promise<ScriptFacts> {
   const settings = await callCfJson<ScriptSettings>(
     token,
     `/accounts/${accountId}/workers/scripts/${encodeURIComponent(script)}/settings`,
     undefined,
     "Workers Scripts Edit",
   );
-  const binding = (settings.bindings || []).find((entry) => entry.type === "plain_text" && entry.name === "INSTANCE_ID");
-  return binding?.text || "";
+  const bindings = settings.bindings || [];
+  return {
+    instanceId: bindings.find((entry) => entry.type === "plain_text" && entry.name === "INSTANCE_ID")?.text || "",
+    hasSandboxContainer: bindings.some((entry) => entry.type === "durable_object_namespace" && entry.class_name === "Sandbox"),
+  };
 }
 
 export async function listCustomDomains(token: string, accountId: string, script: string): Promise<CustomDomain[]> {

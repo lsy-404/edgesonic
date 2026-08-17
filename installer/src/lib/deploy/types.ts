@@ -55,6 +55,7 @@ export interface DeployTarget {
   releaseTag: string;
   resetAdmin: boolean;
   fullRebuild: boolean;
+  keepContainer: boolean;
   adminUsername?: string;
   adminPassword?: string;
 }

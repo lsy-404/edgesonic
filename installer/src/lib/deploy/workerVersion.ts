@@ -68,6 +68,7 @@ interface UploadVersionInput {
   compatibilityDate?: string;
   compatibilityFlags?: string[];
   mode: "fresh" | "overwrite";
+  keepContainer?: boolean;
   fresh?: FreshBindingsInput;
   overwriteVersion?: { version: string; buildTime: string };
 }
@@ -103,14 +104,14 @@ export async function uploadWorkerVersion(input: UploadVersionInput): Promise<st
   };
   if (input.mode === "overwrite") {
     metadata.keep_bindings = KEEP_BINDING_TYPES;
-    // Ported from worker/src/utils/autoupdate.ts's executeUpdate: a script
-    // that already has the Sandbox Durable Object registered orphans it
-    // (Cloudflare error 10064) if a new version omits this, even when the
-    // version itself never touches transcoding. This installer never builds
-    // the container image, it only avoids breaking an existing deployment
-    // that already opted into one.
-    metadata.containers = [{ class_name: "Sandbox" }];
   }
+  // Ported from worker/src/utils/autoupdate.ts's executeUpdate: a script that
+  // already has the Sandbox Durable Object registered orphans it (Cloudflare
+  // error 10064) if a new version omits this. Declaring one the script never
+  // had is rejected instead, since the image can only be built by wrangler on
+  // a machine with Docker — hence the caller decides, from what the live
+  // script actually has plus the operator's choice.
+  if (input.keepContainer) metadata.containers = [{ class_name: "Sandbox" }];
 
   const form = new FormData();
   form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }), "metadata");

@@ -24,7 +24,7 @@ import { hasTokenPermission, readTokenPermissionGroups } from "../cf/tokenPolici
 import { unpackArtifact, textFile } from "./tar";
 import { uploadAssets, type AssetManifest } from "./assets";
 import { uploadWorkerVersion, switchTraffic, readCrons } from "./workerVersion";
-import { deleteScript, listCustomDomains, readInstanceId, restoreCustomDomains, type CustomDomain } from "./rebuild";
+import { deleteScript, listCustomDomains, readScriptFacts, restoreCustomDomains, type CustomDomain } from "./rebuild";
 import { pushSecret } from "./secrets";
 import { setCron, DEFAULT_CRON } from "./cron";
 import { createSuperadmin } from "./admin";
@@ -134,11 +134,18 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
   // inherit one. D1 and R2 are untouched: the library and every setting stored
   // in the database survive.
   const rebuilding = target.mode === "overwrite" && target.fullRebuild;
-  let preservedInstanceId = "";
+  // Read while the live script is still there — a rebuild is about to delete it.
+  const facts =
+    target.mode === "overwrite"
+      ? await readScriptFacts(apiToken, accountId, script).catch(() => ({ instanceId: "", hasSandboxContainer: false }))
+      : { instanceId: "", hasSandboxContainer: false };
+  // A rebuild takes the container's Durable Object with the script, and no
+  // wizard can build a replacement image, so transcoding has to be restored
+  // from a machine running wrangler afterwards.
+  const keepContainer = target.keepContainer && facts.hasSandboxContainer && !rebuilding;
   let restoredDomains: CustomDomain[] = [];
   if (rebuilding) {
     await guarded("rebuild", report, async () => {
-      preservedInstanceId = await readInstanceId(apiToken, accountId, script).catch(() => "");
       restoredDomains = await listCustomDomains(apiToken, accountId, script).catch(() => []);
       await deleteScript(apiToken, accountId, script);
     });
@@ -161,6 +168,7 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
       compatibilityDate: manifest.compatibilityDate,
       compatibilityFlags: manifest.compatibilityFlags,
       mode: rebuilding ? "fresh" : target.mode,
+      keepContainer,
       fresh:
         target.mode === "fresh" || rebuilding
           ? {
@@ -171,7 +179,7 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
               buildTime: manifest.buildTime,
               // Keeping the identity keeps the D1 rows that attribute song
               // sources to this instance pointing at it.
-              instanceId: preservedInstanceId || crypto.randomUUID(),
+              instanceId: facts.instanceId || crypto.randomUUID(),
             }
           : undefined,
       overwriteVersion: target.mode === "overwrite" && !rebuilding ? { version: manifest.version, buildTime: manifest.buildTime } : undefined,

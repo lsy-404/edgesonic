@@ -43,6 +43,9 @@ export const useWizard = defineStore("wizard", () => {
   const overwriteConfirmed = ref(false);
   const resetAdmin = ref(false);
   const fullRebuild = ref(false);
+  // Only ever narrows what the deploy declares: the container is kept when the
+  // live script already has one, never created here.
+  const keepContainer = ref(true);
   watch(mode, () => { overwriteConfirmed.value = false; fullRebuild.value = false; });
   watch(overwriteConfirmed, (value) => { if (!value) fullRebuild.value = false; });
 
@@ -148,6 +151,7 @@ export const useWizard = defineStore("wizard", () => {
     overwriteConfirmed,
     resetAdmin,
     fullRebuild,
+    keepContainer,
     credentials,
     credentialsVerified,
     accountName,

@@ -17,6 +17,7 @@ const allowlist = read("installer/worker/cfAllowlist.ts");
 const manifest = read("installer/src/lib/deploy/manifest.ts");
 const assets = read("installer/src/lib/deploy/assets.ts");
 const rebuild = read("installer/src/lib/deploy/rebuild.ts");
+const workerVersion = read("installer/src/lib/deploy/workerVersion.ts");
 const installerStyle = read("installer/src/style.css");
 const en = JSON.parse(read("installer/src/locales/en.json"));
 const zh = JSON.parse(read("installer/src/locales/zh-CN.json"));
@@ -70,8 +71,13 @@ const checks: Array<[string, boolean]> = [
     && orchestrate.includes('target.mode === "overwrite" && target.fullRebuild')
     && orchestrate.includes('mode: rebuilding ? "fresh" : target.mode')],
   ["a full rebuild rescues what the redeploy cannot regenerate",
-    orchestrate.includes("preservedInstanceId || crypto.randomUUID()") && orchestrate.includes("restoreCustomDomains")
-    && orchestrate.indexOf("readInstanceId(apiToken") < orchestrate.indexOf("deleteScript(apiToken")],
+    orchestrate.includes("facts.instanceId || crypto.randomUUID()") && orchestrate.includes("restoreCustomDomains")
+    && orchestrate.indexOf("readScriptFacts(apiToken") < orchestrate.indexOf("deleteScript(apiToken")],
+  ["the transcoding container is declared only when the live script has one",
+    rebuild.includes('entry.type === "durable_object_namespace" && entry.class_name === "Sandbox"')
+    && orchestrate.includes("target.keepContainer && facts.hasSandboxContainer && !rebuilding")
+    && workerVersion.includes("if (input.keepContainer) metadata.containers")
+    && [en, zh].every((locale) => locale.target.keepContainer && locale.target.keepContainerHelp && locale.review.containerLabel)],
   ["script deletion and settings reads are relay allowlisted",
     allowlist.includes('{ method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] }')
     && allowlist.includes('["accounts", null, "workers", "scripts", null, "settings"]')],

@@ -222,6 +222,11 @@ function goBack() {
       <span>{{ t("target.fullRebuild") }}</span>
     </label>
     <p v-if="wizard.fullRebuild" class="field-help" style="color: var(--color-warning)">{{ t("target.fullRebuildHelp") }}</p>
+    <label v-if="wizard.mode === 'overwrite' && collision === true && !wizard.fullRebuild" class="check-row">
+      <input v-model="wizard.keepContainer" type="checkbox" />
+      <span>{{ t("target.keepContainer") }}</span>
+    </label>
+    <p v-if="wizard.mode === 'overwrite' && collision === true" class="field-help">{{ t("target.keepContainerHelp") }}</p>
 
     <div class="field">
       <label for="adminUsername">{{ t("target.adminUsername") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
