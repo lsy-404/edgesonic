@@ -67,7 +67,7 @@ function downloadInfo() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `edgesonic-${wizard.workerName || "instance"}.txt`;
+  a.download = `edgesonic-${(wizard.result?.accountId || "").slice(0, 8) || "instance"}.txt`;
   document.body.appendChild(a);
   a.click();
   a.remove();
