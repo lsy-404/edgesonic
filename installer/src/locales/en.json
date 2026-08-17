@@ -35,7 +35,7 @@
     "section4Title": "4. Service availability",
     "section4Body": "This installer and its relay are provided as-is, with no guarantee of availability, uptime, or continuity. The service may become temporarily or permanently unavailable due to maintenance, changes on Cloudflare's side, anti-abuse measures being triggered, or other reasons, without prior notice — don't treat it as infrastructure you can permanently depend on.",
     "section5Title": "5. Purpose of this service",
-    "section5Body": "This installer and its relay are entirely free. They exist only to help you deploy your own EdgeSonic instance, and to serve as the source-availability demonstration required by this project's AGPL licence. We have never charged for this, and never will. If you paid someone for \"access\" or a \"deployment service\" to reach this page, you were scammed — please demand a refund and leave them a bad review.",
+    "section5Body": "This installer and its relay are entirely free. They exist only to help you deploy your own EdgeSonic instance. We have never charged for this, and never will. If you paid someone for \"access\" or a \"deployment service\" to reach this page, you were scammed — please demand a refund and leave them a bad review.",
     "advancedDeploy": "Need the regular clone + deploy workflow? Use the deployment guide",
     "acceptTerms": "I have read and agree to the terms above",
     "start": "Continue"
@@ -75,16 +75,46 @@
     },
     "dnsNotNeeded": "The installer never creates or changes DNS records, so DNS Edit is not needed.",
     "permissions": {
-      "apiTokens": { "resource": "Account API Tokens", "scenario": "Read this token's policies before deployment" },
-      "scripts": { "resource": "Workers Scripts", "scenario": "Deploy the Worker, assets, Secrets, and Cron" },
-      "d1": { "resource": "D1", "scenario": "Create the database and apply its schema" },
-      "r2": { "resource": "Workers R2 Storage", "scenario": "Create and list the music bucket" },
-      "r2Keys": { "resource": "R2 S3 API Key", "scenario": "R2 presigned direct playback" },
-      "ci": { "resource": "Workers CI", "scenario": "In-app CI integration" },
-      "containers": { "resource": "Workers Containers", "scenario": "Container transcoding" },
-      "observability": { "resource": "Workers Observability", "scenario": "Worker logs and observability troubleshooting" },
-      "accountAnalytics": { "resource": "Account Analytics", "scenario": "In-app request, error, and CPU analytics" },
-      "accountSettings": { "resource": "Account Settings", "scenario": "In-app Cloudflare connection checks" }
+      "apiTokens": {
+        "resource": "Account API Tokens",
+        "scenario": "Read this token's policies before deployment"
+      },
+      "scripts": {
+        "resource": "Workers Scripts",
+        "scenario": "Deploy the Worker, assets, Secrets, and Cron"
+      },
+      "d1": {
+        "resource": "D1",
+        "scenario": "Create the database and apply its schema"
+      },
+      "r2": {
+        "resource": "Workers R2 Storage",
+        "scenario": "Create and list the music bucket"
+      },
+      "r2Keys": {
+        "resource": "R2 S3 API Key",
+        "scenario": "R2 presigned direct playback"
+      },
+      "ci": {
+        "resource": "Workers CI",
+        "scenario": "In-app CI integration"
+      },
+      "containers": {
+        "resource": "Workers Containers",
+        "scenario": "Container transcoding"
+      },
+      "observability": {
+        "resource": "Workers Observability",
+        "scenario": "Worker logs and observability troubleshooting"
+      },
+      "accountAnalytics": {
+        "resource": "Account Analytics",
+        "scenario": "In-app request, error, and CPU analytics"
+      },
+      "accountSettings": {
+        "resource": "Account Settings",
+        "scenario": "In-app Cloudflare connection checks"
+      }
     },
     "accountId": "Account ID",
     "accountIdHelp": "Found on the right sidebar of any Cloudflare dashboard page.",
@@ -187,16 +217,22 @@
     "noneEligible": "No releases with a deployable update package were found for this repository.",
     "prerelease": "Prerelease",
     "recommended": "Recommended",
-    "freeNotice": "EdgeSonic is entirely free and open source. This installer has never charged for it, and never will.",
-    "licenseOfficialTitle": "Official source",
-    "licenseOfficialBody": "This release comes from the official repository and is licensed under AGPL-3.0-or-later.",
-    "licenseThirdPartyTitle": "Third-party source",
-    "licenseThirdPartyChecking": "Trying to read this source's LICENSE file…",
-    "licenseThirdPartyFound": "This source's LICENSE file was read and mentions AGPL, but verify full compliance yourself.",
-    "licenseThirdPartyMismatch": "This source's LICENSE file was read but doesn't mention AGPL — use with caution and verify its licence yourself.",
-    "licenseThirdPartyUnavailable": "Couldn't read this source's LICENSE file — check the repository yourself to verify its licence.",
-    "licenseLocalWarning": "A local package's source and licence compliance can't be verified automatically — only use one from a source you trust.",
-    "licenseViewLink": "View LICENSE"
+    "freeNotice": "EdgeSonic is entirely free and open source. This installer has never charged for it, and never will."
+  },
+  "license": {
+    "title": "Licence",
+    "subtitle": "EdgeSonic is licensed under the GNU Affero General Public License v3.0. The full text of the licence covering the release you selected is below.",
+    "sourceOfficialTitle": "Official source",
+    "sourceOfficialBody": "This release comes from the official repository and is licensed under AGPL-3.0-or-later.",
+    "sourceThirdPartyTitle": "Third-party source",
+    "sourceLocalBody": "A local package's source and licence compliance can't be verified automatically — only use one from a source you trust.",
+    "sourceChecking": "Reading this source's LICENSE file…",
+    "sourceAgpl": "This source's LICENSE file was read and mentions AGPL, but verify full compliance yourself.",
+    "sourceUnclear": "This source's LICENSE file was read but doesn't mention AGPL — use with caution and verify its licence yourself.",
+    "sourceUnavailable": "Couldn't read this source's LICENSE file — check the repository yourself to verify its licence.",
+    "showingOfficialFallback": "The text below is the official project's licence, not this source's own — it could not be read.",
+    "viewOnGithub": "View LICENSE on GitHub",
+    "viewCanonical": "Authoritative AGPL-3.0 text"
   },
   "review": {
     "title": "Review before deploying",

@@ -35,7 +35,7 @@
     "section4Title": "四、服务可用性",
     "section4Body": "本安装器及其中转服务按“现状”提供，不附带任何可用性、正常运行时间或持续可用的保证。服务可能因维护、Cloudflare 侧变更、滥用防护措施触发或其他原因而暂时或永久不可用，恕不另行通知；请勿将其作为长期依赖的基础设施。",
     "section5Title": "五、服务用途",
-    "section5Body": "本安装器及其中转服务完全免费，仅用于帮助你部署自己的 EdgeSonic 实例，以及作为本项目 AGPL 开源协议要求的源码可获取性展示。我们从未、也不会以任何形式对此收费。如果你是向他人付费购买了所谓的“访问权限”或“部署服务”才看到这个页面，那是骗局——请向对方索要退款，并给予差评。",
+    "section5Body": "本安装器及其中转服务完全免费，仅用于帮助你部署自己的 EdgeSonic 实例。我们从未、也不会以任何形式对此收费。如果你是向他人付费购买了所谓的“访问权限”或“部署服务”才看到这个页面，那是骗局——请向对方索要退款，并给予差评。",
     "advancedDeploy": "需要常规 clone + deploy 流程？查看部署指南",
     "acceptTerms": "我已阅读并同意以上条款",
     "start": "继续"
@@ -75,16 +75,46 @@
     },
     "dnsNotNeeded": "安装器不会创建或修改 DNS 记录，因此不需要 DNS Edit。",
     "permissions": {
-      "apiTokens": { "resource": "Account API Tokens", "scenario": "部署前读取此令牌的权限策略" },
-      "scripts": { "resource": "Workers Scripts", "scenario": "部署 Worker、资源、Secrets 和 Cron" },
-      "d1": { "resource": "D1", "scenario": "创建数据库并写入数据库结构" },
-      "r2": { "resource": "Workers R2 Storage", "scenario": "创建和列出音乐存储桶" },
-      "r2Keys": { "resource": "R2 S3 API Key", "scenario": "R2 预签名直连播放" },
-      "ci": { "resource": "Workers CI", "scenario": "应用内 CI 集成" },
-      "containers": { "resource": "Workers Containers", "scenario": "容器转码" },
-      "observability": { "resource": "Workers Observability", "scenario": "Worker 日志与可观测性排障" },
-      "accountAnalytics": { "resource": "Account Analytics", "scenario": "应用内请求量、错误和 CPU 分析" },
-      "accountSettings": { "resource": "Account Settings", "scenario": "应用内 Cloudflare 连接检测" }
+      "apiTokens": {
+        "resource": "Account API Tokens",
+        "scenario": "部署前读取此令牌的权限策略"
+      },
+      "scripts": {
+        "resource": "Workers Scripts",
+        "scenario": "部署 Worker、资源、Secrets 和 Cron"
+      },
+      "d1": {
+        "resource": "D1",
+        "scenario": "创建数据库并写入数据库结构"
+      },
+      "r2": {
+        "resource": "Workers R2 Storage",
+        "scenario": "创建和列出音乐存储桶"
+      },
+      "r2Keys": {
+        "resource": "R2 S3 API Key",
+        "scenario": "R2 预签名直连播放"
+      },
+      "ci": {
+        "resource": "Workers CI",
+        "scenario": "应用内 CI 集成"
+      },
+      "containers": {
+        "resource": "Workers Containers",
+        "scenario": "容器转码"
+      },
+      "observability": {
+        "resource": "Workers Observability",
+        "scenario": "Worker 日志与可观测性排障"
+      },
+      "accountAnalytics": {
+        "resource": "Account Analytics",
+        "scenario": "应用内请求量、错误和 CPU 分析"
+      },
+      "accountSettings": {
+        "resource": "Account Settings",
+        "scenario": "应用内 Cloudflare 连接检测"
+      }
     },
     "accountId": "账号 ID (Account ID)",
     "accountIdHelp": "可在任意 Cloudflare 控制台页面的右侧边栏找到。",
@@ -187,16 +217,22 @@
     "noneEligible": "此仓库没有找到带可部署更新包的发布版本。",
     "prerelease": "预发布",
     "recommended": "推荐",
-    "freeNotice": "EdgeSonic 完全开源免费，本安装向导从未、也不会以任何形式收费。",
-    "licenseOfficialTitle": "官方来源",
-    "licenseOfficialBody": "此版本来自官方仓库，采用 AGPL-3.0-or-later 协议开源。",
-    "licenseThirdPartyTitle": "第三方来源",
-    "licenseThirdPartyChecking": "正在尝试读取该来源的 LICENSE 文件…",
-    "licenseThirdPartyFound": "已读取到该来源的 LICENSE 文件，其中包含 AGPL 相关声明，但请自行核实其完整合规性。",
-    "licenseThirdPartyMismatch": "已读取到该来源的 LICENSE 文件，但未在其中发现 AGPL 声明，请谨慎使用并自行核实其开源协议。",
-    "licenseThirdPartyUnavailable": "未能读取到该来源的 LICENSE 文件，请自行前往仓库核实其开源协议。",
-    "licenseLocalWarning": "本地包无法自动核实来源与开源协议合规性，请仅在信任该来源时使用。",
-    "licenseViewLink": "查看 LICENSE"
+    "freeNotice": "EdgeSonic 完全开源免费，本安装向导从未、也不会以任何形式收费。"
+  },
+  "license": {
+    "title": "开源许可证",
+    "subtitle": "EdgeSonic 采用 GNU Affero General Public License v3.0 开源。以下是你所选版本对应的许可证全文。",
+    "sourceOfficialTitle": "官方来源",
+    "sourceOfficialBody": "此版本来自官方仓库，采用 AGPL-3.0-or-later 协议开源。",
+    "sourceThirdPartyTitle": "第三方来源",
+    "sourceLocalBody": "本地包无法自动核实来源与开源协议合规性，请仅在信任该来源时使用。",
+    "sourceChecking": "正在读取该来源的 LICENSE 文件…",
+    "sourceAgpl": "已读取到该来源的 LICENSE 文件，其中包含 AGPL 相关声明，但请自行核实其完整合规性。",
+    "sourceUnclear": "已读取到该来源的 LICENSE 文件，但未在其中发现 AGPL 声明，请谨慎使用并自行核实其开源协议。",
+    "sourceUnavailable": "未能读取到该来源的 LICENSE 文件，请自行前往仓库核实其开源协议。",
+    "showingOfficialFallback": "以下正文是官方项目的许可证，并非该来源自身的许可证——它未能被读取。",
+    "viewOnGithub": "在 GitHub 查看 LICENSE",
+    "viewCanonical": "AGPL-3.0 权威原文"
   },
   "review": {
     "title": "部署前确认",

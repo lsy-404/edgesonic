@@ -7,12 +7,13 @@ import StepWelcome from "./components/steps/StepWelcome.vue";
 import StepCredentials from "./components/steps/StepCredentials.vue";
 import StepTarget from "./components/steps/StepTarget.vue";
 import StepVersion from "./components/steps/StepVersion.vue";
+import StepLicense from "./components/steps/StepLicense.vue";
 import StepReview from "./components/steps/StepReview.vue";
 import StepExecute from "./components/steps/StepExecute.vue";
 import StepDone from "./components/steps/StepDone.vue";
 
 const wizard = useWizard();
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 const current = computed(() => {
   switch (wizard.step) {
@@ -25,8 +26,10 @@ const current = computed(() => {
     case 4:
       return StepVersion;
     case 5:
-      return StepReview;
+      return StepLicense;
     case 6:
+      return StepReview;
+    case 7:
       return StepExecute;
     default:
       return StepDone;
