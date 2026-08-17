@@ -3,6 +3,7 @@
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { DEFAULT_ADMIN_USERNAME } from "../../lib/deploy/admin";
+import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -21,10 +22,10 @@ function goBack() {
     <h1 class="step-title">{{ t("review.title") }}</h1>
     <p class="step-subtitle">{{ t("review.subtitle") }}</p>
 
-    <div v-if="wizard.mode === 'overwrite'" class="alert alert-warning">
+    <WinInfoBar v-if="wizard.mode === 'overwrite'" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
       <strong>{{ t("overwriteAdvice.title") }}</strong>
       <p>{{ t("overwriteAdvice.message") }}</p>
-    </div>
+    </WinInfoBar>
 
     <dl class="kv-list">
       <div class="kv-row">
@@ -74,9 +75,9 @@ function goBack() {
     </dl>
 
     <div class="step-actions">
-      <button type="button" class="btn btn-secondary" @click="goBack">{{ t("common.back") }}</button>
+      <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
       <div class="spacer" />
-      <button type="button" class="btn btn-primary" @click="goNext">{{ t("review.confirm") }}</button>
+      <WinButton Style="AccentButtonStyle" @Click="goNext">{{ t("review.confirm") }}</WinButton>
     </div>
   </div>
 </template>

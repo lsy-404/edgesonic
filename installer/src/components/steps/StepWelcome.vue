@@ -1,12 +1,26 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { ref } from "vue";
+import { nextTick, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
+import { WinButton, WinCheckBox } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
 const accepted = ref(false);
+const tosRef = ref<HTMLElement | null>(null);
+const tosRead = ref(false);
+
+function checkTosRead() {
+  const el = tosRef.value;
+  if (!el) return;
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 4) tosRead.value = true;
+}
+
+onMounted(() => {
+  // Short terms that already fit without scrolling shouldn't permanently block the checkbox.
+  nextTick(checkTosRead);
+});
 
 function start() {
   wizard.step = 2;
@@ -20,7 +34,7 @@ function start() {
 
     <div class="guide-card">
       <h3>{{ t("welcome.termsTitle") }}</h3>
-      <div class="tos-scroll">
+      <div ref="tosRef" class="tos-scroll" @scroll="checkTosRead">
         <section class="tos-section">
           <h4>{{ t("welcome.section1Title") }}</h4>
           <p>{{ t("welcome.section1Body") }}</p>
@@ -53,14 +67,14 @@ function start() {
       <p class="field-help"><a href="https://github.com/wuyilingwei/edgesonic/blob/main/docs/DEPLOY_BY_AGENT.md" target="_blank" rel="noreferrer">{{ t("welcome.advancedDeploy") }} ↗</a></p>
     </div>
 
-    <label class="check-row" style="margin-top: 20px">
-      <input v-model="accepted" type="checkbox" />
-      <span>{{ t("welcome.acceptTerms") }}<span class="required-star" aria-hidden="true">*</span></span>
-    </label>
+    <WinCheckBox v-model="accepted" :IsEnabled="tosRead" style="margin-top: 20px">
+      <span><span class="required-star" aria-hidden="true">*</span>{{ t("welcome.acceptTerms") }}</span>
+    </WinCheckBox>
+    <p v-if="!tosRead" class="field-help">{{ t("welcome.scrollToEnableTerms") }}</p>
 
     <div class="step-actions">
       <div class="spacer" />
-      <button type="button" class="btn btn-primary" :disabled="!accepted" @click="start">{{ t("welcome.start") }}</button>
+      <WinButton Style="AccentButtonStyle" :IsEnabled="accepted" @Click="start">{{ t("welcome.start") }}</WinButton>
     </div>
   </div>
 </template>

@@ -6,6 +6,7 @@ import { useWizard } from "../../stores/wizard";
 import { fetchLicenseText } from "../../lib/github";
 import { GITHUB_REPO } from "../../../../shared/autoupdate";
 import officialLicense from "../../../../LICENSE?raw";
+import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -54,7 +55,7 @@ const licenseText = computed(() => fetchedLicense.value || officialLicense);
 const showingOfficialText = computed(() => !fetchedLicense.value);
 const licenseUrl = computed(() => (isOfficial.value || wizard.localPackage ? officialLicenseUrl.value : thirdPartyLicenseUrl.value));
 
-const alertClass = computed(() => (status.value === "official" || status.value === "agpl" ? "alert-info" : "alert-warning"));
+const alertClass = computed(() => (status.value === "official" || status.value === "agpl" ? "Informational" : "Warning"));
 
 function goNext() {
   wizard.step = 6;
@@ -69,7 +70,7 @@ function goBack() {
     <h1 class="step-title">{{ t("license.title") }}</h1>
     <p class="step-subtitle">{{ t("license.subtitle") }}</p>
 
-    <div class="alert" :class="alertClass">
+    <WinInfoBar :Severity="alertClass" :IsOpen="true" :IsClosable="false" :IsIconVisible="false">
       <strong>{{ isOfficial ? t("license.sourceOfficialTitle") : t("license.sourceThirdPartyTitle") }}</strong>
       <p v-if="status === 'official'">{{ t("license.sourceOfficialBody") }}</p>
       <p v-else-if="status === 'local'">{{ t("license.sourceLocalBody") }}</p>
@@ -80,7 +81,7 @@ function goBack() {
       <p v-if="!isOfficial && showingOfficialText && status !== 'checking'" class="field-help">
         {{ t("license.showingOfficialFallback") }}
       </p>
-    </div>
+    </WinInfoBar>
 
     <div class="license-pane" role="region" :aria-label="t('license.title')" tabindex="0">
       <pre>{{ licenseText }}</pre>
@@ -93,9 +94,9 @@ function goBack() {
     </p>
 
     <div class="step-actions">
-      <button type="button" class="btn btn-secondary" @click="goBack">{{ t("common.back") }}</button>
+      <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
       <div class="spacer" />
-      <button type="button" class="btn btn-primary" @click="goNext">{{ t("common.next") }}</button>
+      <WinButton Style="AccentButtonStyle" @Click="goNext">{{ t("common.next") }}</WinButton>
     </div>
   </div>
 </template>
@@ -106,8 +107,8 @@ function goBack() {
   overflow: auto;
   margin-top: 16px;
   padding: 16px;
-  background: var(--color-bg-sunken);
-  border: 1px solid var(--color-border);
+  background: var(--card-bg-secondary);
+  border: 1px solid var(--card-stroke);
   border-radius: var(--radius-lg);
 }
 
@@ -115,7 +116,7 @@ function goBack() {
   margin: 0;
   font-size: 0.78rem;
   line-height: 1.55;
-  color: var(--color-text);
+  color: var(--text-primary);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

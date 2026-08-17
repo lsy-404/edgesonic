@@ -9,6 +9,7 @@ import { listBucketNames } from "../../lib/deploy/r2";
 import { ADMIN_USERNAME_RE } from "../../lib/deploy/admin";
 import { callCfJson } from "../../lib/relay";
 import { describeCfError } from "../../lib/cf/errors";
+import { WinButton, WinCheckBox, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -189,39 +190,36 @@ function goBack() {
     <h1 class="step-title">{{ t("target.title") }}</h1>
     <p class="step-subtitle">{{ t("target.subtitle") }}</p>
 
-    <div v-if="wizard.mode === 'overwrite'" class="alert alert-warning">
+    <WinInfoBar v-if="wizard.mode === 'overwrite'" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
       <strong>{{ t("overwriteAdvice.title") }}</strong>
       <p>{{ t("overwriteAdvice.message") }}</p>
-    </div>
+    </WinInfoBar>
 
     <div class="field">
       <label for="workerName">{{ t("target.workerName") }}</label>
       <input id="workerName" v-model.trim="wizard.workerName" type="text" spellcheck="false" @blur="checkCollision" />
       <p class="field-help">{{ t("target.workerNameHelp") }}</p>
-      <p v-if="collision === true && wizard.mode === 'fresh'" class="field-help" style="color: var(--color-danger)">
+      <p v-if="collision === true && wizard.mode === 'fresh'" class="field-help" style="color: var(--SystemFillColorCriticalBrush)">
         {{ t("target.collisionWarning", { name: wizard.workerName }) }}
       </p>
-      <p v-else-if="collision === true && wizard.mode === 'overwrite'" class="field-help" style="color: var(--color-success)">
+      <p v-else-if="collision === true && wizard.mode === 'overwrite'" class="field-help" style="color: var(--SystemFillColorSuccessBrush)">
         {{ t("target.collisionOkOverwrite", { name: wizard.workerName }) }}
       </p>
-      <p v-else-if="wizard.mode === 'overwrite' && collision === false" class="field-help" style="color: var(--color-danger)">
+      <p v-else-if="wizard.mode === 'overwrite' && collision === false" class="field-help" style="color: var(--SystemFillColorCriticalBrush)">
         {{ t("target.overwriteMissing", { name: wizard.workerName }) }}
       </p>
     </div>
 
-    <label v-if="wizard.mode === 'overwrite' && collision === true" class="check-row">
-      <input v-model="wizard.overwriteConfirmed" type="checkbox" />
-      <span>{{ t("target.overwriteConfirm") }}<span class="required-star" aria-hidden="true">*</span></span>
-    </label>
-    <label v-if="wizard.mode === 'overwrite' && collision === true" class="check-row">
-      <input v-model="wizard.resetAdmin" type="checkbox" />
-      <span>{{ t("target.resetAdmin") }}</span>
-    </label>
-    <label v-if="wizard.mode === 'overwrite' && collision === true && wizard.overwriteConfirmed" class="check-row">
-      <input v-model="wizard.fullRebuild" type="checkbox" />
-      <span>{{ t("target.fullRebuild") }}</span>
-    </label>
-    <p v-if="wizard.fullRebuild" class="field-help" style="color: var(--color-warning)">{{ t("target.fullRebuildHelp") }}</p>
+    <WinCheckBox v-if="wizard.mode === 'overwrite' && collision === true" v-model="wizard.overwriteConfirmed">
+      <span><span class="required-star" aria-hidden="true">*</span>{{ t("target.overwriteConfirm") }}</span>
+    </WinCheckBox>
+    <WinCheckBox v-if="wizard.mode === 'overwrite' && collision === true" v-model="wizard.resetAdmin">
+      {{ t("target.resetAdmin") }}
+    </WinCheckBox>
+    <WinCheckBox v-if="wizard.mode === 'overwrite' && collision === true && wizard.overwriteConfirmed" v-model="wizard.fullRebuild">
+      {{ t("target.fullRebuild") }}
+    </WinCheckBox>
+    <p v-if="wizard.fullRebuild" class="field-help" style="color: var(--SystemFillColorCautionBrush)">{{ t("target.fullRebuildHelp") }}</p>
     <div class="field">
       <label for="containerMode">{{ t("target.containerMode") }}</label>
       <select id="containerMode" v-model="wizard.containerMode">
@@ -230,14 +228,14 @@ function goBack() {
         <option value="off">{{ t("target.containerOff") }}</option>
       </select>
       <p class="field-help">{{ t("target.containerModeHelp") }}</p>
-      <p v-if="wizard.containerMode === 'deploy'" class="field-help" style="color: var(--color-warning)">{{ t("target.containerDeployWarning") }}</p>
+      <p v-if="wizard.containerMode === 'deploy'" class="field-help" style="color: var(--SystemFillColorCautionBrush)">{{ t("target.containerDeployWarning") }}</p>
     </div>
 
     <div class="field">
       <label for="adminUsername">{{ t("target.adminUsername") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
       <input id="adminUsername" v-model.trim="wizard.adminUsername" type="text" autocomplete="off" spellcheck="false" placeholder="admin" />
       <p class="field-help">{{ t("target.adminUsernameHelp") }}</p>
-      <p v-if="!adminUsernameValid" class="field-help" style="color: var(--color-warning)">{{ t("target.adminUsernameInvalid") }}</p>
+      <p v-if="!adminUsernameValid" class="field-help" style="color: var(--SystemFillColorCautionBrush)">{{ t("target.adminUsernameInvalid") }}</p>
     </div>
 
     <div class="field">
@@ -249,7 +247,7 @@ function goBack() {
     <div class="field">
       <label for="dbName">D1 — {{ t("target.dbNameHelp") }}</label>
       <input id="dbName" v-model.trim="wizard.dbName" type="text" spellcheck="false" />
-      <p v-if="wizard.mode === 'fresh' && dbCollision === true" class="field-help" style="color: var(--color-warning)">
+      <p v-if="wizard.mode === 'fresh' && dbCollision === true" class="field-help" style="color: var(--SystemFillColorCautionBrush)">
         {{ t("target.dbCollisionWarning", { name: wizard.dbName }) }}
       </p>
     </div>
@@ -257,7 +255,7 @@ function goBack() {
     <div class="field">
       <label for="bucketName">R2 — {{ t("target.bucketNameHelp") }}</label>
       <input id="bucketName" v-model.trim="wizard.bucketName" type="text" spellcheck="false" />
-      <p v-if="wizard.mode === 'fresh' && bucketCollision === true" class="field-help" style="color: var(--color-warning)">
+      <p v-if="wizard.mode === 'fresh' && bucketCollision === true" class="field-help" style="color: var(--SystemFillColorCautionBrush)">
         {{ t("target.bucketCollisionWarning", { name: wizard.bucketName }) }}
       </p>
     </div>
@@ -266,21 +264,21 @@ function goBack() {
       <label for="domain">{{ t("target.domain") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
       <input id="domain" v-model.trim="wizard.domain" type="text" :placeholder="t('target.domainPlaceholder')" spellcheck="false" />
       <p class="field-help">{{ t("target.domainHelp") }}</p>
-      <p v-if="zoneLookup.status === 'found'" class="field-help" style="color: var(--color-success)">{{ t("target.domainZoneFound", { zone: zoneLookup.zoneName }) }}</p>
-      <p v-else-if="zoneLookup.status === 'not-found'" class="field-help" style="color: var(--color-warning)">{{ t("target.domainZoneNotFound", { domain: wizard.domain }) }}</p>
+      <p v-if="zoneLookup.status === 'found'" class="field-help" style="color: var(--SystemFillColorSuccessBrush)">{{ t("target.domainZoneFound", { zone: zoneLookup.zoneName }) }}</p>
+      <p v-else-if="zoneLookup.status === 'not-found'" class="field-help" style="color: var(--SystemFillColorCautionBrush)">{{ t("target.domainZoneNotFound", { domain: wizard.domain }) }}</p>
       <p v-if="transformations === 'checking'" class="field-help">{{ t("target.transformationsChecking") }}</p>
-      <p v-else-if="transformations === 'on'" class="field-help" style="color: var(--color-success)">{{ t("target.transformationsOn") }}</p>
+      <p v-else-if="transformations === 'on'" class="field-help" style="color: var(--SystemFillColorSuccessBrush)">{{ t("target.transformationsOn") }}</p>
       <template v-else-if="transformations === 'off'">
-        <p class="field-help" style="color: var(--color-warning)">{{ t("target.transformationsOff") }}</p>
+        <p class="field-help" style="color: var(--SystemFillColorCautionBrush)">{{ t("target.transformationsOff") }}</p>
         <a :href="`https://dash.cloudflare.com/${wizard.credentials.accountId}/images/transformations`" target="_blank" rel="noreferrer">{{ t("target.transformationsLink") }} ↗</a>
       </template>
       <p v-else-if="transformations === 'unavailable'" class="field-help">{{ t("target.transformationsUnavailable") }}</p>
     </div>
 
     <div class="step-actions">
-      <button type="button" class="btn btn-secondary" @click="goBack">{{ t("common.back") }}</button>
+      <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
       <div class="spacer" />
-      <button type="button" class="btn btn-primary" :disabled="!canContinue()" @click="goNext">{{ t("common.next") }}</button>
+      <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue()" @Click="goNext">{{ t("common.next") }}</WinButton>
     </div>
   </div>
 </template>

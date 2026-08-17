@@ -37,6 +37,7 @@
     "section5Title": "5. Purpose of this service",
     "section5Body": "This installer and its relay are entirely free. They exist only to help you deploy your own EdgeSonic instance. We have never charged for this, and never will. If you paid someone for \"access\" or a \"deployment service\" to reach this page, you were scammed — please demand a refund and leave them a bad review.",
     "advancedDeploy": "Need the regular clone + deploy workflow? Use the deployment guide",
+    "scrollToEnableTerms": "Scroll to the end of the terms above to continue",
     "acceptTerms": "I have read and agree to the terms above",
     "start": "Continue"
   },

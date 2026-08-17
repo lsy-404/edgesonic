@@ -6,6 +6,7 @@ import { useWizard } from "../../stores/wizard";
 import { fetchReleases } from "../../lib/github";
 import { buildReleaseOptions, ZERO_VERSION } from "../../../../shared/autoupdate";
 import { readLocalUpdatePackage } from "../../lib/deploy/manifest";
+import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -73,10 +74,10 @@ function goBack() {
     <p class="step-subtitle">{{ t("version.subtitle") }}</p>
     <p class="field-help">{{ t("version.freeNotice") }}</p>
 
-    <div v-if="wizard.mode === 'overwrite'" class="alert alert-warning">
+    <WinInfoBar v-if="wizard.mode === 'overwrite'" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
       <strong>{{ t("overwriteAdvice.title") }}</strong>
       <p>{{ t("overwriteAdvice.message") }}</p>
-    </div>
+    </WinInfoBar>
 
     <div class="field">
       <label for="sourceRepo">{{ t("version.sourceRepo") }}</label>
@@ -85,8 +86,8 @@ function goBack() {
     </div>
 
     <p v-if="loading">{{ t("common.loading") }}</p>
-    <div v-else-if="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
-    <div v-else-if="wizard.releases.length === 0" class="alert alert-warning">{{ t("version.noneEligible") }}</div>
+    <WinInfoBar v-else-if="errorMessage" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">{{ errorMessage }}</WinInfoBar>
+    <WinInfoBar v-else-if="wizard.releases.length === 0" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">{{ t("version.noneEligible") }}</WinInfoBar>
 
     <template v-else>
       <button
@@ -110,18 +111,18 @@ function goBack() {
       <label for="localPackage">{{ t("version.localPackage") }}</label>
       <input id="localPackage" type="file" accept=".zip,application/zip" @change="selectLocalPackage" />
       <p class="field-help">{{ t("version.localPackageHelp") }}</p>
-      <div v-if="wizard.localPackage" class="alert alert-warning">
+      <WinInfoBar v-if="wizard.localPackage" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
         {{ t("version.localPackageWarning", { name: wizard.localPackage.fileName, version: wizard.localPackage.manifest.version }) }}
-      </div>
-      <div v-if="localError" class="alert alert-danger">{{ localError }}</div>
+      </WinInfoBar>
+      <WinInfoBar v-if="localError" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">{{ localError }}</WinInfoBar>
     </div>
 
-    <button type="button" class="btn btn-secondary" style="margin-top: 8px" :disabled="loading" @click="load">{{ t("version.reload") }}</button>
+    <WinButton style="margin-top: 8px" :IsEnabled="!loading" @Click="load">{{ t("version.reload") }}</WinButton>
 
     <div class="step-actions">
-      <button type="button" class="btn btn-secondary" @click="goBack">{{ t("common.back") }}</button>
+      <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
       <div class="spacer" />
-      <button type="button" class="btn btn-primary" :disabled="!canContinue" @click="goNext">{{ t("common.next") }}</button>
+      <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="goNext">{{ t("common.next") }}</WinButton>
     </div>
   </div>
 </template>

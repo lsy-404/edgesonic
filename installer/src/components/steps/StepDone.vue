@@ -3,6 +3,7 @@
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
+import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -43,40 +44,40 @@ function startOver() {
       </div>
     </div>
 
-    <div v-if="wizard.result?.adminPassword" class="alert alert-success">
+    <WinInfoBar v-if="wizard.result?.adminPassword" :IsOpen="true" Severity="Success" :IsClosable="false" :IsIconVisible="false">
       <strong>{{ t("done.adminTitle") }}</strong>
       <div class="kv-list" style="margin-top: 10px; background: transparent">
         <div class="kv-row">
           <dt>{{ t("done.adminUsername") }}</dt>
           <dd>
             {{ wizard.result?.adminUsername }}
-            <button type="button" class="btn btn-secondary" style="padding: 2px 10px; font-size: 0.75rem" @click="copy(wizard.result?.adminUsername || '', 'user')">
+            <WinButton style="padding: 2px 10px; font-size: 0.75rem" @Click="copy(wizard.result?.adminUsername || '', 'user')">
               {{ copiedField === "user" ? t("common.copied") : t("common.copy") }}
-            </button>
+            </WinButton>
           </dd>
         </div>
         <div class="kv-row">
           <dt>{{ t("done.adminPassword") }}</dt>
           <dd>
             <code>{{ wizard.result?.adminPassword }}</code>
-            <button type="button" class="btn btn-secondary" style="padding: 2px 10px; font-size: 0.75rem" @click="copy(wizard.result?.adminPassword || '', 'pass')">
+            <WinButton style="padding: 2px 10px; font-size: 0.75rem" @Click="copy(wizard.result?.adminPassword || '', 'pass')">
               {{ copiedField === "pass" ? t("common.copied") : t("common.copy") }}
-            </button>
+            </WinButton>
           </dd>
         </div>
       </div>
       <p style="margin: 10px 0 0">{{ t("done.saveWarning") }}</p>
-    </div>
+    </WinInfoBar>
 
-    <div class="alert alert-info">
+    <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false">
       <strong>{{ t("done.nextStepsTitle") }}</strong>
       <p style="margin: 6px 0 0">{{ t("done.nextStepsDesc") }}</p>
       <a :href="`https://github.com/${wizard.sourceRepo}/blob/${wizard.selectedTag}/worker/SECRETS.md`" target="_blank" rel="noreferrer">{{ t("done.secretsLink") }}</a>
-    </div>
+    </WinInfoBar>
 
     <div class="step-actions">
       <div class="spacer" />
-      <button type="button" class="btn btn-primary" @click="startOver">{{ t("done.startOver") }}</button>
+      <WinButton Style="AccentButtonStyle" @Click="startOver">{{ t("done.startOver") }}</WinButton>
     </div>
   </div>
 </template>

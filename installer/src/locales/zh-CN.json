@@ -37,6 +37,7 @@
     "section5Title": "五、服务用途",
     "section5Body": "本安装器及其中转服务完全免费，仅用于帮助你部署自己的 EdgeSonic 实例。我们从未、也不会以任何形式对此收费。如果你是向他人付费购买了所谓的“访问权限”或“部署服务”才看到这个页面，那是骗局——请向对方索要退款，并给予差评。",
     "advancedDeploy": "需要常规 clone + deploy 流程？查看部署指南",
+    "scrollToEnableTerms": "请先滚动阅读完以上条款",
     "acceptTerms": "我已阅读并同意以上条款",
     "start": "继续"
   },

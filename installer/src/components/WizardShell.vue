@@ -66,16 +66,16 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
 }
 
 .brand-name {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 1.05rem;
-  color: var(--color-text);
+  color: var(--text-primary);
 }
 
 .lang-switch {
   display: flex;
-  gap: 4px;
-  background: var(--color-bg-sunken);
-  border: 1px solid var(--color-border);
+  gap: 2px;
+  background: var(--subtle-secondary);
+  border: 1px solid var(--card-stroke);
   border-radius: 999px;
   padding: 3px;
 }
@@ -83,32 +83,33 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
 .lang-switch button {
   border: none;
   background: transparent;
-  color: var(--color-text-muted);
+  color: var(--text-secondary);
   font-size: 0.8rem;
   padding: 4px 12px;
   border-radius: 999px;
   cursor: pointer;
+  transition: background var(--fast-duration, 0.167s) var(--fast-out-slow-in, ease), color var(--fast-duration, 0.167s);
 }
 
 .lang-switch button.active {
-  background: var(--color-accent);
-  color: var(--color-accent-contrast);
+  background: var(--accent-base);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
 .progress-track {
   width: 100%;
   max-width: 1040px;
-  height: 6px;
-  background: var(--color-bg-sunken);
+  height: 3px;
+  background: var(--subtle-secondary);
   border-radius: 999px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-accent-soft), var(--color-accent));
-  transition: width 0.3s ease;
+  background: linear-gradient(90deg, var(--brand-accent-soft), var(--accent-base));
+  transition: width var(--normal-duration, 0.2s) var(--fast-out-slow-in, ease);
 }
 
 .step-caption {
@@ -116,14 +117,15 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
   max-width: 1040px;
   margin: 8px 0 0;
   font-size: 0.8rem;
-  color: var(--color-text-muted);
+  color: var(--text-secondary);
 }
 
 .shell-card {
   width: 100%;
   max-width: 1040px;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
+  background: var(--card-bg);
+  backdrop-filter: blur(30px) saturate(160%);
+  border: 1px solid var(--card-stroke);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: 32px;

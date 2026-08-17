@@ -7,6 +7,7 @@ import { callCfJson, verifyR2Keys } from "../../lib/relay";
 import { listBucketNames } from "../../lib/deploy/r2";
 import { describeCfError } from "../../lib/cf/errors";
 import { hasTokenPermission, readTokenPermissionGroups, TOKEN_PERMISSION_GROUPS } from "../../lib/cf/tokenPolicies";
+import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -235,10 +236,10 @@ function goBack() {
     <h1 class="step-title">{{ t("credentials.title") }}</h1>
     <p class="step-subtitle">{{ t("credentials.subtitle") }}</p>
 
-    <div v-if="wizard.mode === 'overwrite'" class="alert alert-warning">
+    <WinInfoBar v-if="wizard.mode === 'overwrite'" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
       <strong>{{ t("overwriteAdvice.title") }}</strong>
       <p>{{ t("overwriteAdvice.message") }}</p>
-    </div>
+    </WinInfoBar>
 
     <div class="guide-card credential-setup">
       <h3>{{ t("credentials.setupTitle") }}</h3>
@@ -303,7 +304,7 @@ function goBack() {
       <label for="r2Secret">{{ t("credentials.r2SecretAccessKey") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
       <input id="r2Secret" v-model.trim="wizard.credentials.r2SecretAccessKey" type="password" autocomplete="off" spellcheck="false" />
       <p class="field-help">{{ t("credentials.r2KeyHelp") }}</p>
-      <p v-if="!r2KeysComplete" class="field-help" style="color: var(--color-danger)">{{ t("credentials.r2KeysPairRequired") }}</p>
+      <p v-if="!r2KeysComplete" class="field-help" style="color: var(--SystemFillColorCriticalBrush)">{{ t("credentials.r2KeysPairRequired") }}</p>
     </div>
 
     <ul v-if="hasAttempted" class="permission-checklist">
@@ -318,8 +319,10 @@ function goBack() {
     </ul>
 
     <template v-if="wizard.credentialsVerified">
-      <div v-if="wizard.accountName" class="alert alert-success" style="margin-top: 16px">
-        {{ t("credentials.verified") }} — {{ t("credentials.accountNameLabel") }}: {{ wizard.accountName }}
+      <div v-if="wizard.accountName" style="margin-top: 16px">
+        <WinInfoBar :IsOpen="true" Severity="Success" :IsClosable="false" :IsIconVisible="false">
+          {{ t("credentials.verified") }} — {{ t("credentials.accountNameLabel") }}: {{ wizard.accountName }}
+        </WinInfoBar>
       </div>
 
       <div v-if="wizard.r2Enabled === false" class="guide-card">
@@ -335,9 +338,9 @@ function goBack() {
     </template>
 
     <div class="step-actions">
-      <button type="button" class="btn btn-secondary" @click="goBack">{{ t("common.back") }}</button>
+      <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
       <div class="spacer" />
-      <button type="button" class="btn btn-primary" :disabled="!canContinue" @click="goNext">{{ t("common.next") }}</button>
+      <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="goNext">{{ t("common.next") }}</WinButton>
     </div>
   </div>
 </template>

@@ -6,6 +6,7 @@ import { useWizard } from "../../stores/wizard";
 import { runDeploy } from "../../lib/deploy/orchestrate";
 import { DeployError, type DeployTarget } from "../../lib/deploy/types";
 import { describeCfError } from "../../lib/cf/errors";
+import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -89,15 +90,17 @@ function retry() {
       </li>
     </ul>
 
-    <div v-if="wizard.deployFailed" class="alert alert-danger" style="margin-top: 20px">
-      <strong>{{ t("execute.failedTitle") }}</strong>
-      <p style="margin: 6px 0 0">{{ t("execute.failedAt", { step: t(`execute.steps.${failedStep}`) }) }}</p>
-      <p style="margin: 6px 0 0">{{ failedMessage }}</p>
+    <div v-if="wizard.deployFailed" style="margin-top: 20px">
+      <WinInfoBar :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+        <strong>{{ t("execute.failedTitle") }}</strong>
+        <p style="margin: 6px 0 0">{{ t("execute.failedAt", { step: t(`execute.steps.${failedStep}`) }) }}</p>
+        <p style="margin: 6px 0 0">{{ failedMessage }}</p>
+      </WinInfoBar>
     </div>
 
     <div class="step-actions" v-if="wizard.deployFailed && !running">
       <div class="spacer" />
-      <button type="button" class="btn btn-primary" @click="retry">{{ t("common.retry") }}</button>
+      <WinButton Style="AccentButtonStyle" @Click="retry">{{ t("common.retry") }}</WinButton>
     </div>
     <p v-if="wizard.deployFailed" class="field-help">{{ t("execute.retryFromHere") }}</p>
   </div>
