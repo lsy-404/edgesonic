@@ -103,7 +103,9 @@ function retry() {
             {{ Math.round(entry.progress * 100) }}%
           </template>
           <template v-else>{{ t(`execute.status.${entry.status}`) }}</template>
-          <p v-if="entry.detail" class="field-help" style="margin: 4px 0 0">{{ entry.detail }}</p>
+          <!-- Success details are bookkeeping ("Full rebuild not requested",
+               the list of verified permissions); only a failure needs saying. -->
+          <p v-if="entry.detail && entry.status === 'failed'" class="field-help" style="margin: 4px 0 0">{{ entry.detail }}</p>
           <!-- Only steps that transfer a known number of bytes get a bar; the
                rest are quick enough that the spinner alone reads better. -->
           <WinProgressBar
