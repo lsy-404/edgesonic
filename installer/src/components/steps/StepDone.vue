@@ -96,8 +96,8 @@ function finishAndClearCredentials() {
       {{ t("done.openLink") }} ↗
     </WinButton>
 
-    <WinInfoBar v-if="wizard.result?.adminPassword" :IsOpen="true" Severity="Success" :IsClosable="false" :IsIconVisible="false" style="margin-top: 20px">
-      <strong>{{ t("done.adminTitle") }}</strong>
+    <section v-if="wizard.result?.adminPassword" class="guide-card credential-card">
+      <h3>{{ t("done.adminTitle") }}</h3>
       <div class="credential-row">
         <span class="credential-label">{{ t("done.adminUsername") }}</span>
         <span class="credential-value">{{ wizard.result?.adminUsername }}</span>
@@ -114,7 +114,7 @@ function finishAndClearCredentials() {
       </div>
       <p style="margin: 10px 0 0">{{ t("done.saveWarning") }}</p>
       <WinButton style="margin-top: 10px" @Click="downloadInfo">{{ t("done.downloadInfo") }}</WinButton>
-    </WinInfoBar>
+    </section>
 
     <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false" style="margin-top: 16px">
       <strong>{{ t("done.nextStepsTitle") }}</strong>
@@ -130,3 +130,9 @@ function finishAndClearCredentials() {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.credential-card {
+  margin-top: 20px;
+}
+</style>
