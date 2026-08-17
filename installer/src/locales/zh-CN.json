@@ -42,7 +42,8 @@
     "advancedDeploy": "需要常规 clone + deploy 流程？查看部署指南",
     "scrollToEnableTerms": "请先滚动阅读完以上条款",
     "acceptTerms": "我已阅读并同意以上条款",
-    "start": "继续"
+    "start": "继续",
+    "startWait": "继续（{seconds}s）"
   },
   "overwriteAdvice": {
     "title": "始终优先使用应用内更新",

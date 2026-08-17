@@ -42,7 +42,8 @@
     "advancedDeploy": "Need the regular clone + deploy workflow? Use the deployment guide",
     "scrollToEnableTerms": "Scroll to the end of the terms above to continue",
     "acceptTerms": "I have read and agree to the terms above",
-    "start": "Continue"
+    "start": "Continue",
+    "startWait": "Continue ({seconds}s)"
   },
   "overwriteAdvice": {
     "title": "Use in-app update whenever possible",

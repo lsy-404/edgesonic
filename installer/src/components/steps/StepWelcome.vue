@@ -8,29 +8,32 @@ import { WinButton, WinCheckBox } from "../../vendor/winui";
 const { t } = useI18n();
 const wizard = useWizard();
 const accepted = ref(false);
-const rootRef = ref<HTMLElement | null>(null);
+const tosRef = ref<HTMLElement | null>(null);
 const tosRead = ref(false);
-let scrollContainer: HTMLElement | null = null;
 
-// The ToS text itself no longer scrolls independently (that was a confusing
-// nested-scroll-region), so "read to the end" is tracked against the shared
-// .shell-card-scroll container it lives inside.
 function checkTosRead() {
-  const el = scrollContainer;
+  const el = tosRef.value;
   if (!el) return;
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 4) tosRead.value = true;
 }
 
+// Forced pause independent of the scroll gate below — mirrors the review
+// step's confirm delay, so accepting terms always takes a moment even if
+// the text was already short enough not to need scrolling.
+const CONFIRM_LOCK_SECONDS = 3;
+const lockSecondsLeft = ref(CONFIRM_LOCK_SECONDS);
+let lockTimer: ReturnType<typeof setInterval> | undefined;
+
 onMounted(() => {
-  scrollContainer = rootRef.value?.closest(".shell-card-scroll") ?? null;
-  scrollContainer?.addEventListener("scroll", checkTosRead);
   // Short terms that already fit without scrolling shouldn't permanently block the checkbox.
   nextTick(checkTosRead);
+  lockTimer = setInterval(() => {
+    lockSecondsLeft.value -= 1;
+    if (lockSecondsLeft.value <= 0) clearInterval(lockTimer);
+  }, 1000);
 });
 
-onUnmounted(() => {
-  scrollContainer?.removeEventListener("scroll", checkTosRead);
-});
+onUnmounted(() => clearInterval(lockTimer));
 
 function start() {
   wizard.step = 2;
@@ -38,13 +41,13 @@ function start() {
 </script>
 
 <template>
-  <div ref="rootRef">
+  <div class="step-welcome-fill">
     <h1 class="step-title">{{ t("welcome.title") }}</h1>
     <p class="step-subtitle">{{ t("welcome.subtitle") }}</p>
 
-    <div class="guide-card">
+    <div class="guide-card tos-guide-card">
       <h3>{{ t("welcome.termsTitle") }}</h3>
-      <div class="tos-scroll">
+      <div ref="tosRef" class="tos-scroll" @scroll="checkTosRead">
         <section class="tos-section">
           <h4>{{ t("welcome.section1Title") }}</h4>
           <p>{{ t("welcome.section1Body") }}</p>
@@ -77,16 +80,57 @@ function start() {
       <p class="field-help"><a href="https://github.com/wuyilingwei/edgesonic/blob/main/docs/DEPLOY_BY_AGENT.md" target="_blank" rel="noreferrer">{{ t("welcome.advancedDeploy") }} ↗</a></p>
     </div>
 
-    <WinCheckBox v-model="accepted" :IsEnabled="tosRead" style="margin-top: 20px">
-      <span><span class="required-star" aria-hidden="true">*</span>{{ t("welcome.acceptTerms") }}</span>
-    </WinCheckBox>
-    <p v-if="!tosRead" class="field-help">{{ t("welcome.scrollToEnableTerms") }}</p>
+    <div class="tos-accept-row">
+      <WinCheckBox v-model="accepted" :IsEnabled="tosRead" style="margin-top: 20px">
+        <span><span class="required-star" aria-hidden="true">*</span>{{ t("welcome.acceptTerms") }}</span>
+      </WinCheckBox>
+      <span v-if="!tosRead" class="field-help tos-hint">{{ t("welcome.scrollToEnableTerms") }}</span>
+    </div>
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="accepted" @Click="start">{{ t("welcome.start") }}</WinButton>
+        <WinButton Style="AccentButtonStyle" :IsEnabled="accepted && lockSecondsLeft <= 0" @Click="start">
+          {{ lockSecondsLeft > 0 ? t("welcome.startWait", { seconds: lockSecondsLeft }) : t("welcome.start") }}
+        </WinButton>
       </div>
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+/* This step's content should fit the shell's fixed-height card without an
+   outer scroll — only the terms text itself scrolls, in whatever space is
+   left after the title/checkbox/button take their fixed share. */
+.step-welcome-fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tos-guide-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tos-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.tos-accept-row {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.tos-hint {
+  margin: 20px 0 0;
+}
+</style>
