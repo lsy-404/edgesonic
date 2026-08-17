@@ -16,7 +16,10 @@
     "required": "必填",
     "recommended": "推荐，非必需",
     "loading": "加载中…",
-    "stepOf": "第 {current} / {total} 步"
+    "stepOf": "第 {current} / {total} 步",
+    "themeLight": "浅色",
+    "themeDark": "深色",
+    "themeAuto": "自动"
   },
   "welcome": {
     "title": "快速部署 EdgeSonic",

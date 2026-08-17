@@ -16,7 +16,10 @@
     "required": "Required",
     "recommended": "Recommended, not required",
     "loading": "Loading…",
-    "stepOf": "Step {current} of {total}"
+    "stepOf": "Step {current} of {total}",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeAuto": "Auto"
   },
   "welcome": {
     "title": "Quick deploy EdgeSonic",

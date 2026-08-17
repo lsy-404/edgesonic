@@ -3,6 +3,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { setLocale, type AppLocale } from "../i18n";
+import { setThemeMode, themeMode } from "../theme";
 import logo from "../assets/logo.svg";
 
 const props = defineProps<{ step: number; total: number }>();
@@ -24,9 +25,16 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
         <img :src="logo" alt="" width="32" height="32" />
         <span class="brand-name">{{ t("app.name") }}</span>
       </div>
-      <div class="lang-switch" role="group" aria-label="Language">
-        <button type="button" :class="{ active: locale === 'en' }" @click="switchLocale('en')">EN</button>
-        <button type="button" :class="{ active: locale === 'zh-CN' }" @click="switchLocale('zh-CN')">中文</button>
+      <div class="header-controls">
+        <div class="theme-switch" role="group" aria-label="Theme">
+          <button type="button" :class="{ active: themeMode === 'light' }" @click="setThemeMode('light')">{{ t("common.themeLight") }}</button>
+          <button type="button" :class="{ active: themeMode === 'dark' }" @click="setThemeMode('dark')">{{ t("common.themeDark") }}</button>
+          <button type="button" :class="{ active: themeMode === 'auto' }" @click="setThemeMode('auto')">{{ t("common.themeAuto") }}</button>
+        </div>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button type="button" :class="{ active: locale === 'en' }" @click="switchLocale('en')">EN</button>
+          <button type="button" :class="{ active: locale === 'zh-CN' }" @click="switchLocale('zh-CN')">中文</button>
+        </div>
       </div>
     </header>
 
@@ -71,6 +79,14 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
   color: var(--text-primary);
 }
 
+.header-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.theme-switch,
 .lang-switch {
   display: flex;
   gap: 2px;
@@ -80,6 +96,7 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
   padding: 3px;
 }
 
+.theme-switch button,
 .lang-switch button {
   border: none;
   background: transparent;
@@ -91,6 +108,7 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
   transition: background var(--fast-duration, 0.167s) var(--fast-out-slow-in, ease), color var(--fast-duration, 0.167s);
 }
 
+.theme-switch button.active,
 .lang-switch button.active {
   background: var(--accent-base);
   color: var(--accent-text);
