@@ -7,6 +7,10 @@
 
 Serverless Subsonic-compatible music streaming server running entirely on **Cloudflare Workers**. No dedicated host, no always-on process — deploy once, stream anywhere.
 
+### 🚀 [Open the installer and deploy your own EdgeSonic →](https://deploy-edgesonic.wuyilingwei.com)
+
+Deploys in a few minutes from your browser — see "Quick start" below for details.
+
 ## Live demo
 
 A live demo is hosted at **<https://edgesonic-demo.wuyilingwei.workers.dev>** — log in with `admin` / `demo`. 

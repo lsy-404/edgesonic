@@ -20,7 +20,7 @@
   },
   "welcome": {
     "title": "快速部署 EdgeSonic",
-    "subtitle": "面向新手和图省事用户的公开浏览器部署流程，无需本地工具。",
+    "subtitle": "面向新手和追求省心部署的用户的公开浏览器部署流程，无需本地工具。",
     "termsTitle": "服务条款",
     "section1Title": "一、服务说明",
     "section1Body": "本页面提供的浏览器部署向导（以下称“安装器”）帮助你在你自己的 Cloudflare 账号下创建或恢复 EdgeSonic 实例。使用本安装器前，你需确认自己拥有并获得授权使用接下来填写的 Cloudflare 账号与 API Token；安装器创建或恢复的 Worker、D1 数据库、R2 存储桶均归属于你自己的 Cloudflare 账号，与本服务的运营者无关。",
