@@ -240,6 +240,7 @@
     "adminResetYes": "重置并签发新密码",
     "adminResetNo": "保留已有账号",
     "adminUsernameLabel": "初始超级管理员用户名",
+    "adminPasswordLabel": "初始超级管理员密码",
     "willCreate": "将会创建",
     "willReuse": "将复用已有",
     "confirm": "立即部署",

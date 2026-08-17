@@ -80,6 +80,13 @@ function goBack() {
         <dt>{{ t("review.adminUsernameLabel") }}</dt>
         <dd>{{ wizard.adminUsername.trim() || DEFAULT_ADMIN_USERNAME }}</dd>
       </div>
+      <!-- Shown in the clear because the field it was typed into is masked and
+           this is the last chance to catch a typo. Left out entirely when no
+           password was set, since one is generated during the deploy instead. -->
+      <div v-if="(wizard.mode === 'fresh' || wizard.resetAdmin) && wizard.adminPassword" class="kv-row">
+        <dt>{{ t("review.adminPasswordLabel") }}</dt>
+        <dd><code>{{ wizard.adminPassword }}</code></dd>
+      </div>
     </dl>
 
     <Teleport defer to=".shell-card-actions">

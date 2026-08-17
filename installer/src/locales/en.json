@@ -240,6 +240,7 @@
     "adminResetYes": "Reset and issue a new password",
     "adminResetNo": "Keep the existing account",
     "adminUsernameLabel": "Initial superadmin username",
+    "adminPasswordLabel": "Initial superadmin password",
     "willCreate": "Will be created",
     "willReuse": "Will reuse existing",
     "confirm": "Deploy now",
