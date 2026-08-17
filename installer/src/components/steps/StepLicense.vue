@@ -89,8 +89,6 @@ function goBack() {
 
     <p class="field-help">
       <a :href="licenseUrl" target="_blank" rel="noreferrer">{{ t("license.viewOnGithub") }} ↗</a>
-      ·
-      <a href="https://www.gnu.org/licenses/agpl-3.0.txt" target="_blank" rel="noreferrer">{{ t("license.viewCanonical") }} ↗</a>
     </p>
 
     <div class="step-actions">
