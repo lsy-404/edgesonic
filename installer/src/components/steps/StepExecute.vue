@@ -88,7 +88,9 @@ function retry() {
     <ul class="execute-steps">
       <li v-for="entry in wizard.stepStates" :key="entry.step" class="kv-row execute-step-row">
         <dt class="execute-step-label">
-          <WinProgressRing v-if="entry.status === 'running'" :Width="10" :Height="10" />
+          <!-- MinWidth/MinHeight default to 16 and clamp Width/Height, so both
+               have to be set for the ring to match the dot it replaces. -->
+          <WinProgressRing v-if="entry.status === 'running'" :Width="10" :Height="10" :MinWidth="10" :MinHeight="10" />
           <span v-else class="status-dot" :class="`status-dot-${entry.status}`" />
           {{ t(`execute.steps.${entry.step}`) }}
         </dt>
