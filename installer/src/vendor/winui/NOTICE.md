@@ -27,6 +27,7 @@ Vendored files:
 - `components/WinCheckBox.vue`
 - `components/WinInfoBar.vue`
 - `components/WinProgressRing.vue`
+- `components/WinProgressBar.vue`
 - `components/WinTextBlock.vue` (WinInfoBar dependency)
 - `components/WinMenuFlyout.vue` (WinTextBlock dependency)
 - `components/WinScrollViewer.vue` (WinMenuFlyout dependency)
