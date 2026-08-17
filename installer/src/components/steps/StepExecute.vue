@@ -39,6 +39,7 @@ async function start() {
     sourceRepo: wizard.sourceRepo.trim(),
     releaseTag: wizard.selectedTag,
     resetAdmin: wizard.resetAdmin,
+    adminUsername: wizard.adminUsername.trim(),
     adminPassword: wizard.adminPassword,
   };
 
@@ -73,25 +74,10 @@ function retry() {
     <h1 class="step-title">{{ t("execute.title") }}</h1>
     <p class="step-subtitle">{{ t("execute.subtitle") }}</p>
 
-    <ul style="list-style: none; padding: 0; margin: 0">
-      <li v-for="entry in wizard.stepStates" :key="entry.step" class="kv-row" style="align-items: center">
-        <dt style="display: flex; align-items: center; gap: 8px">
-          <span
-            :style="{
-              display: 'inline-block',
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              background:
-                entry.status === 'success'
-                  ? 'var(--color-success)'
-                  : entry.status === 'failed'
-                    ? 'var(--color-danger)'
-                    : entry.status === 'running'
-                      ? 'var(--color-accent)'
-                      : 'var(--color-border)',
-            }"
-          />
+    <ul class="execute-steps">
+      <li v-for="entry in wizard.stepStates" :key="entry.step" class="kv-row execute-step-row">
+        <dt class="execute-step-label">
+          <span class="status-dot" :class="`status-dot-${entry.status}`" />
           {{ t(`execute.steps.${entry.step}`) }}
         </dt>
         <dd>

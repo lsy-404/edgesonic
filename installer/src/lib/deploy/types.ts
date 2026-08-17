@@ -53,6 +53,7 @@ export interface DeployTarget {
   sourceRepo: string;
   releaseTag: string;
   resetAdmin: boolean;
+  adminUsername?: string;
   adminPassword?: string;
 }
 

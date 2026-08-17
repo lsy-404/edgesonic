@@ -116,12 +116,12 @@ If it still returns `403 / 10051`, the operator hasn't completed the R2 checkout
 them back to `dash.cloudflare.com/<account-id>/r2/overview` → **Purchase R2 Plan**.
 
 Use names derived from the project name confirmed in §2.2 (default `edgesonic-db` /
-`edgesonic-music` if the operator kept the `edgesonic` default):
+`edgesonic-storage` if the operator kept the `edgesonic` default):
 
 ```bash
 cd worker
 wrangler d1 create <project-name>-db          # note the printed database_id
-wrangler r2 bucket create <project-name>-music
+wrangler r2 bucket create <project-name>-storage
 ```
 
 D1/R2 are the only resources that need explicit creation. The Durable Object binding (Sandbox
@@ -222,8 +222,9 @@ wrangler secret put R2_SECRET_ACCESS_KEY --config wrangler.toml
 After `CF_API_TOKEN` is set, also flip `enable_r2_presign` on (see `SECRETS.md` §3) and restore the
 cron schedule the deploy in step 3.6 clears — see step 5.
 
-R2 presigned streaming currently signs the default `edgesonic-music` bucket. Leave it disabled
-when using a differently named bucket.
+R2 presigned streaming signs whatever bucket name is set in `wrangler.toml`'s `R2_BUCKET_NAME` var
+(defaults to `edgesonic-music` when that var is absent, for deployments predating it) — make sure
+it matches `[[r2_buckets]] bucket_name` exactly before enabling.
 
 #### 3.5.3 Enable Cloudflare Images Transformations (cover thumbnails)
 

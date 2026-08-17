@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
+import { DEFAULT_ADMIN_USERNAME } from "../../lib/deploy/admin";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -57,6 +58,10 @@ function goBack() {
       <div v-if="wizard.mode === 'overwrite'" class="kv-row">
         <dt>{{ t("review.adminResetLabel") }}</dt>
         <dd>{{ wizard.resetAdmin ? t("review.adminResetYes") : t("review.adminResetNo") }}</dd>
+      </div>
+      <div v-if="wizard.mode === 'fresh' || wizard.resetAdmin" class="kv-row">
+        <dt>{{ t("review.adminUsernameLabel") }}</dt>
+        <dd>{{ wizard.adminUsername.trim() || DEFAULT_ADMIN_USERNAME }}</dd>
       </div>
     </dl>
 

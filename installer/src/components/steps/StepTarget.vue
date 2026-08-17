@@ -1,9 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { scriptExists } from "../../lib/deploy/workerVersion";
+import { listDatabaseNames } from "../../lib/deploy/d1";
+import { listBucketNames } from "../../lib/deploy/r2";
+import { ADMIN_USERNAME_RE } from "../../lib/deploy/admin";
 import { callCfJson } from "../../lib/relay";
 import { describeCfError } from "../../lib/cf/errors";
 
@@ -49,6 +52,65 @@ onUnmounted(() => {
   collisionGeneration++;
   clearTimeout(collisionTimer);
 });
+
+// Advisory only — a fresh install silently reuses an existing D1
+// database/R2 bucket of the same name (see getOrCreateDatabase/getOrCreateBucket),
+// so this just surfaces that risk to the user instead of gating anything.
+// Simple debounce, no generation tracking: worst case a stale response
+// briefly shows against a since-edited field, corrected by the next keystroke.
+const dbCollision = ref<boolean | null>(null);
+const bucketCollision = ref<boolean | null>(null);
+let dbCollisionTimer: ReturnType<typeof setTimeout> | undefined;
+let bucketCollisionTimer: ReturnType<typeof setTimeout> | undefined;
+
+watch(
+  () => wizard.dbName,
+  (value) => {
+    clearTimeout(dbCollisionTimer);
+    const name = value.trim();
+    if (!name || !wizard.credentials.accountId || !wizard.credentials.apiToken) {
+      dbCollision.value = null;
+      return;
+    }
+    dbCollisionTimer = setTimeout(async () => {
+      try {
+        const names = await listDatabaseNames(wizard.credentials.apiToken, wizard.credentials.accountId);
+        if (wizard.dbName.trim() === name) dbCollision.value = names.includes(name);
+      } catch {
+        if (wizard.dbName.trim() === name) dbCollision.value = null;
+      }
+    }, 500);
+  },
+  { immediate: true },
+);
+
+watch(
+  () => wizard.bucketName,
+  (value) => {
+    clearTimeout(bucketCollisionTimer);
+    const name = value.trim();
+    if (!name || !wizard.credentials.accountId || !wizard.credentials.apiToken) {
+      bucketCollision.value = null;
+      return;
+    }
+    bucketCollisionTimer = setTimeout(async () => {
+      try {
+        const names = await listBucketNames(wizard.credentials.apiToken, wizard.credentials.accountId);
+        if (wizard.bucketName.trim() === name) bucketCollision.value = names.includes(name);
+      } catch {
+        if (wizard.bucketName.trim() === name) bucketCollision.value = null;
+      }
+    }, 500);
+  },
+  { immediate: true },
+);
+
+onUnmounted(() => {
+  clearTimeout(dbCollisionTimer);
+  clearTimeout(bucketCollisionTimer);
+});
+
+const adminUsernameValid = computed(() => !wizard.adminUsername.trim() || ADMIN_USERNAME_RE.test(wizard.adminUsername.trim()));
 
 interface ZoneLookup {
   status: "idle" | "checking" | "found" | "not-found";
@@ -157,6 +219,13 @@ function goBack() {
     </label>
 
     <div class="field">
+      <label for="adminUsername">{{ t("target.adminUsername") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
+      <input id="adminUsername" v-model.trim="wizard.adminUsername" type="text" autocomplete="off" spellcheck="false" placeholder="admin" />
+      <p class="field-help">{{ t("target.adminUsernameHelp") }}</p>
+      <p v-if="!adminUsernameValid" class="field-help" style="color: var(--color-warning)">{{ t("target.adminUsernameInvalid") }}</p>
+    </div>
+
+    <div class="field">
       <label for="adminPassword">{{ t("target.adminPassword") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
       <input id="adminPassword" v-model="wizard.adminPassword" type="password" autocomplete="new-password" spellcheck="false" />
       <p class="field-help">{{ t("target.adminPasswordHelp") }}</p>
@@ -165,11 +234,17 @@ function goBack() {
     <div class="field">
       <label for="dbName">D1 — {{ t("target.dbNameHelp") }}</label>
       <input id="dbName" v-model.trim="wizard.dbName" type="text" spellcheck="false" />
+      <p v-if="wizard.mode === 'fresh' && dbCollision === true" class="field-help" style="color: var(--color-warning)">
+        {{ t("target.dbCollisionWarning", { name: wizard.dbName }) }}
+      </p>
     </div>
 
     <div class="field">
       <label for="bucketName">R2 — {{ t("target.bucketNameHelp") }}</label>
       <input id="bucketName" v-model.trim="wizard.bucketName" type="text" spellcheck="false" />
+      <p v-if="wizard.mode === 'fresh' && bucketCollision === true" class="field-help" style="color: var(--color-warning)">
+        {{ t("target.bucketCollisionWarning", { name: wizard.bucketName }) }}
+      </p>
     </div>
 
     <div class="field">

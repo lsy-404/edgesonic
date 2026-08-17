@@ -372,7 +372,7 @@ const streamHandler = async (c: Context) => {
         try {
           const key = selected.storage_uri.substring("r2://".length);
           const presigned = await presignR2Get({
-            bucket: "edgesonic-music",
+            bucket: env.R2_BUCKET_NAME || "edgesonic-music",
             key,
             accessKeyId,
             secretAccessKey: secretKey,

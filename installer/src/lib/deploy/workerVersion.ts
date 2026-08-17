@@ -38,6 +38,11 @@ export function freshBindings(input: FreshBindingsInput): Binding[] {
   return [
     { type: "d1", name: "DB", database_id: input.databaseId },
     { type: "r2_bucket", name: "MUSIC_BUCKET", bucket_name: input.bucketName },
+    // R2Bucket bindings don't expose their own bucket name at runtime — this
+    // mirrors the binding above so media.ts can sign presigned URLs against
+    // whatever bucket name was actually chosen, not just the historical
+    // "edgesonic-music" default.
+    { type: "plain_text", name: "R2_BUCKET_NAME", text: input.bucketName },
     { type: "plain_text", name: "INSTANCE_ID", text: input.instanceId },
     { type: "plain_text", name: "MAX_PROXY_DEPTH", text: "3" },
     { type: "plain_text", name: "WORKER_VERSION", text: input.version },
@@ -58,6 +63,7 @@ interface UploadVersionInput {
   workerModule: string;
   workerBytes: Uint8Array;
   assetJwt: string;
+  bucketName: string;
   compatibilityDate?: string;
   compatibilityFlags?: string[];
   mode: "fresh" | "overwrite";
@@ -73,6 +79,10 @@ export async function uploadWorkerVersion(input: UploadVersionInput): Promise<st
           { type: "plain_text", name: "WORKER_VERSION", text: input.overwriteVersion?.version },
           { type: "plain_text", name: "EDGESONIC_VERSION", text: input.overwriteVersion?.version },
           { type: "plain_text", name: "EDGESONIC_BUILD_TIME", text: input.overwriteVersion?.buildTime },
+          // Explicitly set (not just carried over via keep_bindings) so a
+          // recovery install self-heals this var even if the instance being
+          // recovered predates it, or was renamed away from the default.
+          { type: "plain_text", name: "R2_BUCKET_NAME", text: input.bucketName },
           { type: "assets", name: "ASSETS" },
         ];
 

@@ -32,6 +32,12 @@ MAX_PROXY_DEPTH = "3"
 # Subsonic/OpenSubsonic serverVersion 会回退到发布版本且不会暴露 dev 标记。
 WORKER_VERSION = "dev"
 EDGESONIC_VERSION = "dev"
+# R2Bucket bindings don't expose their own bucket name at runtime, so this
+# must mirror the [[r2_buckets]] bucket_name below exactly — it drives the R2
+# detail card in Settings and is the bucket name signed into R2 presigned
+# URLs (worker/src/endpoints/subsonic/media.ts). Falls back to
+# "edgesonic-music" when unset.
+R2_BUCKET_NAME = "<YOUR_R2_BUCKET_NAME>"
 # Optional cumulative R2 storage ceiling in bytes. When set, the Worker sums
 # existing R2 object sizes before each /files/upload and /work/upload and
 # rejects uploads that would push the total past this limit. 0 disables the

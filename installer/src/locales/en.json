@@ -21,63 +21,20 @@
   "welcome": {
     "title": "Quick deploy EdgeSonic",
     "subtitle": "A public, browser-only deployment flow for getting started without local tooling.",
-    "termsTitle": "Before continuing",
+    "termsTitle": "Terms of Service",
     "termAccount": "You own and are authorized to use the Cloudflare account and API token entered here.",
     "termData": "This installer creates or recovers the Worker, D1 database, and R2 bucket named on the next pages.",
     "termSupport": "Existing Workers are never replaced without a separate confirmation.",
+    "termProxy": "To work around the browser's CORS restrictions on the Cloudflare API, this installer relays your requests through our own backend; the relay only forwards them — no logging, no persistence of any kind. Your API token and R2 keys are never stored by us.",
+    "termRecovery": "\"Recover an existing instance\" makes a best effort to preserve data, but we cannot guarantee full recovery from damage caused by user error, concurrent deployments, or Cloudflare-side failures — keep your own independent backup of anything that matters.",
+    "termNaming": "If the D1 database or R2 bucket name you enter already exists, the installer reuses it instead of failing. You are responsible for confirming those names aren't already in use on your account before a fresh install, so the installer doesn't attach itself to unrelated data.",
     "advancedDeploy": "Need the regular clone + deploy workflow? Use the deployment guide",
-    "acceptTerms": "I understand and want to continue",
+    "acceptTerms": "I have read and agree to the terms above",
     "start": "Continue"
   },
   "overwriteAdvice": {
     "title": "Use in-app update whenever possible",
     "message": "If the existing EdgeSonic app still opens, stop this overwrite flow and use Settings → Cloudflare → Update. Overwrite deployment is only for recovery when in-app update is unavailable."
-  },
-  "guide": {
-    "title": "What you'll need",
-    "subtitle": "Four pieces of information, all from your Cloudflare account. Here's what each one is for and how to get it — the next step is where you actually paste them in.",
-    "whatAccountId": "Identifies which Cloudflare account this installs into.",
-    "whatApiToken": "An Account API Token that lets the installer create the Worker, D1 database, and R2 bucket. Never use a Profile token for this persistent integration.",
-    "whatR2KeysLabel": "R2 Access Key ID + Secret",
-    "whatR2Keys": "The Access Key ID and Secret Access Key shown with the same Account-owned Custom Token. They enable optional R2 presigned playback.",
-    "step0Title": "0. Create a Cloudflare account",
-    "step0Desc": "If you do not have a Cloudflare account, sign up with an email address and verify it. The free plan is enough to start; Cloudflare shows any billing requirement on its confirmation page. No GitHub account is needed.",
-    "signUpLink": "Sign up for Cloudflare",
-    "loginScreenshotTitle": "Create a Cloudflare account",
-    "loginScreenshotDetail": "Email address",
-    "loginScreenshotAction": "Sign up",
-    "maskedEmail": "Email: [redacted]",
-    "step1Title": "1. Find your Account ID",
-    "step1Desc": "After signing in, choose the account that will own EdgeSonic. On its Account Home page, use Copy beside Account ID. The example value below is masked.",
-    "step2Title": "2. Create one Account-owned Custom Token",
-    "accountScreenshotTitle": "Account Home",
-    "accountScreenshotDetail": "Account ID in the right sidebar",
-    "accountScreenshotAction": "Copy",
-    "maskedAccount": "Account ID: [redacted]",
-    "tokenScreenshotTitle": "Manage Account > Account API Tokens",
-    "tokenScreenshotDetail": "Create Token",
-    "tokenScreenshotAction": "Create Token",
-    "permissionScreenshotTitle": "Create Account API Token",
-    "permissionScreenshotDetail": "Permissions: Workers, D1, DNS, R2",
-    "permissionScreenshotAction": "Add more",
-    "tokenResultScreenshotTitle": "API Token created",
-    "tokenResultScreenshotDetail": "API Token",
-    "tokenResultScreenshotAction": "Copy",
-    "maskedToken": "Token: [redacted]",
-    "stepR2Title": "R2: enable it before creating keys",
-    "stepR2Desc": "In R2 Object Storage, follow the dashboard to enable R2. The installer creates the music bucket, so do not create one yourself.",
-    "r2EnableLink": "Open R2 Object Storage",
-    "r2EnableScreenshotTitle": "R2 Object Storage",
-    "r2EnableScreenshotDetail": "R2 subscription",
-    "r2EnableScreenshotAction": "Enable R2",
-    "imagesScreenshotTitle": "Images Transformations",
-    "imagesScreenshotDetail": "Transformations",
-    "imagesScreenshotAction": "Enable"
-  },
-  "optional": {
-    "title": "Optional features",
-    "subtitle": "Nothing here is required to deploy — everything below can be turned on later from inside the app too.",
-    "skip": "Continue"
   },
   "credentials": {
     "title": "Cloudflare credentials",
@@ -96,8 +53,7 @@
     "optional": "Optional",
     "permissionScopes": {
       "account": "Target account",
-      "allBuckets": "All buckets",
-      "targetZone": "Target Zone"
+      "allBuckets": "All buckets"
     },
     "permissionLevels": {
       "read": "Read",
@@ -107,8 +63,7 @@
     "permissionCategories": {
       "developer": "Developer Platform",
       "analytics": "Analytics & Logs",
-      "account": "Account & Billing",
-      "zone": "Zone & DNS"
+      "account": "Account & Billing"
     },
     "dnsNotNeeded": "The installer never creates or changes DNS records, so DNS Edit is not needed.",
     "permissions": {
@@ -121,40 +76,14 @@
       "containers": { "resource": "Workers Containers", "scenario": "Container transcoding" },
       "observability": { "resource": "Workers Observability", "scenario": "Worker logs and observability troubleshooting" },
       "accountAnalytics": { "resource": "Account Analytics", "scenario": "In-app request, error, and CPU analytics" },
-      "accountSettings": { "resource": "Account Settings", "scenario": "In-app Cloudflare connection checks" },
-      "zoneRead": { "resource": "Zone", "scenario": "Check custom-domain ownership" },
-      "zoneSettings": { "resource": "Zone Settings", "scenario": "Check cover Images Transformations status" }
-    },
-    "minimumPermissionsTitle": "Minimum deployment permissions under Developer Platform",
-    "permissionEdit": "Write",
-    "permissionAccountScope": "Account resources: Include → the target account only. If the account-owned token screen only offers All accounts, use that scope.",
-    "permissionR2Scope": "Optional R2 presigned playback keys: Bucket Item → Read, Include → All buckets. The bucket does not exist until deployment.",
-    "advancedPermissionsTitle": "Optional advanced-feature permissions",
-    "advancedPermissionsDesc": "The installer stores this API Token as the Worker's CF_API_TOKEN secret. Add only the capabilities you want EdgeSonic to use from inside the app:",
-    "requiredPermissions": {
-      "d1": "D1",
-      "r2": "Workers R2 Storage",
-      "ci": "Workers CI",
-      "scripts": "Workers Scripts"
-    },
-    "advancedPermissions": {
-      "containers": "Workers Containers → Write — Sandbox container transcoding",
-      "observability": "Workers Observability → Write — Worker observability (not Observability Telemetry)",
-      "accountAnalytics": "Account Analytics → Read — in-app request and error analytics",
-      "accountSettings": "Account Settings → Read — in-app Cloudflare connection checks",
-      "zoneRead": "Zone → Read — optional custom-domain lookup",
-      "zoneSettings": "Zone Settings → Read — optional Images Transformations status"
+      "accountSettings": { "resource": "Account Settings", "scenario": "In-app Cloudflare connection checks" }
     },
     "accountId": "Account ID",
     "accountIdHelp": "Found on the right sidebar of any Cloudflare dashboard page.",
     "apiToken": "API Token",
     "apiTokenHelp": "Use an account-level API Token (cfat_), not a Profile API Token.",
+    "apiTokenStorageNote": "After a successful deploy, this token is saved as CF_API_TOKEN on your own Worker's Secrets, for in-app Cloudflare features (permission checks, later updates) to use. It only ever lives in your own Cloudflare account — this installer keeps no copy of it.",
     "apiTokenCreateLink": "Open Account API Tokens",
-    "tokenGuideTitle": "How to create this token",
-    "tokenGuideStep1": "Open Manage Account > Account API Tokens. Do not use My Profile > API Tokens. Select Create Token.",
-    "tokenGuideStep2": "For minimum deployment, set Account API Tokens to Read, then set D1, Workers R2 Storage, Workers CI, and Workers Scripts to Write under Developer Platform.",
-    "tokenGuideStep3": "Optionally add Containers, Observability, Account Analytics Read, Account Settings Read, Zone Read, and Zone Settings Read for advanced in-app features.",
-    "tokenGuideStep4": "Continue to the summary and create the token. Copy the displayed Token, Access Key ID, and Secret Access Key; all three are required below.",
     "r2AccessKeyId": "R2 Access Key ID",
     "r2SecretAccessKey": "R2 Secret Access Key",
     "r2KeyHelp": "Optional. Add both keys to enable direct R2 presigned playback; leave both empty for normal proxied playback.",
@@ -188,9 +117,7 @@
       "containers": "Workers Containers permission (optional)",
       "observability": "Workers Observability permission (optional)",
       "accountAnalytics": "Account Analytics permission (optional)",
-      "accountSettings": "Account Settings permission (optional)",
-      "zoneRead": "Zone permission (optional)",
-      "zoneSettings": "Zone Settings permission (optional)"
+      "accountSettings": "Account Settings permission (optional)"
     },
     "checkStatus": {
       "pending": "Not checked yet",
@@ -208,7 +135,9 @@
     "workerName": "Worker name",
     "workerNameHelp": "The name of the Cloudflare Worker running EdgeSonic.",
     "dbNameHelp": "D1 database name.",
+    "dbCollisionWarning": "A D1 database named \"{name}\" already exists on this account. A fresh install reuses it as-is — confirm it's actually empty or belongs to the EdgeSonic instance you mean to recover, not unrelated data, before continuing.",
     "bucketNameHelp": "R2 bucket name — this is where uploaded music lives.",
+    "bucketCollisionWarning": "An R2 bucket named \"{name}\" already exists on this account. A fresh install reuses it as-is — confirm it's actually empty or belongs to the EdgeSonic instance you mean to recover, not unrelated data, before continuing.",
     "domain": "Custom domain",
     "domainPlaceholder": "music.example.com (leave empty to use *.workers.dev)",
     "domainHelp": "Optional. This wizard can check that the domain's zone is on your account, but binding a custom domain to the Worker currently still needs a manual step in the Cloudflare dashboard after this install finishes — the automated binding endpoint isn't wired up yet.",
@@ -224,6 +153,9 @@
     "overwriteMissing": "No Worker named \"{name}\" exists.",
     "overwriteConfirm": "I verified this existing Worker and its D1/R2 names belong to the EdgeSonic installation I intend to recover.",
     "resetAdmin": "Reset the superadmin account and issue a new password",
+    "adminUsername": "Initial superadmin username",
+    "adminUsernameHelp": "Optional. Leave empty to use the default username \"admin\". Recovery applies it only when superadmin reset is selected. Any username works, including non-Latin scripts.",
+    "adminUsernameInvalid": "Tip: 3-32 letters, digits, underscores, or hyphens is the most portable choice, but this app accepts any username — feel free to continue as-is.",
     "adminPassword": "Initial superadmin password",
     "adminPasswordHelp": "Optional. Leave empty to generate a random password. Recovery applies it only when superadmin reset is selected."
   },
@@ -256,6 +188,7 @@
     "adminResetLabel": "Superadmin account",
     "adminResetYes": "Reset and issue a new password",
     "adminResetNo": "Keep the existing account",
+    "adminUsernameLabel": "Initial superadmin username",
     "willCreate": "Will be created",
     "willReuse": "Will reuse existing",
     "confirm": "Deploy now"

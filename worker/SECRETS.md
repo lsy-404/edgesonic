@@ -156,9 +156,9 @@ create two separate tokens:
    **Workers Observability**, and **Workers Scripts** (choose *Edit* where offered). This is the
    same set required for `CF_API_TOKEN` (task 054).
 3. **Permission group 2 — R2 (Bucket scope)**: add **Workers R2 Storage Bucket Item Read** and
-   scope it to the `edgesonic-music` bucket (or `*` if you prefer a single token for future
-   buckets). Presigned URLs are GET-only, so Object Read is enough — the worker never writes
-   through S3.
+   scope it to the bucket you created (`edgesonic-storage` by default, or `*` if you prefer a
+   single token for future buckets). Presigned URLs are GET-only, so Object Read is enough — the
+   worker never writes through S3.
 4. TTL: leave default (no expiry) or set a rotation window.
 5. On creation Cloudflare shows **three** values on the final page, each shown only once:
    - **Token value** (Bearer string, top of the page) → `CF_API_TOKEN`

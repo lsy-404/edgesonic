@@ -16,9 +16,23 @@
 import { runQuery } from "./d1";
 import { generatePassword, sha256Hex } from "./crypto";
 
-export const ADMIN_USERNAME = "admin";
+export const DEFAULT_ADMIN_USERNAME = "admin";
 
-export async function createSuperadmin(token: string, accountId: string, databaseId: string, requestedPassword?: string): Promise<string> {
+// Only the self-service /register endpoint (worker/src/endpoints/edgesonic/auth.ts's
+// USERNAME_RE) restricts usernames to ASCII — the admin-managed user
+// endpoints (worker/src/endpoints/edgesonic/users.ts) accept any non-empty
+// username, Chinese names included. This installer creates the account the
+// same way an admin would, so it holds itself to that same looser bar; the
+// ASCII pattern below is exported only to drive a non-blocking UI hint.
+export const ADMIN_USERNAME_RE = /^[a-zA-Z0-9_-]{3,32}$/;
+
+export interface SuperadminResult {
+  username: string;
+  password: string;
+}
+
+export async function createSuperadmin(token: string, accountId: string, databaseId: string, requestedUsername?: string, requestedPassword?: string): Promise<SuperadminResult> {
+  const username = requestedUsername?.trim() || DEFAULT_ADMIN_USERNAME;
   const password = requestedPassword || generatePassword(10);
   const hash = await sha256Hex(new TextEncoder().encode(password));
   await runQuery(
@@ -27,7 +41,7 @@ export async function createSuperadmin(token: string, accountId: string, databas
     databaseId,
     "INSERT INTO users (username, master_password, level, enabled) VALUES (?, ?, 3, 1) " +
       "ON CONFLICT(username) DO UPDATE SET master_password = excluded.master_password, level = 3, enabled = 1",
-    [ADMIN_USERNAME, hash],
+    [username, hash],
   );
-  return password;
+  return { username, password };
 }

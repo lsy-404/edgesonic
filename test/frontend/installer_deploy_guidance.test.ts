@@ -24,8 +24,9 @@ const checks: Array<[string, boolean]> = [
   ["minimum permissions cover deploy resources", ["d1", "r2", "ci", "scripts"].every((key) => credentials.includes(`"${key}"`))],
   ["container and observability permissions are optional", /key: "containers"[\s\S]*?required: false/.test(credentials)
     && /key: "observability"[\s\S]*?required: false/.test(credentials)],
-  ["stored token purpose is disclosed", en.credentials.advancedPermissionsDesc.includes("CF_API_TOKEN")
-    && zh.credentials.advancedPermissionsDesc.includes("CF_API_TOKEN")],
+  ["stored token purpose is disclosed", en.credentials.apiTokenStorageNote.includes("CF_API_TOKEN")
+    && zh.credentials.apiTokenStorageNote.includes("CF_API_TOKEN")
+    && credentials.includes("credentials.apiTokenStorageNote")],
   ["DNS is not a minimum verification gate", !credentials.includes('key: "dns"')],
   ["R2 direct-play keys are optional", credentials.includes("r2KeysComplete")
     && orchestrate.includes("if (creds.r2AccessKeyId && creds.r2SecretAccessKey)")],
@@ -37,7 +38,8 @@ const checks: Array<[string, boolean]> = [
   ["recovery can preserve or reset the superadmin", target.includes("wizard.resetAdmin") && orchestrate.includes("target.mode === \"fresh\" || target.resetAdmin")],
   ["initial superadmin password is optional", target.includes("wizard.adminPassword") && orchestrate.includes("target.adminPassword")],
   ["overwrite guidance prefers in-app updates", [credentials, target, version, review].every((source) => source.includes("overwriteAdvice.message"))],
-  ["token policies cover every deployment and post-deploy permission", ["apiTokens", "scripts", "d1", "r2", "ci", "containers", "observability", "accountAnalytics", "accountSettings", "zoneRead", "zoneSettings"].every((key) => tokenPolicies.includes(key) && credentials.includes(`key: "${key}"`))],
+  ["token policies cover every deployment and post-deploy permission", ["apiTokens", "scripts", "d1", "r2", "ci", "containers", "observability", "accountAnalytics", "accountSettings"].every((key) => tokenPolicies.includes(key) && credentials.includes(`key: "${key}"`))],
+  ["the confusing Zone permission guide rows were dropped, not just renamed", !tokenPolicies.includes("zoneRead") && !credentials.includes('key: "zoneRead"') && !credentials.includes('key: "zoneSettings"')],
   ["token policy read route is relay allowlisted", allowlist.includes('["accounts", null, "tokens", null]')],
   ["Account API Tokens Read policy name is recognized", tokenPolicies.includes('"Account API Tokens Read"')],
   ["write policy names use Cloudflare's current access level", ["Workers Scripts Write", "D1 Write", "Workers R2 Storage Write"].every((name) => tokenPolicies.includes(`"${name}"`))],
@@ -47,6 +49,15 @@ const checks: Array<[string, boolean]> = [
   ["completion link opens the deployed Worker production page", done.includes("/workers/services/view/") && done.includes("/production")],
   ["asset uploads preserve JavaScript MIME types", assets.includes('return "text/javascript"') && assets.includes("new File([base64Bytes(bytes)]")],
   ["permission table includes categories and wraps content", credentials.includes("permissionCategory") && credentials.includes("permission.category") && installerStyle.includes("overflow-wrap: anywhere")],
+  ["terms of service disclose the CORS relay, recovery limits, and naming responsibility", welcome.includes("termProxy") && welcome.includes("termRecovery") && welcome.includes("termNaming")
+    && ["termProxy", "termRecovery", "termNaming"].every((key) => en.welcome[key] && zh.welcome[key])],
+  ["initial superadmin username is configurable end to end", target.includes("wizard.adminUsername")
+    && target.includes("ADMIN_USERNAME_RE")
+    && deployTypes.includes("adminUsername")
+    && orchestrate.includes("target.adminUsername")
+    && read("installer/src/lib/deploy/admin.ts").includes("requestedUsername")],
+  ["fresh installs warn about reusing an existing D1/R2 name", target.includes("dbCollision") && target.includes("bucketCollision")
+    && en.target.dbCollisionWarning && en.target.bucketCollisionWarning],
 ];
 
 let failures = 0;

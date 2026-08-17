@@ -72,8 +72,10 @@ interface Env {
   // when this is unset or fails to parse.
   PERMISSIONS_OVERRIDE?: string;
   // Mirrors [[r2_buckets]] bucket_name in wrangler.toml — R2Bucket bindings
-  // don't expose their own bucket name at runtime. Used only for the
-  // read-only R2 detail card in Sources.vue.
+  // don't expose their own bucket name at runtime. Used for the read-only R2
+  // detail card in Sources.vue, and as the bucket name signed into R2
+  // presigned URLs in media.ts (falls back to "edgesonic-music" when unset,
+  // matching every deployment from before this var existed).
   R2_BUCKET_NAME?: string;
   // Post-deploy cron auto-recovery state, pushed dynamically as a Workers
   // Secret via the CF API (same mechanism as CF_API_TOKEN / PERMISSIONS_OVERRIDE

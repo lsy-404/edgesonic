@@ -58,7 +58,7 @@ EdgeSonic 同时承担两个角色：
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)（`npm i -g wrangler`）
 - 一个 Cloudflare 账号，并已开通：
   - **D1** 数据库（`edgesonic-db`）
-  - **R2** 存储桶（`edgesonic-music`）
+  - **R2** 存储桶（`edgesonic-storage`）
 
 ### 1. 克隆并配置
 

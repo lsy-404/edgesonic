@@ -26,7 +26,7 @@ import { uploadAssets, type AssetManifest } from "./assets";
 import { uploadWorkerVersion, switchTraffic, readCrons } from "./workerVersion";
 import { pushSecret } from "./secrets";
 import { setCron, DEFAULT_CRON } from "./cron";
-import { createSuperadmin, ADMIN_USERNAME } from "./admin";
+import { createSuperadmin } from "./admin";
 import { generateHmacKeyBase64 } from "./crypto";
 import { probeReachable } from "./health";
 import { DeployError, type DeployCredentials, type DeployResult, type DeployStep, type DeployTarget, type StepStatus } from "./types";
@@ -62,17 +62,12 @@ async function verifyDeploymentAccess(creds: DeployCredentials): Promise<string>
   await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Edit");
   await listBucketNames(apiToken, accountId);
   const permissionSummary = ["Account API Token", "Account API Tokens", "Workers Scripts", "D1", "Workers R2 Storage"];
-  const optionalChecks = await Promise.all([
-    callCfJson(apiToken, `/accounts/${accountId}`, undefined, "Account Settings Read").then(
+  permissionSummary.push(
+    await callCfJson(apiToken, `/accounts/${accountId}`, undefined, "Account Settings Read").then(
       () => "Account Settings: enabled",
       () => "Account Settings: not enabled",
     ),
-    callCfJson(apiToken, "/zones?per_page=1", undefined, "Zone Read").then(
-      () => "Zone Read: enabled",
-      () => "Zone Read: not enabled",
-    ),
-  ]);
-  permissionSummary.push(...optionalChecks);
+  );
   if (r2AccessKeyId && r2SecretAccessKey) {
     const verified = await verifyR2Keys({ accountId, accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey });
     if (!verified.ok) throw new Error(verified.message || "R2 access key pair did not verify");
@@ -141,6 +136,7 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
       workerModule: manifest.workerModule,
       workerBytes,
       assetJwt,
+      bucketName: target.bucketName,
       compatibilityDate: manifest.compatibilityDate,
       compatibilityFlags: manifest.compatibilityFlags,
       mode: target.mode,
@@ -171,12 +167,11 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
       await pushSecret(apiToken, accountId, script, "R2_ACCESS_KEY_ID", creds.r2AccessKeyId);
       await pushSecret(apiToken, accountId, script, "R2_SECRET_ACCESS_KEY", creds.r2SecretAccessKey);
     }
-    // worker/src/endpoints/subsonic/media.ts signs presigned GETs against the
-    // literal bucket name "edgesonic-music", not whatever's actually bound —
-    // flipping this on for any other bucket name would 404 every presigned
-    // stream instead of just skipping the optimization, so only auto-enable
-    // it on the one bucket name the feature actually works with.
-    if (creds.r2AccessKeyId && creds.r2SecretAccessKey && target.bucketName === "edgesonic-music") {
+    // worker/src/endpoints/subsonic/media.ts reads the actual bucket name
+    // from the R2_BUCKET_NAME var (set as part of the "worker" step above,
+    // see workerVersion.ts) rather than a hardcoded literal, so presign
+    // works for any bucket name.
+    if (creds.r2AccessKeyId && creds.r2SecretAccessKey) {
       await runQuery(
         apiToken,
         accountId,
@@ -188,10 +183,10 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
 
   await guarded("cron", report, () => setCron(apiToken, accountId, script, existingCrons.length > 0 ? existingCrons : [DEFAULT_CRON]));
 
-  const adminPassword = target.mode === "fresh" || target.resetAdmin
-    ? await guarded("admin", report, () => createSuperadmin(apiToken, accountId, databaseId, target.adminPassword))
+  const admin = target.mode === "fresh" || target.resetAdmin
+    ? await guarded("admin", report, () => createSuperadmin(apiToken, accountId, databaseId, target.adminUsername, target.adminPassword))
     : undefined;
-  if (!adminPassword) report("admin", "success", "Existing superadmin preserved");
+  if (!admin) report("admin", "success", "Existing superadmin preserved");
 
   const url = target.domain ? `https://${target.domain}` : "";
   await guarded("health", report, async () => {
@@ -204,5 +199,5 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
     // reports success so it doesn't mask an otherwise-complete deployment.
   });
 
-  return { accountId, url, adminUsername: adminPassword ? ADMIN_USERNAME : undefined, adminPassword, version: manifest.version };
+  return { accountId, url, adminUsername: admin?.username, adminPassword: admin?.password, version: manifest.version };
 }

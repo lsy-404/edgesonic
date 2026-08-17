@@ -33,6 +33,8 @@
 //   8. presignR2Get unit: URL shape, host, query params, signature presence
 //   9. validator: enable_r2_presign accepts 0/1, rejects other
 //  10. octet-stream R2 object + .flac suffix           → stream returns audio/flac
+//  11. R2_BUCKET_NAME env var set                       → presign targets that bucket, not the
+//                                                          hardcoded "edgesonic-music" fallback
 //
 // Run: npx tsx test/subsonic/r2_presign.test.ts
 
@@ -363,6 +365,23 @@ async function main() {
     assert(r.status === 302, "302 with Range");
     const loc = r.headers.get("Location") || "";
     assert(loc.includes("X-Amz-SignedHeaders=host"), "host-only SignedHeaders (Range unsigned)");
+  }
+
+  console.log("\nstream: R2_BUCKET_NAME env var set → presign targets that bucket");
+  {
+    const sqlite = buildDb();
+    setFeature(sqlite, "enable_r2_presign", "1");
+    const { get } = makeApp(sqlite, {
+      R2_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE",
+      R2_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+      CF_ACCOUNT_ID: "df4481f3ce1fa0394b4617442a97d147",
+      R2_BUCKET_NAME: "edgesonic-storage",
+    });
+    const r = await get("/rest/stream?id=sm-1&format=raw");
+    assert(r.status === 302, `302 (got ${r.status})`);
+    const loc = r.headers.get("Location") || "";
+    assert(loc.startsWith("https://edgesonic-storage.df4481f3ce1fa0394b4617442a97d147.r2.cloudflarestorage.com/"),
+      "Location host reflects R2_BUCKET_NAME, not the hardcoded edgesonic-music fallback");
   }
 
   console.log("\nvalidator: enable_r2_presign accepts 0/1, rejects other (via /features/updateString)");

@@ -76,8 +76,9 @@ export const useWizard = defineStore("wizard", () => {
   // Deployment target
   const workerName = ref("edgesonic");
   const dbName = ref("edgesonic-db");
-  const bucketName = ref("edgesonic-music");
+  const bucketName = ref("edgesonic-storage");
   const domain = ref("");
+  const adminUsername = ref("");
   const adminPassword = ref("");
   const sourceRepo = ref(GITHUB_REPO);
 
@@ -88,7 +89,7 @@ export const useWizard = defineStore("wizard", () => {
     const trimmed = value.trim() || "edgesonic";
     const prevTrimmed = (oldValue || "").trim() || "edgesonic";
     if (dbName.value === `${prevTrimmed}-db`) dbName.value = `${trimmed}-db`;
-    if (bucketName.value === `${prevTrimmed}-music`) bucketName.value = `${trimmed}-music`;
+    if (bucketName.value === `${prevTrimmed}-storage`) bucketName.value = `${trimmed}-storage`;
   });
 
   // Version selection
@@ -153,6 +154,7 @@ export const useWizard = defineStore("wizard", () => {
     dbName,
     bucketName,
     domain,
+    adminUsername,
     adminPassword,
     sourceRepo,
     releases,

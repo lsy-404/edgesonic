@@ -61,7 +61,7 @@ Prefer to build and deploy from your own machine (e.g. while developing)? Use th
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (`npm i -g wrangler`)
 - A Cloudflare account with:
   - **D1** database (`edgesonic-db`)
-  - **R2** bucket (`edgesonic-music`)
+  - **R2** bucket (`edgesonic-storage`)
 
 ### 1. Clone and configure
 
