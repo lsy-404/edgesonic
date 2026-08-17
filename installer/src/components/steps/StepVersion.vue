@@ -23,7 +23,10 @@ async function load() {
     wizard.rawReleases = releases;
     const listing = buildReleaseOptions(releases, ZERO_VERSION);
     wizard.releases = listing.releases.filter((r) => r.hasArtifact).slice(0, 5);
-    if (!wizard.selectedTag && listing.defaultTag) wizard.selectedTag = listing.defaultTag;
+    // Pointing at another repository invalidates whatever tag was picked from the previous one.
+    if (!wizard.localPackage && !wizard.releases.some((r) => r.tag === wizard.selectedTag)) {
+      wizard.selectedTag = listing.defaultTag || "";
+    }
   } catch (e) {
     errorMessage.value = e instanceof Error ? e.message : String(e);
   } finally {
