@@ -40,7 +40,7 @@ async function start() {
     releaseTag: wizard.selectedTag,
     resetAdmin: wizard.resetAdmin,
     fullRebuild: wizard.fullRebuild,
-    keepContainer: wizard.keepContainer,
+    containerMode: wizard.containerMode,
     adminUsername: wizard.adminUsername.trim(),
     adminPassword: wizard.adminPassword,
   };

@@ -73,11 +73,13 @@ const checks: Array<[string, boolean]> = [
   ["a full rebuild rescues what the redeploy cannot regenerate",
     orchestrate.includes("facts.instanceId || crypto.randomUUID()") && orchestrate.includes("restoreCustomDomains")
     && orchestrate.indexOf("readScriptFacts(apiToken") < orchestrate.indexOf("deleteScript(apiToken")],
-  ["the transcoding container is declared only when the live script has one",
+  ["the transcoding container is a three-way choice defaulting to the live script's own state",
     rebuild.includes('entry.type === "durable_object_namespace" && entry.class_name === "Sandbox"')
-    && orchestrate.includes("target.keepContainer && facts.hasSandboxContainer && !rebuilding")
-    && workerVersion.includes("if (input.keepContainer) metadata.containers")
-    && [en, zh].every((locale) => locale.target.keepContainer && locale.target.keepContainerHelp && locale.review.containerLabel)],
+    && orchestrate.includes('target.containerMode === "deploy" || (target.containerMode === "keep" && facts.hasSandboxContainer && !rebuilding)')
+    && workerVersion.includes("if (input.declareContainer) metadata.containers")
+    && target.includes('wizard.containerMode') && target.includes('value="deploy"') && target.includes('value="off"')
+    && [en, zh].every((locale) => ["containerKeep", "containerDeploy", "containerOff", "containerDeployWarning"].every((key) => locale.target[key])
+      && locale.review.containerLabel)],
   ["script deletion and settings reads are relay allowlisted",
     allowlist.includes('{ method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] }')
     && allowlist.includes('["accounts", null, "workers", "scripts", null, "settings"]')],

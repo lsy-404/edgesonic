@@ -45,6 +45,14 @@ export interface DeployCredentials {
   r2SecretAccessKey: string;
 }
 
+/**
+ * What a deployment does about the Sandbox transcoding container:
+ * "keep" mirrors whatever the live Worker declares, "deploy" declares it, and
+ * "off" leaves it out. The image itself can only be published by wrangler from
+ * a machine with Docker, so "deploy" needs one to already exist for the class.
+ */
+export type ContainerMode = "keep" | "deploy" | "off";
+
 export interface DeployTarget {
   mode: "fresh" | "overwrite";
   workerName: string;
@@ -55,7 +63,7 @@ export interface DeployTarget {
   releaseTag: string;
   resetAdmin: boolean;
   fullRebuild: boolean;
-  keepContainer: boolean;
+  containerMode: ContainerMode;
   adminUsername?: string;
   adminPassword?: string;
 }

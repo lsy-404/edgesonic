@@ -17,7 +17,7 @@ import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import type { GithubRelease, ReleaseOption } from "../../../shared/autoupdate";
 import { GITHUB_REPO } from "../../../shared/autoupdate";
-import { DEPLOY_STEPS, type DeployCredentials, type DeployResult, type DeployStep, type StepState, type StepStatus } from "../lib/deploy/types";
+import { DEPLOY_STEPS, type ContainerMode, type DeployCredentials, type DeployResult, type DeployStep, type StepState, type StepStatus } from "../lib/deploy/types";
 import type { LocalUpdatePackage } from "../lib/deploy/manifest";
 
 const CREDS_KEY = "edgesonic_installer_creds";
@@ -43,9 +43,7 @@ export const useWizard = defineStore("wizard", () => {
   const overwriteConfirmed = ref(false);
   const resetAdmin = ref(false);
   const fullRebuild = ref(false);
-  // Only ever narrows what the deploy declares: the container is kept when the
-  // live script already has one, never created here.
-  const keepContainer = ref(true);
+  const containerMode = ref<ContainerMode>("keep");
   watch(mode, () => { overwriteConfirmed.value = false; fullRebuild.value = false; });
   watch(overwriteConfirmed, (value) => { if (!value) fullRebuild.value = false; });
 
@@ -151,7 +149,7 @@ export const useWizard = defineStore("wizard", () => {
     overwriteConfirmed,
     resetAdmin,
     fullRebuild,
-    keepContainer,
+    containerMode,
     credentials,
     credentialsVerified,
     accountName,

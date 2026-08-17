@@ -139,10 +139,10 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
     target.mode === "overwrite"
       ? await readScriptFacts(apiToken, accountId, script).catch(() => ({ instanceId: "", hasSandboxContainer: false }))
       : { instanceId: "", hasSandboxContainer: false };
-  // A rebuild takes the container's Durable Object with the script, and no
-  // wizard can build a replacement image, so transcoding has to be restored
-  // from a machine running wrangler afterwards.
-  const keepContainer = target.keepContainer && facts.hasSandboxContainer && !rebuilding;
+  // "keep" mirrors the live script; a rebuild deletes it, so there is nothing
+  // left to mirror and only an explicit "deploy" declares the container again.
+  const declareContainer =
+    target.containerMode === "deploy" || (target.containerMode === "keep" && facts.hasSandboxContainer && !rebuilding);
   let restoredDomains: CustomDomain[] = [];
   if (rebuilding) {
     await guarded("rebuild", report, async () => {
@@ -168,7 +168,7 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
       compatibilityDate: manifest.compatibilityDate,
       compatibilityFlags: manifest.compatibilityFlags,
       mode: rebuilding ? "fresh" : target.mode,
-      keepContainer,
+      declareContainer,
       fresh:
         target.mode === "fresh" || rebuilding
           ? {

@@ -55,9 +55,9 @@ function goBack() {
         <dt>{{ t("review.versionLabel") }}</dt>
         <dd>{{ wizard.localPackage ? `${wizard.localPackage.manifest.tag} (${wizard.localPackage.fileName})` : wizard.selectedTag }}</dd>
       </div>
-      <div v-if="wizard.mode === 'overwrite'" class="kv-row">
+      <div class="kv-row">
         <dt>{{ t("review.containerLabel") }}</dt>
-        <dd>{{ wizard.fullRebuild || !wizard.keepContainer ? t("review.containerDropped") : t("review.containerKept") }}</dd>
+        <dd>{{ t(`target.container${wizard.containerMode === "deploy" ? "Deploy" : wizard.containerMode === "off" ? "Off" : "Keep"}`) }}</dd>
       </div>
       <div v-if="wizard.mode === 'overwrite'" class="kv-row">
         <dt>{{ t("review.fullRebuildLabel") }}</dt>
