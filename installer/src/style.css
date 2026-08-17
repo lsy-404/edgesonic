@@ -469,8 +469,8 @@ code {
    (16px-tall) severity icon's margin for vertical breathing room, which we
    don't render (IsIconVisible="false", no bundled icon font). Add it back. */
 .win-infobar-layout {
-  padding-top: 18px !important;
-  padding-bottom: 18px !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
 }
 
 .tos-scroll {
