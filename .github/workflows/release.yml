@@ -98,6 +98,11 @@ jobs:
 
           cp -r web/dist "$STAGE/web/dist"
 
+          # worker/src reaches the repo-root shared/ (../../../../shared/avatar,
+          # ../../../shared/autoupdate). Inside the package those resolve to
+          # edgesonic-release/shared, so the package root mirrors the repo root.
+          cp -r shared "$STAGE/shared"
+
           cp -r worker/src "$STAGE/worker/src"
           cp -r worker/migrations "$STAGE/worker/migrations"
           cp -r worker/transcoder-image "$STAGE/worker/transcoder-image"
