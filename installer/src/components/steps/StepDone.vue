@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { GITHUB_REPO } from "../../../../shared/autoupdate";
-import { WinButton, WinInfoBar } from "../../vendor/winui";
+import { WinButton, WinCheckBox, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -74,8 +74,10 @@ function downloadInfo() {
   URL.revokeObjectURL(url);
 }
 
-function finishAndClearCredentials() {
-  wizard.clearCredentials(true);
+const clearCredentials = ref(true);
+
+function finish() {
+  if (clearCredentials.value) wizard.clearCredentials(true);
   location.reload();
 }
 </script>
@@ -125,7 +127,10 @@ function finishAndClearCredentials() {
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" @Click="finishAndClearCredentials">{{ t("done.startOver") }}</WinButton>
+        <WinCheckBox v-model="clearCredentials" class="clear-credentials-check">
+          <span>{{ t("done.clearCredentials") }}</span>
+        </WinCheckBox>
+        <WinButton Style="AccentButtonStyle" @Click="finish">{{ t("done.finish") }}</WinButton>
       </div>
     </Teleport>
   </div>
@@ -134,5 +139,12 @@ function finishAndClearCredentials() {
 <style scoped>
 .credential-card {
   margin-top: 20px;
+}
+
+/* The global rule stacks checkboxes in a column; this one sits inline in the
+   action bar next to the finish button. */
+.clear-credentials-check {
+  margin-bottom: 0;
+  margin-right: 8px;
 }
 </style>

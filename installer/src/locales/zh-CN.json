@@ -293,7 +293,8 @@
     "nextStepsDesc": "LastFM、邮件发送等可选集成本向导不会配置，登录后可在 EdgeSonic 自身的设置页里配置，也可以参考密钥说明文档。",
     "secretsLink": "密钥说明文档",
     "downloadInfo": "下载实例信息（.txt）",
-    "startOver": "完成并删除缓存凭证"
+    "finish": "完成",
+    "clearCredentials": "删除缓存凭证"
   },
   "errors": {
     "step": {
