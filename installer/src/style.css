@@ -82,6 +82,24 @@ select {
   font-size: inherit;
 }
 
+/* The vendored theme sets `user-select: none` on `*` — a desktop-app
+   convention that also blocks editing form fields and copying deployment
+   output, both of which this wizard needs. */
+input,
+textarea,
+p,
+li,
+td,
+th,
+code,
+pre,
+h1,
+h2,
+h3,
+h4 {
+  user-select: text;
+}
+
 code {
   font-family: var(--font-mono);
   font-size: 0.9em;
