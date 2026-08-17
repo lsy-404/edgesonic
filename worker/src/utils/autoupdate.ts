@@ -121,7 +121,18 @@ async function githubJson<T>(env: Env, url: string): Promise<T> {
 
 async function githubReleases(env: Env): Promise<GithubRelease[]> {
   const releases = await githubJson<GithubRelease[]>(env, `${GITHUB_API}/releases?per_page=50`);
-  return releases.filter((r) => !r.draft && typeof r.tag_name === "string");
+  const usable = releases.filter((r) => !r.draft && typeof r.tag_name === "string");
+  if (usable.length > 0) return usable;
+  // The list endpoint answers 200 with an empty array during GitHub API
+  // incidents while single-release lookups keep working. Fall back to the
+  // latest release rather than reporting that no update exists; a repository
+  // with genuinely no releases 404s here and the result is empty either way.
+  try {
+    const latest = await githubJson<GithubRelease>(env, `${GITHUB_API}/releases/latest`);
+    return typeof latest.tag_name === "string" ? [latest] : [];
+  } catch {
+    return [];
+  }
 }
 
 async function githubReleaseByTag(env: Env, tag: string, known?: GithubRelease[]): Promise<GithubRelease> {

@@ -18,14 +18,27 @@
 
 import type { GithubRelease } from "../../../shared/autoupdate";
 
-export async function fetchReleases(repo: string): Promise<GithubRelease[]> {
-  const response = await fetch(`https://api.github.com/repos/${repo}/releases?per_page=50`, {
-    headers: { Accept: "application/vnd.github+json" },
-  });
+async function githubJson<T>(url: string): Promise<T> {
+  const response = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
   if (!response.ok) {
     throw new Error(`GitHub release lookup failed (HTTP ${response.status})`);
   }
-  return (await response.json()) as GithubRelease[];
+  return (await response.json()) as T;
+}
+
+export async function fetchReleases(repo: string): Promise<GithubRelease[]> {
+  const releases = await githubJson<GithubRelease[]>(`https://api.github.com/repos/${repo}/releases?per_page=50`);
+  if (releases.length > 0) return releases;
+  // The list endpoint answers 200 with an empty array during GitHub API
+  // incidents while single-release lookups keep working, which strands the
+  // wizard on "no deployable package". Fall back to the latest release so a
+  // deploy is still possible; a repository that genuinely has no releases
+  // 404s here and the caller sees the same empty list either way.
+  try {
+    return [await githubJson<GithubRelease>(`https://api.github.com/repos/${repo}/releases/latest`)];
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchSchemaSql(repo: string, tag: string): Promise<string> {
