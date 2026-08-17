@@ -16,6 +16,7 @@ const tokenPolicies = read("installer/src/lib/cf/tokenPolicies.ts");
 const allowlist = read("installer/worker/cfAllowlist.ts");
 const manifest = read("installer/src/lib/deploy/manifest.ts");
 const assets = read("installer/src/lib/deploy/assets.ts");
+const rebuild = read("installer/src/lib/deploy/rebuild.ts");
 const installerStyle = read("installer/src/style.css");
 const en = JSON.parse(read("installer/src/locales/en.json"));
 const zh = JSON.parse(read("installer/src/locales/zh-CN.json"));
@@ -61,6 +62,19 @@ const checks: Array<[string, boolean]> = [
     && read("installer/src/lib/deploy/admin.ts").includes("requestedUsername")],
   ["fresh installs warn about reusing an existing D1/R2 name", target.includes("dbCollision") && target.includes("bucketCollision")
     && en.target.dbCollisionWarning && en.target.bucketCollisionWarning],
+  ["a full rebuild is offered only after the overwrite is confirmed",
+    target.includes("collision === true && wizard.overwriteConfirmed") && target.includes("wizard.fullRebuild")
+    && [en, zh].every((locale) => locale.target.fullRebuild && locale.target.fullRebuildHelp && locale.execute.steps.rebuild)],
+  ["a full rebuild deletes the script and redeploys it with a complete binding set",
+    rebuild.includes("workers/scripts/${encodeURIComponent(script)}?force=true")
+    && orchestrate.includes('target.mode === "overwrite" && target.fullRebuild')
+    && orchestrate.includes('mode: rebuilding ? "fresh" : target.mode')],
+  ["a full rebuild rescues what the redeploy cannot regenerate",
+    orchestrate.includes("preservedInstanceId || crypto.randomUUID()") && orchestrate.includes("restoreCustomDomains")
+    && orchestrate.indexOf("readInstanceId(apiToken") < orchestrate.indexOf("deleteScript(apiToken")],
+  ["script deletion and settings reads are relay allowlisted",
+    allowlist.includes('{ method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] }')
+    && allowlist.includes('["accounts", null, "workers", "scripts", null, "settings"]')],
 ];
 
 let failures = 0;

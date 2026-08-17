@@ -39,6 +39,7 @@ async function start() {
     sourceRepo: wizard.sourceRepo.trim(),
     releaseTag: wizard.selectedTag,
     resetAdmin: wizard.resetAdmin,
+    fullRebuild: wizard.fullRebuild,
     adminUsername: wizard.adminUsername.trim(),
     adminPassword: wizard.adminPassword,
   };

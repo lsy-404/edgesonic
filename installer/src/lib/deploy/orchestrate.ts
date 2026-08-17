@@ -24,6 +24,7 @@ import { hasTokenPermission, readTokenPermissionGroups } from "../cf/tokenPolici
 import { unpackArtifact, textFile } from "./tar";
 import { uploadAssets, type AssetManifest } from "./assets";
 import { uploadWorkerVersion, switchTraffic, readCrons } from "./workerVersion";
+import { deleteScript, listCustomDomains, readInstanceId, restoreCustomDomains, type CustomDomain } from "./rebuild";
 import { pushSecret } from "./secrets";
 import { setCron, DEFAULT_CRON } from "./cron";
 import { createSuperadmin } from "./admin";
@@ -113,18 +114,37 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
     await runQuery(apiToken, accountId, databaseId, sql);
   });
 
-  const { manifest, files, workerBytes, assetsManifest } = await guarded("download", report, async () => {
+  const { manifest, files, workerBytes, assetsManifest, assetHeaders } = await guarded("download", report, async () => {
     const { manifest, archive } = "kind" in release ? release : await fetchManifestAndArtifact(release);
     const files = await unpackArtifact(archive);
     const workerBytes = files.get(manifest.workerModule);
     if (!workerBytes) throw new DeployError("download", "Update artifact has no Worker module");
     const assetsManifest = JSON.parse(textFile(files, manifest.assetsManifest)) as AssetManifest;
-    return { manifest, files, workerBytes, assetsManifest };
+    // Packages built before asset header rules existed simply omit the file.
+    const assetHeaders = files.has("assets/_headers") ? textFile(files, "assets/_headers") : undefined;
+    return { manifest, files, workerBytes, assetsManifest, assetHeaders };
   });
 
   // Read before the version upload — any new version clears the schedule, so
   // this is the last point the pre-upload list is still visible via the API.
   const existingCrons = target.mode === "overwrite" ? await readCrons(apiToken, accountId, script).catch(() => []) : [];
+
+  // A full rebuild drops the script and redeploys it as if it were new, so the
+  // version upload below has to declare the complete binding set rather than
+  // inherit one. D1 and R2 are untouched: the library and every setting stored
+  // in the database survive.
+  const rebuilding = target.mode === "overwrite" && target.fullRebuild;
+  let preservedInstanceId = "";
+  let restoredDomains: CustomDomain[] = [];
+  if (rebuilding) {
+    await guarded("rebuild", report, async () => {
+      preservedInstanceId = await readInstanceId(apiToken, accountId, script).catch(() => "");
+      restoredDomains = await listCustomDomains(apiToken, accountId, script).catch(() => []);
+      await deleteScript(apiToken, accountId, script);
+    });
+  } else {
+    report("rebuild", "success", "Full rebuild not requested");
+  }
 
   const assetJwt = await guarded("assets", report, () => uploadAssets(apiToken, accountId, script, files, assetsManifest));
 
@@ -136,26 +156,34 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
       workerModule: manifest.workerModule,
       workerBytes,
       assetJwt,
+      assetHeaders,
       bucketName: target.bucketName,
       compatibilityDate: manifest.compatibilityDate,
       compatibilityFlags: manifest.compatibilityFlags,
-      mode: target.mode,
+      mode: rebuilding ? "fresh" : target.mode,
       fresh:
-        target.mode === "fresh"
+        target.mode === "fresh" || rebuilding
           ? {
               databaseId,
               bucketName: target.bucketName,
               workerName: target.workerName,
               version: manifest.version,
               buildTime: manifest.buildTime,
-              instanceId: crypto.randomUUID(),
+              // Keeping the identity keeps the D1 rows that attribute song
+              // sources to this instance pointing at it.
+              instanceId: preservedInstanceId || crypto.randomUUID(),
             }
           : undefined,
-      overwriteVersion: target.mode === "overwrite" ? { version: manifest.version, buildTime: manifest.buildTime } : undefined,
+      overwriteVersion: target.mode === "overwrite" && !rebuilding ? { version: manifest.version, buildTime: manifest.buildTime } : undefined,
     }),
   );
 
-  await guarded("deploy", report, () => switchTraffic(apiToken, accountId, script, versionId));
+  let domainFailures: string[] = [];
+  await guarded("deploy", report, async () => {
+    await switchTraffic(apiToken, accountId, script, versionId);
+    if (restoredDomains.length > 0) domainFailures = await restoreCustomDomains(apiToken, accountId, script, restoredDomains);
+  });
+  if (domainFailures.length > 0) report("deploy", "success", `Custom domains to re-attach by hand: ${domainFailures.join(", ")}`);
 
   await guarded("secrets", report, async () => {
     await pushSecret(apiToken, accountId, script, "WORK_UPLOAD_HMAC_KEY", generateHmacKeyBase64());

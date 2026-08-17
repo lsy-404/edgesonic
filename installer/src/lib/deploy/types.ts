@@ -19,6 +19,7 @@ export const DEPLOY_STEPS = [
   "r2",
   "schema",
   "download",
+  "rebuild",
   "assets",
   "worker",
   "deploy",
@@ -53,6 +54,7 @@ export interface DeployTarget {
   sourceRepo: string;
   releaseTag: string;
   resetAdmin: boolean;
+  fullRebuild: boolean;
   adminUsername?: string;
   adminPassword?: string;
 }

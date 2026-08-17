@@ -36,6 +36,8 @@ const ALLOWLIST: Rule[] = [
   { method: "POST", segments: ["accounts", null, "d1", "database", null, "query"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null] },
+  { method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] },
+  { method: "GET", segments: ["accounts", null, "workers", "scripts", null, "settings"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null, "deployments"] },
   { method: "POST", segments: ["accounts", null, "workers", "scripts", null, "versions"] },
   { method: "POST", segments: ["accounts", null, "workers", "scripts", null, "deployments"] },

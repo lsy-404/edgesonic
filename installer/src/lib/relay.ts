@@ -96,6 +96,31 @@ export async function callCfJson<T>(
   return body.result as T;
 }
 
+/** Script deletion answers with an empty body, which `response.json()` can't parse. */
+export async function callCfNoContent(token: string, path: string, init?: RequestInit, context?: string): Promise<void> {
+  const response = await fetchRelay(`${relayBase()}/cf${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...((init?.headers as Record<string, string>) || {}),
+    },
+  });
+  const text = (await response.text()).trim();
+  let body: CfEnvelope<unknown> | undefined;
+  if (text) {
+    try {
+      body = JSON.parse(text) as CfEnvelope<unknown>;
+    } catch {
+      body = undefined;
+    }
+  }
+  if (!response.ok || body?.success === false) {
+    const first = body?.errors?.[0];
+    throw new CfApiError(first?.message || `Cloudflare request failed (HTTP ${response.status})`, response.status, first?.code, context);
+  }
+}
+
 /** Multipart variant for the Worker version upload and the asset-upload-session completion call. */
 export async function callCfMultipart<T>(
   token: string,

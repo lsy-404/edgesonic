@@ -40,6 +40,8 @@ non-empty and contain no `/`, don't further validate their format):
 | POST | `/accounts/{accountId}/d1/database/{dbId}/query` | apply Schema.sql, insert superadmin |
 | GET | `/accounts/{accountId}/workers/scripts` | detect name collision (overwrite vs fresh) |
 | GET | `/accounts/{accountId}/workers/scripts/{scriptName}` | script metadata (overwrite install) |
+| DELETE | `/accounts/{accountId}/workers/scripts/{scriptName}` | full rebuild: drop the script before redeploying it from scratch |
+| GET | `/accounts/{accountId}/workers/scripts/{scriptName}/settings` | full rebuild: read `INSTANCE_ID` back before the script is dropped |
 | GET | `/accounts/{accountId}/workers/scripts/{scriptName}/deployments` | current live version (overwrite/rollback) |
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/versions` | upload new Worker version (multipart) |
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/deployments` | switch traffic to new version |

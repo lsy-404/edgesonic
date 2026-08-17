@@ -42,7 +42,9 @@ export const useWizard = defineStore("wizard", () => {
   const mode = ref<"fresh" | "overwrite">("fresh");
   const overwriteConfirmed = ref(false);
   const resetAdmin = ref(false);
-  watch(mode, () => { overwriteConfirmed.value = false; });
+  const fullRebuild = ref(false);
+  watch(mode, () => { overwriteConfirmed.value = false; fullRebuild.value = false; });
+  watch(overwriteConfirmed, (value) => { if (!value) fullRebuild.value = false; });
 
   // Credentials — sessionStorage only, per this project's rule that the CF
   // token and R2 keys are never persisted past the browser tab. Cleared
@@ -145,6 +147,7 @@ export const useWizard = defineStore("wizard", () => {
     mode,
     overwriteConfirmed,
     resetAdmin,
+    fullRebuild,
     credentials,
     credentialsVerified,
     accountName,

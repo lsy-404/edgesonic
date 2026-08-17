@@ -217,6 +217,11 @@ function goBack() {
       <input v-model="wizard.resetAdmin" type="checkbox" />
       <span>{{ t("target.resetAdmin") }}</span>
     </label>
+    <label v-if="wizard.mode === 'overwrite' && collision === true && wizard.overwriteConfirmed" class="check-row">
+      <input v-model="wizard.fullRebuild" type="checkbox" />
+      <span>{{ t("target.fullRebuild") }}</span>
+    </label>
+    <p v-if="wizard.fullRebuild" class="field-help" style="color: var(--color-warning)">{{ t("target.fullRebuildHelp") }}</p>
 
     <div class="field">
       <label for="adminUsername">{{ t("target.adminUsername") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
