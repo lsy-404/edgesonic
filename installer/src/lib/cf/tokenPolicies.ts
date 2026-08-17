@@ -12,8 +12,6 @@ export const TOKEN_PERMISSION_GROUPS = {
   observability: ["Workers Observability Write", "Workers Observability Edit", "Workers Observability"],
   accountAnalytics: ["Account Analytics Read", "Account Analytics"],
   accountSettings: ["Account Settings Read", "Account Settings"],
-  zoneRead: ["Zone Read", "Zone"],
-  zoneSettings: ["Zone Settings Read", "Zone Settings"],
 } as const;
 
 interface TokenDetails {

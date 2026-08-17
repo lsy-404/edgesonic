@@ -24,6 +24,9 @@ function start() {
         <li>{{ t("welcome.termAccount") }}</li>
         <li>{{ t("welcome.termData") }}</li>
         <li>{{ t("welcome.termSupport") }}</li>
+        <li>{{ t("welcome.termProxy") }}</li>
+        <li>{{ t("welcome.termRecovery") }}</li>
+        <li>{{ t("welcome.termNaming") }}</li>
       </ul>
       <p class="field-help"><a href="https://github.com/wuyilingwei/edgesonic/blob/main/docs/DEPLOY_BY_AGENT.md" target="_blank" rel="noreferrer">{{ t("welcome.advancedDeploy") }} ↗</a></p>
     </div>

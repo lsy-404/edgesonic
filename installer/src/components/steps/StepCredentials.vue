@@ -21,8 +21,6 @@ const permissionRows = [
   { key: "observability", category: "analytics", required: false, scope: "account", level: "write" },
   { key: "accountAnalytics", category: "analytics", required: false, scope: "account", level: "read" },
   { key: "accountSettings", category: "account", required: false, scope: "account", level: "read" },
-  { key: "zoneRead", category: "zone", required: false, scope: "targetZone", level: "read" },
-  { key: "zoneSettings", category: "zone", required: false, scope: "targetZone", level: "read" },
 ] as const;
 
 const verifying = ref(false);
@@ -294,6 +292,7 @@ function goBack() {
       <label for="apiToken">{{ t("credentials.apiToken") }}<span class="field-tag required">{{ t("common.required") }}</span></label>
       <input id="apiToken" v-model.trim="wizard.credentials.apiToken" type="password" autocomplete="off" spellcheck="false" />
       <p class="field-help">{{ t("credentials.apiTokenHelp") }}</p>
+      <p class="field-help">{{ t("credentials.apiTokenStorageNote") }}</p>
     </div>
 
     <div class="field">
