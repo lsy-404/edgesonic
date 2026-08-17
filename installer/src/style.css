@@ -42,6 +42,18 @@
   box-sizing: border-box;
 }
 
+/* theme.css (vendor/winui) styles its own demo shell as a fixed-viewport
+   app with `height: 100%; overflow: hidden` on html/body/#app — it manages
+   scrolling itself via internal regions. We're a normal scrolling document
+   (and #app is Vite's default mount id, so that rule targets us too), so
+   undo it here. */
+html,
+body,
+#app {
+  height: auto;
+  overflow: visible;
+}
+
 html,
 body {
   margin: 0;
