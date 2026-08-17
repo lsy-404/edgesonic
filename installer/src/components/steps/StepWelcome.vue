@@ -33,7 +33,7 @@ function start() {
 
     <label class="check-row" style="margin-top: 20px">
       <input v-model="accepted" type="checkbox" />
-      <span>{{ t("welcome.acceptTerms") }}</span>
+      <span>{{ t("welcome.acceptTerms") }}<span class="required-star" aria-hidden="true">*</span></span>
     </label>
 
     <div class="step-actions">

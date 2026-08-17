@@ -211,7 +211,7 @@ function goBack() {
 
     <label v-if="wizard.mode === 'overwrite' && collision === true" class="check-row">
       <input v-model="wizard.overwriteConfirmed" type="checkbox" />
-      <span>{{ t("target.overwriteConfirm") }}</span>
+      <span>{{ t("target.overwriteConfirm") }}<span class="required-star" aria-hidden="true">*</span></span>
     </label>
     <label v-if="wizard.mode === 'overwrite' && collision === true" class="check-row">
       <input v-model="wizard.resetAdmin" type="checkbox" />

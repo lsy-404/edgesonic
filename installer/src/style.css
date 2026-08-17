@@ -485,3 +485,25 @@ code {
 .status-dot-failed {
   background: var(--color-danger);
 }
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.check-row input[type="checkbox"] {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.required-star {
+  color: var(--color-danger);
+  font-weight: 700;
+  margin-left: 3px;
+}
