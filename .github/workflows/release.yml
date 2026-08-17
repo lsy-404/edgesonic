@@ -112,7 +112,7 @@ jobs:
           cp worker/SECRETS.md "$STAGE/worker/"
           cp worker/CF_CRON.md "$STAGE/worker/"
 
-          cp docs/DEPLOY_BY_AGENT.md "$STAGE/" 2>/dev/null || true
+          cp docs/DEPLOY_BY_AGENT.md "$STAGE/"
 
           # Install the Worker's own runtime deps into the staged dir — not
           # `npm ci` at the repo root, which would also drag in web's build-time
@@ -136,10 +136,23 @@ jobs:
           echo "Pinning worker runtime deps: hono@${HONO_VERSION}, @cloudflare/sandbox@${SANDBOX_VERSION}"
           ( cd "$STAGE/worker" && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund --no-save \
               "hono@${HONO_VERSION}" "@cloudflare/sandbox@${SANDBOX_VERSION}" )
-           test -d "$STAGE/worker/node_modules/hono" || { echo "::error::worker runtime deps failed to install into the package"; exit 1; }
+          test -d "$STAGE/worker/node_modules/hono" || { echo "::error::worker runtime deps failed to install into the package"; exit 1; }
 
-           tar czf edgesonic-release.tar.gz -C "$RUNNER_TEMP" edgesonic-release
-           sha256sum edgesonic-release.tar.gz > edgesonic-release.tar.gz.sha256
+          # Bundle the staged Worker the way a consumer will, before tarring it.
+          # The cp list above is hand-maintained, and a file it misses surfaces
+          # only as an esbuild resolution error at deploy time. update-wrangler.toml
+          # carries no account id, no resource ids and no container build, so a
+          # dry run needs no Cloudflare credentials. Run from the repo root, where
+          # `npm ci` installed wrangler; the staged node_modules omits dev deps.
+          cp worker/update-wrangler.toml "$STAGE/worker/verify-wrangler.toml"
+          npx wrangler deploy --dry-run \
+            --config "$STAGE/worker/verify-wrangler.toml" \
+            --outdir "${RUNNER_TEMP}/verify-out" \
+            || { echo "::error::The assembled package does not bundle — the Worker imports a file the package does not ship."; exit 1; }
+          rm -f "$STAGE/worker/verify-wrangler.toml"
+
+          tar czf edgesonic-release.tar.gz -C "$RUNNER_TEMP" edgesonic-release
+          sha256sum edgesonic-release.tar.gz > edgesonic-release.tar.gz.sha256
 
       - name: Build API update artifact
         env:

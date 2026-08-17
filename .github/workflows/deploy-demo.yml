@@ -146,6 +146,11 @@ jobs:
           test -d edgesonic-release/worker
           test -d edgesonic-release/web/dist
           test -s edgesonic-release/web/dist/build-info.json
+          # The Worker's source imports ../../../../shared/*. Without this
+          # directory the deploy dies inside esbuild, several steps after the
+          # demo database has already been recreated.
+          test -d edgesonic-release/shared \
+            || { echo "::error::Release package is missing shared/ — rebuild the release."; exit 1; }
 
       - name: Provision Cloudflare resources
         id: provision
