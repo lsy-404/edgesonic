@@ -216,7 +216,7 @@
     "sourceRepo": "Source repository",
     "sourceRepoHelp": "Only change this if you're deploying from your own fork's releases.",
     "localPackage": "Custom installation package",
-    "localPackageHelp": "Choose a ZIP containing edgesonic-update-manifest.json and edgesonic-update.tar.gz.",
+    "localPackageHelp": "Either a ZIP containing edgesonic-update-manifest.json and edgesonic-update.tar.gz, or a bare .tar.gz deploy artifact (no manifest, source can't be verified).",
     "localPackageWarning": "Using local package {name} ({version}). Its checksum is verified against its own manifest, but ZIP packages are not signed and cannot be confirmed as official.",
     "reload": "Reload releases",
     "noneEligible": "No releases with a deployable update package were found for this repository.",

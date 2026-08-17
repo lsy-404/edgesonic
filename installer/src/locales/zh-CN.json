@@ -216,7 +216,7 @@
     "sourceRepo": "源仓库",
     "sourceRepoHelp": "仅在你要部署自己 fork 仓库发布的版本时才需要修改。",
     "localPackage": "自定义安装包",
-    "localPackageHelp": "选择同时包含 edgesonic-update-manifest.json 和 edgesonic-update.tar.gz 的 ZIP。",
+    "localPackageHelp": "可以是同时包含 edgesonic-update-manifest.json 和 edgesonic-update.tar.gz 的 ZIP，也可以直接选择裸的 .tar.gz 部署包（不含清单，无法校验来源）。",
     "localPackageWarning": "正在使用本地包 {name}（{version}）。安装器会按其自身清单验证校验和，但 ZIP 没有签名，无法确认其是否为官方包。",
     "reload": "重新加载版本列表",
     "noneEligible": "此仓库没有找到带可部署更新包的发布版本。",

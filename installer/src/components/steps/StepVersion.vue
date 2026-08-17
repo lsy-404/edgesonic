@@ -5,7 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { fetchReleases } from "../../lib/github";
 import { buildReleaseOptions, ZERO_VERSION } from "../../../../shared/autoupdate";
-import { readLocalUpdatePackage } from "../../lib/deploy/manifest";
+import { readLocalUpdateArtifact, readLocalUpdatePackage } from "../../lib/deploy/manifest";
 import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
@@ -39,8 +39,9 @@ async function selectLocalPackage(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
   localError.value = "";
+  const isArchive = /\.(tar\.gz|tgz)$/i.test(file.name);
   try {
-    wizard.selectLocalPackage(await readLocalUpdatePackage(file));
+    wizard.selectLocalPackage(isArchive ? await readLocalUpdateArtifact(file) : await readLocalUpdatePackage(file));
   } catch (error) {
     wizard.selectLocalPackage(null);
     localError.value = error instanceof Error ? error.message : String(error);
@@ -74,11 +75,6 @@ function goBack() {
     <p class="step-subtitle">{{ t("version.subtitle") }}</p>
     <p class="field-help">{{ t("version.freeNotice") }}</p>
 
-    <WinInfoBar v-if="wizard.mode === 'overwrite'" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
-      <strong>{{ t("overwriteAdvice.title") }}</strong>
-      <p>{{ t("overwriteAdvice.message") }}</p>
-    </WinInfoBar>
-
     <div class="field">
       <label for="sourceRepo">{{ t("version.sourceRepo") }}</label>
       <input id="sourceRepo" v-model.trim="wizard.sourceRepo" type="text" spellcheck="false" @change="load" />
@@ -109,7 +105,7 @@ function goBack() {
 
     <div class="field" style="margin-top: 24px">
       <label for="localPackage">{{ t("version.localPackage") }}</label>
-      <input id="localPackage" type="file" accept=".zip,application/zip" @change="selectLocalPackage" />
+      <input id="localPackage" type="file" accept=".zip,.tar.gz,.tgz,application/zip" @change="selectLocalPackage" />
       <p class="field-help">{{ t("version.localPackageHelp") }}</p>
       <WinInfoBar v-if="wizard.localPackage" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
         {{ t("version.localPackageWarning", { name: wizard.localPackage.fileName, version: wizard.localPackage.manifest.version }) }}
