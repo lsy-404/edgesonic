@@ -23,7 +23,9 @@ const segments = computed(() =>
     const stepNum = i + 1;
     const weight = stepNum === DEPLOY_STEP_NUMBER ? DEPLOY_SEGMENT_WEIGHT : 1;
     let fill = 0;
-    if (stepNum < props.step) {
+    // The last step is the result page — nothing is left to do, so the bar
+    // reads as complete rather than leaving its final segment empty.
+    if (stepNum < props.step || props.step >= props.total) {
       fill = 1;
     } else if (stepNum === props.step && stepNum === DEPLOY_STEP_NUMBER && wizard.stepStates.length > 0) {
       const total = wizard.stepStates.length;
