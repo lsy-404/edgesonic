@@ -71,10 +71,15 @@ const dist = path.join(root, "web/dist");
 const assetsDir = path.join(stage, "assets");
 await fs.mkdir(path.join(stage, "db"), { recursive: true });
 await fs.cp(dist, assetsDir, { recursive: true });
+// Same two files wrangler keeps out of the manifest: they configure asset
+// serving instead of being served themselves.
+const ASSET_CONFIG_FILES = new Set(["/_headers", "/_redirects"]);
+
 const assetManifest = {};
 for (const rel of await walk(dist)) {
   const bytes = await fs.readFile(path.join(dist, rel));
   const normalized = `/${rel.split(path.sep).join("/")}`;
+  if (ASSET_CONFIG_FILES.has(normalized)) continue;
   assetManifest[normalized] = {
     hash: assetHash(bytes, rel),
     size: bytes.length,

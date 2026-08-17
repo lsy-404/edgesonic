@@ -301,6 +301,7 @@ function assetContentType(assetPath: string): string {
     case "css": return "text/css";
     case "html": return "text/html";
     case "json": return "application/json";
+    case "webmanifest": return "application/manifest+json";
     case "svg": return "image/svg+xml";
     case "png": return "image/png";
     case "jpg":
@@ -579,6 +580,13 @@ export async function executeUpdate(
 
     await updateState(env.DB, operationId, "uploading");
     const assetJwt = await uploadAssets(token, accountId, script, files, assets);
+    // Cloudflare parses this file server-side and serves the Content-Type it
+    // declares, which is the only way to repair assets already stored with an
+    // empty type: those are deduplicated by hash and never re-uploaded.
+    // Packages built before asset header rules existed simply omit the file.
+    const assetHeaders = files.has("assets/_headers") ? textFile(files, "assets/_headers") : undefined;
+    const assetMetadata: Record<string, unknown> = { jwt: assetJwt };
+    if (assetHeaders) assetMetadata.config = { _headers: assetHeaders };
     const metadata = {
       main_module: manifest.workerModule,
       bindings: [
@@ -591,7 +599,7 @@ export async function executeUpdate(
       containers: [{ class_name: "Sandbox" }],
       compatibility_date: manifest.compatibilityDate || "2025-05-24",
       compatibility_flags: manifest.compatibilityFlags || ["nodejs_compat"],
-      assets: { jwt: assetJwt },
+      assets: assetMetadata,
       annotations: {
         "workers/message": `EdgeSonic ${manifest.version}`,
         "workers/tag": manifest.tag,

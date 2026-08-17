@@ -63,6 +63,7 @@ interface UploadVersionInput {
   workerModule: string;
   workerBytes: Uint8Array;
   assetJwt: string;
+  assetHeaders?: string;
   bucketName: string;
   compatibilityDate?: string;
   compatibilityFlags?: string[];
@@ -86,12 +87,19 @@ export async function uploadWorkerVersion(input: UploadVersionInput): Promise<st
           { type: "assets", name: "ASSETS" },
         ];
 
+  // config._headers carries the package's _headers file verbatim — Cloudflare
+  // parses it server-side. It sets Content-Type from the request path, which
+  // is the only way to repair assets whose stored type is empty: those are
+  // deduplicated by content hash and never re-uploaded.
+  const assets: Record<string, unknown> = { jwt: input.assetJwt };
+  if (input.assetHeaders) assets.config = { _headers: input.assetHeaders };
+
   const metadata: Record<string, unknown> = {
     main_module: input.workerModule,
     bindings,
     compatibility_date: input.compatibilityDate || "2025-05-24",
     compatibility_flags: input.compatibilityFlags || ["nodejs_compat"],
-    assets: { jwt: input.assetJwt },
+    assets,
   };
   if (input.mode === "overwrite") {
     metadata.keep_bindings = KEEP_BINDING_TYPES;

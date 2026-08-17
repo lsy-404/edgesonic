@@ -1,0 +1,23 @@
+# Content-Type for static assets. Workers stores each asset's type at upload
+# time and replays it verbatim, so assets uploaded without one are served with
+# no Content-Type at all and strict MIME checking rejects module scripts.
+# These rules set the type from the request path instead.
+
+/
+  Content-Type: text/html; charset=utf-8
+/index.html
+  Content-Type: text/html; charset=utf-8
+/sw.js
+  Content-Type: text/javascript; charset=utf-8
+/assets/*.js
+  Content-Type: text/javascript; charset=utf-8
+/assets/*.css
+  Content-Type: text/css; charset=utf-8
+/*.svg
+  Content-Type: image/svg+xml
+/icons/*.png
+  Content-Type: image/png
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+/build-info.json
+  Content-Type: application/json

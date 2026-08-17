@@ -55,6 +55,8 @@ R2_BUCKET_NAME = "<YOUR_R2_BUCKET_NAME>"
 # ALLOW_ALL_FILE_TYPES = "0"
 
 # Static Assets (Vue frontend) — 需先 `npm run build:web` 生成 web/dist
+# 资源响应头规则来自 web/public/_headers（构建进 web/dist），wrangler 自动读取，
+# 该文件本身不会作为资源上传。
 [assets]
 directory = "../web/dist"
 binding = "ASSETS"

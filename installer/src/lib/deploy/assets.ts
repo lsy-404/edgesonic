@@ -47,6 +47,7 @@ function assetContentType(assetPath: string): string {
     case "css": return "text/css";
     case "html": return "text/html";
     case "json": return "application/json";
+    case "webmanifest": return "application/manifest+json";
     case "svg": return "image/svg+xml";
     case "png": return "image/png";
     case "jpg":
