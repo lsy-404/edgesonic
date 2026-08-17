@@ -49,8 +49,11 @@ const checks: Array<[string, boolean]> = [
   ["completion link opens the deployed Worker production page", done.includes("/workers/services/view/") && done.includes("/production")],
   ["asset uploads preserve JavaScript MIME types", assets.includes('return "text/javascript"') && assets.includes("new File([base64Bytes(bytes)]")],
   ["permission table includes categories and wraps content", credentials.includes("permissionCategory") && credentials.includes("permission.category") && installerStyle.includes("overflow-wrap: anywhere")],
-  ["terms of service disclose the CORS relay, recovery limits, and naming responsibility", welcome.includes("termProxy") && welcome.includes("termRecovery") && welcome.includes("termNaming")
-    && ["termProxy", "termRecovery", "termNaming"].every((key) => en.welcome[key] && zh.welcome[key])],
+  ["terms of service are a structured, formal document covering data handling, CF tracking/anti-abuse, and no availability guarantee",
+    welcome.includes("section1Title") && welcome.includes("section2Title") && welcome.includes("section3Title") && welcome.includes("section4Title")
+    && Object.keys(en.welcome).some((key) => key.startsWith("section")) && Object.keys(zh.welcome).some((key) => key.startsWith("section"))
+    && /CF-Ray|Bot 检测|bot detection/.test(en.welcome.section2Item2 + zh.welcome.section2Item2)
+    && /availability|可用性/.test(en.welcome.section4Body + zh.welcome.section4Body)],
   ["initial superadmin username is configurable end to end", target.includes("wizard.adminUsername")
     && target.includes("ADMIN_USERNAME_RE")
     && deployTypes.includes("adminUsername")

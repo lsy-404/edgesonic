@@ -507,3 +507,41 @@ code {
   font-weight: 700;
   margin-left: 3px;
 }
+
+.tos-scroll {
+  max-height: 340px;
+  overflow-y: auto;
+  margin: 8px 0 0;
+  padding-right: 6px;
+}
+
+.tos-section {
+  margin-bottom: 14px;
+}
+
+.tos-section:last-child {
+  margin-bottom: 0;
+}
+
+.tos-section h4 {
+  font-size: 0.85rem;
+  margin: 0 0 4px;
+  color: var(--color-text);
+}
+
+.tos-section p {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.tos-section ul {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+  padding-left: 20px;
+}
+
+.tos-section li + li {
+  margin-top: 4px;
+}

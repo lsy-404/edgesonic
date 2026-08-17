@@ -20,14 +20,32 @@ function start() {
 
     <div class="guide-card">
       <h3>{{ t("welcome.termsTitle") }}</h3>
-      <ul style="margin: 8px 0 0; padding-left: 20px">
-        <li>{{ t("welcome.termAccount") }}</li>
-        <li>{{ t("welcome.termData") }}</li>
-        <li>{{ t("welcome.termSupport") }}</li>
-        <li>{{ t("welcome.termProxy") }}</li>
-        <li>{{ t("welcome.termRecovery") }}</li>
-        <li>{{ t("welcome.termNaming") }}</li>
-      </ul>
+      <div class="tos-scroll">
+        <section class="tos-section">
+          <h4>{{ t("welcome.section1Title") }}</h4>
+          <p>{{ t("welcome.section1Body") }}</p>
+        </section>
+        <section class="tos-section">
+          <h4>{{ t("welcome.section2Title") }}</h4>
+          <ul>
+            <li>{{ t("welcome.section2Item1") }}</li>
+            <li>{{ t("welcome.section2Item2") }}</li>
+            <li>{{ t("welcome.section2Item3") }}</li>
+          </ul>
+        </section>
+        <section class="tos-section">
+          <h4>{{ t("welcome.section3Title") }}</h4>
+          <ul>
+            <li>{{ t("welcome.section3Item1") }}</li>
+            <li>{{ t("welcome.section3Item2") }}</li>
+            <li>{{ t("welcome.section3Item3") }}</li>
+          </ul>
+        </section>
+        <section class="tos-section">
+          <h4>{{ t("welcome.section4Title") }}</h4>
+          <p>{{ t("welcome.section4Body") }}</p>
+        </section>
+      </div>
       <p class="field-help"><a href="https://github.com/wuyilingwei/edgesonic/blob/main/docs/DEPLOY_BY_AGENT.md" target="_blank" rel="noreferrer">{{ t("welcome.advancedDeploy") }} ↗</a></p>
     </div>
 
