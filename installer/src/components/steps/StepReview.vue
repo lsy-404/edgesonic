@@ -87,12 +87,14 @@ function goBack() {
       </div>
     </dl>
 
-    <div class="step-actions">
-      <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
-      <div class="spacer" />
-      <WinButton Style="AccentButtonStyle" :IsEnabled="lockSecondsLeft <= 0" @Click="goNext">
-        {{ lockSecondsLeft > 0 ? t("review.confirmWait", { seconds: lockSecondsLeft }) : t("review.confirm") }}
-      </WinButton>
-    </div>
+    <Teleport defer to=".shell-card-actions">
+      <div class="step-actions">
+        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <div class="spacer" />
+        <WinButton Style="AccentButtonStyle" :IsEnabled="lockSecondsLeft <= 0" @Click="goNext">
+          {{ lockSecondsLeft > 0 ? t("review.confirmWait", { seconds: lockSecondsLeft }) : t("review.confirm") }}
+        </WinButton>
+      </div>
+    </Teleport>
   </div>
 </template>

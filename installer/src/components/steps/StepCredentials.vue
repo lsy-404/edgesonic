@@ -52,6 +52,12 @@ function setCheck(key: string, status: CheckStatus, detail = "") {
   }
 }
 
+function checkFor(key: string): PermissionCheck | undefined {
+  return checks.find((c) => c.key === key);
+}
+
+const tokenCheck = computed(() => checkFor("token"));
+
 const ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i;
 const API_TOKEN_RE = /^cfat_[A-Za-z0-9_-]{20,}$/;
 
@@ -258,6 +264,7 @@ function goBack() {
                   <th>{{ t("credentials.permissionScenario") }}</th>
                   <th>{{ t("credentials.permissionScope") }}</th>
                   <th>{{ t("credentials.permissionLevel") }}</th>
+                  <th>{{ t("credentials.permissionStatus") }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,10 +281,22 @@ function goBack() {
                   <td>{{ t(`credentials.permissions.${permission.key}.scenario`) }}</td>
                   <td>{{ t(`credentials.permissionScopes.${permission.scope}`) }}</td>
                   <td>{{ t(`credentials.permissionLevels.${permission.level}`) }}</td>
+                  <td>
+                    <span v-if="hasAttempted" class="check-status" :title="checkFor(permission.key)?.detail || ''">
+                      <span class="check-dot" :class="`check-dot-${checkFor(permission.key)?.status || 'pending'}`" aria-hidden="true" />
+                      {{ t(`credentials.checkStatus.${checkFor(permission.key)?.status || 'pending'}`) }}
+                    </span>
+                    <span v-else class="check-status">—</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <p v-if="hasAttempted" class="field-help check-status">
+            <span class="check-dot" :class="`check-dot-${tokenCheck?.status || 'pending'}`" aria-hidden="true" />
+            {{ t("credentials.checks.token") }}: {{ t(`credentials.checkStatus.${tokenCheck?.status || 'pending'}`) }}
+            <template v-if="tokenCheck?.detail">— {{ tokenCheck.detail }}</template>
+          </p>
           <p class="field-help">{{ t("credentials.dnsNotNeeded") }}</p>
         </li>
       </ol>
@@ -307,17 +326,6 @@ function goBack() {
       <p v-if="!r2KeysComplete" class="field-help" style="color: var(--SystemFillColorCriticalBrush)">{{ t("credentials.r2KeysPairRequired") }}</p>
     </div>
 
-    <ul v-if="hasAttempted" class="permission-checklist">
-      <li v-for="c in checks" :key="c.key" :class="['permission-row', `permission-${c.status}`]">
-        <span class="permission-dot" aria-hidden="true" />
-        <div>
-          <strong>{{ t(`credentials.checks.${c.key}`) }}</strong>
-          <span class="permission-status">{{ t(`credentials.checkStatus.${c.status}`) }}</span>
-          <p v-if="c.detail" class="field-help">{{ c.detail }}</p>
-        </div>
-      </li>
-    </ul>
-
     <template v-if="wizard.credentialsVerified">
       <div v-if="wizard.accountName" style="margin-top: 16px">
         <WinInfoBar :IsOpen="true" Severity="Success" :IsClosable="false" :IsIconVisible="false">
@@ -337,10 +345,12 @@ function goBack() {
       </div>
     </template>
 
-    <div class="step-actions">
-      <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
-      <div class="spacer" />
-      <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="goNext">{{ t("common.next") }}</WinButton>
-    </div>
+    <Teleport defer to=".shell-card-actions">
+      <div class="step-actions">
+        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <div class="spacer" />
+        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="goNext">{{ t("common.next") }}</WinButton>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -6,7 +6,11 @@ import { useWizard } from "../../stores/wizard";
 import { runDeploy } from "../../lib/deploy/orchestrate";
 import { DeployError, type DeployTarget } from "../../lib/deploy/types";
 import { describeCfError } from "../../lib/cf/errors";
-import { WinButton, WinInfoBar } from "../../vendor/winui";
+import { WinButton, WinInfoBar, WinProgressRing } from "../../vendor/winui";
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -51,6 +55,7 @@ async function start() {
       wizard.setStepStatus(step, status, detail);
     });
     wizard.finishSuccess(result);
+    await delay(1200);
     wizard.step = 8;
   } catch (e) {
     if (e instanceof DeployError) {
@@ -77,10 +82,15 @@ function retry() {
     <h1 class="step-title">{{ t("execute.title") }}</h1>
     <p class="step-subtitle">{{ t("execute.subtitle") }}</p>
 
+    <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false" style="margin-bottom: 16px">
+      {{ t("execute.firstDeployNotice") }}
+    </WinInfoBar>
+
     <ul class="execute-steps">
       <li v-for="entry in wizard.stepStates" :key="entry.step" class="kv-row execute-step-row">
         <dt class="execute-step-label">
-          <span class="status-dot" :class="`status-dot-${entry.status}`" />
+          <WinProgressRing v-if="entry.status === 'running'" :Width="14" :Height="14" />
+          <span v-else class="status-dot" :class="`status-dot-${entry.status}`" />
           {{ t(`execute.steps.${entry.step}`) }}
         </dt>
         <dd>
@@ -98,10 +108,12 @@ function retry() {
       </WinInfoBar>
     </div>
 
-    <div class="step-actions" v-if="wizard.deployFailed && !running">
-      <div class="spacer" />
-      <WinButton Style="AccentButtonStyle" @Click="retry">{{ t("common.retry") }}</WinButton>
-    </div>
+    <Teleport defer to=".shell-card-actions">
+      <div v-if="wizard.deployFailed && !running" class="step-actions">
+        <div class="spacer" />
+        <WinButton Style="AccentButtonStyle" @Click="retry">{{ t("common.retry") }}</WinButton>
+      </div>
+    </Teleport>
     <p v-if="wizard.deployFailed" class="field-help">{{ t("execute.retryFromHere") }}</p>
   </div>
 </template>

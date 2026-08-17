@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { useWizard } from "./stores/wizard";
 import WizardShell from "./components/WizardShell.vue";
 import StepWelcome from "./components/steps/StepWelcome.vue";
@@ -35,10 +35,20 @@ const current = computed(() => {
       return StepDone;
   }
 });
+
+const transitionName = ref("slide-left");
+watch(
+  () => wizard.step,
+  (next, prev) => {
+    transitionName.value = next >= prev ? "slide-left" : "slide-right";
+  },
+);
 </script>
 
 <template>
   <WizardShell :step="Math.min(wizard.step, TOTAL_STEPS)" :total="TOTAL_STEPS">
-    <component :is="current" />
+    <Transition :name="transitionName">
+      <component :is="current" :key="wizard.step" />
+    </Transition>
   </WizardShell>
 </template>

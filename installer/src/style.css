@@ -182,12 +182,18 @@ code {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 28px;
   gap: 12px;
 }
 
 .step-actions .spacer {
   flex: 1;
+}
+
+/* Primary step navigation reads as more prominent than an inline control. */
+.step-actions .win-btn {
+  padding: 10px 22px;
+  min-height: 40px;
+  font-size: 0.95rem;
 }
 
 /* Reserved for <a class="btn ..."> link-buttons (WinButton can't render an <a>).
@@ -329,54 +335,32 @@ code {
   color: var(--text-secondary);
 }
 
-.permission-checklist {
-  list-style: none;
-  margin: 16px 0 0;
-  padding: 0;
-  border: 1px solid var(--card-stroke);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.permission-row {
+.check-status {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 14px;
-  font-size: 0.88rem;
-  border-top: 1px solid var(--stroke-divider);
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
-.permission-row:first-child {
-  border-top: none;
-}
-
-.permission-dot {
+.check-dot {
   flex: none;
-  margin-top: 5px;
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--ctrl-strong-fill);
 }
 
-.permission-checking .permission-dot {
+.check-dot-checking {
   background: var(--accent-base);
 }
 
-.permission-ok .permission-dot {
+.check-dot-ok {
   background: var(--SystemFillColorSuccessBrush);
 }
 
-.permission-missing .permission-dot,
-.permission-error .permission-dot {
+.check-dot-missing,
+.check-dot-error {
   background: var(--SystemFillColorCriticalBrush);
-}
-
-.permission-status {
-  margin-left: 8px;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
 }
 
 .kv-list {
@@ -467,8 +451,8 @@ code {
    (16px-tall) severity icon's margin for vertical breathing room, which we
    don't render (IsIconVisible="false", no bundled icon font). Add it back. */
 .win-infobar-layout {
-  padding-top: 14px;
-  padding-bottom: 14px;
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
 }
 
 .tos-scroll {
@@ -526,4 +510,75 @@ code {
 
 .tos-section li + li {
   margin-top: 4px;
+}
+
+/* Step navigation slide, direction-aware (App.vue picks the name by step delta).
+   No out-in mode — both steps are briefly present at once, so the leaving one
+   is taken out of flow (absolute) to avoid doubling the scroll container's
+   height while they cross-fade. */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform var(--normal-duration, 0.2s) var(--fast-out-slow-in, ease), opacity var(--normal-duration, 0.2s) ease;
+}
+
+.slide-left-leave-active,
+.slide-right-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.slide-left-enter-from {
+  transform: translateX(24px);
+  opacity: 0;
+}
+
+.slide-left-leave-to {
+  transform: translateX(-24px);
+  opacity: 0;
+}
+
+.slide-right-enter-from {
+  transform: translateX(-24px);
+  opacity: 0;
+}
+
+.slide-right-leave-to {
+  transform: translateX(24px);
+  opacity: 0;
+}
+
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 999;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 14px;
+  opacity: 0.9;
+  border-radius: 1px;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--confetti-drift), 105vh) rotate(var(--confetti-spin));
+    opacity: 0;
+  }
 }

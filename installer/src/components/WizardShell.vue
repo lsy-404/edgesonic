@@ -3,7 +3,7 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { setLocale, type AppLocale } from "../i18n";
-import { setThemeMode, themeMode } from "../theme";
+import { setThemeMode, themeMode, type ThemeMode } from "../theme";
 import logo from "../assets/logo.svg";
 
 const props = defineProps<{ step: number; total: number }>();
@@ -11,9 +11,18 @@ void props;
 
 const { t, locale } = useI18n();
 
-function switchLocale(next: AppLocale) {
+const THEME_CYCLE: ThemeMode[] = ["light", "dark", "auto"];
+function cycleTheme() {
+  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(themeMode.value) + 1) % THEME_CYCLE.length];
+  setThemeMode(next);
+}
+
+function cycleLocale() {
+  const next: AppLocale = locale.value === "en" ? "zh-CN" : "en";
   setLocale(next);
 }
+
+const themeLabel = computed(() => t(`common.theme${themeMode.value.charAt(0).toUpperCase()}${themeMode.value.slice(1)}`));
 
 const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / (props.total - 1)) * 100)));
 </script>
@@ -26,15 +35,26 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
         <span class="brand-name">{{ t("app.name") }}</span>
       </div>
       <div class="header-controls">
-        <div class="theme-switch" role="group" aria-label="Theme">
-          <button type="button" :class="{ active: themeMode === 'light' }" @click="setThemeMode('light')">{{ t("common.themeLight") }}</button>
-          <button type="button" :class="{ active: themeMode === 'dark' }" @click="setThemeMode('dark')">{{ t("common.themeDark") }}</button>
-          <button type="button" :class="{ active: themeMode === 'auto' }" @click="setThemeMode('auto')">{{ t("common.themeAuto") }}</button>
-        </div>
-        <div class="lang-switch" role="group" aria-label="Language">
-          <button type="button" :class="{ active: locale === 'en' }" @click="switchLocale('en')">EN</button>
-          <button type="button" :class="{ active: locale === 'zh-CN' }" @click="switchLocale('zh-CN')">中文</button>
-        </div>
+        <button type="button" class="icon-toggle" :title="themeLabel" :aria-label="themeLabel" @click="cycleTheme">
+          <svg v-if="themeMode === 'light'" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="10" cy="10" r="4" />
+            <path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M15.8 4.2l-1.4 1.4M5.6 14.4l-1.4 1.4" />
+          </svg>
+          <svg v-else-if="themeMode === 'dark'" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16.5 12.5A7 7 0 1 1 7.5 3.5a5.5 5.5 0 0 0 9 9Z" />
+          </svg>
+          <svg v-else viewBox="0 0 20 20" width="18" height="18">
+            <circle cx="10" cy="10" r="7.2" fill="none" stroke="currentColor" stroke-width="1.6" />
+            <path d="M10 2.8a7.2 7.2 0 0 1 0 14.4Z" fill="currentColor" />
+          </svg>
+        </button>
+        <button type="button" class="icon-toggle" :title="locale === 'en' ? 'English' : '中文'" :aria-label="locale === 'en' ? 'English' : '中文'" @click="cycleLocale">
+          <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <circle cx="10" cy="10" r="7.2" />
+            <ellipse cx="10" cy="10" rx="3.2" ry="7.2" />
+            <path d="M3 8h14M3 12h14" />
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -44,23 +64,36 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
     <p class="step-caption">{{ t("common.stepOf", { current: step, total }) }}</p>
 
     <main class="shell-card">
-      <slot />
+      <!-- DOM order is actions-before-scroll so this target already exists
+           when a step's Teleport tries to mount into it (Teleport requires
+           its target to exist beforehand); flex `order` below puts it back
+           after the scrolling content visually. Each step Teleports its own
+           .step-actions here, so navigation stays pinned below the
+           scrolling content instead of requiring a scroll to reach. -->
+      <div class="shell-card-actions"></div>
+      <div class="shell-card-scroll">
+        <slot />
+      </div>
     </main>
   </div>
 </template>
 
 <style scoped>
 .shell {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 16px 48px;
+  padding: 24px 16px;
+  box-sizing: border-box;
 }
 
 .shell-header {
   width: 100%;
   max-width: 1040px;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -82,42 +115,36 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
 .header-controls {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
-.theme-switch,
-.lang-switch {
+.icon-toggle {
   display: flex;
-  gap: 2px;
-  background: var(--subtle-secondary);
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--card-stroke);
   border-radius: 999px;
-  padding: 3px;
-}
-
-.theme-switch button,
-.lang-switch button {
-  border: none;
-  background: transparent;
+  background: var(--subtle-secondary);
   color: var(--text-secondary);
-  font-size: 0.8rem;
-  padding: 4px 12px;
-  border-radius: 999px;
   cursor: pointer;
   transition: background var(--fast-duration, 0.167s) var(--fast-out-slow-in, ease), color var(--fast-duration, 0.167s);
 }
 
-.theme-switch button.active,
-.lang-switch button.active {
-  background: var(--accent-base);
-  color: var(--accent-text);
-  font-weight: 600;
+.icon-toggle:hover {
+  background: var(--ctrl-fill-secondary);
+  color: var(--text-primary);
+}
+
+.icon-toggle:active {
+  background: var(--ctrl-fill-tertiary);
 }
 
 .progress-track {
   width: 100%;
   max-width: 1040px;
+  flex: none;
   height: 3px;
   background: var(--subtle-secondary);
   border-radius: 999px;
@@ -133,6 +160,7 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
 .step-caption {
   width: 100%;
   max-width: 1040px;
+  flex: none;
   margin: 8px 0 0;
   font-size: 0.8rem;
   color: var(--text-secondary);
@@ -141,18 +169,42 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
 .shell-card {
   width: 100%;
   max-width: 1040px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--card-bg);
   backdrop-filter: blur(30px) saturate(160%);
   border: 1px solid var(--card-stroke);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  padding: 32px;
   margin-top: 16px;
+  overflow: hidden;
+}
+
+.shell-card-scroll {
+  order: 1;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 32px;
+}
+
+.shell-card-actions {
+  order: 2;
+  flex: none;
+  padding: 16px 32px;
+  border-top: 1px solid var(--card-stroke);
 }
 
 @media (max-width: 560px) {
-  .shell-card {
+  .shell-card-scroll {
     padding: 20px;
+  }
+
+  .shell-card-actions {
+    padding: 12px 20px;
   }
 }
 </style>

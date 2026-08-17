@@ -91,11 +91,13 @@ function goBack() {
       <a :href="licenseUrl" target="_blank" rel="noreferrer">{{ t("license.viewOnGithub") }} ↗</a>
     </p>
 
-    <div class="step-actions">
-      <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
-      <div class="spacer" />
-      <WinButton Style="AccentButtonStyle" @Click="goNext">{{ t("common.next") }}</WinButton>
-    </div>
+    <Teleport defer to=".shell-card-actions">
+      <div class="step-actions">
+        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <div class="spacer" />
+        <WinButton Style="AccentButtonStyle" @Click="goNext">{{ t("common.next") }}</WinButton>
+      </div>
+    </Teleport>
   </div>
 </template>
 

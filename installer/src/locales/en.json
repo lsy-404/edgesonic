@@ -61,6 +61,7 @@
     "permissionScenario": "Use",
     "permissionScope": "Scope",
     "permissionLevel": "Permission",
+    "permissionStatus": "Status",
     "required": "Required",
     "optional": "Optional",
     "permissionScopes": {
@@ -266,6 +267,7 @@
   "execute": {
     "title": "Deploying",
     "subtitle": "Don't close this tab until this finishes.",
+    "firstDeployNotice": "Creating a Worker for the first time can take Cloudflare up to about 3 minutes to finish — please be patient.",
     "releaseUnavailable": "The selected release is no longer available — go back and pick another.",
     "failedTitle": "Deployment failed",
     "failedAt": "Failed at step: {step}",

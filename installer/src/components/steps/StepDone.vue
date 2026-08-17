@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { WinButton, WinInfoBar } from "../../vendor/winui";
@@ -9,6 +9,31 @@ const { t } = useI18n();
 const wizard = useWizard();
 
 const copiedField = ref("");
+
+interface ConfettiPiece {
+  id: number;
+  style: Record<string, string>;
+}
+const confettiPieces = ref<ConfettiPiece[]>([]);
+
+onMounted(() => {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const colors = ["#0067C0", "#4CC2FF", "#FFB900", "#E74856", "#00CC6A", "#B146C2"];
+  confettiPieces.value = Array.from({ length: 70 }, (_, i) => ({
+    id: i,
+    style: {
+      left: `${Math.random() * 100}%`,
+      background: colors[i % colors.length],
+      animationDelay: `${Math.random() * 0.5}s`,
+      animationDuration: `${2.2 + Math.random() * 1.4}s`,
+      "--confetti-drift": `${(Math.random() - 0.5) * 140}px`,
+      "--confetti-spin": `${Math.random() > 0.5 ? "" : "-"}${540 + Math.random() * 360}deg`,
+    },
+  }));
+  setTimeout(() => {
+    confettiPieces.value = [];
+  }, 4000);
+});
 
 const instanceUrl = computed(
   () => wizard.result?.url || `https://dash.cloudflare.com/${wizard.result?.accountId}/workers/services/view/${wizard.workerName}/production`,
@@ -55,6 +80,12 @@ function startOver() {
 
 <template>
   <div>
+    <Teleport to="body">
+      <div class="confetti-layer" aria-hidden="true">
+        <span v-for="piece in confettiPieces" :key="piece.id" class="confetti-piece" :style="piece.style" />
+      </div>
+    </Teleport>
+
     <h1 class="step-title">{{ t("done.title") }}</h1>
 
     <p class="field-help">{{ t("done.urlLabel") }}</p>
@@ -89,9 +120,11 @@ function startOver() {
       <a :href="`https://github.com/${wizard.sourceRepo}/blob/${wizard.selectedTag}/worker/SECRETS.md`" target="_blank" rel="noreferrer">{{ t("done.secretsLink") }}</a>
     </WinInfoBar>
 
-    <div class="step-actions">
-      <div class="spacer" />
-      <WinButton Style="AccentButtonStyle" @Click="startOver">{{ t("done.startOver") }}</WinButton>
-    </div>
+    <Teleport defer to=".shell-card-actions">
+      <div class="step-actions">
+        <div class="spacer" />
+        <WinButton Style="AccentButtonStyle" @Click="startOver">{{ t("done.startOver") }}</WinButton>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -119,10 +119,12 @@ function goBack() {
 
     <WinButton style="margin-top: 8px" :IsEnabled="!loading" @Click="load">{{ t("version.reload") }}</WinButton>
 
-    <div class="step-actions">
-      <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
-      <div class="spacer" />
-      <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="goNext">{{ t("common.next") }}</WinButton>
-    </div>
+    <Teleport defer to=".shell-card-actions">
+      <div class="step-actions">
+        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <div class="spacer" />
+        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="goNext">{{ t("common.next") }}</WinButton>
+      </div>
+    </Teleport>
   </div>
 </template>

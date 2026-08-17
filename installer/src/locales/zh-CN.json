@@ -61,6 +61,7 @@
     "permissionScenario": "应用场景",
     "permissionScope": "范围",
     "permissionLevel": "权限",
+    "permissionStatus": "状态",
     "required": "必需",
     "optional": "非必需",
     "permissionScopes": {
@@ -266,6 +267,7 @@
   "execute": {
     "title": "部署中",
     "subtitle": "完成前请勿关闭此标签页。",
+    "firstDeployNotice": "首次创建 Worker 时，Cloudflare 完成部署最长可能需要约 3 分钟，请耐心等待。",
     "releaseUnavailable": "选中的发布版本已不可用——请返回重新选择。",
     "failedTitle": "部署失败",
     "failedAt": "失败于步骤：{step}",

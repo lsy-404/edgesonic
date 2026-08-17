@@ -275,10 +275,12 @@ function goBack() {
       <p v-else-if="transformations === 'unavailable'" class="field-help">{{ t("target.transformationsUnavailable") }}</p>
     </div>
 
-    <div class="step-actions">
-      <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
-      <div class="spacer" />
-      <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue()" @Click="goNext">{{ t("common.next") }}</WinButton>
-    </div>
+    <Teleport defer to=".shell-card-actions">
+      <div class="step-actions">
+        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <div class="spacer" />
+        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue()" @Click="goNext">{{ t("common.next") }}</WinButton>
+      </div>
+    </Teleport>
   </div>
 </template>

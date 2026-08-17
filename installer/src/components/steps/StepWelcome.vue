@@ -72,9 +72,11 @@ function start() {
     </WinCheckBox>
     <p v-if="!tosRead" class="field-help">{{ t("welcome.scrollToEnableTerms") }}</p>
 
-    <div class="step-actions">
-      <div class="spacer" />
-      <WinButton Style="AccentButtonStyle" :IsEnabled="accepted" @Click="start">{{ t("welcome.start") }}</WinButton>
-    </div>
+    <Teleport defer to=".shell-card-actions">
+      <div class="step-actions">
+        <div class="spacer" />
+        <WinButton Style="AccentButtonStyle" :IsEnabled="accepted" @Click="start">{{ t("welcome.start") }}</WinButton>
+      </div>
+    </Teleport>
   </div>
 </template>
