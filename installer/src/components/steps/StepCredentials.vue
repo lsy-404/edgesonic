@@ -291,18 +291,18 @@ function goBack() {
 
     <div class="field">
       <label for="apiToken">{{ t("credentials.apiToken") }}<span class="field-tag required">{{ t("common.required") }}</span></label>
-      <input id="apiToken" v-model.trim="wizard.credentials.apiToken" type="password" autocomplete="off" spellcheck="false" />
+      <input id="apiToken" v-model.trim="wizard.credentials.apiToken" type="text" autocomplete="off" spellcheck="false" />
       <p class="field-help">{{ t("credentials.apiTokenHelp") }}</p>
       <p class="field-help">{{ t("credentials.apiTokenStorageNote") }}</p>
     </div>
 
     <div class="field">
       <label for="r2Key">{{ t("credentials.r2AccessKeyId") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
-      <input id="r2Key" v-model.trim="wizard.credentials.r2AccessKeyId" type="password" autocomplete="off" spellcheck="false" />
+      <input id="r2Key" v-model.trim="wizard.credentials.r2AccessKeyId" type="text" autocomplete="off" spellcheck="false" />
     </div>
     <div class="field">
       <label for="r2Secret">{{ t("credentials.r2SecretAccessKey") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
-      <input id="r2Secret" v-model.trim="wizard.credentials.r2SecretAccessKey" type="password" autocomplete="off" spellcheck="false" />
+      <input id="r2Secret" v-model.trim="wizard.credentials.r2SecretAccessKey" type="text" autocomplete="off" spellcheck="false" />
       <p class="field-help">{{ t("credentials.r2KeyHelp") }}</p>
       <p v-if="!r2KeysComplete" class="field-help" style="color: var(--SystemFillColorCriticalBrush)">{{ t("credentials.r2KeysPairRequired") }}</p>
     </div>
