@@ -3,6 +3,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
+import { GITHUB_REPO } from "../../../../shared/autoupdate";
 import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
@@ -118,7 +119,7 @@ function finishAndClearCredentials() {
     <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false" style="margin-top: 16px">
       <strong>{{ t("done.nextStepsTitle") }}</strong>
       <p style="margin: 6px 0 0">{{ t("done.nextStepsDesc") }}</p>
-      <a :href="`https://github.com/${wizard.sourceRepo}/blob/${wizard.selectedTag}/worker/SECRETS.md`" target="_blank" rel="noreferrer">{{ t("done.secretsLink") }}</a>
+      <a :href="`https://github.com/${GITHUB_REPO}/blob/${wizard.selectedTag}/worker/SECRETS.md`" target="_blank" rel="noreferrer">{{ t("done.secretsLink") }}</a>
     </WinInfoBar>
 
     <Teleport defer to=".shell-card-actions">

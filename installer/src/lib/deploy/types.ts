@@ -59,7 +59,6 @@ export interface DeployTarget {
   dbName: string;
   bucketName: string;
   domain: string;
-  sourceRepo: string;
   releaseTag: string;
   resetAdmin: boolean;
   fullRebuild: boolean;

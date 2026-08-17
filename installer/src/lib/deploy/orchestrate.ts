@@ -110,7 +110,7 @@ export async function runDeploy(creds: DeployCredentials, target: DeployTarget, 
   });
 
   await guarded("schema", report, async () => {
-    const sql = await fetchSchemaSql(target.sourceRepo, tag);
+    const sql = await fetchSchemaSql(tag);
     await runQuery(apiToken, accountId, databaseId, sql);
   });
 

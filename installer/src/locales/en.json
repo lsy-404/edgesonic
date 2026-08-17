@@ -209,8 +209,6 @@
   "version": {
     "title": "Choose a release",
     "subtitle": "Only releases that ship a ready-to-deploy update package are listed.",
-    "sourceRepo": "Source repository",
-    "sourceRepoHelp": "Only change this if you're deploying from your own fork's releases.",
     "localPackage": "Custom installation package",
     "localPackageHelp": "A .tar.gz deploy artifact containing worker.js and assets-manifest.json.",
     "localPackageWarning": "A custom package can't be checked against any release, and the installer cannot confirm that its contents are safe. Only use a file you built yourself or fully trust.",
@@ -223,15 +221,8 @@
   "license": {
     "title": "Licence",
     "subtitle": "EdgeSonic is licensed under the GNU Affero General Public License v3.0. The full text of the licence covering the release you selected is below.",
-    "sourceOfficialTitle": "Official source",
-    "sourceOfficialBody": "This release comes from the official repository and is licensed under AGPL-3.0-or-later.",
     "sourceThirdPartyTitle": "Third-party source",
     "sourceLocalBody": "A local package's source and licence compliance can't be verified automatically — only use one from a source you trust.",
-    "sourceChecking": "Reading this source's LICENSE file…",
-    "sourceAgpl": "This source's LICENSE file was read and mentions AGPL, but verify full compliance yourself.",
-    "sourceUnclear": "This source's LICENSE file was read but doesn't mention AGPL — use with caution and verify its licence yourself.",
-    "sourceUnavailable": "Couldn't read this source's LICENSE file — check the repository yourself to verify its licence.",
-    "showingOfficialFallback": "The text below is the official project's licence, not this source's own — it could not be read.",
     "viewOnGithub": "View LICENSE on GitHub"
   },
   "review": {

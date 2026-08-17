@@ -41,7 +41,6 @@ async function start() {
     dbName: wizard.dbName.trim(),
     bucketName: wizard.bucketName.trim(),
     domain: wizard.domain.trim(),
-    sourceRepo: wizard.sourceRepo.trim(),
     releaseTag: wizard.selectedTag,
     resetAdmin: wizard.resetAdmin,
     fullRebuild: wizard.fullRebuild,

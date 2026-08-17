@@ -19,7 +19,7 @@ async function load() {
   loading.value = true;
   errorMessage.value = "";
   try {
-    const releases = await fetchReleases(wizard.sourceRepo.trim());
+    const releases = await fetchReleases();
     wizard.rawReleases = releases;
     const listing = buildReleaseOptions(releases, ZERO_VERSION);
     wizard.releases = listing.releases.filter((r) => r.hasArtifact).slice(0, 5);
@@ -75,12 +75,6 @@ function goBack() {
   <div>
     <h1 class="step-title">{{ t("version.title") }}</h1>
     <p class="step-subtitle">{{ t("version.subtitle") }}</p>
-
-    <div class="field">
-      <label for="sourceRepo">{{ t("version.sourceRepo") }}</label>
-      <input id="sourceRepo" v-model.trim="wizard.sourceRepo" type="text" spellcheck="false" @change="load" />
-      <p class="field-help">{{ t("version.sourceRepoHelp") }}</p>
-    </div>
 
     <div v-if="loading" class="version-loading">
       <WinProgressRing :Width="20" :Height="20" :IsActive="true" />

@@ -16,7 +16,7 @@
 // api.github.com and raw.githubusercontent.com both send CORS headers, so
 // these calls go straight from the browser — no relay involved.
 
-import type { GithubRelease } from "../../../shared/autoupdate";
+import { GITHUB_API, GITHUB_REPO, type GithubRelease } from "../../../shared/autoupdate";
 
 async function githubJson<T>(url: string): Promise<T> {
   const response = await fetch(url, { headers: { Accept: "application/vnd.github+json" } });
@@ -26,8 +26,11 @@ async function githubJson<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function fetchReleases(repo: string): Promise<GithubRelease[]> {
-  const releases = await githubJson<GithubRelease[]>(`https://api.github.com/repos/${repo}/releases?per_page=50`);
+// The repository is fixed: release assets only pass assetOf()'s origin check
+// when they are served from this repository's own release downloads, so a
+// deploy could never have come from anywhere else anyway.
+export async function fetchReleases(): Promise<GithubRelease[]> {
+  const releases = await githubJson<GithubRelease[]>(`${GITHUB_API}/releases?per_page=50`);
   if (releases.length > 0) return releases;
   // The list endpoint answers 200 with an empty array during GitHub API
   // incidents while single-release lookups keep working, which strands the
@@ -35,24 +38,16 @@ export async function fetchReleases(repo: string): Promise<GithubRelease[]> {
   // deploy is still possible; a repository that genuinely has no releases
   // 404s here and the caller sees the same empty list either way.
   try {
-    return [await githubJson<GithubRelease>(`https://api.github.com/repos/${repo}/releases/latest`)];
+    return [await githubJson<GithubRelease>(`${GITHUB_API}/releases/latest`)];
   } catch {
     return [];
   }
 }
 
-export async function fetchSchemaSql(repo: string, tag: string): Promise<string> {
-  const response = await fetch(`https://raw.githubusercontent.com/${repo}/${tag}/worker/migrations/Schema.sql`);
+export async function fetchSchemaSql(tag: string): Promise<string> {
+  const response = await fetch(`https://raw.githubusercontent.com/${GITHUB_REPO}/${tag}/worker/migrations/Schema.sql`);
   if (!response.ok) {
     throw new Error(`Couldn't fetch Schema.sql for ${tag} (HTTP ${response.status})`);
-  }
-  return await response.text();
-}
-
-export async function fetchLicenseText(repo: string, tag: string): Promise<string> {
-  const response = await fetch(`https://raw.githubusercontent.com/${repo}/${tag}/LICENSE`);
-  if (!response.ok) {
-    throw new Error(`Couldn't fetch LICENSE for ${tag} (HTTP ${response.status})`);
   }
   return await response.text();
 }

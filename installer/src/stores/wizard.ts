@@ -16,7 +16,6 @@
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import type { GithubRelease, ReleaseOption } from "../../../shared/autoupdate";
-import { GITHUB_REPO } from "../../../shared/autoupdate";
 import { DEPLOY_STEPS, type ContainerMode, type DeployCredentials, type DeployResult, type DeployStep, type StepState, type StepStatus } from "../lib/deploy/types";
 import type { LocalUpdatePackage } from "../lib/deploy/manifest";
 
@@ -84,7 +83,6 @@ export const useWizard = defineStore("wizard", () => {
   const domain = ref("");
   const adminUsername = ref("");
   const adminPassword = ref("");
-  const sourceRepo = ref(GITHUB_REPO);
 
   // Only follows workerName while the db/bucket fields still hold the
   // previous auto-derived default — once someone edits either by hand, this
@@ -161,7 +159,6 @@ export const useWizard = defineStore("wizard", () => {
     domain,
     adminUsername,
     adminPassword,
-    sourceRepo,
     releases,
     rawReleases,
     selectedTag,
