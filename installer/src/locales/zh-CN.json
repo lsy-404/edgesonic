@@ -186,7 +186,17 @@
     "reload": "重新加载版本列表",
     "noneEligible": "此仓库没有找到带可部署更新包的发布版本。",
     "prerelease": "预发布",
-    "recommended": "推荐"
+    "recommended": "推荐",
+    "freeNotice": "EdgeSonic 完全开源免费，本安装向导从未、也不会以任何形式收费。",
+    "licenseOfficialTitle": "官方来源",
+    "licenseOfficialBody": "此版本来自官方仓库，采用 AGPL-3.0-or-later 协议开源。",
+    "licenseThirdPartyTitle": "第三方来源",
+    "licenseThirdPartyChecking": "正在尝试读取该来源的 LICENSE 文件…",
+    "licenseThirdPartyFound": "已读取到该来源的 LICENSE 文件，其中包含 AGPL 相关声明，但请自行核实其完整合规性。",
+    "licenseThirdPartyMismatch": "已读取到该来源的 LICENSE 文件，但未在其中发现 AGPL 声明，请谨慎使用并自行核实其开源协议。",
+    "licenseThirdPartyUnavailable": "未能读取到该来源的 LICENSE 文件，请自行前往仓库核实其开源协议。",
+    "licenseLocalWarning": "本地包无法自动核实来源与开源协议合规性，请仅在信任该来源时使用。",
+    "licenseViewLink": "查看 LICENSE"
   },
   "review": {
     "title": "部署前确认",

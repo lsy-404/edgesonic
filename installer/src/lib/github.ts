@@ -35,3 +35,11 @@ export async function fetchSchemaSql(repo: string, tag: string): Promise<string>
   }
   return await response.text();
 }
+
+export async function fetchLicenseText(repo: string, tag: string): Promise<string> {
+  const response = await fetch(`https://raw.githubusercontent.com/${repo}/${tag}/LICENSE`);
+  if (!response.ok) {
+    throw new Error(`Couldn't fetch LICENSE for ${tag} (HTTP ${response.status})`);
+  }
+  return await response.text();
+}

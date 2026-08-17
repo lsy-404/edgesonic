@@ -186,7 +186,17 @@
     "reload": "Reload releases",
     "noneEligible": "No releases with a deployable update package were found for this repository.",
     "prerelease": "Prerelease",
-    "recommended": "Recommended"
+    "recommended": "Recommended",
+    "freeNotice": "EdgeSonic is entirely free and open source. This installer has never charged for it, and never will.",
+    "licenseOfficialTitle": "Official source",
+    "licenseOfficialBody": "This release comes from the official repository and is licensed under AGPL-3.0-or-later.",
+    "licenseThirdPartyTitle": "Third-party source",
+    "licenseThirdPartyChecking": "Trying to read this source's LICENSE file…",
+    "licenseThirdPartyFound": "This source's LICENSE file was read and mentions AGPL, but verify full compliance yourself.",
+    "licenseThirdPartyMismatch": "This source's LICENSE file was read but doesn't mention AGPL — use with caution and verify its licence yourself.",
+    "licenseThirdPartyUnavailable": "Couldn't read this source's LICENSE file — check the repository yourself to verify its licence.",
+    "licenseLocalWarning": "A local package's source and licence compliance can't be verified automatically — only use one from a source you trust.",
+    "licenseViewLink": "View LICENSE"
   },
   "review": {
     "title": "Review before deploying",
