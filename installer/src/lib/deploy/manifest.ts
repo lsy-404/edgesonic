@@ -25,7 +25,6 @@ import {
 import { sha256Hex } from "./crypto";
 import { DeployError } from "./types";
 import { fetchGithubReleaseAsset } from "../relay";
-import { unzipSync } from "fflate";
 import { unpackArtifact } from "./tar";
 
 const MAX_ARTIFACT_BYTES = 24 * 1024 * 1024;
@@ -104,25 +103,6 @@ export async function fetchManifestAndArtifact(release: GithubRelease): Promise<
   const manifestBytes = await downloadBytes(manifestAsset.browser_download_url as string, MAX_MANIFEST_BYTES, "Update manifest");
   const archive = await downloadBytes(artifactAsset.browser_download_url as string, MAX_ARTIFACT_BYTES, "Update artifact");
   return validateManifestAndArtifact(manifestBytes, archive, release.tag_name);
-}
-
-export async function readLocalUpdatePackage(file: File): Promise<LocalUpdatePackage> {
-  if (!file.name.toLowerCase().endsWith(".zip")) throw new DeployError("download", "Choose a ZIP package");
-  if (file.size > MAX_ARTIFACT_BYTES + MAX_MANIFEST_BYTES) throw new DeployError("download", "Local package is too large");
-  let entries: Record<string, Uint8Array>;
-  try {
-    entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
-  } catch {
-    throw new DeployError("download", "Local package is not a valid ZIP archive");
-  }
-  const manifestBytes = entries[UPDATE_MANIFEST_NAME];
-  const archive = entries[UPDATE_ARTIFACT_NAME];
-  if (!manifestBytes || !archive || Object.keys(entries).length !== 2) {
-    throw new DeployError("download", "Local ZIP must contain only the update manifest and artifact");
-  }
-  if (manifestBytes.byteLength > MAX_MANIFEST_BYTES) throw new DeployError("download", "Update manifest is too large");
-  const { manifest } = await validateManifestAndArtifact(manifestBytes, archive);
-  return { kind: "local", fileName: file.name, manifest, archive };
 }
 
 // A bare update artifact (no manifest wrapper, no signed checksum) — for a

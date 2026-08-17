@@ -5,7 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { fetchReleases } from "../../lib/github";
 import { buildReleaseOptions, ZERO_VERSION } from "../../../../shared/autoupdate";
-import { readLocalUpdateArtifact, readLocalUpdatePackage } from "../../lib/deploy/manifest";
+import { readLocalUpdateArtifact } from "../../lib/deploy/manifest";
 import { WinButton, WinInfoBar, WinProgressRing } from "../../vendor/winui";
 
 const { t } = useI18n();
@@ -42,9 +42,8 @@ async function selectLocalPackage(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
   localError.value = "";
-  const isArchive = /\.(tar\.gz|tgz)$/i.test(file.name);
   try {
-    wizard.selectLocalPackage(isArchive ? await readLocalUpdateArtifact(file) : await readLocalUpdatePackage(file));
+    wizard.selectLocalPackage(await readLocalUpdateArtifact(file));
   } catch (error) {
     wizard.selectLocalPackage(null);
     localError.value = error instanceof Error ? error.message : String(error);
@@ -111,10 +110,11 @@ function goBack() {
 
     <div class="field" style="margin-top: 24px">
       <label for="localPackage">{{ t("version.localPackage") }}</label>
-      <input id="localPackage" type="file" accept=".zip,.tar.gz,.tgz,application/zip" @change="selectLocalPackage" />
+      <input id="localPackage" type="file" accept=".tar.gz,.tgz" @change="selectLocalPackage" />
       <p class="field-help">{{ t("version.localPackageHelp") }}</p>
-      <WinInfoBar v-if="wizard.localPackage" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
-        {{ t("version.localPackageWarning", { name: wizard.localPackage.fileName, version: wizard.localPackage.manifest.version }) }}
+      <WinInfoBar :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">{{ t("version.localPackageWarning") }}</WinInfoBar>
+      <WinInfoBar v-if="wizard.localPackage" :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false">
+        {{ t("version.localPackageSelected", { name: wizard.localPackage.fileName }) }}
       </WinInfoBar>
       <WinInfoBar v-if="localError" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">{{ localError }}</WinInfoBar>
     </div>

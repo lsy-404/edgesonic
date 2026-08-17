@@ -216,13 +216,14 @@
     "sourceRepo": "源仓库",
     "sourceRepoHelp": "仅在你要部署自己 fork 仓库发布的版本时才需要修改。",
     "localPackage": "自定义安装包",
-    "localPackageHelp": "可以是同时包含 edgesonic-update-manifest.json 和 edgesonic-update.tar.gz 的 ZIP，也可以直接选择裸的 .tar.gz 部署包（不含清单，无法校验来源）。",
-    "localPackageWarning": "正在使用本地包 {name}（{version}）。安装器会按其自身清单验证校验和，但 ZIP 没有签名，无法确认其是否为官方包。",
+    "localPackageHelp": "包含 worker.js 和 assets-manifest.json 的 .tar.gz 部署包。",
+    "localPackageWarning": "自定义安装包无法与任何发布版本核对，安装器也无法确认其内容是否安全。请仅使用你自己构建或完全信任的文件。",
     "reload": "重新加载版本列表",
     "noneEligible": "此仓库没有找到带可部署更新包的发布版本。",
     "prerelease": "预发布",
     "recommended": "推荐",
-    "freeNotice": "EdgeSonic 完全开源免费，本安装向导从未、也不会以任何形式收费。"
+    "freeNotice": "EdgeSonic 完全开源免费，本安装向导从未、也不会以任何形式收费。",
+    "localPackageSelected": "将部署自定义安装包 {name}。"
   },
   "license": {
     "title": "开源许可证",

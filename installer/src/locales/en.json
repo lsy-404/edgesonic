@@ -216,13 +216,14 @@
     "sourceRepo": "Source repository",
     "sourceRepoHelp": "Only change this if you're deploying from your own fork's releases.",
     "localPackage": "Custom installation package",
-    "localPackageHelp": "Either a ZIP containing edgesonic-update-manifest.json and edgesonic-update.tar.gz, or a bare .tar.gz deploy artifact (no manifest, source can't be verified).",
-    "localPackageWarning": "Using local package {name} ({version}). Its checksum is verified against its own manifest, but ZIP packages are not signed and cannot be confirmed as official.",
+    "localPackageHelp": "A .tar.gz deploy artifact containing worker.js and assets-manifest.json.",
+    "localPackageWarning": "A custom package can't be checked against any release, and the installer cannot confirm that its contents are safe. Only use a file you built yourself or fully trust.",
     "reload": "Reload releases",
     "noneEligible": "No releases with a deployable update package were found for this repository.",
     "prerelease": "Prerelease",
     "recommended": "Recommended",
-    "freeNotice": "EdgeSonic is entirely free and open source. This installer has never charged for it, and never will."
+    "freeNotice": "EdgeSonic is entirely free and open source. This installer has never charged for it, and never will.",
+    "localPackageSelected": "Deploying custom package {name}."
   },
   "license": {
     "title": "Licence",
