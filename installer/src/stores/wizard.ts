@@ -48,11 +48,12 @@ export const useWizard = defineStore("wizard", () => {
   watch(overwriteConfirmed, (value) => { if (!value) fullRebuild.value = false; });
 
   // Credentials — sessionStorage only, per this project's rule that the CF
-  // token and R2 keys are never persisted past the browser tab. Cleared
-  // outright on a finished deploy; on a failed one, only the sessionStorage
-  // copy is wiped (closing/reloading the tab loses them) while the in-memory
-  // value survives so an immediate retry in the same tab doesn't force
-  // retyping everything.
+  // token and R2 keys are never persisted past the browser tab. Not cleared
+  // automatically on success (the done page's "finish" action does that
+  // explicitly, so the user decides when); on a failed deploy, only the
+  // sessionStorage copy is wiped (closing/reloading the tab loses them)
+  // while the in-memory value survives so an immediate retry in the same
+  // tab doesn't force retyping everything.
   const credentials = ref<DeployCredentials>(loadCredentials());
   const credentialsVerified = ref(false);
   const accountName = ref("");
@@ -132,7 +133,6 @@ export const useWizard = defineStore("wizard", () => {
 
   function finishSuccess(deployResult: DeployResult) {
     result.value = deployResult;
-    clearCredentials(true);
   }
 
   function finishFailure() {

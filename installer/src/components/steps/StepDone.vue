@@ -73,7 +73,8 @@ function downloadInfo() {
   URL.revokeObjectURL(url);
 }
 
-function startOver() {
+function finishAndClearCredentials() {
+  wizard.clearCredentials(true);
   location.reload();
 }
 </script>
@@ -123,7 +124,7 @@ function startOver() {
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" @Click="startOver">{{ t("done.startOver") }}</WinButton>
+        <WinButton Style="AccentButtonStyle" @Click="finishAndClearCredentials">{{ t("done.startOver") }}</WinButton>
       </div>
     </Teleport>
   </div>

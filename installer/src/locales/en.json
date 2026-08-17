@@ -306,7 +306,7 @@
     "nextStepsDesc": "LastFM, email delivery, and other optional integrations aren't set up by this installer. Configure them from within EdgeSonic's own Settings after you log in, or see the secrets reference.",
     "secretsLink": "Secrets reference",
     "downloadInfo": "Download instance info (.txt)",
-    "startOver": "Deploy another instance"
+    "startOver": "Finish and clear cached credentials"
   },
   "errors": {
     "step": {
