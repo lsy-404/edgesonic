@@ -85,10 +85,6 @@ function retry() {
     <h1 class="step-title">{{ t("execute.title") }}</h1>
     <p class="step-subtitle">{{ t("execute.subtitle") }}</p>
 
-    <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false" style="margin-bottom: 16px">
-      {{ t("execute.firstDeployNotice") }}
-    </WinInfoBar>
-
     <ul class="execute-steps">
       <li v-for="entry in wizard.stepStates" :key="entry.step" class="kv-row execute-step-row">
         <dt class="execute-step-label">

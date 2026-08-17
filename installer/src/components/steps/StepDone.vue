@@ -98,6 +98,10 @@ function finish() {
       {{ t("done.openLink") }} ↗
     </WinButton>
 
+    <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false" style="margin-top: 16px">
+      {{ t("done.propagationNotice") }}
+    </WinInfoBar>
+
     <section v-if="wizard.result?.adminPassword" class="guide-card credential-card">
       <h3>{{ t("done.adminTitle") }}</h3>
       <div class="credential-row">

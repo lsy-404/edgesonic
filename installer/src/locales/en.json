@@ -249,7 +249,6 @@
   "execute": {
     "title": "Deploying",
     "subtitle": "Don't close this tab until this finishes.",
-    "firstDeployNotice": "Creating a Worker for the first time can take Cloudflare up to about 3 minutes to finish — please be patient.",
     "releaseUnavailable": "The selected release is no longer available — go back and pick another.",
     "failedTitle": "Deployment failed",
     "failedAt": "Failed at step: {step}",
@@ -280,6 +279,7 @@
     "title": "EdgeSonic is live",
     "urlLabel": "Your instance",
     "openLink": "Open EdgeSonic",
+    "propagationNotice": "Cloudflare can take up to about 2 minutes to apply the changes and switch traffic over, so the instance may not respond right away.",
     "adminTitle": "Superadmin login",
     "adminUsername": "Username",
     "adminPassword": "Password",
