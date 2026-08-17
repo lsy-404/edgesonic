@@ -292,7 +292,6 @@ function goBack() {
             {{ t("credentials.checks.token") }}: {{ t(`credentials.checkStatus.${tokenCheck?.status || 'pending'}`) }}
             <template v-if="tokenCheck?.detail">— {{ tokenCheck.detail }}</template>
           </p>
-          <p class="field-help">{{ t("credentials.dnsNotNeeded") }}</p>
         </li>
       </ol>
     </div>

@@ -79,7 +79,6 @@
       "analytics": "Analytics & Logs",
       "account": "Account & Billing"
     },
-    "dnsNotNeeded": "The installer never creates or changes DNS records, so DNS Edit is not needed.",
     "permissions": {
       "apiTokens": {
         "resource": "Account API Tokens",

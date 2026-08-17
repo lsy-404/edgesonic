@@ -79,7 +79,6 @@
       "analytics": "Analytics & Logs",
       "account": "Account & Billing"
     },
-    "dnsNotNeeded": "安装器不会创建或修改 DNS 记录，因此不需要 DNS Edit。",
     "permissions": {
       "apiTokens": {
         "resource": "Account API Tokens",
