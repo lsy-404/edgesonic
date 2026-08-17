@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from "vue";
+import { nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { WinButton, WinCheckBox } from "../../vendor/winui";
@@ -8,18 +8,28 @@ import { WinButton, WinCheckBox } from "../../vendor/winui";
 const { t } = useI18n();
 const wizard = useWizard();
 const accepted = ref(false);
-const tosRef = ref<HTMLElement | null>(null);
+const rootRef = ref<HTMLElement | null>(null);
 const tosRead = ref(false);
+let scrollContainer: HTMLElement | null = null;
 
+// The ToS text itself no longer scrolls independently (that was a confusing
+// nested-scroll-region), so "read to the end" is tracked against the shared
+// .shell-card-scroll container it lives inside.
 function checkTosRead() {
-  const el = tosRef.value;
+  const el = scrollContainer;
   if (!el) return;
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 4) tosRead.value = true;
 }
 
 onMounted(() => {
+  scrollContainer = rootRef.value?.closest(".shell-card-scroll") ?? null;
+  scrollContainer?.addEventListener("scroll", checkTosRead);
   // Short terms that already fit without scrolling shouldn't permanently block the checkbox.
   nextTick(checkTosRead);
+});
+
+onUnmounted(() => {
+  scrollContainer?.removeEventListener("scroll", checkTosRead);
 });
 
 function start() {
@@ -28,13 +38,13 @@ function start() {
 </script>
 
 <template>
-  <div>
+  <div ref="rootRef">
     <h1 class="step-title">{{ t("welcome.title") }}</h1>
     <p class="step-subtitle">{{ t("welcome.subtitle") }}</p>
 
     <div class="guide-card">
       <h3>{{ t("welcome.termsTitle") }}</h3>
-      <div ref="tosRef" class="tos-scroll" @scroll="checkTosRead">
+      <div class="tos-scroll">
         <section class="tos-section">
           <h4>{{ t("welcome.section1Title") }}</h4>
           <p>{{ t("welcome.section1Body") }}</p>

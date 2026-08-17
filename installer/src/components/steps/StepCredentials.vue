@@ -7,7 +7,7 @@ import { callCfJson, verifyR2Keys } from "../../lib/relay";
 import { listBucketNames } from "../../lib/deploy/r2";
 import { describeCfError } from "../../lib/cf/errors";
 import { hasTokenPermission, readTokenPermissionGroups, TOKEN_PERMISSION_GROUPS } from "../../lib/cf/tokenPolicies";
-import { WinButton, WinInfoBar } from "../../vendor/winui";
+import { WinButton } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -242,11 +242,6 @@ function goBack() {
     <h1 class="step-title">{{ t("credentials.title") }}</h1>
     <p class="step-subtitle">{{ t("credentials.subtitle") }}</p>
 
-    <WinInfoBar v-if="wizard.mode === 'overwrite'" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
-      <strong>{{ t("overwriteAdvice.title") }}</strong>
-      <p>{{ t("overwriteAdvice.message") }}</p>
-    </WinInfoBar>
-
     <div class="guide-card credential-setup">
       <h3>{{ t("credentials.setupTitle") }}</h3>
       <ol>
@@ -327,12 +322,6 @@ function goBack() {
     </div>
 
     <template v-if="wizard.credentialsVerified">
-      <div v-if="wizard.accountName" style="margin-top: 16px">
-        <WinInfoBar :IsOpen="true" Severity="Success" :IsClosable="false" :IsIconVisible="false">
-          {{ t("credentials.verified") }} — {{ t("credentials.accountNameLabel") }}: {{ wizard.accountName }}
-        </WinInfoBar>
-      </div>
-
       <div v-if="wizard.r2Enabled === false" class="guide-card">
         <h3>{{ t("credentials.r2EnableLink") }}</h3>
         <ol>

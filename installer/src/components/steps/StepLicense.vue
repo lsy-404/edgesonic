@@ -70,7 +70,7 @@ function goBack() {
     <h1 class="step-title">{{ t("license.title") }}</h1>
     <p class="step-subtitle">{{ t("license.subtitle") }}</p>
 
-    <WinInfoBar :Severity="alertClass" :IsOpen="true" :IsClosable="false" :IsIconVisible="false">
+    <WinInfoBar v-if="!isOfficial" :Severity="alertClass" :IsOpen="true" :IsClosable="false" :IsIconVisible="false">
       <strong>{{ isOfficial ? t("license.sourceOfficialTitle") : t("license.sourceThirdPartyTitle") }}</strong>
       <p v-if="status === 'official'">{{ t("license.sourceOfficialBody") }}</p>
       <p v-else-if="status === 'local'">{{ t("license.sourceLocalBody") }}</p>
@@ -103,7 +103,7 @@ function goBack() {
 
 <style scoped>
 .license-pane {
-  max-height: 460px;
+  max-height: 260px;
   overflow: auto;
   margin-top: 16px;
   padding: 16px;
@@ -123,7 +123,7 @@ function goBack() {
 
 @media (max-width: 560px) {
   .license-pane {
-    max-height: 320px;
+    max-height: 220px;
     padding: 12px;
   }
 

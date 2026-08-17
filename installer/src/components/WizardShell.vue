@@ -4,12 +4,36 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { setLocale, type AppLocale } from "../i18n";
 import { setThemeMode, themeMode, type ThemeMode } from "../theme";
+import { useWizard } from "../stores/wizard";
 import logo from "../assets/logo.svg";
 
 const props = defineProps<{ step: number; total: number }>();
-void props;
 
 const { t, locale } = useI18n();
+const wizard = useWizard();
+
+// Step 7 (deploy) covers many real sub-steps; give its segment more of the
+// bar's width and fill it in real time from wizard.stepStates instead of
+// treating it like every other single-screen step.
+const DEPLOY_STEP_NUMBER = 7;
+const DEPLOY_SEGMENT_WEIGHT = 5;
+
+const segments = computed(() =>
+  Array.from({ length: props.total }, (_, i) => {
+    const stepNum = i + 1;
+    const weight = stepNum === DEPLOY_STEP_NUMBER ? DEPLOY_SEGMENT_WEIGHT : 1;
+    let fill = 0;
+    if (stepNum < props.step) {
+      fill = 1;
+    } else if (stepNum === props.step && stepNum === DEPLOY_STEP_NUMBER && wizard.stepStates.length > 0) {
+      const total = wizard.stepStates.length;
+      const done = wizard.stepStates.filter((s) => s.status === "success").length;
+      const running = wizard.stepStates.filter((s) => s.status === "running").length;
+      fill = (done + running * 0.5) / total;
+    }
+    return { stepNum, weight, fill };
+  }),
+);
 
 const THEME_CYCLE: ThemeMode[] = ["light", "dark", "auto"];
 function cycleTheme() {
@@ -24,7 +48,6 @@ function cycleLocale() {
 
 const themeLabel = computed(() => t(`common.theme${themeMode.value.charAt(0).toUpperCase()}${themeMode.value.slice(1)}`));
 
-const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / (props.total - 1)) * 100)));
 </script>
 
 <template>
@@ -59,7 +82,9 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
     </header>
 
     <div class="progress-track" aria-hidden="true">
-      <div class="progress-fill" :style="{ width: progressPct + '%' }" />
+      <div v-for="seg in segments" :key="seg.stepNum" class="progress-segment" :style="{ flexGrow: seg.weight }">
+        <div class="progress-segment-fill" :style="{ width: seg.fill * 100 + '%' }" />
+      </div>
     </div>
     <p class="step-caption">{{ t("common.stepOf", { current: step, total }) }}</p>
 
@@ -145,16 +170,22 @@ const progressPct = computed(() => Math.min(100, Math.round(((props.step - 1) / 
   width: 100%;
   max-width: 1040px;
   flex: none;
+  display: flex;
+  gap: 4px;
   height: 3px;
+}
+
+.progress-segment {
+  height: 100%;
   background: var(--subtle-secondary);
   border-radius: 999px;
   overflow: hidden;
 }
 
-.progress-fill {
+.progress-segment-fill {
   height: 100%;
   background: var(--accent-base);
-  transition: width var(--normal-duration, 0.2s) var(--fast-out-slow-in, ease);
+  transition: width 0.4s cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 .step-caption {

@@ -6,7 +6,7 @@ import { useWizard } from "../../stores/wizard";
 import { runDeploy } from "../../lib/deploy/orchestrate";
 import { DeployError, type DeployTarget } from "../../lib/deploy/types";
 import { describeCfError } from "../../lib/cf/errors";
-import { WinButton, WinInfoBar, WinProgressRing } from "../../vendor/winui";
+import { WinButton, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -89,13 +89,14 @@ function retry() {
     <ul class="execute-steps">
       <li v-for="entry in wizard.stepStates" :key="entry.step" class="kv-row execute-step-row">
         <dt class="execute-step-label">
-          <WinProgressRing v-if="entry.status === 'running'" :Width="14" :Height="14" />
+          <WinProgressRing v-if="entry.status === 'running'" :Width="10" :Height="10" />
           <span v-else class="status-dot" :class="`status-dot-${entry.status}`" />
           {{ t(`execute.steps.${entry.step}`) }}
         </dt>
         <dd>
           {{ t(`execute.status.${entry.status}`) }}
           <p v-if="entry.detail" class="field-help" style="margin: 4px 0 0">{{ entry.detail }}</p>
+          <WinProgressBar v-if="entry.status === 'running'" :IsIndeterminate="true" style="margin-top: 6px" />
         </dd>
       </li>
     </ul>

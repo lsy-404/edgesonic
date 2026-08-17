@@ -4,7 +4,7 @@ import { onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { DEFAULT_ADMIN_USERNAME } from "../../lib/deploy/admin";
-import { WinButton, WinInfoBar } from "../../vendor/winui";
+import { WinButton } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -34,11 +34,6 @@ function goBack() {
   <div>
     <h1 class="step-title">{{ t("review.title") }}</h1>
     <p class="step-subtitle">{{ t("review.subtitle") }}</p>
-
-    <WinInfoBar v-if="wizard.mode === 'overwrite'" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
-      <strong>{{ t("overwriteAdvice.title") }}</strong>
-      <p>{{ t("overwriteAdvice.message") }}</p>
-    </WinInfoBar>
 
     <dl class="kv-list">
       <div class="kv-row">
