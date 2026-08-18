@@ -29,8 +29,6 @@
 //                         `wrangler secret put CF_ACCOUNT_ID`)
 //
 // Region is hardcoded to "auto" — R2 ignores the region but SigV4 requires one.
-//
-// public API (presignR2Get + PresignOpts) fully backward-compatible.
 
 import { hex, hmac, sha256Hex, uriEncode } from "./sigv4";
 
@@ -46,16 +44,12 @@ export interface PresignOpts {
   secretAccessKey: string;
   accountId: string;
   ttlSec?: number; // default 300 (5 min), max 604800 (7 days)
-  rangeHeader?: string; // optional Range header to sign (e.g. "bytes=0-")
 }
 
 /**
- * Build a presigned R2 S3 GET URL with SigV4. The signature is in the query
- * string, so the browser can fetch it without any extra headers. If
- * `rangeHeader` is supplied, `range` is added to the signed headers list
- * the browser will include the same Range header on the redirected request
- * only if it was the one initiating the fetch with Range (which it does for
- * media). We sign it so R2 won't reject the request as a tampered header.
+ * Build a presigned R2 S3 GET URL with SigV4. Only `host` is signed, so the
+ * signature lives entirely in the query string and the browser can fetch the
+ * URL with whatever Range it likes.
  */
 export async function presignR2Get(opts: PresignOpts): Promise<string> {
   const ttl = Math.min(Math.max(opts.ttlSec ?? 300, 1), 604800);
@@ -76,10 +70,6 @@ export async function presignR2Get(opts: PresignOpts): Promise<string> {
   // GET (the official AWS SDK presign also signs host only by default). Signing
   // Range required the browser to send the exact same Range value we signed,
   // which <audio> does not guarantee — any mismatch 403'd the whole request.
-  // The `rangeHeader` opt is now ignored (kept on the interface for callers
-  // that already pass it; no behavior change at the call site).
-  void opts.rangeHeader;
-  const signedHeadersList = ["host"];
   const signedHeaders = "host";
 
   // in the query string and use "UNSIGNED-PAYLOAD" as the canonical request
