@@ -222,6 +222,15 @@ jobs:
           # Rename the Worker script to edgesonic-demo so it's isolated from
           # any production deploy on the same account.
           sed -i 's|^name = "edgesonic"|name = "edgesonic-demo"|' edgesonic-release/worker/wrangler.toml
+          # Containers need the Workers Paid plan. The demo account is on Free,
+          # so drop the container app together with the Sandbox DO binding and
+          # its migration — the three tables are contiguous at the end of the
+          # template. Demo transcoding falls back to the browser work queue.
+          sed -i '/^\[\[containers\]\]/,/^new_sqlite_classes/d' edgesonic-release/worker/wrangler.toml
+          if grep -qE '^\[\[(containers|durable_objects\.bindings|migrations)\]\]' edgesonic-release/worker/wrangler.toml; then
+            echo "::error::wrangler.toml still declares a container/Durable Object stack the demo account cannot deploy."
+            exit 1
+          fi
 
       - name: Apply DB schema + seed demo superadmin
         env:
@@ -401,10 +410,10 @@ jobs:
           echo "Deploying demo Worker edgesonic-demo with ${#VAR_FLAGS[@]} var flags"
           wrangler deploy \
             --config edgesonic-release/worker/wrangler.toml \
-            --containers-rollout=none \
             "${VAR_FLAGS[@]}"
 
       - name: Scan restored R2 demo library
+        id: scan
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -425,6 +434,7 @@ jobs:
             exit 1
           fi
           BASE="https://edgesonic-demo.${SUBDOMAIN}.workers.dev"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
           COOKIE_JAR=$(mktemp)
           trap 'rm -f "$COOKIE_JAR"' EXIT
           # A D1 binding change can briefly reach an edge running the prior
@@ -497,6 +507,6 @@ jobs:
 
       - name: Post-deploy reminder
         run: |
-          echo "::notice::Demo Worker deployed at https://edgesonic-demo.${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.workers.dev"
+          echo "::notice::Demo Worker deployed at ${{ steps.scan.outputs.base }}"
           echo "::notice::Login: admin / demo"
           echo "::notice::After first deploy, sign in and open Settings → Cloudflare → 'Ensure default cron' so cron-driven tasks (podcast refresh, scan, guest token reap) run."
