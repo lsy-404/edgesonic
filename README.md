@@ -7,13 +7,13 @@
 
 Serverless Subsonic-compatible music streaming server running entirely on **Cloudflare Workers**. No dedicated host, no always-on process — deploy once, stream anywhere.
 
-### 🚀 [Open the installer and deploy your own EdgeSonic →](https://deploy-edgesonic.wuyilingwei.com)
+### 🚀 [Open the installer and deploy your own EdgeSonic →](https://edgesonic-installer.demo-w10v.workers.dev)
 
 Deploys in a few minutes from your browser — see "Quick start" below for details.
 
 ## Live demo
 
-A live demo is hosted at **<https://edgesonic-demo.wuyilingwei.workers.dev>** — log in with `admin` / `demo`. 
+A live demo is hosted at **<https://edgesonic-demo.demo-w10v.workers.dev>** — log in with `admin` / `demo`. 
 
 The demo runs in `DEMO_MODE=1`: dangerous permissions (user/source management, delete, Cloudflare settings) are locked, uploads are capped, and the library is reset from a fixed set of tracks on every deploy. Everything else — browsing, playback, tag editing, the worker pool — is fully functional.
 
@@ -52,7 +52,7 @@ EdgeSonic serves two roles simultaneously:
 ### Deploy (recommended): guided installer
 
 No fork, no Actions tab, no local toolchain, and no GitHub account. Open the
-[EdgeSonic Installer](https://deploy-edgesonic.wuyilingwei.com): it guides account setup, tokens, R2, and
+[EdgeSonic Installer](https://edgesonic-installer.demo-w10v.workers.dev): it guides account setup, tokens, R2, and
 deployment in the browser, then creates the D1 and R2 resources automatically.
 
 ### Local CLI deploy (development)

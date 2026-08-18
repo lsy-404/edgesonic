@@ -6,13 +6,13 @@
 
 完全运行在 **Cloudflare Workers** 上的无服务器（Serverless）Subsonic 兼容音乐流媒体服务器。不需要独立主机，不需要常驻进程——部署一次，随处播放。
 
-### 🚀 [打开安装向导，部署你自己的 EdgeSonic →](https://deploy-edgesonic.wuyilingwei.com)
+### 🚀 [打开安装向导，部署你自己的 EdgeSonic →](https://edgesonic-installer.demo-w10v.workers.dev)
 
 几分钟内在浏览器中完成部署，细节见下方「快速开始」。
 
 ## 在线演示
 
-在线 demo 地址：**<https://edgesonic-demo.wuyilingwei.workers.dev>** —— 登录账号 `admin` / `demo`。
+在线 demo 地址：**<https://edgesonic-demo.demo-w10v.workers.dev>** —— 登录账号 `admin` / `demo`。
 
 该 demo 以 `DEMO_MODE=1` 运行：危险权限（用户/存储源管理、删除、Cloudflare 设置）已被锁定，上传有大小上限，媒体库会在每次部署时从固定曲目集重置。其余功能——浏览、播放、标签编辑、浏览器工作池——均完整可用。
 
@@ -50,7 +50,7 @@ EdgeSonic 同时承担两个角色：
 
 ### 部署（推荐）：引导式安装向导
 
-无需 fork、GitHub 账号、Actions 页面或本地工具链。打开 [EdgeSonic 安装向导](https://deploy-edgesonic.wuyilingwei.com)，它会在网页内完成注册、令牌、R2 和部署引导，并自动创建 D1 和 R2 资源。
+无需 fork、GitHub 账号、Actions 页面或本地工具链。打开 [EdgeSonic 安装向导](https://edgesonic-installer.demo-w10v.workers.dev)，它会在网页内完成注册、令牌、R2 和部署引导，并自动创建 D1 和 R2 资源。
 
 ### 本地 CLI 部署（开发用）
 

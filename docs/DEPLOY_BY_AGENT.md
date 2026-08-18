@@ -8,7 +8,7 @@
 >
 > This is the **agent-run, local `wrangler`** deployment path. It downloads a precompiled package
 > from GitHub Releases so you never need to run `npm ci` / `npm run build:web` yourself. If you
-> want the human-driven path instead, use the [guided installer](https://deploy-edgesonic.wuyilingwei.com).
+> want the human-driven path instead, use the [guided installer](https://edgesonic-installer.demo-w10v.workers.dev).
 >
 > This document itself is written in English, but every step where you talk to the operator —
 > clarifying questions in step 2, the completion report in step 5, any error you surface — should

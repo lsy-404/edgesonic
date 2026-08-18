@@ -181,7 +181,7 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
     <span class="demo-badge-text">{{ t("demo.badge") }}</span>
     <a
       class="demo-badge-deploy"
-      href="https://deploy-edgesonic.wuyilingwei.com"
+      href="https://edgesonic-installer.demo-w10v.workers.dev"
       target="_blank"
       rel="noopener noreferrer"
     >{{ t("demo.easyDeploy") }}</a>
