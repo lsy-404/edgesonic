@@ -250,6 +250,14 @@ async function verify() {
   }
 }
 
+// Permissions are usually fixed in the Cloudflare dashboard with this page left
+// open, and nothing about that reaches the wizard — so re-running the whole
+// checklist needs an explicit control, not another edit of the token field.
+function recheck() {
+  clearTimeout(verifyTimer);
+  void verify();
+}
+
 function goNext() {
   wizard.step = 3;
 }
@@ -270,14 +278,19 @@ function goBack() {
         <li><a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noreferrer">{{ t("credentials.createAccount") }} ↗</a></li>
         <li>{{ t("credentials.setupToken") }} <a href="https://dash.cloudflare.com/?to=/:account/api-tokens" target="_blank" rel="noreferrer">{{ t("credentials.apiTokenCreateLink") }} ↗</a></li>
         <li>
-          {{ t("credentials.setupPermissions") }}
+          <div class="permission-head">
+            <span>{{ t("credentials.setupPermissions") }}</span>
+            <WinButton Style="SubtleButtonStyle" :IsEnabled="canVerify && !verifying" @Click="recheck">
+              <span aria-hidden="true">⟳</span>{{ verifying ? t("credentials.verifying") : t("credentials.recheck") }}
+            </WinButton>
+          </div>
           <div class="permission-table-wrap">
             <table class="permission-table">
               <thead>
                 <tr>
                   <th>{{ t("credentials.permissionCategory") }}</th>
                   <th>{{ t("credentials.permissionResource") }}</th>
-                  <th>{{ t("credentials.permissionRequired") }}</th>
+                  <th>{{ t("credentials.permissionRequirement") }}</th>
                   <th>{{ t("credentials.permissionScenario") }}</th>
                   <th>{{ t("credentials.permissionScope") }}</th>
                   <th>{{ t("credentials.permissionLevel") }}</th>

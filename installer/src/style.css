@@ -324,6 +324,14 @@ code {
   overflow-x: auto;
 }
 
+.permission-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
 .permission-table th,
 .permission-table td {
   padding: 8px;
