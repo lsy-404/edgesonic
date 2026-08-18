@@ -201,7 +201,6 @@
     "containerDeploy": "Deploy — declare the container for this Worker",
     "containerOff": "Don't deploy — leave the container out of this version",
     "containerModeHelp": "Transcoding runs in a container. Keeping it unchanged is the safe default: a fresh install has none, and a recovery install keeps whatever is there.",
-    "containerDeployWarning": "Declaring the container only succeeds when its image already exists for this Worker. No browser can build one — publish it with wrangler from a machine that has Docker, then deploy again.",
     "fullRebuild": "Full overwrite — delete the Worker and rebuild it from scratch",
     "fullRebuildHelp": "Your library is safe: the D1 database and the R2 bucket are kept, along with every setting stored in them. The Worker script, its bindings, secrets, scheduled tasks and static assets are recreated, and the instance identity is carried over. Custom domains are re-attached automatically when possible; upload links already handed out stop working.",
     "adminUsername": "Initial superadmin username",

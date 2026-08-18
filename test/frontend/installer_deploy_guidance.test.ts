@@ -91,8 +91,8 @@ const checks: Array<[string, boolean]> = [
     && orchestrate.includes('target.containerMode === "deploy" || (target.containerMode === "keep" && facts.hasSandboxContainer && !rebuilding)')
     && workerVersion.includes("if (input.declareContainer) metadata.containers")
     && target.includes('wizard.containerMode') && target.includes('value="deploy"') && target.includes('value="off"')
-    && [en, zh].every((locale) => ["containerKeep", "containerDeploy", "containerOff", "containerDeployWarning"].every((key) => locale.target[key])
-      && locale.review.containerLabel)],
+    && [en, zh].every((locale) => ["containerKeep", "containerDeploy", "containerOff"].every((key) => locale.target[key])
+      && !locale.target.containerDeployWarning && locale.review.containerLabel)],
   ["script deletion and settings reads are relay allowlisted",
     allowlist.includes('{ method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] }')
     && allowlist.includes('["accounts", null, "workers", "scripts", null, "settings"]')],
