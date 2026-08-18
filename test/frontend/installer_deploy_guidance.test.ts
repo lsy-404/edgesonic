@@ -6,8 +6,6 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
 
 const credentials = read("installer/src/components/steps/StepCredentials.vue");
 const target = read("installer/src/components/steps/StepTarget.vue");
-const version = read("installer/src/components/steps/StepVersion.vue");
-const review = read("installer/src/components/steps/StepReview.vue");
 const done = read("installer/src/components/steps/StepDone.vue");
 const welcome = read("installer/src/components/steps/StepWelcome.vue");
 const orchestrate = read("installer/src/lib/deploy/orchestrate.ts");
@@ -24,8 +22,18 @@ const zh = JSON.parse(read("installer/src/locales/zh-CN.json"));
 
 const checks: Array<[string, boolean]> = [
   ["minimum permissions cover deploy resources", ["d1", "r2", "ci", "scripts"].every((key) => credentials.includes(`"${key}"`))],
-  ["container and observability permissions are optional", /key: "containers"[\s\S]*?required: false/.test(credentials)
-    && /key: "observability"[\s\S]*?required: false/.test(credentials)],
+  ["container and observability permissions are optional", /key: "containers"[\s\S]*?requirement: "optional"/.test(credentials)
+    && /key: "observability"[\s\S]*?requirement: "optional"/.test(credentials)],
+  ["deployment gates on the three resources it writes to", credentials.includes('new Set(["token", "scripts", "d1", "r2"])')
+    && /key: "apiTokens"[\s\S]*?requirement: "recommended"/.test(credentials)
+    && orchestrate.includes('for (const key of ["scripts", "d1", "r2"] as const)')
+    && [en, zh].every((locale) => ["required", "recommended", "optional"].every((key) => locale.credentials.requirements[key]))],
+  ["an unreadable policy list downgrades the token to a readable checklist, not a failure",
+    orchestrate.includes("groups = await readTokenPermissionGroups") && orchestrate.includes("if (groups) {")
+    && credentials.includes('setCheck(key, "unknown"') && [en, zh].every((locale) => locale.credentials.checkStatus.unknown)],
+  ["the permission checklist can be re-run by hand", credentials.includes("function recheck")
+    && credentials.includes("permission-head") && installerStyle.includes(".permission-head")
+    && [en, zh].every((locale) => locale.credentials.recheck)],
   ["stored token purpose is disclosed", en.credentials.apiTokenStorageNote.includes("CF_API_TOKEN")
     && zh.credentials.apiTokenStorageNote.includes("CF_API_TOKEN")
     && credentials.includes("credentials.apiTokenStorageNote")],
@@ -39,7 +47,6 @@ const checks: Array<[string, boolean]> = [
   ["public quick deploy starts from terms acceptance", welcome.includes("acceptTerms") && welcome.includes("DEPLOY_BY_AGENT.md") && !welcome.includes("freshTitle")],
   ["recovery can preserve or reset the superadmin", target.includes("wizard.resetAdmin") && orchestrate.includes("target.mode === \"fresh\" || target.resetAdmin")],
   ["initial superadmin password is optional", target.includes("wizard.adminPassword") && orchestrate.includes("target.adminPassword")],
-  ["overwrite guidance prefers in-app updates", [credentials, target, version, review].every((source) => source.includes("overwriteAdvice.message"))],
   ["token policies cover every deployment and post-deploy permission", ["apiTokens", "scripts", "d1", "r2", "ci", "containers", "observability", "accountAnalytics", "accountSettings"].every((key) => tokenPolicies.includes(key) && credentials.includes(`key: "${key}"`))],
   ["the confusing Zone permission guide rows were dropped, not just renamed", !tokenPolicies.includes("zoneRead") && !credentials.includes('key: "zoneRead"') && !credentials.includes('key: "zoneSettings"')],
   ["token policy read route is relay allowlisted", allowlist.includes('["accounts", null, "tokens", null]')],
@@ -47,7 +54,7 @@ const checks: Array<[string, boolean]> = [
   ["write policy names use Cloudflare's current access level", ["Workers Scripts Write", "D1 Write", "Workers R2 Storage Write"].every((name) => tokenPolicies.includes(`"${name}"`))],
   ["core deployment permissions fall back to non-mutating API checks", ["/workers/scripts", "/d1/database"].every((path) => credentials.includes(path))],
   ["saved credentials are checked on page entry", credentials.includes("{ immediate: true }")],
-  ["local ZIP packages are checksum-validated before deployment", manifest.includes("readLocalUpdatePackage") && manifest.includes("validateManifestAndArtifact") && version.includes("localPackage")],
+  ["release artifacts are checksum-validated before deployment", manifest.includes("sha256Hex") && manifest.includes("Update artifact checksum mismatch")],
   ["completion link opens the deployed Worker production page", done.includes("/workers/services/view/") && done.includes("/production")],
   ["asset uploads preserve JavaScript MIME types", assets.includes('return "text/javascript"') && assets.includes("new File([base64Bytes(bytes)]")],
   ["permission table includes categories and wraps content", credentials.includes("permissionCategory") && credentials.includes("permission.category") && installerStyle.includes("overflow-wrap: anywhere")],

@@ -57,14 +57,30 @@ async function verifyDeploymentAccess(creds: DeployCredentials): Promise<string>
   const { accountId, apiToken, r2AccessKeyId, r2SecretAccessKey } = creds;
   const verified = await callCfJson<{ id?: string }>(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, "an active Account API Token");
   if (!verified.id) throw new Error("Cloudflare did not return the API Token identifier");
-  const groups = await readTokenPermissionGroups(apiToken, accountId, verified.id);
-  for (const key of ["apiTokens", "scripts", "d1", "r2"] as const) {
-    if (!hasTokenPermission(groups, key)) throw new Error(`Missing required token permission: ${key}`);
+  // Reading the token's own policies names a missing permission before anything
+  // is touched, but the token isn't required to hold that permission — the three
+  // probes below decide on their own whether this deploy can run.
+  let groups: Set<string> | null = null;
+  try {
+    groups = await readTokenPermissionGroups(apiToken, accountId, verified.id);
+  } catch {
+    groups = null;
+  }
+  if (groups) {
+    for (const key of ["scripts", "d1", "r2"] as const) {
+      if (!hasTokenPermission(groups, key)) throw new Error(`Missing required token permission: ${key}`);
+    }
   }
   await callCfJson(apiToken, `/accounts/${accountId}/workers/scripts`, undefined, "Workers Scripts Edit");
   await callCfJson(apiToken, `/accounts/${accountId}/d1/database`, undefined, "D1 Edit");
   await listBucketNames(apiToken, accountId);
-  const permissionSummary = ["Account API Token", "Account API Tokens", "Workers Scripts", "D1", "Workers R2 Storage"];
+  const permissionSummary = [
+    "Account API Token",
+    groups ? "Account API Tokens" : "Account API Tokens: not readable",
+    "Workers Scripts",
+    "D1",
+    "Workers R2 Storage",
+  ];
   permissionSummary.push(
     await callCfJson(apiToken, `/accounts/${accountId}`, undefined, "Account Settings Read").then(
       () => "Account Settings: enabled",

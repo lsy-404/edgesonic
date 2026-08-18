@@ -340,13 +340,18 @@ code {
 }
 
 .requirement-required,
+.requirement-recommended,
 .requirement-optional {
-  font-size: 1rem;
-  font-weight: 700;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .requirement-required {
   color: var(--SystemFillColorSuccessBrush);
+}
+
+.requirement-recommended {
+  color: var(--SystemFillColorCautionBrush);
 }
 
 .requirement-optional {
@@ -374,6 +379,10 @@ code {
 
 .check-dot-ok {
   background: var(--SystemFillColorSuccessBrush);
+}
+
+.check-dot-unknown {
+  background: var(--SystemFillColorCautionBrush);
 }
 
 .check-dot-missing,

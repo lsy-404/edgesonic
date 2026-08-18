@@ -11,23 +11,26 @@ import { WinButton } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
+// Only the three resources the deploy writes to are gates. Reading the token's
+// own policies just makes the table exact — without it every optional row is
+// unknown, which is a worse experience, not a blocked deployment.
 const permissionRows = [
-  { key: "apiTokens", category: "account", required: true, scope: "account", level: "read" },
-  { key: "scripts", category: "developer", required: true, scope: "account", level: "write" },
-  { key: "d1", category: "developer", required: true, scope: "account", level: "write" },
-  { key: "r2", category: "developer", required: true, scope: "account", level: "write" },
-  { key: "r2Keys", category: "developer", required: false, scope: "allBuckets", level: "readWrite" },
-  { key: "ci", category: "developer", required: false, scope: "account", level: "write" },
-  { key: "containers", category: "developer", required: false, scope: "account", level: "write" },
-  { key: "observability", category: "analytics", required: false, scope: "account", level: "write" },
-  { key: "accountAnalytics", category: "analytics", required: false, scope: "account", level: "read" },
-  { key: "accountSettings", category: "account", required: false, scope: "account", level: "read" },
+  { key: "apiTokens", category: "account", requirement: "recommended", scope: "account", level: "read" },
+  { key: "scripts", category: "developer", requirement: "required", scope: "account", level: "write" },
+  { key: "d1", category: "developer", requirement: "required", scope: "account", level: "write" },
+  { key: "r2", category: "developer", requirement: "required", scope: "account", level: "write" },
+  { key: "r2Keys", category: "developer", requirement: "optional", scope: "allBuckets", level: "readWrite" },
+  { key: "ci", category: "developer", requirement: "optional", scope: "account", level: "write" },
+  { key: "containers", category: "developer", requirement: "optional", scope: "account", level: "write" },
+  { key: "observability", category: "analytics", requirement: "optional", scope: "account", level: "write" },
+  { key: "accountAnalytics", category: "analytics", requirement: "optional", scope: "account", level: "read" },
+  { key: "accountSettings", category: "account", requirement: "optional", scope: "account", level: "read" },
 ] as const;
 
 const verifying = ref(false);
 const hasAttempted = ref(false);
 
-type CheckStatus = "pending" | "checking" | "ok" | "missing" | "error";
+type CheckStatus = "pending" | "checking" | "ok" | "missing" | "unknown" | "error";
 interface PermissionCheck {
   key: string;
   status: CheckStatus;
@@ -72,7 +75,7 @@ const r2KeysComplete = computed(() => {
   return (!accessKey && !secret) || (!!accessKey && !!secret);
 });
 
-const requiredCheckKeys = new Set(["token", "apiTokens", "scripts", "d1", "r2"]);
+const requiredCheckKeys = new Set(["token", "scripts", "d1", "r2"]);
 const allRequiredOk = computed(
   () => checks.filter((check) => requiredCheckKeys.has(check.key)).every((check) => check.status === "ok")
     && wizard.r2Enabled === true,
@@ -173,6 +176,12 @@ async function verify() {
     if (isStale()) return;
     const context = describeCfError(e, "Account API Tokens Read").message;
     setCheck("apiTokens", "missing", context);
+    // Every optional permission is now unprovable: probing them costs a request
+    // each and the deploy never needs them. The three below are probed because
+    // they decide whether the deploy can run at all.
+    for (const key of Object.keys(TOKEN_PERMISSION_GROUPS)) {
+      if (key !== "apiTokens") setCheck(key, "unknown", t("credentials.unknownWithoutPolicies"));
+    }
   }
 
   wizard.accountName = accountId;
@@ -280,11 +289,7 @@ function goBack() {
                   <td>{{ t(`credentials.permissionCategories.${permission.category}`) }}</td>
                   <td>{{ t(`credentials.permissions.${permission.key}.resource`) }}</td>
                   <td>
-                    <span
-                      :class="permission.required ? 'requirement-required' : 'requirement-optional'"
-                      :title="permission.required ? t('credentials.required') : t('credentials.optional')"
-                      :aria-label="permission.required ? t('credentials.required') : t('credentials.optional')"
-                    >{{ permission.required ? '✓' : '×' }}</span>
+                    <span :class="`requirement-${permission.requirement}`">{{ t(`credentials.requirements.${permission.requirement}`) }}</span>
                   </td>
                   <td>{{ t(`credentials.permissions.${permission.key}.scenario`) }}</td>
                   <td>{{ t(`credentials.permissionScopes.${permission.scope}`) }}</td>
