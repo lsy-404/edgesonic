@@ -146,6 +146,7 @@ onMounted(async () => {
   scanning.value = false;
 });
 
+const adminSetupApplies = computed(() => wizard.mode === "fresh" || wizard.resetAdmin);
 const adminUsernameValid = computed(() => !wizard.adminUsername.trim() || ADMIN_USERNAME_RE.test(wizard.adminUsername.trim()));
 
 interface ZoneLookup {
@@ -266,18 +267,22 @@ function goBack() {
         <p class="field-help">{{ t("target.containerModeHelp") }}</p>
       </div>
 
-      <div class="field">
-        <label for="adminUsername">{{ t("target.adminUsername") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
-        <input id="adminUsername" v-model.trim="wizard.adminUsername" type="text" autocomplete="off" spellcheck="false" placeholder="admin" />
-        <p class="field-help">{{ t("target.adminUsernameHelp") }}</p>
-        <p v-if="!adminUsernameValid" class="field-help" style="color: var(--SystemFillColorCautionBrush)">{{ t("target.adminUsernameInvalid") }}</p>
-      </div>
+      <!-- A recovery that keeps its superadmin ignores both fields (see the
+           deploy's admin step), so they are only offered where they apply. -->
+      <template v-if="adminSetupApplies">
+        <div class="field">
+          <label for="adminUsername">{{ t("target.adminUsername") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
+          <input id="adminUsername" v-model.trim="wizard.adminUsername" type="text" autocomplete="off" spellcheck="false" placeholder="admin" />
+          <p class="field-help">{{ t("target.adminUsernameHelp") }}</p>
+          <p v-if="!adminUsernameValid" class="field-help" style="color: var(--SystemFillColorCautionBrush)">{{ t("target.adminUsernameInvalid") }}</p>
+        </div>
 
-      <div class="field">
-        <label for="adminPassword">{{ t("target.adminPassword") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
-        <input id="adminPassword" v-model="wizard.adminPassword" type="password" autocomplete="new-password" spellcheck="false" />
-        <p class="field-help">{{ t("target.adminPasswordHelp") }}</p>
-      </div>
+        <div class="field">
+          <label for="adminPassword">{{ t("target.adminPassword") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
+          <input id="adminPassword" v-model="wizard.adminPassword" type="password" autocomplete="new-password" spellcheck="false" />
+          <p class="field-help">{{ t("target.adminPasswordHelp") }}</p>
+        </div>
+      </template>
 
       <div class="field">
         <label for="dbName">D1 — {{ t("target.dbNameHelp") }}</label>

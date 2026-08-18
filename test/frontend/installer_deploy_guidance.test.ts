@@ -47,6 +47,10 @@ const checks: Array<[string, boolean]> = [
   ["public quick deploy starts from terms acceptance", welcome.includes("acceptTerms") && welcome.includes("DEPLOY_BY_AGENT.md") && !welcome.includes("freshTitle")],
   ["recovery can preserve or reset the superadmin", target.includes("wizard.resetAdmin") && orchestrate.includes("target.mode === \"fresh\" || target.resetAdmin")],
   ["initial superadmin password is optional", target.includes("wizard.adminPassword") && orchestrate.includes("target.adminPassword")],
+  ["superadmin fields are offered only where the deploy applies them",
+    target.includes('const adminSetupApplies = computed(() => wizard.mode === "fresh" || wizard.resetAdmin)')
+    && target.includes('v-if="adminSetupApplies"')
+    && [en, zh].every((locale) => !/reset|重置/.test(locale.target.adminPasswordHelp))],
   ["token policies cover every deployment and post-deploy permission", ["apiTokens", "scripts", "d1", "r2", "ci", "containers", "observability", "accountAnalytics", "accountSettings"].every((key) => tokenPolicies.includes(key) && credentials.includes(`key: "${key}"`))],
   ["the confusing Zone permission guide rows were dropped, not just renamed", !tokenPolicies.includes("zoneRead") && !credentials.includes('key: "zoneRead"') && !credentials.includes('key: "zoneSettings"')],
   ["token policy read route is relay allowlisted", allowlist.includes('["accounts", null, "tokens", null]')],

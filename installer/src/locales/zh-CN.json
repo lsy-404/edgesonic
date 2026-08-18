@@ -204,10 +204,10 @@
     "fullRebuild": "完全覆盖 — 删除 Worker 后从零重建",
     "fullRebuildHelp": "曲库不受影响：D1 数据库、R2 桶以及存在其中的设置全部保留。Worker 脚本、绑定、机密、定时任务和静态资源会重新创建，实例标识会沿用原值。自定义域名会尽量自动重新绑定；已经发出去的上传链接会失效。",
     "adminUsername": "初始超级管理员用户名",
-    "adminUsernameHelp": "可选。留空则使用默认用户名 “admin”；恢复部署仅在勾选重置超级管理员时应用此设置。支持任意用户名，包括中文。",
+    "adminUsernameHelp": "可选。留空则使用默认用户名 “admin”。支持任意用户名，包括中文。",
     "adminUsernameInvalid": "提示：3-32 位字母、数字、下划线或短横线是最通用的写法；本项目也支持中文等其他字符的用户名，可以直接继续。",
     "adminPassword": "初始超级管理员密码",
-    "adminPasswordHelp": "可选。留空会生成随机密码；恢复部署仅在勾选重置超级管理员时应用此密码。"
+    "adminPasswordHelp": "可选。留空会生成随机密码。"
   },
   "version": {
     "title": "选择版本",

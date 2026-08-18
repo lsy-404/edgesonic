@@ -204,10 +204,10 @@
     "fullRebuild": "Full overwrite — delete the Worker and rebuild it from scratch",
     "fullRebuildHelp": "Your library is safe: the D1 database and the R2 bucket are kept, along with every setting stored in them. The Worker script, its bindings, secrets, scheduled tasks and static assets are recreated, and the instance identity is carried over. Custom domains are re-attached automatically when possible; upload links already handed out stop working.",
     "adminUsername": "Initial superadmin username",
-    "adminUsernameHelp": "Optional. Leave empty to use the default username \"admin\". Recovery applies it only when superadmin reset is selected. Any username works, including non-Latin scripts.",
+    "adminUsernameHelp": "Optional. Leave empty to use the default username \"admin\". Any username works, including non-Latin scripts.",
     "adminUsernameInvalid": "Tip: 3-32 letters, digits, underscores, or hyphens is the most portable choice, but this app accepts any username — feel free to continue as-is.",
     "adminPassword": "Initial superadmin password",
-    "adminPasswordHelp": "Optional. Leave empty to generate a random password. Recovery applies it only when superadmin reset is selected."
+    "adminPasswordHelp": "Optional. Leave empty to generate a random password."
   },
   "version": {
     "title": "Choose a release",
