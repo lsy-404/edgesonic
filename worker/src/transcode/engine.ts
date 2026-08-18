@@ -67,6 +67,10 @@ export interface TranscodeInput {
   // Hint for engines that want to forward a Range request (none today, but
   // reserved for partial transcodes when stream timeOffset is set).
   size?: number;
+  // Stable identifier for the thing being transcoded. Engines that run on a
+  // pool of workers use it to pick one, so the same source keeps landing on
+  // the same worker while different sources spread out.
+  jobKey?: string;
 }
 
 // Output from a successful transcode call. The body stream is consumable

@@ -68,7 +68,7 @@ export async function preBakeProfile(
     const source = await openSourceForTranscode(env, parent.storage_uri);
     if (!source) return;
 
-    const input: TranscodeInput = { body: source.body, contentType: source.contentType };
+    const input: TranscodeInput = { body: source.body, contentType: source.contentType, jobKey: instanceId };
     const out = await engine.transcode(input, profile);
     const bytes = new Uint8Array(await new Response(out.body).arrayBuffer());
 

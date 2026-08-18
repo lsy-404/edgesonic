@@ -589,7 +589,7 @@ async function tryTranscodeStream(
   const source = await openSourceForTranscode(env, storageUri);
   if (!source) return null;
 
-  const input: TranscodeInput = { body: source.body, contentType: source.contentType };
+  const input: TranscodeInput = { body: source.body, contentType: source.contentType, jobKey: storageUri };
   let out;
   try {
     out = await built.engine.transcode(input, profile);

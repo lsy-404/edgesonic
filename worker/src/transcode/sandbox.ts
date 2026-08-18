@@ -22,14 +22,31 @@
 // through `sandbox.containerFetch(url, init, 8080)` so the request → ffmpeg
 // → response streams the whole way.
 //
-// The sandbox ID is derived from the transcode job ID, so concurrent jobs
-// land in their own Durable Object + container instance, up to
-// `max_instances` configured in wrangler.toml.
+// Jobs are spread over a small pool of sandbox IDs, each of which is its own
+// Durable Object + container instance, so more than one ffmpeg can run at a
+// time.
 
 import { getSandbox, type Sandbox } from "@cloudflare/sandbox";
 import type { TranscodeEngine, TranscodeInput, TranscodeJobRow, TranscodeOutput, TranscodeProfile } from "./engine";
 import { buildFfmpegArgs } from "./profiles";
 import { getFeatureString } from "../utils/features";
+
+// Must stay at or below `max_instances` for the Sandbox container in
+// wrangler.toml: asking for more distinct sandboxes than that leaves the extra
+// ones with nowhere to start.
+const POOL_SIZE = 3;
+
+// FNV-1a, folded onto a pool slot. Any stable key works — the only property
+// that matters is that one source always maps to one slot, so a container
+// stays warm for repeat plays of the same track.
+function poolSlot(key: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h) % POOL_SIZE;
+}
 
 // Bindings provided by wrangler.toml. The Sandbox class is re-exported from
 // src/index.ts; this is its DurableObjectNamespace binding. The unknown
@@ -41,7 +58,7 @@ interface SandboxBindings {
 }
 
 export interface SandboxEngineOptions {
-  // Which sandboxId pool to share. Defaults to "edgesonic-transcoder".
+  // Prefix for the pool's sandbox IDs. Defaults to "edgesonic-transcoder".
   // May switch to per-user pools to throttle isolation.
   sandboxId?: string;
   // Port the container is listening on. Matches EXPOSE in the Dockerfile.
@@ -51,9 +68,9 @@ export interface SandboxEngineOptions {
 export class SandboxTranscodeEngine implements TranscodeEngine {
   readonly name = "sandbox";
 
-  // We use a single shared sandbox keyed by `sandboxId` so cold starts amortise
-  // across requests. Per-job sandboxes would be ideal but Workers Free has a
-  // strict DO instance limit — share until we have data showing contention.
+  // Sandboxes are shared within a slot so cold starts amortise across
+  // requests, and spread across slots so concurrent jobs are not serialised
+  // behind one container.
   private readonly sandboxId: string;
   private readonly port: number;
 
@@ -65,14 +82,17 @@ export class SandboxTranscodeEngine implements TranscodeEngine {
     this.port = opts.port ?? 8080;
   }
 
-  private async getSandbox(): Promise<Sandbox> {
+  // A missing key lands on the same slot every time, which is the old
+  // single-sandbox behaviour and keeps probes off the busy slots.
+  private async getSandbox(jobKey?: string): Promise<Sandbox> {
     const configured = await getFeatureString(this.env, "sandbox_idle_timeout_seconds", "150");
     const sleepAfter = ["15", "150", "300"].includes(configured) ? Number(configured) : 150;
-    return getSandbox(this.env.Sandbox, this.sandboxId, { sleepAfter });
+    const id = `${this.sandboxId}-${poolSlot(jobKey ?? "")}`;
+    return getSandbox(this.env.Sandbox, id, { sleepAfter });
   }
 
   async transcode(input: TranscodeInput, profile: TranscodeProfile): Promise<TranscodeOutput> {
-    const sb = await this.getSandbox();
+    const sb = await this.getSandbox(input.jobKey);
 
     const args = buildFfmpegArgs(profile);
     const argsParam = encodeURIComponent(JSON.stringify(args));

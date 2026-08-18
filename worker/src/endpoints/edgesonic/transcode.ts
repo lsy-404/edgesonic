@@ -167,7 +167,7 @@ transcodeRoutes.post("/transcode/start", permissionMiddleware("manage_sources"),
 
   let out;
   try {
-    const input: TranscodeInput = { body: source.body, contentType: source.contentType };
+    const input: TranscodeInput = { body: source.body, contentType: source.contentType, jobKey: body.id };
     out = await engine.transcode(input, profile);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

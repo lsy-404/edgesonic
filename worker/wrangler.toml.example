@@ -90,7 +90,10 @@ enabled = true
 [[containers]]
 class_name = "Sandbox"
 image = "./transcoder-image/Dockerfile"
-instance_type = "basic"
+# ffmpeg 是 CPU 密集型，音频转码用不到大内存。standard-1 是 basic 之上最小的一档，
+# 核心翻倍且不必为 6 GiB 闲置内存付费。max_instances 要与 src/transcode/sandbox.ts
+# 的 POOL_SIZE 保持一致——超出这个数量的 sandbox 没有实例可用。
+instance_type = "standard-1"
 max_instances = 3
 
 [[durable_objects.bindings]]
