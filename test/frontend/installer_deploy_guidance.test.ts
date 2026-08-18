@@ -68,8 +68,14 @@ const checks: Array<[string, boolean]> = [
     && deployTypes.includes("adminUsername")
     && orchestrate.includes("target.adminUsername")
     && read("installer/src/lib/deploy/admin.ts").includes("requestedUsername")],
-  ["fresh installs warn about reusing an existing D1/R2 name", target.includes("dbCollision") && target.includes("bucketCollision")
-    && en.target.dbCollisionWarning && en.target.bucketCollisionWarning],
+  ["D1 and R2 existence is stated in every deploy mode", target.includes("dbState") && target.includes("bucketState")
+    && en.target.dbCollisionWarning && en.target.bucketCollisionWarning
+    && [en, zh].every((locale) => ["dbExists", "dbAbsent", "dbUnknown", "bucketExists", "bucketAbsent", "bucketUnknown"].every((key) => locale.target[key]))],
+  ["the account is scanned behind a cover so the target form does not rewrite itself",
+    target.includes("scanning") && target.includes("WinProgressRing") && [en, zh].every((locale) => locale.target.scanning)],
+  ["an account's own EdgeSonic D1/R2 are adopted over the generic defaults",
+    target.includes("adoptExisting") && target.includes('ADOPT_KEYWORD = "edgesonic"')
+    && [en, zh].every((locale) => locale.target.dbAdopted && locale.target.bucketAdopted)],
   ["a full rebuild is offered only after the overwrite is confirmed",
     target.includes("collision === true && wizard.overwriteConfirmed") && target.includes("wizard.fullRebuild")
     && [en, zh].every((locale) => locale.target.fullRebuild && locale.target.fullRebuildHelp && locale.execute.steps.rebuild)],
