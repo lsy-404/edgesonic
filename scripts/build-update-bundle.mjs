@@ -132,3 +132,53 @@ await fs.writeFile(
 );
 await fs.writeFile(path.join(path.dirname(stage), "edgesonic-update.tar.gz.sha256"), `${manifest.artifactSha256}  edgesonic-update.tar.gz\n`);
 console.log(JSON.stringify(manifest, null, 2));
+
+// The browser deploy wizard reads a package of its own: the data package (the
+// same Worker bundle, assets and SQL) plus a small install-configuration asset
+// (the recipe, with licence and terms text inlined). The artifact names above
+// must stay as they are — deployed instances look up their self-update asset
+// by that name.
+const recipeSource = path.join(root, "recipe");
+const wizardStage = path.join(stage, "overture");
+await fs.mkdir(path.join(wizardStage, "worker"), { recursive: true });
+await fs.mkdir(path.join(wizardStage, "migrations"), { recursive: true });
+
+// worker/index.js matches recipe.json's worker.module.
+await fs.copyFile(path.join(stage, "worker.js"), path.join(wizardStage, "worker/index.js"));
+await fs.copyFile(path.join(stage, "assets-manifest.json"), path.join(wizardStage, "assets-manifest.json"));
+await fs.cp(assetsDir, path.join(wizardStage, "assets"), { recursive: true });
+// Asset content types are repaired server-side from this file; a package that
+// lost it would serve assets with an empty type.
+await fs.access(path.join(wizardStage, "assets/_headers"));
+// The wizard applies the schema from the package instead of fetching it, so the
+// SQL always matches the Worker bundle shipped beside it.
+await fs.copyFile(path.join(root, "worker/migrations/Schema.sql"), path.join(wizardStage, "migrations/Schema.sql"));
+await fs.copyFile(path.join(recipeSource, "recipe.js"), path.join(wizardStage, "recipe.js"));
+
+const wizardArchive = path.join(path.dirname(stage), "overture.tar.gz");
+const wizardTar = spawnSync(
+  "tar",
+  ["czf", wizardArchive, "-C", wizardStage, "recipe.js", "worker", "assets-manifest.json", "assets", "migrations"],
+  { cwd: root, stdio: "inherit" },
+);
+if (wizardTar.status !== 0) throw new Error(`tar failed with exit code ${wizardTar.status}`);
+
+const wizardArtifact = await fs.readFile(wizardArchive);
+const wizardArtifactSha256 = sha256(wizardArtifact);
+
+// recipe.json's version/tag/buildTime/package digest have to equal this build's,
+// and its licence/terms text is inlined here rather than kept in the package.
+const recipe = JSON.parse(await fs.readFile(path.join(recipeSource, "recipe.json"), "utf8"));
+recipe.version = version;
+recipe.tag = tag;
+recipe.buildTime = buildTime;
+recipe.package = { artifact: "overture.tar.gz", sha256: wizardArtifactSha256, bytes: wizardArtifact.length };
+recipe.license.text = await fs.readFile(path.join(root, "LICENSE"), "utf8");
+recipe.terms.texts["zh-CN"] = await fs.readFile(path.join(recipeSource, "terms/zh-CN.md"), "utf8");
+recipe.terms.texts["*"] = await fs.readFile(path.join(recipeSource, "terms/en.md"), "utf8");
+await fs.writeFile(
+  path.join(path.dirname(stage), "overture.json"),
+  `${JSON.stringify(recipe, null, 2)}\n`,
+);
+await fs.writeFile(path.join(path.dirname(stage), "overture.tar.gz.sha256"), `${wizardArtifactSha256}  overture.tar.gz\n`);
+console.log(JSON.stringify({ tag, version, buildTime, artifact: "overture.tar.gz", artifactSha256: wizardArtifactSha256 }, null, 2));

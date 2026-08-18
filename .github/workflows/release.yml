@@ -169,6 +169,11 @@ jobs:
           cp "${RUNNER_TEMP}/edgesonic-update.tar.gz.sha256" .
           cp "${RUNNER_TEMP}/edgesonic-update-manifest.json" .
           sha256sum -c edgesonic-update.tar.gz.sha256
+          # Same build, second consumer: the browser deploy wizard's package.
+          cp "${RUNNER_TEMP}/overture.tar.gz" .
+          cp "${RUNNER_TEMP}/overture.tar.gz.sha256" .
+          cp "${RUNNER_TEMP}/overture.json" .
+          sha256sum -c overture.tar.gz.sha256
 
       - name: Generate commit summary
         id: notes
@@ -209,6 +214,9 @@ jobs:
               edgesonic-update.tar.gz \
               edgesonic-update.tar.gz.sha256 \
               edgesonic-update-manifest.json \
+              overture.tar.gz \
+              overture.tar.gz.sha256 \
+              overture.json \
               --repo "${{ github.repository }}" \
               --clobber
           else
@@ -218,6 +226,9 @@ jobs:
               edgesonic-update.tar.gz \
               edgesonic-update.tar.gz.sha256 \
               edgesonic-update-manifest.json \
+              overture.tar.gz \
+              overture.tar.gz.sha256 \
+              overture.json \
               --repo "${{ github.repository }}" \
               --title "EdgeSonic $TAG" \
               --notes-file release-notes.md
