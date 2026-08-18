@@ -371,14 +371,28 @@ const streamHandler = async (c: Context) => {
       if (presignOn === "1" && schemeAllowed && accessKeyId && secretKey && accountId) {
         try {
           const key = selected.storage_uri.substring("r2://".length);
+          // The signature has to outlive the whole play. The browser follows
+          // the 302 once and then sends its later Range requests straight to
+          // the R2 URL, so a signature that expires mid-track 403s instead of
+          // coming back here to be re-signed. Two playthroughs of the track,
+          // floored at 10 minutes, absorbs pauses and repeated seeks.
+          //
+          // Only transcoded instances carry their own duration; originals —
+          // which are what this branch presigns — leave it null, so the
+          // master's duration is the fallback that keeps long tracks from
+          // collapsing onto the floor.
+          const trackSeconds = selected.duration
+            || (await env.DB.prepare("SELECT duration FROM song_masters WHERE id = ?")
+              .bind(resolvedId).first<{ duration: number | null }>())?.duration
+            || 0;
+          const ttlSec = Math.max(600, trackSeconds * 2);
           const presigned = await presignR2Get({
             bucket: env.R2_BUCKET_NAME || "edgesonic-music",
             key,
             accessKeyId,
             secretAccessKey: secretKey,
             accountId,
-            ttlSec: 300,
-            rangeHeader: range,
+            ttlSec,
           });
           // Response.redirect() (immutable headers — the COI middleware
           // after-next stamps headers and 500s on immutable). Also stop the
@@ -386,13 +400,15 @@ const streamHandler = async (c: Context) => {
           // follows the 302 to a cross-origin R2 S3 host where EdgeSonic's
           // same-origin CORP would be wrong anyway.
           //
-          // Cache the 302 for the same TTL as the presigned URL so the
-          // browser's <audio> Range follow-ups (seek, pre-buffer chunks) reuse
-          // the cached redirect and skip the Worker entirely on subsequent
-          // ranges. Without this, every Range request re-hit the Worker to
-          // re-sign + 302, defeating the presign bandwidth-saving purpose.
-          // The presigned URL itself is host-only signed, so any Range the
-          // browser sends to it will be accepted by R2.
+          // Cache the 302 so the browser's <audio> Range follow-ups (seek,
+          // pre-buffer chunks) reuse the redirect and skip the Worker on
+          // subsequent ranges. Without this, every Range request re-hit the
+          // Worker to re-sign + 302, defeating the presign bandwidth saving.
+          // The window is deliberately shorter than the signature above: a
+          // redirect served at the very end of its freshness still carries a
+          // URL with the rest of the signature's life left on it. The
+          // presigned URL is host-only signed, so any Range the browser sends
+          // to it will be accepted by R2.
           //
           // `private`, never `public`: the Location is itself an access
           // credential, and this URL carries no user identity. A shared cache

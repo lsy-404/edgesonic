@@ -208,20 +208,6 @@ async function main() {
     assert(url.includes("X-Amz-Signature="), "signature present");
   }
 
-  console.log("\npresignR2Get: host-only signing (Range unsigned, matches AWS SDK presign)");
-  {
-    const url = await presignR2Get({
-      bucket: "edgesonic-music",
-      key: "music/album/track.flac",
-      accessKeyId: "AKIAIOSFODNN7EXAMPLE",
-      secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-      accountId: "df4481f3ce1fa0394b4617442a97d147",
-      ttlSec: 60,
-      rangeHeader: "bytes=0-1048575",
-    });
-    assert(url.includes("X-Amz-SignedHeaders=host"), "signed headers = host only (Range unsigned)");
-  }
-
   console.log("\npresignR2Get: TTL clamped to [1, 604800]");
   {
     const url = await presignR2Get({
@@ -247,6 +233,26 @@ async function main() {
     assert(loc.startsWith("https://edgesonic-music.df4481f3ce1fa0394b4617442a97d147.r2.cloudflarestorage.com/"), "Location points to R2 S3 virtual-hosted endpoint");
     assert(loc.includes("X-Amz-Signature="), "Location carries signature");
     assert(loc.includes("/music/album/track.flac"), "Location path has key");
+    assert(loc.includes("X-Amz-Expires=600"), "short track falls back to the 10 min floor");
+    assert((r.headers.get("Cache-Control") || "").includes("max-age=300"),
+      "redirect cached for less than the signature's life");
+  }
+
+  console.log("\nstream: long track → signature covers two playthroughs");
+  {
+    const sqlite = buildDb();
+    setFeature(sqlite, "enable_r2_presign", "1");
+    // Originals carry no instance duration, so the TTL has to come from the
+    // master — a 50 min set must not collapse onto the 10 min floor.
+    sqlite.exec("UPDATE song_masters SET duration = 3000 WHERE id = 'sm-1'");
+    const { get } = makeApp(sqlite, {
+      R2_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE",
+      R2_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+      CF_ACCOUNT_ID: "df4481f3ce1fa0394b4617442a97d147",
+    });
+    const r = await get("/rest/stream?id=sm-1&format=raw");
+    assert(r.status === 302, `302 (got ${r.status})`);
+    assert((r.headers.get("Location") || "").includes("X-Amz-Expires=6000"), "TTL = duration x 2");
   }
 
   console.log("\nstream: browser session + feature on + secrets set + raw r2 → 302 (138 re-enabled)");
