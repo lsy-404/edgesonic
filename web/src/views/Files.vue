@@ -313,10 +313,15 @@ function openCrossModalBatch() {
   crossCopyDestPath.value = path.value;
   crossCopyQueue.value = [];
 }
-function closeCrossModal() {
-  if (crossCopyBusy.value) return; // don't yank the modal away mid-batch
+function resetCrossModal() {
   crossCopyModal.value = null;
   crossCopyQueue.value = [];
+}
+// Backdrop / Escape / Cancel only — the busy guard must not reach the success
+// path, which closes while the batch flag is still set.
+function closeCrossModal() {
+  if (crossCopyBusy.value) return; // don't yank the modal away mid-batch
+  resetCrossModal();
 }
 function toggleCrossSelect(f: FileEntry) {
   if (selectedFiles.value.has(f.uri)) selectedFiles.value.delete(f.uri);
@@ -347,7 +352,7 @@ async function confirmCrossOp() {
     if (failed === 0) {
       showToast(targets.length > 1 ? t("files.crossCopiedBatch", { n: targets.length }) : t("files.crossCopied"));
       clearSelection();
-      closeCrossModal();
+      resetCrossModal();
     } else {
       showToast(t("files.crossCopyPartialFail", { done: targets.length - failed, failed }), "error");
     }
@@ -459,12 +464,16 @@ function openBatchMoveModal() {
   initDestTree();
 }
 
-function closeOpModal() {
-  if (opBusy.value) return;
+function resetOpModal() {
   opModal.value = null;
   opQueue.value = [];
   destTreeRoot.value = null;
   treeNewFolderName.value = "";
+}
+// Backdrop / Escape / Cancel only — see resetCrossModal above.
+function closeOpModal() {
+  if (opBusy.value) return;
+  resetOpModal();
 }
 
 async function loadDestChildren(node: DestNode) {
@@ -495,8 +504,12 @@ async function initDestTree() {
   destTreeRoot.value = root;
   opDestSelected.value = path.value;
   treeNewFolderName.value = "";
-  await loadDestChildren(root);
-  let node = root;
+  // Walk the ref's reactive proxy, not the object literal handed to it:
+  // writes to the raw object reach the same data but skip the proxy, so the
+  // fetched children never reached the template and the picker stayed stuck
+  // on a lone root row.
+  let node = destTreeRoot.value;
+  await loadDestChildren(node);
   for (const seg of path.value ? path.value.split("/") : []) {
     const child = node.children?.find((c) => c.name === seg);
     if (!child) break;
@@ -595,7 +608,7 @@ async function confirmOp() {
     if (failed === 0) {
       showToast(total > 1 ? t("files.batchOpDone", { n: total, verb }) : verb);
       clearSelection();
-      closeOpModal();
+      resetOpModal();
     } else {
       showToast(t("files.batchOpPartialFail", { done: total - failed, failed }), "error");
     }
@@ -673,10 +686,14 @@ function openNewFolderModal() {
   newFolderModal.value = true;
 }
 
-function closeNewFolderModal() {
-  if (newFolderBusy.value) return;
+function resetNewFolderModal() {
   newFolderModal.value = false;
   newFolderName.value = "";
+}
+// Backdrop / Escape / Cancel only — see resetCrossModal above.
+function closeNewFolderModal() {
+  if (newFolderBusy.value) return;
+  resetNewFolderModal();
 }
 
 async function confirmNewFolder() {
@@ -687,7 +704,7 @@ async function confirmNewFolder() {
     const res = await storagePost("files/mkdir", { source: currentSource.value, path: joinPath(path.value, name) });
     if (!JSON.parse(res).ok) throw new Error();
     showToast(t("files.folderCreated"));
-    closeNewFolderModal();
+    resetNewFolderModal();
     loadDir();
   } catch { showToast(t("files.folderCreateFailed"), "error"); }
   finally { newFolderBusy.value = false; }
