@@ -1,7 +1,8 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
+import type { CSSProperties } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatSize } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
@@ -54,6 +55,7 @@ const scanRemaining = ref<number | null>(null);
 const pendingCount = ref(0);
 
 const renamingFile = ref<string | null>(null); // file name currently being renamed
+const renamingDir = ref<string | null>(null); // folder name currently being renamed
 const renameInput = ref("");
 const opModal = ref<{ files: FileEntry[]; dirs: string[]; mode: "move" | "copy"; base: string } | null>(null);
 const opBusy = ref(false);
@@ -171,6 +173,7 @@ async function loadSources() {
 async function loadDir() {
   loading.value = true;
   renamingFile.value = null;
+  renamingDir.value = null;
   try {
     const text = await storageFetch("files/list", { source: currentSource.value, path: path.value });
     const data = JSON.parse(text);
@@ -381,12 +384,20 @@ async function runTagScan() {
 
 
 function startRename(f: FileEntry) {
+  renamingDir.value = null;
   renamingFile.value = f.name;
   renameInput.value = f.name;
 }
 
+function startRenameDir(d: DirEntry) {
+  renamingFile.value = null;
+  renamingDir.value = d.name;
+  renameInput.value = d.name;
+}
+
 function cancelRename() {
   renamingFile.value = null;
+  renamingDir.value = null;
   renameInput.value = "";
 }
 
@@ -406,8 +417,35 @@ async function confirmRename(f: FileEntry) {
   finally { opBusy.value = false; cancelRename(); }
 }
 
+// Folder rename rides on files/moveFolder: a same-parent destination is a
+// plain rename as far as the backend is concerned (it only refuses moving a
+// folder into itself or a descendant), and it rewrites storage_uri along the
+// way, so no dedicated endpoint is needed.
+async function confirmRenameDir(d: DirEntry) {
+  const newName = renameInput.value.trim();
+  if (!newName || newName === d.name) { cancelRename(); return; }
+  if (/[\\/]/.test(newName)) { showToast(t("files.folderNameInvalid"), "error"); return; }
+  opBusy.value = true;
+  try {
+    const res = await storagePost("files/moveFolder", {
+      path: joinPath(path.value, d.name),
+      dest: joinPath(path.value, newName),
+    });
+    if (!JSON.parse(res).ok) throw new Error();
+    showToast(t("files.folderRenamed"));
+    loadDir();
+  } catch { showToast(t("files.opFailed"), "error"); }
+  finally { opBusy.value = false; cancelRename(); }
+}
+
 function openMoveModal(f: FileEntry, mode: "move" | "copy") {
   opModal.value = { files: [f], dirs: [], mode, base: path.value };
+  opQueue.value = [];
+  initDestTree();
+}
+
+function openDirMoveModal(d: DirEntry) {
+  opModal.value = { files: [], dirs: [d.name], mode: "move", base: path.value };
   opQueue.value = [];
   initDestTree();
 }
@@ -569,6 +607,9 @@ async function confirmOp() {
 
 function openDeleteConfirm(f: FileEntry) {
   deleteConfirmModal.value = { files: [f], dirs: [], base: path.value };
+}
+function openDirDeleteConfirm(d: DirEntry) {
+  deleteConfirmModal.value = { files: [], dirs: [d.name], base: path.value };
 }
 function openBatchDeleteConfirm() {
   const fileTargets = selectedFileEntries.value;
@@ -867,10 +908,161 @@ async function onTagEditorSubmit(patch: Record<string, string | number>, cover?:
   }
 }
 
+// ——— Context menu ———
+// Right-click on desktop, long-press on touch. The inline .op-btn strip stays
+// the primary affordance for files; the menu is the only home for the
+// folder-level operations (rename / move / delete).
+type CtxTarget =
+  | { kind: "file"; file: FileEntry }
+  | { kind: "dir"; dir: DirEntry }
+  | { kind: "blank" };
+
+const ctxMenu = ref<{ x: number; y: number; target: CtxTarget } | null>(null);
+const ctxMenuEl = ref<HTMLElement | null>(null);
+// Kept hidden until the post-render clamp has run so a menu opened near a
+// viewport edge doesn't visibly jump from the click point to its final spot.
+const ctxPlaced = ref(false);
+
+const ctxFile = computed(() => (ctxMenu.value?.target.kind === "file" ? ctxMenu.value.target.file : null));
+const ctxDir = computed(() => (ctxMenu.value?.target.kind === "dir" ? ctxMenu.value.target.dir : null));
+
+// A right-click inside a multi-selection acts on the whole selection; on a row
+// outside it the menu targets that row alone and leaves the checkboxes alone.
+const ctxOnSelection = computed(() => {
+  const target = ctxMenu.value?.target;
+  if (!target || selectedTotal.value < 2) return false;
+  if (target.kind === "file") return selectedFiles.value.has(target.file.uri);
+  if (target.kind === "dir") return selectedDirs.value.has(target.dir.name);
+  return false;
+});
+
+const ctxStyle = computed<CSSProperties>(() => ({
+  left: `${ctxMenu.value?.x ?? 0}px`,
+  top: `${ctxMenu.value?.y ?? 0}px`,
+  visibility: ctxPlaced.value ? "visible" : "hidden",
+}));
+
+async function openContextMenu(x: number, y: number, target: CtxTarget) {
+  ctxPlaced.value = false;
+  ctxMenu.value = { x, y, target };
+  // Re-adding an identical listener is a no-op, so reopening while a menu is
+  // already up doesn't stack these.
+  document.addEventListener("click", onDocumentClick);
+  document.addEventListener("contextmenu", onDocumentContextMenu);
+  document.addEventListener("keydown", onCtxKeydown);
+  window.addEventListener("resize", closeContextMenu);
+  window.addEventListener("scroll", closeContextMenu, true);
+  await nextTick();
+  const el = ctxMenuEl.value;
+  const menu = ctxMenu.value;
+  if (el && menu) {
+    const { width, height } = el.getBoundingClientRect();
+    const margin = 8;
+    menu.x = Math.max(margin, Math.min(x, window.innerWidth - width - margin));
+    menu.y = Math.max(margin, Math.min(y, window.innerHeight - height - margin));
+  }
+  ctxPlaced.value = true;
+  el?.querySelector<HTMLButtonElement>(".ctx-item")?.focus({ preventScroll: true });
+}
+
+function closeContextMenu() {
+  ctxMenu.value = null;
+  ctxPlaced.value = false;
+  document.removeEventListener("click", onDocumentClick);
+  document.removeEventListener("contextmenu", onDocumentContextMenu);
+  document.removeEventListener("keydown", onCtxKeydown);
+  window.removeEventListener("resize", closeContextMenu);
+  window.removeEventListener("scroll", closeContextMenu, true);
+}
+
+// Entry rows stop their own contextmenu event, so anything reaching the
+// document is a right-click somewhere else on the page: let the browser show
+// its native menu there and drop ours.
+function onDocumentContextMenu(e: MouseEvent) {
+  if (!(e.target as HTMLElement).closest(".ctx-menu")) closeContextMenu();
+}
+
+function onDocumentClick(e: MouseEvent) {
+  // Touch browsers fire a synthetic click after a long press; without this
+  // window it would close the menu the same moment the press opened it.
+  if (Date.now() - longPressAt < CLICK_AFTER_PRESS_MS) return;
+  if (!(e.target as HTMLElement).closest(".ctx-menu")) closeContextMenu();
+}
+
+function onCtxKeydown(e: KeyboardEvent) {
+  if (e.key === "Escape") { closeContextMenu(); return; }
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  const items = Array.from(ctxMenuEl.value?.querySelectorAll<HTMLButtonElement>(".ctx-item:not([disabled])") ?? []);
+  if (!items.length) return;
+  e.preventDefault();
+  const at = items.indexOf(document.activeElement as HTMLButtonElement);
+  const next = e.key === "ArrowDown"
+    ? (at + 1) % items.length
+    : (at <= 0 ? items.length - 1 : at - 1);
+  items[next]?.focus({ preventScroll: true });
+}
+
+function onRowContextMenu(e: MouseEvent, target: CtxTarget) {
+  e.preventDefault();
+  e.stopPropagation();
+  openContextMenu(e.clientX, e.clientY, target);
+}
+
+// Menu items read ctxFile/ctxDir, and closing clears them — so the action has
+// to run before the dismiss, not after.
+function ctxRun(action: () => void) {
+  try { action(); } finally { closeContextMenu(); }
+}
+
+// Touch long-press stands in for the right button, the same 500 ms / 10 px
+// thresholds a desktop file manager uses.
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_PX = 10;
+const CLICK_AFTER_PRESS_MS = 700;
+let pressTimer: ReturnType<typeof setTimeout> | null = null;
+let pressX = 0;
+let pressY = 0;
+let longPressAt = 0;
+
+function cancelLongPress() {
+  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+}
+
+function onRowTouchStart(e: TouchEvent, target: CtxTarget) {
+  cancelLongPress();
+  if (e.touches.length !== 1) return;
+  pressX = e.touches[0].clientX;
+  pressY = e.touches[0].clientY;
+  pressTimer = setTimeout(() => {
+    pressTimer = null;
+    longPressAt = Date.now();
+    openContextMenu(pressX, pressY, target);
+  }, LONG_PRESS_MS);
+}
+
+function onRowTouchMove(e: TouchEvent) {
+  const touch = e.touches[0];
+  if (!touch) return;
+  if (Math.abs(touch.clientX - pressX) > LONG_PRESS_MOVE_PX || Math.abs(touch.clientY - pressY) > LONG_PRESS_MOVE_PX) {
+    cancelLongPress();
+  }
+}
+
+function onDirRowClick(d: DirEntry) {
+  if (renamingDir.value === d.name) return;
+  if (Date.now() - longPressAt < CLICK_AFTER_PRESS_MS) return;
+  enterDir(d.name);
+}
+
 onMounted(async () => {
   await loadSources();
   await loadDir();
   await loadPending();
+});
+
+onBeforeUnmount(() => {
+  cancelLongPress();
+  closeContextMenu();
 });
 
 </script>
@@ -1009,7 +1201,7 @@ onMounted(async () => {
         <button class="btn-secondary batch-actions-clear" @click="clearSelection()">{{ t("files.clearSelection") }}</button>
       </div>
 
-      <div class="entry-list">
+      <div class="entry-list" @contextmenu="onRowContextMenu($event, { kind: 'blank' })">
         <div v-if="loading" class="list-loading">{{ t("common.loading") }}</div>
         <template v-else>
           <!-- Select-all header: checked when every dir+file is selected,
@@ -1025,7 +1217,18 @@ onMounted(async () => {
             <span class="select-all-label">{{ t("files.selectAll") }}</span>
             <span v-if="selectedTotal > 0" class="select-all-count">{{ t("files.selectedCount", { n: selectedTotal }) }}</span>
           </label>
-          <div v-for="d in dirs" :key="`d-${d.name}`" class="entry-row dir-row" @click="enterDir(d.name)">
+          <div
+            v-for="d in dirs"
+            :key="`d-${d.name}`"
+            class="entry-row dir-row"
+            :class="{ 'row-renaming': renamingDir === d.name }"
+            @click="onDirRowClick(d)"
+            @contextmenu="onRowContextMenu($event, { kind: 'dir', dir: d })"
+            @touchstart.passive="onRowTouchStart($event, { kind: 'dir', dir: d })"
+            @touchmove.passive="onRowTouchMove"
+            @touchend="cancelLongPress"
+            @touchcancel="cancelLongPress"
+          >
             <input
               v-if="canUpload"
               type="checkbox"
@@ -1034,9 +1237,32 @@ onMounted(async () => {
               @click.stop="toggleDirSelect(d)"
             />
             <span class="entry-icon"><Icon name="folder" /></span>
-            <span class="entry-name">{{ d.name }}</span>
+            <!-- Rename: inline input, same treatment as the file rows -->
+            <template v-if="renamingDir === d.name">
+              <input
+                v-model="renameInput"
+                class="rename-input"
+                @click.stop
+                @keydown.enter="confirmRenameDir(d)"
+                @keydown.escape="cancelRename"
+                autofocus
+              />
+              <button class="op-btn op-confirm" :disabled="opBusy" @click.stop="confirmRenameDir(d)"><Icon name="check" /></button>
+              <button class="op-btn op-cancel" @click.stop="cancelRename"><Icon name="cross" /></button>
+            </template>
+            <span v-else class="entry-name">{{ d.name }}</span>
           </div>
-          <div v-for="f in files" :key="`f-${f.name}`" class="entry-row file-row" :class="{ 'row-renaming': renamingFile === f.name }">
+          <div
+            v-for="f in files"
+            :key="`f-${f.name}`"
+            class="entry-row file-row"
+            :class="{ 'row-renaming': renamingFile === f.name }"
+            @contextmenu="onRowContextMenu($event, { kind: 'file', file: f })"
+            @touchstart.passive="onRowTouchStart($event, { kind: 'file', file: f })"
+            @touchmove.passive="onRowTouchMove"
+            @touchend="cancelLongPress"
+            @touchcancel="cancelLongPress"
+          >
             <input
               v-if="canUpload"
               type="checkbox"
@@ -1333,6 +1559,93 @@ onMounted(async () => {
         <div class="corner corner-br"></div>
       </div>
     </div>
+
+    <!-- Context menu — right-click in the entry list, long-press on touch.
+         Teleported so no ancestor's overflow or stacking context can clip it. -->
+    <Teleport to="body">
+      <div
+        v-if="ctxMenu"
+        ref="ctxMenuEl"
+        class="ctx-menu"
+        :style="ctxStyle"
+        @click.stop
+        @contextmenu.prevent.stop
+      >
+        <!-- Opened on a row that belongs to a multi-selection: the menu drives
+             the whole selection, mirroring the batch action bar. -->
+        <template v-if="ctxOnSelection">
+          <div class="ctx-header">{{ t("files.selectedCount", { n: selectedTotal }) }}</div>
+          <button
+            class="ctx-item"
+            :disabled="hasDirSelection"
+            :title="hasDirSelection ? t('files.filesOnlyAction') : ''"
+            @click="ctxRun(openBatchTagEditor)"
+          ><Icon name="note" /> {{ t("files.batchEditTags") }}</button>
+          <button v-if="isR2" class="ctx-item" @click="ctxRun(openBatchMoveModal)"><Icon name="right" /> {{ t("files.batchMove") }}</button>
+          <button
+            class="ctx-item"
+            :disabled="hasDirSelection"
+            :title="hasDirSelection ? t('files.filesOnlyAction') : ''"
+            @click="ctxRun(openCrossModalBatch)"
+          ><Icon name="copy" /> {{ t("files.crossCopySelected", { n: selectedTotal }) }}</button>
+          <button v-if="isR2" class="ctx-item ctx-danger" @click="ctxRun(openBatchDeleteConfirm)"><Icon name="cross" /> {{ t("files.batchDelete") }}</button>
+          <div class="ctx-sep"></div>
+          <button class="ctx-item" @click="ctxRun(clearSelection)"><Icon name="empty" /> {{ t("files.clearSelection") }}</button>
+        </template>
+
+        <template v-else-if="ctxFile">
+          <div class="ctx-header">{{ ctxFile.name }}</div>
+          <button
+            v-if="canEditTags && isAudio(ctxFile.name)"
+            class="ctx-item"
+            @click="ctxRun(() => openTagEditor(ctxFile!))"
+          ><Icon name="note" /> {{ t("files.editTags") }}</button>
+          <button v-if="canUpload" class="ctx-item" @click="ctxRun(() => openCrossModal(ctxFile!))"><Icon name="copy" /> {{ t("files.crossCopyTo") }}</button>
+          <template v-if="isR2 && canUpload">
+            <div class="ctx-sep"></div>
+            <button class="ctx-item" @click="ctxRun(() => startRename(ctxFile!))"><Icon name="edit" /> {{ t("files.rename") }}</button>
+            <button class="ctx-item" @click="ctxRun(() => openMoveModal(ctxFile!, 'move'))"><Icon name="right" /> {{ t("files.moveTo") }}</button>
+            <button class="ctx-item" @click="ctxRun(() => openMoveModal(ctxFile!, 'copy'))"><Icon name="copy" /> {{ t("files.copyTo") }}</button>
+            <button class="ctx-item ctx-danger" :disabled="opBusy" @click="ctxRun(() => openDeleteConfirm(ctxFile!))"><Icon name="cross" /> {{ t("files.deleteFile") }}</button>
+          </template>
+          <div class="ctx-sep"></div>
+          <button v-if="canUpload" class="ctx-item" @click="ctxRun(() => toggleCrossSelect(ctxFile!))">
+            <Icon name="check" /> {{ selectedFiles.has(ctxFile.uri) ? t("files.deselect") : t("files.select") }}
+          </button>
+          <button class="ctx-item" @click="ctxRun(loadDir)"><Icon name="refresh" /> {{ t("files.refresh") }}</button>
+        </template>
+
+        <template v-else-if="ctxDir">
+          <div class="ctx-header">{{ ctxDir.name }}</div>
+          <button class="ctx-item" @click="ctxRun(() => enterDir(ctxDir!.name))"><Icon name="folder" /> {{ t("files.open") }}</button>
+          <!-- Folder move/delete/rename all go through the R2-only
+               moveFolder/deleteFolder endpoints. -->
+          <template v-if="isR2 && canUpload">
+            <div class="ctx-sep"></div>
+            <button class="ctx-item" @click="ctxRun(() => startRenameDir(ctxDir!))"><Icon name="edit" /> {{ t("files.renameFolder") }}</button>
+            <button class="ctx-item" @click="ctxRun(() => openDirMoveModal(ctxDir!))"><Icon name="right" /> {{ t("files.moveFolderTo") }}</button>
+            <button class="ctx-item ctx-danger" :disabled="opBusy" @click="ctxRun(() => openDirDeleteConfirm(ctxDir!))"><Icon name="cross" /> {{ t("files.deleteFolder") }}</button>
+          </template>
+          <div class="ctx-sep"></div>
+          <button v-if="canUpload" class="ctx-item" @click="ctxRun(() => toggleDirSelect(ctxDir!))">
+            <Icon name="check" /> {{ selectedDirs.has(ctxDir.name) ? t("files.deselect") : t("files.select") }}
+          </button>
+          <button class="ctx-item" @click="ctxRun(loadDir)"><Icon name="refresh" /> {{ t("files.refresh") }}</button>
+        </template>
+
+        <template v-else>
+          <button v-if="canUpload" class="ctx-item" @click="ctxRun(openNewFolderModal)"><Icon name="folder" /> {{ t("files.newFolderTitle") }}</button>
+          <button
+            v-if="canUpload && !allSelected && dirs.length + files.length > 0"
+            class="ctx-item"
+            @click="ctxRun(toggleSelectAll)"
+          ><Icon name="check" /> {{ t("files.selectAll") }}</button>
+          <button v-if="selectedTotal > 0" class="ctx-item" @click="ctxRun(clearSelection)"><Icon name="empty" /> {{ t("files.clearSelection") }}</button>
+          <div class="ctx-sep"></div>
+          <button class="ctx-item" @click="ctxRun(loadDir)"><Icon name="refresh" /> {{ t("files.refresh") }}</button>
+        </template>
+      </div>
+    </Teleport>
 
     <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">{{ toast.msg }}</div>
   </div>
@@ -1657,6 +1970,60 @@ onMounted(async () => {
   padding: 0.2rem 0.5rem;
   color: var(--color-text-primary);
   outline: none;
+}
+
+/* Context menu — teleported to <body>, so it sits below the modals
+   (z-index 1000) but above everything on the page. */
+.ctx-menu {
+  position: fixed;
+  z-index: 900;
+  min-width: 190px;
+  max-width: 280px;
+  padding: 0.25rem 0;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-default);
+  border-radius: 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+.ctx-header {
+  padding: 0.35rem 0.75rem 0.4rem;
+  margin-bottom: 0.2rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-muted);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.05em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ctx-item:hover:not(:disabled), .ctx-item:focus-visible {
+  background: var(--color-bg-tertiary);
+  color: var(--color-accent-primary);
+  outline: none;
+}
+.ctx-item:disabled { opacity: 0.4; cursor: not-allowed; }
+.ctx-danger:hover:not(:disabled) { color: var(--color-status-error); }
+.ctx-sep { height: 1px; margin: 0.25rem 0; background: var(--color-border-subtle); }
+
+/* A long press opens the menu; on touch it must not also start a text
+   selection or raise the platform callout. */
+@media (pointer: coarse) {
+  .entry-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 }
 
 .field-hint {
