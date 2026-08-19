@@ -388,16 +388,32 @@ async function runTagScan() {
 }
 
 
+// The input lives inside a v-for, where a template ref collects into an array;
+// only one row is ever in rename mode, so query for the live one instead.
+// Files open with the suffix left out of the selection so typing a new name
+// doesn't silently drop the extension.
+async function focusRenameInput(keepSuffix: boolean) {
+  await nextTick();
+  const el = document.querySelector<HTMLInputElement>(".entry-list .rename-input");
+  if (!el) return;
+  el.focus();
+  const dot = keepSuffix ? el.value.lastIndexOf(".") : -1;
+  if (dot > 0) el.setSelectionRange(0, dot);
+  else el.select();
+}
+
 function startRename(f: FileEntry) {
   renamingDir.value = null;
   renamingFile.value = f.name;
   renameInput.value = f.name;
+  focusRenameInput(true);
 }
 
 function startRenameDir(d: DirEntry) {
   renamingFile.value = null;
   renamingDir.value = d.name;
   renameInput.value = d.name;
+  focusRenameInput(false);
 }
 
 function cancelRename() {
@@ -476,19 +492,33 @@ function closeOpModal() {
   resetOpModal();
 }
 
+// Returns null on failure so callers can decide whether to toast — the
+// prefetch in initDestTree issues several of these at once and only wants one
+// message however many of them fail.
+async function fetchDestDirs(p: string): Promise<DestNode[] | null> {
+  try {
+    const text = await storageFetch("files/list", { source: currentSource.value, path: p });
+    const data = JSON.parse(text);
+    if (data.ok !== true) throw new Error(data.error || "list failed");
+    return (data.dirs || [])
+      .slice()
+      .sort((a: DirEntry, b: DirEntry) => a.name.localeCompare(b.name))
+      .map((d: DirEntry): DestNode => ({ name: d.name, path: joinPath(p, d.name), children: null, expanded: false, loading: false }));
+  } catch {
+    return null;
+  }
+}
+
 async function loadDestChildren(node: DestNode) {
   node.loading = true;
   try {
-    const text = await storageFetch("files/list", { source: currentSource.value, path: node.path });
-    const data = JSON.parse(text);
-    if (data.ok !== true) throw new Error(data.error || "list failed");
-    node.children = (data.dirs || [])
-      .slice()
-      .sort((a: DirEntry, b: DirEntry) => a.name.localeCompare(b.name))
-      .map((d: DirEntry): DestNode => ({ name: d.name, path: joinPath(node.path, d.name), children: null, expanded: false, loading: false }));
-  } catch {
-    node.children = node.children || [];
-    showToast(t("files.treeLoadFailed"), "error");
+    const children = await fetchDestDirs(node.path);
+    if (children === null) {
+      node.children = node.children || [];
+      showToast(t("files.treeLoadFailed"), "error");
+      return;
+    }
+    node.children = children;
   } finally {
     node.loading = false;
   }
@@ -509,13 +539,26 @@ async function initDestTree() {
   // fetched children never reached the template and the picker stayed stuck
   // on a lone root row.
   let node = destTreeRoot.value;
-  await loadDestChildren(node);
-  for (const seg of path.value ? path.value.split("/") : []) {
-    const child = node.children?.find((c) => c.name === seg);
-    if (!child) break;
-    if (child.children === null) await loadDestChildren(child);
-    child.expanded = true;
-    node = child;
+  // Every level down to the current directory is known before the first
+  // request, so fetch the whole chain at once. Walking it a level at a time
+  // cost one round trip per path segment before the folder the user is
+  // standing in — the one they most likely want — showed up at all.
+  const segs = path.value ? path.value.split("/") : [];
+  const levels = ["", ...segs.map((_, i) => segs.slice(0, i + 1).join("/"))];
+  node.loading = true;
+  const listings = await Promise.all(levels.map(fetchDestDirs));
+  node.loading = false;
+  if (listings.some((l) => l === null)) showToast(t("files.treeLoadFailed"), "error");
+  for (let i = 0; i < levels.length; i++) {
+    const children = listings[i];
+    if (children === null) break;
+    node.children = children;
+    node.expanded = true;
+    const nextPath = levels[i + 1];
+    if (nextPath === undefined) break;
+    const next = node.children.find((c) => c.path === nextPath);
+    if (!next) break;
+    node = next;
   }
 }
 
@@ -684,6 +727,9 @@ async function confirmDelete() {
 function openNewFolderModal() {
   newFolderName.value = "";
   newFolderModal.value = true;
+  // Same reason as the rename input: the autofocus attribute is only honoured
+  // on the initial parse, never on a node Vue inserts later.
+  nextTick(() => document.querySelector<HTMLInputElement>(".new-folder-input")?.focus());
 }
 
 function resetNewFolderModal() {
@@ -1025,6 +1071,26 @@ function onRowContextMenu(e: MouseEvent, target: CtxTarget) {
   openContextMenu(e.clientX, e.clientY, target);
 }
 
+function ctxTargetKey(target: CtxTarget): string {
+  if (target.kind === "file") return `f:${target.file.uri}`;
+  if (target.kind === "dir") return `d:${target.dir.name}`;
+  return "blank";
+}
+
+// The row's ⋯ button, which replaced the strip of per-action buttons. Opens
+// the same menu anchored under the trigger; the viewport clamp pulls it back
+// in from the right edge. .stop keeps this click away from the
+// outside-click listener, so a second press toggles instead of reopening.
+function openRowMenu(e: MouseEvent, target: CtxTarget) {
+  e.stopPropagation();
+  if (ctxMenu.value && ctxTargetKey(ctxMenu.value.target) === ctxTargetKey(target)) {
+    closeContextMenu();
+    return;
+  }
+  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  openContextMenu(rect.right, rect.bottom + 4, target);
+}
+
 // Menu items read ctxFile/ctxDir, and closing clears them — so the action has
 // to run before the dismiss, not after.
 function ctxRun(action: () => void) {
@@ -1262,12 +1328,20 @@ onBeforeUnmount(() => {
                 @click.stop
                 @keydown.enter="confirmRenameDir(d)"
                 @keydown.escape="cancelRename"
-                autofocus
               />
               <button class="op-btn op-confirm" :disabled="opBusy" @click.stop="confirmRenameDir(d)"><Icon name="check" /></button>
               <button class="op-btn op-cancel" @click.stop="cancelRename"><Icon name="cross" /></button>
             </template>
-            <span v-else class="entry-name">{{ d.name }}</span>
+            <template v-else>
+              <span class="entry-name">{{ d.name }}</span>
+              <!-- Folders had no visible entry point at all before; same
+                   trigger as the file rows. -->
+              <button
+                class="op-btn op-menu"
+                :title="t('files.moreActions')"
+                @click.stop="openRowMenu($event, { kind: 'dir', dir: d })"
+              ><Icon name="dots" /></button>
+            </template>
           </div>
           <div
             v-for="f in files"
@@ -1296,7 +1370,6 @@ onBeforeUnmount(() => {
                 class="rename-input"
                 @keydown.enter="confirmRename(f)"
                 @keydown.escape="cancelRename"
-                autofocus
               />
               <button class="op-btn op-confirm" :disabled="opBusy" @click="confirmRename(f)"><Icon name="check" /></button>
               <button class="op-btn op-cancel" @click="cancelRename"><Icon name="cross" /></button>
@@ -1304,27 +1377,13 @@ onBeforeUnmount(() => {
             <template v-else>
               <span class="entry-name">{{ f.name }}</span>
               <span class="entry-size">{{ formatSize(f.size) }}</span>
-              <!-- Tag edit (audio + edit perm) — works on R2 & WebDAV; resolves master_id via search3 -->
+              <!-- Every per-row action lives in the menu now; the row keeps
+                   one trigger instead of a strip of icon buttons. -->
               <button
-                v-if="canEditTags && isAudio(f.name)"
-                class="op-btn op-edit-tag"
-                :title="t('files.editTags')"
-                @click.stop="openTagEditor(f)"
-              ><Icon name="note" /></button>
-              <!-- Cross-source copy (all sources, canUpload) — batched -->
-              <button
-                v-if="canUpload"
-                class="op-btn op-cross"
-                :title="t('files.crossCopyTo')"
-                @click.stop="openCrossModal(f)"
-              ><Icon name="copy" /></button>
-              <!-- R2-only operations -->
-              <template v-if="isR2 && canUpload">
-                <button class="op-btn op-rename" :title="t('files.rename')" @click.stop="startRename(f)"><Icon name="edit" /></button>
-                <button class="op-btn op-move" :title="t('files.moveTo')" @click.stop="openMoveModal(f, 'move')"><Icon name="right" /></button>
-                <button class="op-btn op-copy" :title="t('files.copyTo')" @click.stop="openMoveModal(f, 'copy')"><Icon name="copy" /></button>
-                <button class="op-btn op-delete" :title="t('files.deleteFile')" :disabled="opBusy" @click.stop="openDeleteConfirm(f)"><Icon name="cross" /></button>
-              </template>
+                class="op-btn op-menu"
+                :title="t('files.moreActions')"
+                @click="openRowMenu($event, { kind: 'file', file: f })"
+              ><Icon name="dots" /></button>
             </template>
           </div>
           <div v-if="!dirs.length && !files.length" class="empty-state">{{ t("files.empty") }}</div>
@@ -1408,9 +1467,8 @@ onBeforeUnmount(() => {
           <label class="form-label">{{ t("files.folderName") }}</label>
           <input
             v-model="newFolderName"
-            class="form-input"
+            class="form-input new-folder-input"
             :placeholder="t('files.folderNamePlaceholder')"
-            autofocus
             @keydown.enter="confirmNewFolder"
             @keydown.escape="closeNewFolderModal"
           />
@@ -1973,9 +2031,10 @@ onBeforeUnmount(() => {
 }
 .entry-row:hover .op-btn { opacity: 1; }
 .op-btn:hover { color: var(--color-text-primary); border-color: var(--color-border-default); background: var(--color-bg-tertiary); }
-.op-delete:hover { color: var(--color-status-error); border-color: var(--color-status-error); }
 .op-confirm:hover { color: var(--color-status-success); border-color: var(--color-status-success); }
 .op-confirm, .op-cancel { opacity: 1; }
+/* The row's one way in, so it stays legible without a hover — touch has none. */
+.op-menu { opacity: 0.75; }
 
 .rename-input {
   flex: 1;

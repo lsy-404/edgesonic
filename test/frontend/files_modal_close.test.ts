@@ -104,9 +104,27 @@ console.log("the move/copy destination picker renders what it fetched:")
     !/loadDestChildren\(root\)/.test(init),
     "children are not loaded into the raw object literal",
   );
+  assert(/node\.children = children;/.test(init), "children are assigned through that proxy");
+
+  // Every level down to the open directory is known before the first request,
+  // so they go out together — walking down a level at a time cost one round
+  // trip per path segment before the current folder appeared.
   assert(
-    /destTreeRoot\.value = root;[\s\S]*?loadDestChildren\(node\)/.test(init),
-    "the fetch happens after the ref has taken ownership of the node",
+    /await Promise\.all\(levels\.map\(fetchDestDirs\)\)/.test(init),
+    "the whole path chain is fetched in one go",
+  );
+  assert(
+    /segs\.map\(\(_, i\) => segs\.slice\(0, i \+ 1\)\.join\("\/"\)\)/.test(init),
+    "the chain is derived from the directory currently open",
+  );
+  assert(
+    !/await loadDestChildren\(/.test(init),
+    "initDestTree no longer awaits a fetch per level",
+  );
+  // A caret-expand of some other branch still fetches on demand.
+  assert(
+    /await loadDestChildren\(node\)/.test(body("toggleDestNode")),
+    "expanding an unvisited branch still loads lazily",
   );
 }
 

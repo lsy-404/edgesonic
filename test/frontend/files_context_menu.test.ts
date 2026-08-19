@@ -53,6 +53,58 @@ console.log("right-click reaches every part of the list:");
   assert(/e\.stopPropagation\(\)/.test(handler), "a row menu doesn't also fire the blank-area menu");
 }
 
+console.log("the row carries one trigger instead of a strip:");
+{
+  // The per-action icon buttons moved into the menu; a row now shows a single
+  // ⋯ button, and folders — which had no visible entry point at all — get one
+  // too.
+  const rows = SRC.match(/<div class="entry-list"[\s\S]*?<div v-if="!dirs\.length/)?.[0] ?? "";
+  assert(rows.length > 0, "the entry list block is present");
+  assert(
+    /openRowMenu\(\$event, \{ kind: 'file', file: f \}\)/.test(rows),
+    "file rows open the menu from their trigger",
+  );
+  assert(
+    /openRowMenu\(\$event, \{ kind: 'dir', dir: d \}\)/.test(rows),
+    "folder rows open the menu from their trigger",
+  );
+  for (const gone of ["op-edit-tag", "op-cross", "op-rename", "op-move", "op-copy", "op-delete"]) {
+    assert(!rows.includes(gone), `the ${gone} button is no longer inline`);
+  }
+  // Confirm/cancel stay inline — they belong to the rename editor, not the
+  // action set.
+  assert(/op-confirm/.test(rows) && /op-cancel/.test(rows), "the rename editor keeps its own buttons");
+  // A second press on the same trigger closes rather than reopening.
+  const open = SRC.match(/function openRowMenu\([\s\S]*?\n}/)?.[0] ?? "";
+  assert(/ctxTargetKey\(ctxMenu\.value\.target\) === ctxTargetKey\(target\)/.test(open), "the trigger toggles");
+  assert(/closeContextMenu\(\);\n    return;/.test(open), "…by closing on the second press");
+  assert(/getBoundingClientRect\(\)/.test(open), "the menu is anchored under the trigger");
+}
+
+console.log("renaming puts the caret in the box:");
+{
+  const focus = SRC.match(/async function focusRenameInput\([\s\S]*?\n}/)?.[0] ?? "";
+  assert(focus.length > 0, "focusRenameInput exists");
+  assert(/await nextTick\(\)/.test(focus), "it waits for the input to render");
+  assert(/\.focus\(\)/.test(focus), "it focuses the input");
+  // A file's suffix stays out of the selection so typing can't silently drop
+  // the extension; a folder has none, so it selects the whole name.
+  assert(/lastIndexOf\("\."\)/.test(focus) && /setSelectionRange\(0, dot\)/.test(focus), "a file's suffix is left out of the selection");
+  assert(/el\.select\(\)/.test(focus), "a folder selects the whole name");
+  assert(/function startRename\([\s\S]*?focusRenameInput\(true\)/.test(SRC), "renaming a file focuses and keeps the suffix");
+  assert(/function startRenameDir\([\s\S]*?focusRenameInput\(false\)/.test(SRC), "renaming a folder focuses and selects it all");
+  // The old markup leaned on the autofocus attribute, which browsers only
+  // honour on the initial parse, not on a node Vue inserts later. Comments
+  // are stripped first — they explain the attribute rather than use it.
+  const code = SRC.replace(/<!--[\s\S]*?-->/g, "").replace(/^\s*\/\/.*$/gm, "");
+  assert(!/\bautofocus\b/.test(code), "no leftover autofocus attribute");
+  // The new-folder dialog had the same dead attribute.
+  assert(
+    /function openNewFolderModal\([\s\S]*?nextTick\([\s\S]*?new-folder-input[\s\S]*?focus\(\)/.test(SRC),
+    "the new folder dialog focuses its input too",
+  );
+}
+
 console.log("the menu escapes the page it sits in:");
 {
   assert(/<Teleport to="body">/.test(SRC), "menu is teleported to <body>");
