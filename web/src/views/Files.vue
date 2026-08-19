@@ -81,16 +81,16 @@ function showToast(msg: string, type = "success") {
 import { useDemoMode } from "../stores/demoMode";
 
 const demoMode = useDemoMode();
-// Upload file-type filter. Defaults to "audio" (the input element's accept
-// attribute restricts the OS file picker). When the server has enabled
-// allow_all_file_types AND the user explicitly picks "all" from the
-// dropdown, we drop the accept attribute so any file can be selected.
-// The backend still validates the suffix regardless, so this is purely a
-// UX hint — flipping it to "all" on a server that hasn't enabled the
-// feature just means the picker shows non-audio files that will be
-// rejected on upload.
-const uploadAcceptMode = ref<"audio" | "all">("audio");
-const uploadAccept = computed(() => (uploadAcceptMode.value === "audio" ? "audio/*" : undefined));
+// Upload file-type filter. The default covers what belongs in a music
+// folder: audio plus the lyric sidecars the player reads back, plain text
+// and cover-style images — the same set the upload endpoint accepts without
+// allow_all_file_types. When the server has enabled that flag AND the user
+// explicitly picks "all" from the dropdown, we drop the accept attribute so
+// any file can be selected. The backend still validates the suffix
+// regardless, so this is purely a UX hint.
+const COMPANION_ACCEPT = ".lrc,.ttml,.krc,.txt,image/*";
+const uploadAcceptMode = ref<"music" | "all">("music");
+const uploadAccept = computed(() => (uploadAcceptMode.value === "music" ? `audio/*,${COMPANION_ACCEPT}` : undefined));
 // Parse metadata on upload (default on). When off, the file lands in
 // R2/D1 with tag_scanned=0 and a manual scan picks it up later.
 const uploadParseMetadata = ref(true);
@@ -1195,7 +1195,7 @@ onBeforeUnmount(() => {
           <div class="upload-file-row">
             <input ref="uploadInput" type="file" multiple :accept="uploadAccept" class="form-input" @change="onUploadFile" />
             <select v-if="canSelectAllFiles" v-model="uploadAcceptMode" class="form-input upload-type-select" :aria-label="t('files.fileTypeFilter')">
-              <option value="audio">{{ t("files.fileTypeAudio") }}</option>
+              <option value="music">{{ t("files.fileTypeMusic") }}</option>
               <option value="all">{{ t("files.fileTypeAll") }}</option>
             </select>
           </div>

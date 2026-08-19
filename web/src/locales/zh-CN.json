@@ -362,7 +362,7 @@
     "uploadBtn": "上传",
     "uploading": "上传中…",
     "fileTypeFilter": "文件类型筛选",
-    "fileTypeAudio": "仅音频",
+    "fileTypeMusic": "音乐、歌词与图片",
     "fileTypeAll": "所有文件",
     "parseMetadata": "上传时顺便解析元信息",
     "parseMetadataHint": "在浏览器内读取标签并提交，使文件立刻关联到正确的专辑/艺术家。批量上传时可关闭，稍后手动扫描。",

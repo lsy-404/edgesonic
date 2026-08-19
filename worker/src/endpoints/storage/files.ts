@@ -51,7 +51,7 @@ filesRoutes.use("*", async (c, next) => {
 // (no song_masters row) — the user can see it in the Files tree browser.
 import { dispatchWork } from "../edgesonic/work";
 import { getFeatureString } from "../../utils/features";
-import { isDemoMode, demoMaxUploadBytes, r2MaxStorageBytes, demoR2TotalBytes, allowAllFileTypes, isAudioSuffix } from "../../utils/demoMode";
+import { isDemoMode, demoMaxUploadBytes, r2MaxStorageBytes, demoR2TotalBytes, allowAllFileTypes, isAudioSuffix, isCompanionSuffix } from "../../utils/demoMode";
 import { getProfile } from "../../transcode/profiles";
 import { preBakeProfile } from "../../transcode/preBake";
 
@@ -67,7 +67,11 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   }
 
   const suffix = name.split(".").pop() || "bin";
-  const contentType = normalizeAudioContentType(c.req.header("Content-Type"), suffix);
+  const contentType = normalizeUploadContentType(c.req.header("Content-Type"), suffix);
+  // Lyric sidecars, text and images ride along with the music they belong to;
+  // everything else about this request (D1 rows, tag parsing, transcodes) is
+  // audio-only.
+  const isAudio = isAudioSuffix(suffix);
   // Build R2 key: music/ is the base; path is a sub-path relative to music/
   const cleanPath = path.replace(/^music\/?/, "").replace(/\/+$/, "");
   const r2Key = "music/" + (cleanPath ? cleanPath + "/" : "") + name;
@@ -76,12 +80,12 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   const now = Math.floor(Date.now() / 1000);
   const sizeHeader = parseInt(c.req.header("Content-Length") || "0", 10);
 
-  // File-type gate. When allow_all_file_types is off (default), only audio
-  // extensions are accepted. Operators can flip the feature_string to "1"
-  // to accept any file type; demo mode locks that row so a visitor can't.
+  // File-type gate. Audio plus the companion types (lyrics / text / images)
+  // are always accepted. Operators can flip allow_all_file_types to "1" to
+  // accept anything else too; demo mode locks that row so a visitor can't.
   const allowAll = await allowAllFileTypes(env);
-  if (!allowAll && !isAudioSuffix(suffix)) {
-    return c.json({ ok: false, error: `File type .${suffix} not allowed (audio only)` }, 415);
+  if (!allowAll && !isAudio && !isCompanionSuffix(suffix)) {
+    return c.json({ ok: false, error: `File type .${suffix} not allowed` }, 415);
   }
 
   // Demo mode: per-upload cap. The cumulative R2 storage cap below applies
@@ -123,6 +127,13 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   } else {
     await env.MUSIC_BUCKET.put(r2Key, rawBody, { httpMetadata: { contentType } });
   }
+
+  // A companion file is just bytes sitting next to the track — no song row,
+  // no tag parse, no transcode. The player picks .lrc/.ttml/.krc up by
+  // filename (utils/lrcSidecar). Registering one as a song_instance is what
+  // used to happen with allow_all_file_types on, and it produced a phantom
+  // track under "Pending Uploads" that no metadata pass could ever resolve.
+  if (!isAudio) return c.json({ ok: true, key: r2Key });
 
   // DB record: create a song_instance pointing at the uploaded file. We need
   // a master_id FK, so create a placeholder master that applyMetadataResult
@@ -198,7 +209,11 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   return c.json({ ok: true, key: r2Key, id: instanceId, storageUri });
 });
 
-function normalizeAudioContentType(contentType: string | null | undefined, suffix: string): string {
+// Browsers leave the Content-Type empty or octet-stream for the extensions
+// they don't know — .lrc and friends among them — so fall back to the suffix.
+// Storing a lyric sidecar as octet-stream makes it a download rather than
+// text when anything fetches it directly.
+function normalizeUploadContentType(contentType: string | null | undefined, suffix: string): string {
   const lower = (contentType || "").split(";", 1)[0].trim().toLowerCase();
   if (lower && lower !== "application/octet-stream") return contentType || lower;
   switch (suffix.toLowerCase()) {
@@ -209,6 +224,17 @@ function normalizeAudioContentType(contentType: string | null | undefined, suffi
     case "ogg": return "audio/ogg";
     case "opus": return "audio/opus";
     case "wav": return "audio/wav";
+    case "lrc":
+    case "krc":
+    case "txt": return "text/plain; charset=utf-8";
+    case "ttml": return "application/ttml+xml";
+    case "jpg":
+    case "jpeg": return "image/jpeg";
+    case "png": return "image/png";
+    case "webp": return "image/webp";
+    case "gif": return "image/gif";
+    case "avif": return "image/avif";
+    case "bmp": return "image/bmp";
     default: return contentType || "application/octet-stream";
   }
 }

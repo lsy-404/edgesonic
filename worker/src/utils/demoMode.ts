@@ -156,6 +156,20 @@ export function isAudioSuffix(suffix: string): boolean {
   return AUDIO_SUFFIXES.has(suffix.toLowerCase());
 }
 
+// Files that belong beside a track rather than in the library: the lyric
+// sidecars the player already reads back (utils/lrcSidecar SIDECAR_EXTS),
+// plain text, and cover-style images. Accepted regardless of
+// allow_all_file_types — they are part of a music folder, not arbitrary
+// payloads — but they never get a song_instances row.
+export const COMPANION_SUFFIXES = new Set([
+  "lrc", "ttml", "krc", "txt",
+  "jpg", "jpeg", "png", "webp", "gif", "avif", "bmp",
+]);
+
+export function isCompanionSuffix(suffix: string): boolean {
+  return COMPANION_SUFFIXES.has(suffix.toLowerCase());
+}
+
 // Sum the size of every object currently in the R2 bucket. Used by the
 // upload guard to enforce r2MaxStorageBytes. R2 list returns up to 1000
 // keys per page; loop until exhausted.
