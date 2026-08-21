@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "id": "edgesonic",
   "name": "EdgeSonic",
   "summary": {
@@ -10,20 +10,39 @@
   "version": "0.0.0-dev",
   "tag": "v0.0.0-dev",
   "buildTime": "1970-01-01T00:00:00Z",
-  "package": { "artifact": "overture.tar.gz", "sha256": "" },
-  "license": { "id": "AGPL-3.0-or-later", "text": "" },
+  "package": {
+    "artifact": "overture.tar.gz",
+    "sha256": ""
+  },
+  "license": {
+    "id": "AGPL-3.0-or-later",
+    "text": ""
+  },
   "terms": {
-    "texts": { "zh-CN": "", "*": "" },
+    "texts": {
+      "zh-CN": "",
+      "*": ""
+    },
     "required": true
   },
+  "authModes": [
+    "auto"
+  ],
   "permissions": [
     {
       "key": "scripts",
       "requirement": "required",
-      "groups": ["Workers Scripts Write", "Workers Scripts Edit", "Workers Scripts"],
+      "oauthScopes": [
+        "workers-scripts.write",
+        "workers-scripts.bind",
+        "workers-scripts.read"
+      ],
       "scope": "account",
       "level": "write",
-      "label": { "en": "Workers Scripts", "zh-CN": "Workers Scripts" },
+      "label": {
+        "en": "Workers Scripts",
+        "zh-CN": "Workers Scripts"
+      },
       "scenario": {
         "en": "Deploy the Worker, assets, Secrets, and Cron",
         "zh-CN": "部署 Worker、资源、Secrets 和 Cron"
@@ -32,10 +51,16 @@
     {
       "key": "d1",
       "requirement": "required",
-      "groups": ["D1 Write", "D1 Edit", "D1"],
+      "oauthScopes": [
+        "d1.write",
+        "d1.read"
+      ],
       "scope": "account",
       "level": "write",
-      "label": { "en": "D1", "zh-CN": "D1" },
+      "label": {
+        "en": "D1",
+        "zh-CN": "D1"
+      },
       "scenario": {
         "en": "Create the database and apply its schema",
         "zh-CN": "创建数据库并写入数据库结构"
@@ -44,34 +69,50 @@
     {
       "key": "r2",
       "requirement": "required",
-      "groups": ["Workers R2 Storage Write", "Workers R2 Storage Edit", "Workers R2 Storage"],
+      "oauthScopes": [
+        "workers-r2.write",
+        "workers-r2.read"
+      ],
       "scope": "account",
       "level": "write",
-      "label": { "en": "Workers R2 Storage", "zh-CN": "Workers R2 Storage" },
+      "label": {
+        "en": "Workers R2 Storage",
+        "zh-CN": "Workers R2 Storage"
+      },
       "scenario": {
         "en": "Create and list the music bucket",
         "zh-CN": "创建和列出音乐存储桶"
       }
     },
     {
-      "key": "api_tokens",
-      "requirement": "recommended",
-      "groups": ["Account API Tokens Read", "Account API Tokens"],
+      "key": "domains",
+      "requirement": "optional",
+      "oauthScopes": [
+        "workers-routes.read",
+        "workers-routes.write",
+        "zone.read"
+      ],
       "scope": "account",
-      "level": "read",
-      "label": { "en": "Account API Tokens", "zh-CN": "Account API Tokens" },
+      "level": "write",
+      "label": {
+        "en": "Workers Routes",
+        "zh-CN": "Workers Routes"
+      },
       "scenario": {
-        "en": "Read this token's own policies so the table below can name a missing permission instead of guessing. The deploy does not need it.",
-        "zh-CN": "读取此令牌自身的权限策略，让下表能指名缺失的权限而不是靠猜；部署本身不需要它。"
+        "en": "Attach the custom domain you choose, if you choose one",
+        "zh-CN": "绑定你指定的自定义域名（不填则不使用）"
       }
     },
     {
       "key": "r2_keys",
       "requirement": "optional",
-      "groups": ["Workers R2 Storage Write", "Workers R2 Storage Edit", "Workers R2 Storage"],
+      "oauthScopes": [],
       "scope": "allBuckets",
       "level": "readWrite",
-      "label": { "en": "R2 S3 API Key", "zh-CN": "R2 S3 API Key" },
+      "label": {
+        "en": "R2 S3 API Key",
+        "zh-CN": "R2 S3 API Key"
+      },
       "scenario": {
         "en": "R2 presigned direct playback",
         "zh-CN": "R2 预签名直连播放"
@@ -80,28 +121,49 @@
     {
       "key": "ci",
       "requirement": "optional",
-      "groups": ["Workers CI Write", "Workers CI Edit", "Workers CI"],
+      "oauthScopes": [
+        "workers-ci.write"
+      ],
       "scope": "account",
       "level": "write",
-      "label": { "en": "Workers CI", "zh-CN": "Workers CI" },
-      "scenario": { "en": "In-app CI integration", "zh-CN": "应用内 CI 集成" }
+      "label": {
+        "en": "Workers CI",
+        "zh-CN": "Workers CI"
+      },
+      "scenario": {
+        "en": "In-app CI integration",
+        "zh-CN": "应用内 CI 集成"
+      }
     },
     {
       "key": "containers",
       "requirement": "optional",
-      "groups": ["Workers Containers Write", "Workers Containers Edit", "Workers Containers"],
+      "oauthScopes": [
+        "containers.write"
+      ],
       "scope": "account",
       "level": "write",
-      "label": { "en": "Workers Containers", "zh-CN": "Workers Containers" },
-      "scenario": { "en": "Container transcoding", "zh-CN": "容器转码" }
+      "label": {
+        "en": "Workers Containers",
+        "zh-CN": "Workers Containers"
+      },
+      "scenario": {
+        "en": "Container transcoding",
+        "zh-CN": "容器转码"
+      }
     },
     {
       "key": "observability",
       "requirement": "optional",
-      "groups": ["Workers Observability Write", "Workers Observability Edit", "Workers Observability"],
+      "oauthScopes": [
+        "workers-observability.write"
+      ],
       "scope": "account",
       "level": "write",
-      "label": { "en": "Workers Observability", "zh-CN": "Workers Observability" },
+      "label": {
+        "en": "Workers Observability",
+        "zh-CN": "Workers Observability"
+      },
       "scenario": {
         "en": "Worker logs and observability troubleshooting",
         "zh-CN": "Worker 日志与可观测性排障"
@@ -110,10 +172,15 @@
     {
       "key": "account_analytics",
       "requirement": "optional",
-      "groups": ["Account Analytics Read", "Account Analytics"],
+      "oauthScopes": [
+        "account-analytics.read"
+      ],
       "scope": "account",
       "level": "read",
-      "label": { "en": "Account Analytics", "zh-CN": "Account Analytics" },
+      "label": {
+        "en": "Account Analytics",
+        "zh-CN": "Account Analytics"
+      },
       "scenario": {
         "en": "In-app request, error, and CPU analytics",
         "zh-CN": "应用内请求量、错误和 CPU 分析"
@@ -122,10 +189,15 @@
     {
       "key": "account_settings",
       "requirement": "optional",
-      "groups": ["Account Settings Read", "Account Settings"],
+      "oauthScopes": [
+        "account-settings.read"
+      ],
       "scope": "account",
       "level": "read",
-      "label": { "en": "Account Settings", "zh-CN": "Account Settings" },
+      "label": {
+        "en": "Account Settings",
+        "zh-CN": "Account Settings"
+      },
       "scenario": {
         "en": "In-app Cloudflare connection checks",
         "zh-CN": "应用内 Cloudflare 连接检测"
@@ -137,7 +209,10 @@
       "id": "r2",
       "requirement": "required",
       "path": "/accounts/${accountId}/r2/buckets",
-      "label": { "en": "R2 storage is enabled", "zh-CN": "已启用 R2 存储" },
+      "label": {
+        "en": "R2 storage is enabled",
+        "zh-CN": "已启用 R2 存储"
+      },
       "hint": {
         "en": "R2 isn't enabled on this account yet. Open the R2 dashboard and activate it; Cloudflare shows any billing requirement before you confirm.",
         "zh-CN": "此账号尚未启用 R2。请打开 R2 控制台激活；确认前 Cloudflare 会显示任何账单要求。"
@@ -164,7 +239,10 @@
       "binding": "DB",
       "defaultName": "${worker}-db",
       "required": true,
-      "label": { "en": "Library database", "zh-CN": "曲库数据库" },
+      "label": {
+        "en": "Library database",
+        "zh-CN": "曲库数据库"
+      },
       "help": {
         "en": "D1 database name. An existing database with this name is reused as-is, so make sure it is empty or belongs to the instance you mean to recover.",
         "zh-CN": "D1 数据库名称。同名数据库会被直接复用，请确认它是空库或属于本次要恢复的实例。"
@@ -177,7 +255,10 @@
       "defaultName": "${worker}-storage",
       "required": true,
       "s3Keys": "optional",
-      "label": { "en": "Music storage", "zh-CN": "音乐存储" },
+      "label": {
+        "en": "Music storage",
+        "zh-CN": "音乐存储"
+      },
       "help": {
         "en": "R2 bucket name — this is where uploaded music lives. Adding the optional S3 key pair enables presigned direct playback; without it playback goes through the Worker.",
         "zh-CN": "R2 存储桶名称——上传的音乐存放在这里。填写可选的 S3 密钥对可启用预签名直连播放；不填则通过 Worker 代理播放。"
@@ -192,15 +273,38 @@
     "assetHeaders": "assets/_headers",
     "assetsBinding": "ASSETS",
     "compatibilityDate": "2025-05-24",
-    "compatibilityFlags": ["nodejs_compat"],
+    "compatibilityFlags": [
+      "nodejs_compat"
+    ],
     "vars": [
-      { "name": "R2_BUCKET_NAME", "value": "${resource:music}" },
-      { "name": "INSTANCE_ID", "value": "${uuid}" },
-      { "name": "MAX_PROXY_DEPTH", "value": "3" },
-      { "name": "WORKER_VERSION", "value": "${version}" },
-      { "name": "EDGESONIC_VERSION", "value": "${version}" },
-      { "name": "EDGESONIC_BUILD_TIME", "value": "${buildTime}" },
-      { "name": "WORKER_NAME", "value": "${worker}" }
+      {
+        "name": "R2_BUCKET_NAME",
+        "value": "${resource:music}"
+      },
+      {
+        "name": "INSTANCE_ID",
+        "value": "${uuid}"
+      },
+      {
+        "name": "MAX_PROXY_DEPTH",
+        "value": "3"
+      },
+      {
+        "name": "WORKER_VERSION",
+        "value": "${version}"
+      },
+      {
+        "name": "EDGESONIC_VERSION",
+        "value": "${version}"
+      },
+      {
+        "name": "EDGESONIC_BUILD_TIME",
+        "value": "${buildTime}"
+      },
+      {
+        "name": "WORKER_NAME",
+        "value": "${worker}"
+      }
     ],
     "containers": [
       {
@@ -218,7 +322,10 @@
       "id": "admin_username",
       "kind": "text",
       "default": "admin",
-      "label": { "en": "Initial superadmin username", "zh-CN": "初始超级管理员用户名" },
+      "label": {
+        "en": "Initial superadmin username",
+        "zh-CN": "初始超级管理员用户名"
+      },
       "help": {
         "en": "Leave as \"admin\" if you have no preference. Any username works, including non-Latin scripts.",
         "zh-CN": "没有特别要求时保持 “admin” 即可。支持任意用户名，包括中文。"
@@ -229,7 +336,10 @@
       "id": "admin_password",
       "kind": "password",
       "generate": 12,
-      "label": { "en": "Initial superadmin password", "zh-CN": "初始超级管理员密码" },
+      "label": {
+        "en": "Initial superadmin password",
+        "zh-CN": "初始超级管理员密码"
+      },
       "help": {
         "en": "Leave empty to generate a random password. It is shown once on the final page and stored nowhere.",
         "zh-CN": "留空会生成随机密码。密码仅在最后一页显示一次，不会被保存在任何地方。"
@@ -253,14 +363,26 @@
       "id": "domain",
       "kind": "domain",
       "required": false,
-      "label": { "en": "Custom domain", "zh-CN": "自定义域名" },
+      "label": {
+        "en": "Custom domain",
+        "zh-CN": "自定义域名"
+      },
       "help": {
         "en": "Optional. Leave empty to use the *.workers.dev hostname.",
         "zh-CN": "可选。留空则使用 *.workers.dev 域名。"
       }
     }
   ],
-  "capabilities": ["d1", "r2", "secrets", "worker", "assets", "cron", "domains", "probe"],
+  "capabilities": [
+    "d1",
+    "r2",
+    "secrets",
+    "worker",
+    "assets",
+    "cron",
+    "domains",
+    "probe"
+  ],
   "hostSecrets": [
     {
       "name": "CF_ACCOUNT_ID",
@@ -273,12 +395,30 @@
     },
     {
       "name": "CF_API_TOKEN",
-      "source": "apiToken",
+      "source": "cfApiToken",
       "requirement": "required",
       "reason": {
         "en": "In-app self-update uploads a new Worker version, and container transcoding provisions its own resources — both act on this account with this token.",
         "zh-CN": "应用内自更新要上传新的 Worker 版本，容器转码要开通自身资源——两者都用这个令牌操作本账号。"
-      }
+      },
+      "permissions": [
+        {
+          "key": "workers_scripts",
+          "type": "edit"
+        },
+        {
+          "key": "d1",
+          "type": "edit"
+        },
+        {
+          "key": "workers_r2",
+          "type": "edit"
+        },
+        {
+          "key": "containers",
+          "type": "edit"
+        }
+      ]
     },
     {
       "name": "R2_ACCESS_KEY_ID",
@@ -303,73 +443,120 @@
     {
       "id": "d1",
       "weight": 1,
-      "label": { "en": "Create or reuse D1 database", "zh-CN": "创建或复用 D1 数据库" }
+      "label": {
+        "en": "Create or reuse D1 database",
+        "zh-CN": "创建或复用 D1 数据库"
+      }
     },
     {
       "id": "r2",
       "weight": 1,
-      "label": { "en": "Create or reuse R2 bucket", "zh-CN": "创建或复用 R2 存储桶" }
+      "label": {
+        "en": "Create or reuse R2 bucket",
+        "zh-CN": "创建或复用 R2 存储桶"
+      }
     },
     {
       "id": "schema",
       "weight": 2,
-      "label": { "en": "Apply database schema", "zh-CN": "应用数据库结构" }
+      "label": {
+        "en": "Apply database schema",
+        "zh-CN": "应用数据库结构"
+      }
     },
     {
       "id": "rebuild",
       "weight": 1,
       "optional": true,
-      "label": { "en": "Delete the existing Worker", "zh-CN": "删除现有 Worker" }
+      "label": {
+        "en": "Delete the existing Worker",
+        "zh-CN": "删除现有 Worker"
+      }
     },
     {
       "id": "assets",
       "weight": 6,
-      "label": { "en": "Upload static assets", "zh-CN": "上传静态资源" }
+      "label": {
+        "en": "Upload static assets",
+        "zh-CN": "上传静态资源"
+      }
     },
     {
       "id": "worker",
       "weight": 4,
-      "label": { "en": "Upload Worker version", "zh-CN": "上传 Worker 版本" }
+      "label": {
+        "en": "Upload Worker version",
+        "zh-CN": "上传 Worker 版本"
+      }
     },
     {
       "id": "deploy",
       "weight": 2,
-      "label": { "en": "Switch traffic to the new version", "zh-CN": "切换流量到新版本" }
+      "label": {
+        "en": "Switch traffic to the new version",
+        "zh-CN": "切换流量到新版本"
+      }
     },
     {
       "id": "secrets",
       "weight": 2,
-      "label": { "en": "Push required secrets", "zh-CN": "推送必需的密钥" }
+      "label": {
+        "en": "Push required secrets",
+        "zh-CN": "推送必需的密钥"
+      }
     },
     {
       "id": "cron",
       "weight": 1,
-      "label": { "en": "Restore scheduled tasks", "zh-CN": "恢复定时任务" }
+      "label": {
+        "en": "Restore scheduled tasks",
+        "zh-CN": "恢复定时任务"
+      }
     },
     {
       "id": "admin",
       "weight": 1,
       "optional": true,
-      "label": { "en": "Create superadmin account", "zh-CN": "创建超级管理员账号" }
+      "label": {
+        "en": "Create superadmin account",
+        "zh-CN": "创建超级管理员账号"
+      }
     },
     {
       "id": "health",
       "weight": 1,
       "optional": true,
-      "label": { "en": "Health check", "zh-CN": "健康检查" }
+      "label": {
+        "en": "Health check",
+        "zh-CN": "健康检查"
+      }
     }
   ],
   "script": "recipe.js",
-  "health": { "path": "/edgesonic/version" },
+  "health": {
+    "path": "/edgesonic/version"
+  },
   "done": {
     "links": [
-      { "label": { "en": "Open EdgeSonic", "zh-CN": "打开 EdgeSonic" }, "href": "${url}" },
       {
-        "label": { "en": "Worker in the Cloudflare dashboard", "zh-CN": "Cloudflare 控制台中的 Worker" },
+        "label": {
+          "en": "Open EdgeSonic",
+          "zh-CN": "打开 EdgeSonic"
+        },
+        "href": "${url}"
+      },
+      {
+        "label": {
+          "en": "Worker in the Cloudflare dashboard",
+          "zh-CN": "Cloudflare 控制台中的 Worker"
+        },
         "href": "https://dash.cloudflare.com/${accountId}/workers/services/view/${worker}/production"
       },
       {
-        "label": { "en": "R2 bucket in the Cloudflare dashboard", "zh-CN": "Cloudflare 控制台中的 R2 存储桶" },
+        "label": {
+          "en": "R2 bucket in the Cloudflare dashboard",
+          "zh-CN": "Cloudflare 控制台中的 R2 存储桶"
+        },
         "href": "https://dash.cloudflare.com/${accountId}/r2/default/buckets/${resource:music}"
       }
     ],
