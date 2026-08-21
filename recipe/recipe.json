@@ -216,7 +216,8 @@
       "hint": {
         "en": "R2 isn't enabled on this account yet. Open the R2 dashboard and activate it; Cloudflare shows any billing requirement before you confirm.",
         "zh-CN": "此账号尚未启用 R2。请打开 R2 控制台激活；确认前 Cloudflare 会显示任何账单要求。"
-      }
+      },
+      "actionUrl": "https://dash.cloudflare.com/?to=/:account/r2"
     },
     {
       "id": "images",
@@ -229,7 +230,8 @@
       "hint": {
         "en": "Optional. Lets EdgeSonic resize cover art on demand; without it covers are served at original size.",
         "zh-CN": "可选。可让 EdgeSonic 按需缩放封面图；不启用时封面按原始尺寸提供。"
-      }
+      },
+      "actionUrl": "https://dash.cloudflare.com/?to=/:account/images"
     }
   ],
   "resources": [
