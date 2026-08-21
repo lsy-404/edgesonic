@@ -404,19 +404,84 @@
       "permissions": [
         {
           "key": "workers_scripts",
-          "type": "edit"
+          "type": "edit",
+          "requirement": "required",
+          "scenario": {
+            "en": "Deploy the app and let it update itself in place.",
+            "zh-CN": "部署应用，并支持应用内自更新。"
+          }
         },
         {
           "key": "d1",
-          "type": "edit"
+          "type": "edit",
+          "requirement": "required",
+          "scenario": {
+            "en": "Create the library database and apply its schema.",
+            "zh-CN": "创建曲库数据库并初始化结构。"
+          }
         },
         {
           "key": "workers_r2",
-          "type": "edit"
+          "type": "edit",
+          "requirement": "required",
+          "scenario": {
+            "en": "Create and reach the music storage bucket.",
+            "zh-CN": "创建并访问音乐存储桶。"
+          }
         },
         {
           "key": "containers",
-          "type": "edit"
+          "type": "edit",
+          "requirement": "optional",
+          "scenario": {
+            "en": "Container transcoding — an optional feature you can leave out.",
+            "zh-CN": "容器转码——可选功能，不需要可以不勾。"
+          }
+        },
+        {
+          "key": "workers_routes",
+          "type": "edit",
+          "requirement": "optional",
+          "scenario": {
+            "en": "Attach a custom domain you provide.",
+            "zh-CN": "绑定你指定的自定义域名。"
+          }
+        },
+        {
+          "key": "zone",
+          "type": "read",
+          "requirement": "optional",
+          "scenario": {
+            "en": "Resolve the zone a custom domain sits in.",
+            "zh-CN": "解析自定义域名所在的区域。"
+          }
+        },
+        {
+          "key": "workers_observability",
+          "type": "edit",
+          "requirement": "optional",
+          "scenario": {
+            "en": "Read the Worker's logs for in-app troubleshooting.",
+            "zh-CN": "应用内查看 Worker 日志排障。"
+          }
+        },
+        {
+          "key": "account_analytics",
+          "type": "read",
+          "requirement": "optional",
+          "scenario": {
+            "en": "Show request, error, and CPU analytics in-app.",
+            "zh-CN": "应用内展示请求量、错误和 CPU 分析。"
+          }
+        },
+        {
+          "key": "account_settings",
+          "type": "read",
+          "requirement": "optional",
+          "scenario": {
+            "en": "Check the Cloudflare connection from in-app.",
+            "zh-CN": "应用内检测 Cloudflare 连接状态。"
+          }
         }
       ]
     },
