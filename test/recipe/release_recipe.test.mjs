@@ -9,7 +9,7 @@ const recipeSource = fs.readFileSync(path.join(root, "recipe/recipe.js"), "utf8"
 const buildSource = fs.readFileSync(path.join(root, "scripts/build-update-bundle.mjs"), "utf8");
 const inputs = recipe.inputs;
 
-assert.equal(recipe.support.issues, "https://github.com/wuyilingwei/edgesonic/issues");
+assert.equal(recipe.issues.url, "https://github.com/wuyilingwei/edgesonic/issues/new");
 assert.equal(inputs[0].id, "reset_admin");
 assert.equal(inputs[0].onlyMode, "overwrite");
 assert.equal(inputs[1].default, "admin");
