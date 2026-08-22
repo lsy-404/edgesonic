@@ -312,9 +312,10 @@
       {
         "className": "Sandbox",
         "mode": "ask",
+        "image": "docker.io/wuyilingwei/edgesonic-transcoder:${tag}",
         "note": {
-          "en": "Transcoding runs in this container. A browser cannot build its image, so declaring it only works when the Worker already has it — mirroring the live script is the safe answer.",
-          "zh-CN": "转码运行在该容器里。浏览器无法构建镜像，因此只有 Worker 已经有它时声明才有效——沿用现状是安全答案。"
+          "en": "Transcoding runs in this container. This release publishes the matching pre-built image, and the deployment uses that exact release tag when the container is enabled.",
+          "zh-CN": "转码运行在该容器中。本版本会发布对应的预构建镜像；启用容器时，部署将使用与本版本完全匹配的镜像标签。"
         }
       }
     ]

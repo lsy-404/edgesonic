@@ -1,8 +1,10 @@
 name: Release EdgeSonic (precompiled package)
 
 # Builds a self-contained, ready-to-deploy package and publishes it as a
-# GitHub Release asset. Unlike deploy.yml, this workflow needs NO Cloudflare
-# credentials — it only builds and packages. Deployment happens later,
+# GitHub Release asset. Unlike deploy.yml, this workflow needs no Cloudflare
+# credentials — it builds and packages. It does require the repository's
+# DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets to publish the public
+# container image that Cloudflare can pull. Deployment happens later,
 # wherever the package is downloaded to, via `wrangler`.
 #
 # The package contains a prebuilt web/dist and an isolated worker/node_modules
@@ -64,12 +66,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Cloudflare Containers accepts public Docker Hub references, while it
+      # does not pull directly from GHCR. Keep the GHCR image for project
+      # consumers, and publish the same immutable tag to Docker Hub for the
+      # browser deployment package. Configure repository secrets
+      # DOCKERHUB_USERNAME and DOCKERHUB_TOKEN before cutting a release.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build and publish transcoder image
         uses: docker/build-push-action@v6
         with:
           context: worker/transcoder-image
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/edgesonic-transcoder:${{ steps.tag.outputs.tag }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/edgesonic-transcoder:${{ steps.tag.outputs.tag }}
+            docker.io/${{ github.repository_owner }}/edgesonic-transcoder:${{ steps.tag.outputs.tag }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.tag.outputs.tag }}
