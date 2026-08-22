@@ -4,12 +4,16 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
 const root = path.resolve(new URL("..", import.meta.url).pathname);
-const [stageArg, versionArg, buildTimeArg, allowMajorArg, tagArg] = process.argv.slice(2);
+const [stageArg, versionArg, buildTimeArg, allowMajorArg, tagArg, imageDigestArg] = process.argv.slice(2);
 const stage = path.resolve(stageArg || path.join(root, ".update-stage"));
 const version = versionArg || process.env.UPDATE_VERSION || "dev";
 const buildTime = buildTimeArg || process.env.UPDATE_BUILD_TIME || new Date().toISOString();
 const allowMajor = String(allowMajorArg || process.env.UPDATE_ALLOW_MAJOR || "false") === "true";
 const tag = tagArg || process.env.UPDATE_TAG || `v${version}`;
+const imageDigest = imageDigestArg || process.env.EDGESONIC_CONTAINER_IMAGE_DIGEST || "";
+if (!/^sha256:[0-9a-f]{64}$/i.test(imageDigest)) {
+  throw new Error("A published container image digest (sha256:<64 hex chars>) is required");
+}
 
 async function walk(dir, prefix = "") {
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -169,6 +173,12 @@ const wizardArtifactSha256 = sha256(wizardArtifact);
 // recipe.json's version/tag/buildTime/package digest have to equal this build's,
 // and its licence/terms text is inlined here rather than kept in the package.
 const recipe = JSON.parse(await fs.readFile(path.join(recipeSource, "recipe.json"), "utf8"));
+const container = recipe.worker?.containers?.find((entry) => entry.className === "Sandbox");
+const imagePlaceholder = "docker.io/wuyilingwei/edgesonic-transcoder@sha256:__BUILD_IMAGE_DIGEST__";
+if (!container || container.image?.reference !== imagePlaceholder) {
+  throw new Error("recipe.json must declare the Sandbox image placeholder");
+}
+container.image = { reference: `docker.io/wuyilingwei/edgesonic-transcoder@${imageDigest.toLowerCase()}` };
 recipe.version = version;
 recipe.tag = tag;
 recipe.buildTime = buildTime;

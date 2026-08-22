@@ -139,7 +139,8 @@
       "key": "containers",
       "requirement": "optional",
       "oauthScopes": [
-        "containers.write"
+        "containers.write",
+        "containers.read"
       ],
       "scope": "account",
       "level": "write",
@@ -232,6 +233,19 @@
         "zh-CN": "可选。可让 EdgeSonic 按需缩放封面图；不启用时封面按原始尺寸提供。"
       },
       "actionUrl": "https://dash.cloudflare.com/?to=/:account/images"
+    },
+    {
+      "id": "containers",
+      "requirement": "required",
+      "path": "/accounts/${accountId}/containers/applications",
+      "label": {
+        "en": "Workers Containers is available",
+        "zh-CN": "Workers Containers 可用"
+      },
+      "hint": {
+        "en": "The account must expose the Containers application API before the optional transcoding container can be declared.",
+        "zh-CN": "只有账号开放 Containers 应用 API 后，才能声明可选的转码容器。"
+      }
     }
   ],
   "resources": [
@@ -312,10 +326,12 @@
       {
         "className": "Sandbox",
         "mode": "ask",
-        "image": "docker.io/wuyilingwei/edgesonic-transcoder:${tag}",
+        "image": {
+          "reference": "docker.io/wuyilingwei/edgesonic-transcoder@sha256:__BUILD_IMAGE_DIGEST__"
+        },
         "note": {
-          "en": "Transcoding runs in this container. This release publishes the matching pre-built image, and the deployment uses that exact release tag when the container is enabled.",
-          "zh-CN": "转码运行在该容器中。本版本会发布对应的预构建镜像；启用容器时，部署将使用与本版本完全匹配的镜像标签。"
+          "en": "Transcoding runs in this container. This release publishes the matching pre-built image, and the deployment pins its immutable digest when the container is enabled.",
+          "zh-CN": "转码运行在该容器中。本版本会发布对应的预构建镜像；启用容器时，部署将固定使用该镜像的不可变摘要。"
         }
       }
     ]
@@ -439,6 +455,15 @@
           "scenario": {
             "en": "Container transcoding — an optional feature you can leave out.",
             "zh-CN": "容器转码——可选功能，不需要可以不勾。"
+          }
+        },
+        {
+          "key": "containers",
+          "type": "read",
+          "requirement": "optional",
+          "scenario": {
+            "en": "Read the current container declaration before preserving it during an overwrite.",
+            "zh-CN": "覆盖现有 Worker 前读取当前容器声明，以便在选择“不变”时保持现状。"
           }
         },
         {

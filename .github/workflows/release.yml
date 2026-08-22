@@ -79,6 +79,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and publish transcoder image
+        id: image
         uses: docker/build-push-action@v6
         with:
           context: worker/transcoder-image
@@ -174,13 +175,14 @@ jobs:
         env:
           TAG: ${{ steps.tag.outputs.tag }}
           ALLOW_MAJOR: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_major_update || false }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           set -euo pipefail
           BUILD_INFO=$(cat web/dist/build-info.json)
           VERSION=$(node -e 'console.log(JSON.parse(process.argv[1]).version.replace(/-dev\.[^-]+(?:-dirty)?$|-dirty$/, ""))' "$BUILD_INFO")
           BUILD_TIME=$(node -e 'console.log(JSON.parse(process.argv[1]).buildTime)' "$BUILD_INFO")
           API_STAGE="${RUNNER_TEMP}/edgesonic-update-stage"
-          node scripts/build-update-bundle.mjs "$API_STAGE" "$VERSION" "$BUILD_TIME" "$ALLOW_MAJOR" "$TAG"
+          node scripts/build-update-bundle.mjs "$API_STAGE" "$VERSION" "$BUILD_TIME" "$ALLOW_MAJOR" "$TAG" "$IMAGE_DIGEST"
           cp "${RUNNER_TEMP}/edgesonic-update.tar.gz" .
           cp "${RUNNER_TEMP}/edgesonic-update.tar.gz.sha256" .
           cp "${RUNNER_TEMP}/edgesonic-update-manifest.json" .
