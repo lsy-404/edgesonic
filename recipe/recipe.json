@@ -7,6 +7,9 @@
     "zh-CN": "完全运行在 Cloudflare Workers、D1 与 R2 上的 Subsonic 兼容音乐服务。"
   },
   "homepage": "https://github.com/Wuyilingwei/EdgeSonic",
+  "support": {
+    "issues": "https://github.com/wuyilingwei/edgesonic/issues"
+  },
   "version": "0.0.0-dev",
   "tag": "v0.0.0-dev",
   "buildTime": "1970-01-01T00:00:00Z",
@@ -338,44 +341,53 @@
   },
   "inputs": [
     {
-      "id": "admin_username",
-      "kind": "text",
-      "default": "admin",
-      "label": {
-        "en": "Initial superadmin username",
-        "zh-CN": "初始超级管理员用户名"
-      },
-      "help": {
-        "en": "Leave as \"admin\" if you have no preference. Any username works, including non-Latin scripts.",
-        "zh-CN": "没有特别要求时保持 “admin” 即可。支持任意用户名，包括中文。"
-      },
-      "pattern": "[a-zA-Z0-9_-]{3,32}"
-    },
-    {
-      "id": "admin_password",
-      "kind": "password",
-      "generate": 12,
-      "label": {
-        "en": "Initial superadmin password",
-        "zh-CN": "初始超级管理员密码"
-      },
-      "help": {
-        "en": "Leave empty to generate a random password. It is shown once on the final page and stored nowhere.",
-        "zh-CN": "留空会生成随机密码。密码仅在最后一页显示一次，不会被保存在任何地方。"
-      }
-    },
-    {
       "id": "reset_admin",
       "kind": "toggle",
       "default": false,
       "onlyMode": "overwrite",
       "label": {
-        "en": "Reset the superadmin account and issue a new password",
-        "zh-CN": "重置超级管理员账号并签发新密码"
+        "en": "Reset the superadmin account",
+        "zh-CN": "重置超级管理员账号"
       },
       "help": {
-        "en": "Off by default: a recovery install leaves the existing superadmin untouched.",
-        "zh-CN": "默认关闭：恢复安装不会改动已有的超级管理员。"
+        "en": "Off by default: an overwrite leaves the existing superadmin untouched. Turn this on only when you need to issue new credentials.",
+        "zh-CN": "默认关闭：覆盖安装会保留已有的超级管理员。仅在需要签发新凭据时开启。"
+      }
+    },
+    {
+      "id": "admin_username",
+      "kind": "text",
+      "default": "admin",
+      "visibleWhen": {
+        "input": "reset_admin",
+        "equals": true,
+        "mode": "overwrite"
+      },
+      "label": {
+        "en": "Superadmin username",
+        "zh-CN": "超级管理员用户名"
+      },
+      "help": {
+        "en": "Defaults to \"admin\". Any username is supported, including Chinese and other non-Latin scripts.",
+        "zh-CN": "默认为 “admin”。支持任意用户名，包括中文等非拉丁文字。"
+      }
+    },
+    {
+      "id": "admin_password",
+      "kind": "password",
+      "generate": 12,
+      "visibleWhen": {
+        "input": "reset_admin",
+        "equals": true,
+        "mode": "overwrite"
+      },
+      "label": {
+        "en": "Superadmin password",
+        "zh-CN": "超级管理员密码"
+      },
+      "help": {
+        "en": "Leave empty to generate a random password. It is shown once on the final page and never saved in plaintext.",
+        "zh-CN": "留空会生成随机密码。密码仅在最后一页显示一次，绝不会以明文保存。"
       }
     },
     {
