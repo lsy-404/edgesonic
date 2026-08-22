@@ -81,8 +81,11 @@ export async function deploy(ctx) {
   // Keeping the live identity keeps the D1 rows that attribute song sources to
   // this instance pointing at it; a fresh install takes the generated one.
   const instanceId = trimmed(live.vars.INSTANCE_ID);
+  const uploadOptions = instanceId
+    ? { assets, preserveLiveVars: ["INSTANCE_ID"] }
+    : { assets };
   const { versionId } = await ctx.worker.uploadVersion(
-    instanceId ? { assets, extraVars: { INSTANCE_ID: instanceId } } : { assets },
+    uploadOptions,
   );
   await ctx.step("worker", "success");
 

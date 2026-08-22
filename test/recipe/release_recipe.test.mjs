@@ -22,6 +22,14 @@ assert.match(inputs[2].help.en, /empty.*random.*shown once.*final page.*never sa
 assert.match(recipeSource, /if \(mode === "fresh" \|\| resetAdmin\)/);
 assert.match(recipeSource, /Existing superadmin preserved/);
 assert.match(recipeSource, /ctx\.result\(\{\s*credentials:/s);
+assert.match(recipeSource, /preserveLiveVars: \["INSTANCE_ID"\]/);
+assert.doesNotMatch(recipeSource, /extraVars:\s*\{\s*INSTANCE_ID:/, "live INSTANCE_ID must be preserved by the host");
+assert.match(recipeSource, /instanceId\s*\?\s*\{ assets, preserveLiveVars: \["INSTANCE_ID"\] \}\s*:\s*\{ assets \}/s);
+assert.deepEqual(
+  recipe.worker.vars.find((entry) => entry.name === "INSTANCE_ID"),
+  { name: "INSTANCE_ID", value: "${uuid}" },
+  "fresh installs must generate INSTANCE_ID from the recipe",
+);
 assert.match(buildSource, /const recipe = JSON\.parse/);
 assert.match(buildSource, /JSON\.stringify\(recipe/);
 assert.doesNotMatch(buildSource, /recipe\s*=\s*\{\s*version:/, "release build must retain recipe metadata fields");
