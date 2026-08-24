@@ -258,6 +258,14 @@
       "binding": "DB",
       "defaultName": "${worker}-db",
       "required": true,
+      "match": {
+        "names": [
+          "edgesonic-db"
+        ],
+        "patterns": [
+          "^edgesonic(?:-[a-z0-9]+)*-db$"
+        ]
+      },
       "label": {
         "en": "Library database",
         "zh-CN": "曲库数据库"
@@ -274,6 +282,15 @@
       "defaultName": "${worker}-storage",
       "required": true,
       "s3Keys": "optional",
+      "match": {
+        "names": [
+          "edgesonic-storage",
+          "edgesonic-music"
+        ],
+        "patterns": [
+          "^edgesonic(?:-[a-z0-9]+)*-(?:storage|music)$"
+        ]
+      },
       "label": {
         "en": "Music storage",
         "zh-CN": "音乐存储"
@@ -358,6 +375,7 @@
       "id": "admin_username",
       "kind": "text",
       "default": "admin",
+      "required": true,
       "visibleWhen": {
         "input": "reset_admin",
         "equals": true,
@@ -375,7 +393,6 @@
     {
       "id": "admin_password",
       "kind": "password",
-      "generate": 12,
       "visibleWhen": {
         "input": "reset_admin",
         "equals": true,
@@ -428,6 +445,10 @@
       "name": "CF_API_TOKEN",
       "source": "cfApiToken",
       "requirement": "required",
+      "placeholder": {
+        "en": "cfat_…",
+        "zh-CN": "cfat_…"
+      },
       "reason": {
         "en": "In-app self-update uploads a new Worker version, and container transcoding provisions its own resources — both act on this account with this token.",
         "zh-CN": "应用内自更新要上传新的 Worker 版本，容器转码要开通自身资源——两者都用这个令牌操作本账号。"
