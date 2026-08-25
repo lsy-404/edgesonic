@@ -48,7 +48,7 @@ const ADAPTERS: Record<ScrapeSource, {
   resolve?: (result: ScrapeResult, p: ProxyFn) => Promise<ScrapeResult>;
 } | undefined> = {
   lrc: { search: lrc.search, fetchLyric: lrc.fetchLyric, resolve: lrc.resolve },
-  netease: { search: netease.search, fetchLyric: netease.fetchLyric },
+  netease: { search: netease.search, fetchLyric: netease.fetchLyric, resolve: netease.resolve },
   qmusic: { search: qmusic.search, fetchLyric: qmusic.fetchLyric },
   kugou: { search: kugou.search, fetchLyric: kugou.fetchLyric },
   // No kuwo/migu adapters ship today; the keys exist in types so the
@@ -119,7 +119,16 @@ export async function fetchLyric(opts: LyricOpts): Promise<string> {
 }
 
 export async function resolveResult(result: ScrapeResult, proxyFetch: ProxyFn): Promise<ScrapeResult> {
-  return (await ADAPTERS[result.source]?.resolve?.(result, proxyFetch)) || result;
+  const adapter = ADAPTERS[result.source];
+  if (!adapter) return result;
+  let resolved = (await adapter.resolve?.(result, proxyFetch)) || result;
+  if (!resolved.lyrics && resolved.songId) {
+    try {
+      const lyrics = await adapter.fetchLyric(resolved.songId, proxyFetch);
+      if (lyrics) resolved = { ...resolved, lyrics };
+    } catch { /* Keep the available detail fields when a provider has no lyric. */ }
+  }
+  return resolved;
 }
 
 // ===========================================================================

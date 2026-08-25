@@ -15,7 +15,7 @@
 
 // NetEase Music scrape adapter.
 //
-// API docs: https://music.163.com/api/search/get/web (POST form-urlencoded)
+// API docs: https://music.163.com/api/search/get (POST form-urlencoded)
 //
 // CORS reality check: music.163.com refuses cross-origin browser fetches.
 // The authenticated Worker proxy is therefore the primary transport. Direct
@@ -28,17 +28,27 @@ import type { ScrapeResult } from "./types";
 const SOURCE = "netease" as const;
 const DIRECT_SEARCH = "https://music.163.com/api/search/get";
 const DIRECT_LYRIC = "https://music.163.com/api/song/lyric";
+const DIRECT_DETAIL = "https://music.163.com/api/song/detail";
+
+interface NetEaseSong {
+  id: number;
+  name: string;
+  artists?: Array<{ name?: string }>;
+  album?: {
+    name?: string;
+    picUrl?: string;
+    publishTime?: number;
+    artists?: Array<{ name?: string }>;
+  };
+}
 
 interface NetEaseSearchResp {
   result?: {
-    songs?: Array<{
-      id: number;
-      name: string;
-      artists?: Array<{ name?: string }>;
-      album?: { name?: string; picUrl?: string; publishTime?: number };
-    }>;
+    songs?: NetEaseSong[];
   };
 }
+
+interface NetEaseDetailResp { songs?: NetEaseSong[] }
 
 interface NetEaseLyricResp {
   lrc?: { lyric?: string };
@@ -54,6 +64,12 @@ export async function search(query: string, proxyFetch: ProxyFn): Promise<Scrape
 export async function fetchLyric(songId: string, proxyFetch: ProxyFn): Promise<string> {
   const upstream = await proxyFirst<NetEaseLyricResp>("lyric", () => proxyFetch({ source: SOURCE, intent: "lyric", songId }), () => directLyric(songId));
   return upstream.lrc?.lyric || "";
+}
+
+export async function resolve(result: ScrapeResult, proxyFetch: ProxyFn): Promise<ScrapeResult> {
+  const upstream = await proxyFirst<NetEaseDetailResp>("detail", () => proxyFetch({ source: SOURCE, intent: "detail", songId: result.songId }), () => directDetail(result.songId));
+  const song = upstream.songs?.[0];
+  return song ? { ...result, ...normalise(song), raw: song } : result;
 }
 
 // ===========================================================================
@@ -77,10 +93,17 @@ async function directLyric(songId: string): Promise<NetEaseLyricResp> {
   return resp.json();
 }
 
+async function directDetail(songId: string): Promise<NetEaseDetailResp> {
+  const url = `${DIRECT_DETAIL}?ids=${encodeURIComponent(`[${songId}]`)}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
 // ===========================================================================
 // Normaliser — turns upstream payload into ScrapeResult.
 // ===========================================================================
-function normalise(s: NonNullable<NonNullable<NetEaseSearchResp["result"]>["songs"]>[number]): ScrapeResult {
+function normalise(s: NetEaseSong): ScrapeResult {
   const year =
     s.album?.publishTime && s.album.publishTime > 0
       ? new Date(s.album.publishTime).getUTCFullYear()
@@ -90,6 +113,7 @@ function normalise(s: NonNullable<NonNullable<NetEaseSearchResp["result"]>["song
     songId: String(s.id),
     title: s.name || "",
     artist: (s.artists || []).map((a) => a.name).filter(Boolean).join(", ") || "",
+    albumArtist: (s.album?.artists || []).map((a) => a.name).filter(Boolean).join(", ") || undefined,
     album: s.album?.name || undefined,
     year,
     coverUrl: s.album?.picUrl || undefined,
