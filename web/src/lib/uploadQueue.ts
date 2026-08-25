@@ -30,7 +30,7 @@ export interface UploadItem<T extends UploadFileLike = UploadFileLike> {
 
 const AUDIO_EXTENSIONS = new Set(["mp3", "flac", "wav", "ogg", "opus", "m4a", "aac", "aiff", "alac", "ape", "wma"]);
 const LYRIC_EXTENSIONS = new Set(["lrc", "ttml", "krc"]);
-export const OPENYYY_ENCRYPTED_EXTENSIONS = new Set([
+export const ENCRYPTED_AUDIO_EXTENSIONS = new Set([
   "ncm", "uc", "mg3d", "kwm", "xm", "x2m", "x3m", "tm0", "tm2", "tm3", "tm6", "cache",
   "qmc0", "qmc2", "qmc3", "qmc4", "qmc6", "qmc8", "qmcflac", "qmcogg", "tkm",
   "bkcmp3", "bkcm4a", "bkcflac", "bkcwav", "bkcape", "bkcogg", "bkcwma",
@@ -54,7 +54,7 @@ export function classifyUploadItems<T extends UploadFileLike>(files: T[]): Uploa
     const relativeDir = relativeDirOf(file);
     let kind: UploadKind = "sidecar";
     if (LYRIC_EXTENSIONS.has(suffix)) kind = "lyrics";
-    else if (OPENYYY_ENCRYPTED_EXTENSIONS.has(suffix)) kind = "encrypted";
+    else if (ENCRYPTED_AUDIO_EXTENSIONS.has(suffix)) kind = "encrypted";
     else if (AUDIO_EXTENSIONS.has(suffix)) {
       const key = `${relativeDir}\u0000${stem}`;
       const count = audioKeys.get(key) || 0;
@@ -63,6 +63,17 @@ export function classifyUploadItems<T extends UploadFileLike>(files: T[]): Uploa
     }
     return { file, kind, stem, relativeDir, selected: kind !== "encrypted" };
   });
+}
+
+export function normalizeAudioVariants<T extends UploadFileLike>(items: UploadItem<T>[]) {
+  const audioKeys = new Set<string>();
+  for (const item of items) {
+    if (item.kind !== "audio" && item.kind !== "variant") continue;
+    const key = `${item.relativeDir}\u0000${item.stem}`;
+    item.kind = audioKeys.has(key) ? "variant" : "audio";
+    audioKeys.add(key);
+  }
+  return items;
 }
 
 export function isUploadIncluded(item: UploadItem, options: { includeLyrics: boolean; includeVariants: boolean }) {

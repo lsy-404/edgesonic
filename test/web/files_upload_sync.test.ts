@@ -4,6 +4,7 @@
 import {
   classifyUploadItems,
   isUploadIncluded,
+  normalizeAudioVariants,
   uploadPathFor,
 } from "../../web/src/lib/uploadQueue";
 import { mapConcurrent } from "../../web/src/lib/concurrency";
@@ -40,7 +41,20 @@ const companions = classifyUploadItems(files([
 ]));
 assert(companions[0].kind === "lyrics" && companions[1].kind === "lyrics", "LRC and TTML are lyrics sidecars");
 assert(companions[2].kind === "encrypted" && !companions[2].selected, "encrypted input is recognized and excluded by default");
+companions[2].kind = "audio";
+companions[2].selected = true;
+normalizeAudioVariants(companions);
+assert(companions[2].kind === "audio", "locally converted encrypted input rejoins the audio queue");
 assert(companions[3].kind === "sidecar", "ordinary non-audio companion remains uploadable");
+
+const convertedVariant = classifyUploadItems(files([
+  ["track.flac", "disc-1/track.flac"],
+  ["track.ncm", "disc-1/track.ncm"],
+]));
+convertedVariant[1].kind = "audio";
+convertedVariant[1].selected = true;
+normalizeAudioVariants(convertedVariant);
+assert(convertedVariant[1].kind === "variant", "converted audio becomes a variant when an ordinary same-stem audio file already exists");
 
 const selection = classifyUploadItems(files([
   ["track.flac", "album/track.flac"],

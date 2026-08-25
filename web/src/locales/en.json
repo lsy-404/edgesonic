@@ -367,19 +367,30 @@
     "syncUploadHint": "Keeps selected folder-relative paths; matching lyrics and audio variants stay in the same batch.",
     "includeLyrics": "Include matching lyrics",
     "includeVariants": "Include audio variants",
-    "convertFirst": "CONVERT FIRST",
     "uploadItemSelect": "Include {name} in upload",
     "uploadKinds": {
       "audio": "audio",
       "lyrics": "lyrics sidecar",
       "variant": "audio variant",
       "sidecar": "sidecar",
-      "encrypted": "local conversion required"
+      "encrypted": "awaiting local conversion"
     },
-    "openYYY": {
-      "title": "Local conversion only.",
-      "hint": "Encrypted formats are never uploaded or unlocked by EdgeSonic. Convert files locally in OpenYYY, then select the ordinary output here.",
-      "open": "OPEN OPENYYY"
+    "localConvert": {
+      "title": "EdgeSonic browser-local conversion.",
+      "hint": "Encrypted music is converted in a browser worker. Only the ordinary output is uploaded; the source file never leaves this device.",
+      "formats": "NCM · QMC · KWM · KGM · XM · X2M/X3M · MG3D",
+      "converting": "Converting locally…",
+      "convertingItem": "Convert {percent}%",
+      "converted": "Converted locally",
+      "failed": "Conversion failed",
+      "convertingSummary": "Local conversion {current} / {total}",
+      "done": "Converted {n} files locally; ready to upload",
+      "partial": "Converted {converted}; {failed} failed",
+      "errors": {
+        "missing_key": "No embedded key; this file cannot be converted by itself",
+        "invalid_file": "Damaged, mismatched, or currently unrecognized file",
+        "unsupported_format": "This encrypted format is not supported by EdgeSonic yet"
+      }
     },
     "fileTypeFilter": "File type filter",
     "fileTypeMusic": "Music, lyrics & images",

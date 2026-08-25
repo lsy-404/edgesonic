@@ -6,7 +6,8 @@ import type { CSSProperties } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatSize } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
-import { classifyUploadItems, isUploadIncluded, OPENYYY_ENCRYPTED_EXTENSIONS, suffixOf, uploadPathFor, type UploadItem } from "../lib/uploadQueue";
+import { classifyUploadItems, ENCRYPTED_AUDIO_EXTENSIONS, isUploadIncluded, normalizeAudioVariants, suffixOf, uploadPathFor, type UploadItem } from "../lib/uploadQueue";
+import { convertEncryptedFile, LocalFileConversionError } from "../lib/localAudioConvert";
 import { normalizeForMatch } from "../lib/trackMatch";
 import TagEditor from "../components/TagEditor.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
@@ -36,16 +37,28 @@ const foldersFirst = ref(true);
 const showUpload = ref(false);
 const uploadInput = ref<HTMLInputElement | null>(null);
 const syncUploadInput = ref<HTMLInputElement | null>(null);
-const uploadQueue = ref<UploadItem<File>[]>([]);
+interface LocalConversionState {
+  sourceName: string;
+  status: "pending" | "converting" | "converted" | "failed";
+  progress: number;
+  cipher?: string;
+  error?: string;
+  errorCode?: LocalFileConversionError["code"];
+}
+type LocalUploadItem = UploadItem<File> & { conversion?: LocalConversionState };
+const uploadQueue = ref<LocalUploadItem[]>([]);
 const uploadProgressList = ref<number[]>([]); // 0-100 per file; -1 = failed
 const uploadDoneCount = ref(0);
 const uploadFailedNames = ref<string[]>([]);
 const uploadBusy = ref(false);
+const conversionBusy = ref(false);
+let conversionGeneration = 0;
 const uploadMsg = ref("");
 const uploadErr = ref(false);
 const includeLyrics = ref(true);
 const includeVariants = ref(true);
 const UPLOAD_CONCURRENCY = 3;
+const CONVERSION_CONCURRENCY = 2;
 
 interface CrossCopyItem { file: FileEntry; status: "pending" | "copying" | "done" | "failed"; error?: string; }
 const crossCopyModal = ref<{ files: FileEntry[] } | null>(null);
@@ -98,9 +111,9 @@ const demoMode = useDemoMode();
 // any file can be selected. The backend still validates the suffix
 // regardless, so this is purely a UX hint.
 const COMPANION_ACCEPT = ".lrc,.ttml,.krc,.txt,image/*";
-const OPENYYY_ACCEPT = Array.from(OPENYYY_ENCRYPTED_EXTENSIONS, (ext) => `.${ext}`).join(",");
+const LOCAL_CONVERT_ACCEPT = Array.from(ENCRYPTED_AUDIO_EXTENSIONS, (ext) => `.${ext}`).join(",");
 const uploadAcceptMode = ref<"music" | "all">("music");
-const uploadAccept = computed(() => (uploadAcceptMode.value === "music" ? `audio/*,${COMPANION_ACCEPT},${OPENYYY_ACCEPT}` : undefined));
+const uploadAccept = computed(() => (uploadAcceptMode.value === "music" ? `audio/*,${COMPANION_ACCEPT},${LOCAL_CONVERT_ACCEPT}` : undefined));
 // Parse metadata on upload (default on). When off, the file lands in
 // R2/D1 with tag_scanned=0 and a manual scan picks it up later.
 const uploadParseMetadata = ref(true);
@@ -138,7 +151,6 @@ const activeUploadItems = computed(() => uploadQueue.value.filter((item) =>
 ));
 
 function uploadKindLabel(kind: UploadItem["kind"]) { return t(`files.uploadKinds.${kind}`); }
-function openOpenYYY() { window.open("https://openyyy.com", "_blank", "noopener,noreferrer"); }
 
 function clearSelection() {
   selectedFiles.value.clear();
@@ -257,12 +269,84 @@ function goCrumb(index: number) {
   loadDir();
 }
 
+function conversionErrorText(error: unknown) {
+  const code = error instanceof LocalFileConversionError ? error.code : "invalid_file";
+  const detail = error instanceof Error ? error.message : String(error);
+  return { code, detail, text: t(`files.localConvert.errors.${code}`) };
+}
+
+async function convertEncryptedQueue(items: LocalUploadItem[], generation: number) {
+  const targets = items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => item.kind === "encrypted");
+  if (!targets.length) return;
+  conversionBusy.value = true;
+  uploadErr.value = false;
+  uploadMsg.value = t("files.localConvert.convertingSummary", { current: 0, total: targets.length });
+  let converted = 0;
+  let failed = 0;
+  await mapConcurrent(targets, CONVERSION_CONCURRENCY, async ({ item }) => {
+    if (generation !== conversionGeneration) return;
+    item.conversion = { sourceName: item.file.name, status: "converting", progress: 1 };
+    try {
+      const sourceExtension = suffixOf(item.file.name);
+      const result = await convertEncryptedFile(item.file, sourceExtension, (progress) => {
+        if (generation === conversionGeneration && item.conversion) item.conversion.progress = progress;
+      });
+      if (generation !== conversionGeneration) return;
+      item.file = result.file;
+      item.kind = "audio";
+      item.selected = true;
+      item.conversion = { ...item.conversion, status: "converted", progress: 100, cipher: result.cipher };
+      converted++;
+    } catch (error) {
+      if (generation !== conversionGeneration) return;
+      const failure = conversionErrorText(error);
+      item.selected = false;
+      item.conversion = {
+        ...item.conversion,
+        status: "failed",
+        progress: 0,
+        error: `${failure.text}${failure.detail ? `: ${failure.detail}` : ""}`,
+        errorCode: failure.code,
+      };
+      failed++;
+    } finally {
+      if (generation === conversionGeneration) {
+        uploadMsg.value = t("files.localConvert.convertingSummary", { current: converted + failed, total: targets.length });
+      }
+    }
+  });
+  if (generation !== conversionGeneration) return;
+  normalizeAudioVariants(uploadQueue.value);
+  conversionBusy.value = false;
+  if (failed > 0) {
+    uploadErr.value = true;
+    uploadMsg.value = t("files.localConvert.partial", { converted, failed });
+    showToast(uploadMsg.value, "error");
+  } else {
+    uploadMsg.value = t("files.localConvert.done", { n: converted });
+    showToast(uploadMsg.value);
+  }
+}
+
 function onUploadFile(e: Event) {
   const target = e.target as HTMLInputElement;
-  if (target.files?.length) uploadQueue.value = classifyUploadItems(Array.from(target.files));
+  if (!target.files?.length) return;
+  conversionGeneration++;
+  uploadErr.value = false;
+  uploadMsg.value = "";
+  uploadQueue.value = classifyUploadItems(Array.from(target.files)).map((item) => (
+    item.kind === "encrypted"
+      ? { ...item, conversion: { sourceName: item.file.name, status: "pending", progress: 0 } }
+      : item
+  ));
+  uploadProgressList.value = uploadQueue.value.map(() => 0);
+  void convertEncryptedQueue(uploadQueue.value, conversionGeneration);
 }
 
 async function doUpload() {
+  if (conversionBusy.value) return;
   const queued = activeUploadItems.value;
   if (!queued.length) { uploadMsg.value = t("files.selectFileFirst"); uploadErr.value = true; return; }
   uploadBusy.value = true;
@@ -1239,20 +1323,20 @@ onBeforeUnmount(() => {
         <div class="form-group" style="flex:2">
           <label class="form-label">{{ t("files.file") }}</label>
           <div class="upload-file-row">
-            <input ref="uploadInput" type="file" multiple :accept="uploadAccept" class="form-input" @change="onUploadFile" />
+            <input ref="uploadInput" type="file" multiple :accept="uploadAccept" class="form-input" :disabled="uploadBusy || conversionBusy" @change="onUploadFile" />
             <select v-if="canSelectAllFiles" v-model="uploadAcceptMode" class="form-input upload-type-select" :aria-label="t('files.fileTypeFilter')">
               <option value="music">{{ t("files.fileTypeMusic") }}</option>
               <option value="all">{{ t("files.fileTypeAll") }}</option>
             </select>
           </div>
         </div>
-        <button class="btn-primary" :disabled="!activeUploadItems.length || uploadBusy" @click="doUpload">
-          {{ uploadBusy ? t("files.uploading") : t("files.uploadBtn") }}
+        <button class="btn-primary" :disabled="!activeUploadItems.length || uploadBusy || conversionBusy" @click="doUpload">
+          {{ conversionBusy ? t("files.localConvert.converting") : uploadBusy ? t("files.uploading") : t("files.uploadBtn") }}
         </button>
       </div>
       <div class="sync-upload-row">
         <input ref="syncUploadInput" type="file" multiple webkitdirectory :accept="uploadAccept" class="sync-upload-input" @change="onUploadFile" />
-        <button type="button" class="btn-secondary" :disabled="uploadBusy" @click="syncUploadInput?.click()">{{ t("files.syncUpload") }}</button>
+        <button type="button" class="btn-secondary" :disabled="uploadBusy || conversionBusy" @click="syncUploadInput?.click()">{{ t("files.syncUpload") }}</button>
         <span class="upload-options-hint">{{ t("files.syncUploadHint") }}</span>
       </div>
       <div class="upload-options-row">
@@ -1284,28 +1368,40 @@ onBeforeUnmount(() => {
         <label class="toggle"><input type="checkbox" v-model="includeVariants" /><span class="toggle-slider"></span></label>
         <span class="upload-options-label">{{ t("files.includeVariants") }}</span>
       </div>
-      <div class="openyyy-guide">
-        <div><strong>{{ t("files.openYYY.title") }}</strong> {{ t("files.openYYY.hint") }}</div>
-        <button type="button" class="btn-secondary" @click="openOpenYYY">{{ t("files.openYYY.open") }}</button>
+      <div class="local-convert-guide">
+        <div><strong>{{ t("files.localConvert.title") }}</strong> {{ t("files.localConvert.hint") }}</div>
+        <span class="local-convert-formats">{{ t("files.localConvert.formats") }}</span>
       </div>
       <!-- Upload queue list with per-file progress bars -->
       <div v-if="uploadQueue.length || uploadBusy" class="upload-queue">
         <div class="mono-label upload-queue-header">{{ t("files.uploadQueue") }}</div>
         <div v-for="(item, i) in uploadQueue" :key="i" class="upload-queue-item" :class="{ excluded: !activeUploadItems.includes(item) }">
-          <input v-model="item.selected" type="checkbox" class="upload-item-select" :disabled="item.kind === 'encrypted' || uploadBusy" :aria-label="t('files.uploadItemSelect', { name: item.file.name })" />
-          <span class="upload-queue-name">{{ item.file.name }}</span>
+          <input v-model="item.selected" type="checkbox" class="upload-item-select" :disabled="item.kind === 'encrypted' || uploadBusy || conversionBusy" :aria-label="t('files.uploadItemSelect', { name: item.file.name })" />
+          <span class="upload-queue-file">
+            <span class="upload-queue-name">
+              <template v-if="item.conversion?.status === 'converted'">{{ item.conversion.sourceName }} → {{ item.file.name }}</template>
+              <template v-else>{{ item.file.name }}</template>
+            </span>
+            <span v-if="item.conversion?.status === 'failed'" class="upload-conversion-error">{{ item.conversion.error }}</span>
+          </span>
           <span class="upload-kind">{{ uploadKindLabel(item.kind) }}</span>
           <span v-if="item.kind === 'lyrics' || item.kind === 'variant'" class="upload-pair">{{ item.stem }}</span>
           <div class="upload-queue-bar">
             <div
               class="upload-queue-fill"
-              :class="{ 'fill-error': uploadProgressList[i] === -1 }"
-              :style="{ width: Math.max(0, uploadProgressList[i] ?? 0) + '%' }"
+              :class="{ 'fill-error': uploadProgressList[i] === -1 || item.conversion?.status === 'failed' }"
+              :style="{ width: Math.max(0, item.conversion?.status === 'converting' ? item.conversion.progress : uploadProgressList[i] ?? 0) + '%' }"
             ></div>
           </div>
-          <span class="upload-queue-pct"><template v-if="item.kind === 'encrypted'">{{ t("files.convertFirst") }}</template><template v-else-if="uploadProgressList[i] === -1"><Icon name="cross" /></template><template v-else>{{ (uploadProgressList[i] ?? 0) + '%' }}</template></span>
+          <span class="upload-queue-pct" :title="item.conversion?.error">
+            <template v-if="item.conversion?.status === 'pending' || item.conversion?.status === 'converting'">{{ t("files.localConvert.convertingItem", { percent: item.conversion.progress }) }}</template>
+            <template v-else-if="item.conversion?.status === 'failed'">{{ t("files.localConvert.failed") }}</template>
+            <template v-else-if="item.conversion?.status === 'converted' && !uploadBusy">{{ t("files.localConvert.converted") }}</template>
+            <template v-else-if="uploadProgressList[i] === -1"><Icon name="cross" /></template>
+            <template v-else>{{ (uploadProgressList[i] ?? 0) + '%' }}</template>
+          </span>
         </div>
-        <div v-if="uploadBusy" class="upload-queue-overall">{{ uploadMsg }}</div>
+        <div v-if="uploadBusy || conversionBusy" class="upload-queue-overall">{{ uploadMsg }}</div>
       </div>
       <p v-if="uploadMsg && !uploadBusy" :class="['upload-msg', { error: uploadErr }]">{{ uploadMsg }}</p>
       <div class="corner corner-tl"></div>
@@ -1860,11 +1956,12 @@ onBeforeUnmount(() => {
 .upload-file-row { display: flex; gap: 0.5rem; align-items: center; }
 .upload-file-row .form-input { flex: 1; min-width: 0; }
 .upload-type-select { width: auto; flex: 0 0 auto; }
-.sync-upload-row, .sync-options-row, .openyyy-guide { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.65rem; flex-wrap: wrap; }
+.sync-upload-row, .sync-options-row, .local-convert-guide { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.65rem; flex-wrap: wrap; }
 .sync-upload-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .sync-options-row { padding: 0.55rem 0; border-top: 1px solid var(--color-border-subtle); }
-.openyyy-guide { padding: 0.6rem 0.75rem; border: 1px solid var(--color-border-subtle); background: var(--color-bg-primary); font-size: var(--fs-xs); color: var(--color-text-muted); }
-.openyyy-guide strong { color: var(--color-text-secondary); }
+.local-convert-guide { justify-content: space-between; padding: 0.6rem 0.75rem; border: 1px solid var(--color-accent-primary); background: var(--color-accent-dim); font-size: var(--fs-xs); color: var(--color-text-muted); }
+.local-convert-guide strong { color: var(--color-accent-primary); }
+.local-convert-formats { font-family: var(--font-mono); color: var(--color-text-secondary); }
 .upload-dest {
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
@@ -1924,7 +2021,9 @@ onBeforeUnmount(() => {
 .upload-queue-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.2rem 0; font-family: var(--font-mono); font-size: var(--fs-sm); }
 .upload-queue-item.excluded { opacity: 0.55; }
 .upload-item-select { flex-shrink: 0; accent-color: var(--color-accent-primary); }
-.upload-queue-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); }
+.upload-queue-file { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.upload-queue-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); }
+.upload-conversion-error { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-status-error); font-size: var(--fs-xs); }
 .upload-kind, .upload-pair { flex-shrink: 0; font-size: var(--fs-xs); color: var(--color-text-muted); }
 .upload-kind { border: 1px solid var(--color-border-subtle); padding: 0.1rem 0.3rem; }
 .upload-pair { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
