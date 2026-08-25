@@ -777,7 +777,9 @@ async function onEditorSubmit(patch: Record<string, string | number>, cover?: { 
         editErr.value = true;
         editMsg.value = res.error || t("tagEditor.batchFailed");
       } else {
-        editMsg.value = t("tagEditor.batchSaved", { succeeded: res.succeeded ?? 0, failed: res.failed ?? 0 });
+        const fileFailures = (res.results || []).flatMap((r) => (r.files || []).filter((f) => !f.written).map((f) => f.reason || "write skipped"));
+        editMsg.value = t("tagEditor.batchSaved", { succeeded: res.succeeded ?? 0, failed: (res.failed ?? 0) + fileFailures.length })
+          + (fileFailures.length ? ` (${fileFailures.slice(0, 3).join("; ")})` : "");
         // optimistic local update for batched fields
         for (const target of editTargets.value) {
           if (typeof patch.title === "string") target.title = patch.title;

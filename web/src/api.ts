@@ -604,7 +604,7 @@ export function useAuth() {
     return attrs;
   }
 
-  interface WriteTagsResult { ok: boolean; error?: string; files?: Array<{ instanceId: string; uri: string; written: boolean; reason?: string }>; masterId?: string; }
+  interface WriteTagsResult { ok: boolean; error?: string; files?: Array<{ instanceId: string; uri: string; written: boolean; reason?: string; sidecar?: string }>; masterId?: string; }
   // `cover.data` is the raw base64 string (no data: prefix); the worker accepts
   // either form. We ship ≤500KB JPEG/PNG produced by the canvas compressor
   // in TagEditor.vue.
@@ -618,7 +618,7 @@ export function useAuth() {
     return JSON.parse(await tagPost("write", body));
   }
 
-  interface BatchWriteResult { ok: boolean; error?: string; succeeded?: number; failed?: number; results?: Array<{ id: string; ok: boolean; error?: string; masterId?: string }>; }
+  interface BatchWriteResult { ok: boolean; error?: string; succeeded?: number; failed?: number; results?: Array<{ id: string; ok: boolean; error?: string; masterId?: string; files?: Array<{ instanceId: string; uri: string; written: boolean; reason?: string; sidecar?: string }> }>; }
   async function batchWriteTags(
     ids: string[],
     patch: Record<string, string | number>,
