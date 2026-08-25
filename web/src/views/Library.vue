@@ -1686,6 +1686,9 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         <ScrapeButton
           :initial-query="scrapeQueryFromForm(form)"
           :song-master-id="editTargets[0]?.id || ''"
+          :current-title="form.title"
+          :current-artist="form.artist"
+          :current-album="form.album"
           @apply="(r: ScrapeResult) => applyScrapeResult(form, apply, r, applyCoverUrl)"
         />
       </template>

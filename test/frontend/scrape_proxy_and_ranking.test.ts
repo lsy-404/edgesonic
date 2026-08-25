@@ -41,6 +41,15 @@ void (async () => {
     });
     assert(started.includes("netease") && started.includes("qmusic"), "searchAll fans out every enabled source");
     assert(ranked.results[0]?.title === "Target", "searchAll ranks the global result set by match quality");
+    const albumRanked = await searchAll({
+      query: "Target Artist",
+      current: { title: "Target", artist: "Artist", album: "Target Album" },
+      sources: ["netease", "qmusic"],
+      proxyFetch: async (request) => request.source === "netease"
+        ? { ok: true, data: { result: { songs: [{ id: 5, name: "Target", artists: [{ name: "Artist" }], album: { name: "Wrong Album" } }] } } }
+        : { ok: true, data: { data: { song: { list: [{ songmid: "album-mid", songname: "Target", singer: [{ name: "Artist" }], albumname: "Target Album" }] } } } },
+    });
+    assert(albumRanked.results[0]?.album === "Target Album", "current album breaks cross-source ties by field match rather than provider order");
   } catch (error) { failures++; console.error(`  FAIL scrape proxy behavior: ${error instanceof Error ? error.message : String(error)}`); }
   finally { globalThis.fetch = originalFetch; if (failures) process.exitCode = 1; }
 })();

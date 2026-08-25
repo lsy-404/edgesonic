@@ -24,10 +24,13 @@ const props = withDefaults(
     initialQuery?: string;
     /** Song master id — if present, submitResult will tag the audit row. */
     songMasterId?: string;
+    currentTitle?: string;
+    currentArtist?: string;
+    currentAlbum?: string;
     /** Compact mode hides the help text (good for narrow modals). */
     compact?: boolean;
   }>(),
-  { initialQuery: "", songMasterId: "", compact: false }
+  { initialQuery: "", songMasterId: "", currentTitle: "", currentArtist: "", currentAlbum: "", compact: false }
 );
 
 const emit = defineEmits<{
@@ -105,6 +108,7 @@ async function runSearch() {
       query: q,
       sources: enabledSources.value,
       proxyFetch: proxy,
+      current: { title: props.currentTitle, artist: props.currentArtist, album: props.currentAlbum },
     });
     results.value = resp.results;
     errors.value = resp.errors;

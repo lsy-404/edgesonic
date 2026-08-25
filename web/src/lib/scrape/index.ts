@@ -84,22 +84,25 @@ export async function searchAll(opts: SearchOpts): Promise<SearchResponse> {
     if (item.status === "fulfilled") results.push(...item.value.rows);
     else errors.push({ source, error: item.reason instanceof Error ? item.reason.message : String(item.reason) });
   });
-  const queryFields = [opts.query, opts.current?.title, opts.current?.artist, opts.current?.album].filter((value): value is string => Boolean(value)).map(normalise);
-  return { results: results.map((row, index) => ({ row, index, score: matchScore(row, queryFields) })).sort((a, b) => b.score - a.score || a.index - b.index).map((entry) => entry.row), errors };
+  return { results: results.map((row, index) => ({ row, index, score: matchScore(row, opts.query, opts.current) })).sort((a, b) => b.score - a.score || a.index - b.index).map((entry) => entry.row), errors };
 }
 
 function normalise(value: string): string { return value.toLocaleLowerCase().replace(/[\s\p{P}\p{S}_]+/gu, " ").trim(); }
-function matchScore(row: ScrapeResult, fields: string[]): number {
+function fieldScore(actual: string, expected: string | undefined, exact: number, contains: number): number {
+  const wanted = normalise(expected || "");
+  if (!wanted) return 0;
+  if (actual === wanted) return exact;
+  return actual.includes(wanted) || wanted.includes(actual) ? contains : 0;
+}
+function matchScore(row: ScrapeResult, query: string, current?: SearchOpts["current"]): number {
   const title = normalise(row.title); const artist = normalise(row.artist); const album = normalise(row.album || "");
   const haystack = `${title} ${artist} ${album}`;
-  let score = 0;
-  for (const field of fields) {
-    if (!field) continue;
-    if (title === field) score += 100;
-    else if (title.includes(field)) score += 60;
-    else if (haystack.includes(field)) score += 25;
-    for (const token of field.split(" ").filter(Boolean)) if (haystack.includes(token)) score += 3;
-  }
+  const wanted = normalise(query);
+  let score = (`${title} ${artist}` === wanted || `${artist} ${title}` === wanted) ? 180 : (wanted && haystack.includes(wanted) ? 80 : 0);
+  for (const token of wanted.split(" ").filter(Boolean)) if (haystack.includes(token)) score += 4;
+  score += fieldScore(title, current?.title, 120, 60);
+  score += fieldScore(artist, current?.artist, 100, 50);
+  score += fieldScore(album, current?.album, 80, 40);
   return score;
 }
 

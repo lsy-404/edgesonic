@@ -1658,6 +1658,9 @@ onBeforeUnmount(() => {
         <ScrapeButton
           :initial-query="scrapeQueryFromForm(form)"
           :song-master-id="editTargetId || ''"
+          :current-title="form.title"
+          :current-artist="form.artist"
+          :current-album="form.album"
           @apply="(r: ScrapeResult) => applyScrapeResult(form, apply, r, applyCoverUrl)"
         />
       </template>
