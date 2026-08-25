@@ -47,8 +47,8 @@ interface KugouLyricResp {
 export async function search(query: string, proxyFetch: ProxyFn): Promise<ScrapeResult[]> {
   const upstream = await tryDirectThenProxy<KugouSearchResp>(
     "search",
-    () => directSearch(query),
     () => proxyFetch({ source: SOURCE, intent: "search", query }),
+    () => directSearch(query),
   );
   return (upstream.data?.lists || []).map((s) => normalise(s));
 }
@@ -87,16 +87,10 @@ function normalise(s: NonNullable<NonNullable<KugouSearchResp["data"]>["lists"]>
 
 async function tryDirectThenProxy<T>(
   label: string,
-  direct: () => Promise<T>,
-  viaProxy: () => Promise<unknown>,
+  proxyRequest: () => Promise<unknown>,
+  directFallback: () => Promise<T>,
 ): Promise<T> {
-  try {
-    return await direct();
-  } catch (e) {
-    const proxied = (await viaProxy()) as { ok: boolean; data?: T; error?: string };
-    if (!proxied?.ok) {
-      throw new Error(`kugou ${label}: ${(proxied?.error || (e as Error).message || "unknown")}`);
-    }
-    return proxied.data as T;
-  }
+  let proxyError = "unknown";
+  try { const proxied = await proxyRequest() as { ok?: boolean; data?: T; error?: string }; if (proxied?.ok && proxied.data != null) return proxied.data; proxyError = proxied?.error || "invalid proxy response"; } catch (e) { proxyError = e instanceof Error ? e.message : String(e); }
+  try { return await directFallback(); } catch (e) { throw new Error(`kugou ${label}: ${proxyError}; direct fallback: ${e instanceof Error ? e.message : String(e)}`); }
 }

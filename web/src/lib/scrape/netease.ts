@@ -15,31 +15,40 @@
 
 // NetEase Music scrape adapter.
 //
-// API docs: https://music.163.com/api/search/get/web (POST form-urlencoded)
+// API docs: https://music.163.com/api/search/get (POST form-urlencoded)
 //
-// CORS reality check: music.163.com refuses cross-origin browser fetches
-// (Referer + CORS). We try direct first (in case a user mirrors the site or
-// runs behind a CORS-relaxing proxy), then fall back to /rest/scrapeMetadata
-// which routes through the Worker.
+// CORS reality check: music.163.com refuses cross-origin browser fetches.
+// The authenticated Worker proxy is therefore the primary transport. Direct
+// browser requests are retained only as an explicit resilience fallback.
 //
 // Both paths return the same upstream JSON shape; only the transport differs.
 
 import type { ScrapeResult } from "./types";
 
 const SOURCE = "netease" as const;
-const DIRECT_SEARCH = "https://music.163.com/api/search/get/web";
+const DIRECT_SEARCH = "https://music.163.com/api/search/get";
 const DIRECT_LYRIC = "https://music.163.com/api/song/lyric";
+const DIRECT_DETAIL = "https://music.163.com/api/song/detail";
+
+interface NetEaseSong {
+  id: number;
+  name: string;
+  artists?: Array<{ name?: string }>;
+  album?: {
+    name?: string;
+    picUrl?: string;
+    publishTime?: number;
+    artists?: Array<{ name?: string }>;
+  };
+}
 
 interface NetEaseSearchResp {
   result?: {
-    songs?: Array<{
-      id: number;
-      name: string;
-      artists?: Array<{ name?: string }>;
-      album?: { name?: string; picUrl?: string; publishTime?: number };
-    }>;
+    songs?: NetEaseSong[];
   };
 }
+
+interface NetEaseDetailResp { songs?: NetEaseSong[] }
 
 interface NetEaseLyricResp {
   lrc?: { lyric?: string };
@@ -47,22 +56,20 @@ interface NetEaseLyricResp {
 
 /** Search NetEase by free-text query. Tries direct → proxy. */
 export async function search(query: string, proxyFetch: ProxyFn): Promise<ScrapeResult[]> {
-  const upstream = await tryDirectThenProxy<NetEaseSearchResp>(
-    "search",
-    () => directSearch(query),
-    () => proxyFetch({ source: SOURCE, intent: "search", query }),
-  );
+  const upstream = await proxyFirst<NetEaseSearchResp>("search", () => proxyFetch({ source: SOURCE, intent: "search", query }), () => directSearch(query));
   return (upstream.result?.songs || []).map((s) => normalise(s));
 }
 
 /** Fetch inline lyrics by songId. NetEase returns LRC text. */
 export async function fetchLyric(songId: string, proxyFetch: ProxyFn): Promise<string> {
-  const upstream = await tryDirectThenProxy<NetEaseLyricResp>(
-    "lyric",
-    () => directLyric(songId),
-    () => proxyFetch({ source: SOURCE, intent: "lyric", songId }),
-  );
+  const upstream = await proxyFirst<NetEaseLyricResp>("lyric", () => proxyFetch({ source: SOURCE, intent: "lyric", songId }), () => directLyric(songId));
   return upstream.lrc?.lyric || "";
+}
+
+export async function resolve(result: ScrapeResult, proxyFetch: ProxyFn): Promise<ScrapeResult> {
+  const upstream = await proxyFirst<NetEaseDetailResp>("detail", () => proxyFetch({ source: SOURCE, intent: "detail", songId: result.songId }), () => directDetail(result.songId));
+  const song = upstream.songs?.[0];
+  return song ? { ...result, ...normalise(song), raw: song } : result;
 }
 
 // ===========================================================================
@@ -86,10 +93,17 @@ async function directLyric(songId: string): Promise<NetEaseLyricResp> {
   return resp.json();
 }
 
+async function directDetail(songId: string): Promise<NetEaseDetailResp> {
+  const url = `${DIRECT_DETAIL}?ids=${encodeURIComponent(`[${songId}]`)}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
 // ===========================================================================
 // Normaliser — turns upstream payload into ScrapeResult.
 // ===========================================================================
-function normalise(s: NonNullable<NonNullable<NetEaseSearchResp["result"]>["songs"]>[number]): ScrapeResult {
+function normalise(s: NetEaseSong): ScrapeResult {
   const year =
     s.album?.publishTime && s.album.publishTime > 0
       ? new Date(s.album.publishTime).getUTCFullYear()
@@ -99,6 +113,7 @@ function normalise(s: NonNullable<NonNullable<NetEaseSearchResp["result"]>["song
     songId: String(s.id),
     title: s.name || "",
     artist: (s.artists || []).map((a) => a.name).filter(Boolean).join(", ") || "",
+    albumArtist: (s.album?.artists || []).map((a) => a.name).filter(Boolean).join(", ") || undefined,
     album: s.album?.name || undefined,
     year,
     coverUrl: s.album?.picUrl || undefined,
@@ -116,20 +131,32 @@ export type ProxyFn = (req: {
   songId?: string;
 }) => Promise<unknown>;
 
-async function tryDirectThenProxy<T>(
+async function proxyFirst<T>(
   label: string,
-  direct: () => Promise<T>,
-  viaProxy: () => Promise<unknown>,
+  proxyRequest: () => Promise<unknown>,
+  directFallback: () => Promise<T>,
 ): Promise<T> {
+  let proxyError = "unknown";
   try {
-    return await direct();
-  } catch (e) {
-    // Direct path failed (CORS, network, 4xx) — fall back to Worker proxy.
-    // The proxy returns { ok: true, data: <upstream> }, see worker scrape.ts.
-    const proxied = (await viaProxy()) as { ok: boolean; data?: T; error?: string };
-    if (!proxied?.ok) {
-      throw new Error(`netease ${label}: ${(proxied?.error || (e as Error).message || "unknown")}`);
-    }
-    return proxied.data as T;
+    const proxied = (await proxyRequest()) as { ok?: boolean; data?: T; error?: string };
+    if (proxied?.ok && proxied.data != null) return unwrapNetEase(proxied.data);
+    proxyError = proxied?.error || "invalid proxy response";
+  } catch (e) { proxyError = e instanceof Error ? e.message : String(e); }
+  try { return await directFallback(); } catch (e) {
+    throw new Error(`netease ${label}: ${proxyError}; direct fallback: ${e instanceof Error ? e.message : String(e)}`);
   }
+}
+
+/** Accept both the canonical API shape and wrappers emitted by mirrors. */
+function unwrapNetEase<T>(value: T): T {
+  const candidate = value as NetEaseSearchResp & { data?: unknown; body?: unknown };
+  if (!candidate.result && candidate.data && typeof candidate.data === "object") {
+    const data = candidate.data as NetEaseSearchResp;
+    if (data.result) return data as T;
+  }
+  if (!candidate.result && candidate.body && typeof candidate.body === "object") {
+    const body = candidate.body as NetEaseSearchResp;
+    if (body.result) return body as T;
+  }
+  return value;
 }

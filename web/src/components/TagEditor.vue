@@ -79,6 +79,8 @@ function onExistingCoverError() {
 
 const coverKeyword = ref<"" | typeof KW_WRITE | typeof KW_EXPORT>("");
 const coverSource = ref<"" | "picked" | "write">("");
+const lyricKeyword = ref<"" | typeof KW_NULL | typeof KW_WRITE | typeof KW_EXPORT>("");
+const lyricBeforeKeyword = ref("");
 
 function resetFromProps() {
   const i = props.initialTags || {};
@@ -103,6 +105,8 @@ function resetFromProps() {
   coverError.value = "";
   coverKeyword.value = "";
   coverSource.value = "";
+  lyricKeyword.value = "";
+  lyricBeforeKeyword.value = "";
   existingCoverBroken.value = false;
 }
 
@@ -135,7 +139,9 @@ function buildPatch(): Record<string, string | number> {
   if (wantField("album", form.album)) patch.album = form.album.trim();
   if (wantField("albumArtist", form.albumArtist)) patch.albumArtist = form.albumArtist.trim();
   if (wantField("genre", form.genre)) patch.genre = form.genre.trim();
-  if (wantField("lyrics", form.lyrics)) patch.lyrics = form.lyrics.trim();
+  if (lyricKeyword.value) {
+    if (!isBatch.value || apply.lyrics) patch.lyrics = lyricKeyword.value;
+  } else if (wantField("lyrics", form.lyrics)) patch.lyrics = form.lyrics.trim();
   if (!isKeyword(form.year.trim())) {
     if (wantField("year", form.year)) {
       const n = parseInt(form.year, 10);
@@ -173,6 +179,24 @@ function onSubmit() {
     cover = { data: coverData.value, mime: coverMime.value };
   }
   emit("submit", patch, cover);
+}
+
+function chooseLyricKeyword(keyword: typeof KW_NULL | typeof KW_WRITE | typeof KW_EXPORT) {
+  if (lyricKeyword.value === keyword) {
+    lyricKeyword.value = "";
+    form.lyrics = lyricBeforeKeyword.value;
+    return;
+  }
+  if (!lyricKeyword.value) lyricBeforeKeyword.value = form.lyrics;
+  lyricKeyword.value = keyword;
+  if (lyricKeyword.value) {
+    form.lyrics = keyword;
+    if (isBatch.value) apply.lyrics = true;
+  }
+}
+
+function onLyricsInput() {
+  if (lyricKeyword.value) lyricKeyword.value = "";
 }
 
 function onClose() {
@@ -268,6 +292,23 @@ async function handleCoverFile(file: File | Blob, source: "picked" | "write" = "
     });
   } catch (e) {
     coverError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    coverBusy.value = false;
+  }
+}
+
+async function applyCoverUrl(url: string): Promise<void> {
+  coverError.value = "";
+  coverBusy.value = true;
+  try {
+    const response = await fetch(url, { mode: "cors" });
+    if (!response.ok) throw new Error(`Cover download HTTP ${response.status}`);
+    const blob = await response.blob();
+    await handleCoverFile(blob, "picked");
+    if (coverError.value) throw new Error(coverError.value);
+  } catch (error) {
+    coverError.value = error instanceof Error ? error.message : String(error);
+    throw error;
   } finally {
     coverBusy.value = false;
   }
@@ -483,7 +524,12 @@ function blobToBase64(blob: Blob): Promise<string> {
           <input v-if="isBatch" type="checkbox" v-model="apply.lyrics" class="apply-check" :title="t('tagEditor.applyField')" />
           <div class="form-group" style="flex:1">
             <label class="form-label">{{ t("tagEditor.fieldLyrics") }}</label>
-            <textarea v-model="form.lyrics" class="form-textarea lyrics-input" rows="3" :disabled="isBatch && !apply.lyrics"></textarea>
+            <textarea v-model="form.lyrics" @input="onLyricsInput" class="form-textarea lyrics-input" rows="3" :disabled="isBatch && !apply.lyrics"></textarea>
+            <div class="lyrics-keyword-row">
+              <button v-for="keyword in [KW_NULL, KW_WRITE, KW_EXPORT]" :key="keyword" type="button"
+                class="cover-kw-btn" :class="{ active: lyricKeyword === keyword }"
+                @click="chooseLyricKeyword(keyword)">{{ keyword }}</button>
+            </div>
             <p class="keyword-hint mono-label" v-html="t('tagEditor.lyricsKeywords')"></p>
           </div>
         </div>
@@ -492,13 +538,13 @@ function blobToBase64(blob: Blob): Promise<string> {
       <p class="field-hint">{{ isBatch ? t("tagEditor.hintBatch") : t("tagEditor.hintSingle") }}</p>
 
       <!-- extras slot — scrape buttons are injected here -->
-      <slot name="extras" :patch-preview="patchPreview" :form="form" :apply="apply"></slot>
+      <slot name="extras" :patch-preview="patchPreview" :form="form" :apply="apply" :apply-cover-url="applyCoverUrl"></slot>
 
       <p v-if="message" :class="['te-msg', { error: error }]">{{ message }}</p>
 
       <div class="modal-actions">
         <button class="btn-secondary" @click="onClose">{{ t("common.cancel") }}</button>
-        <button class="btn-primary" :disabled="busy || (patchPreview.length === 0 && !hasCover)" @click="onSubmit">
+        <button class="btn-primary" :disabled="busy || coverBusy || (patchPreview.length === 0 && !hasCover)" @click="onSubmit">
           {{ busy ? t("common.loading") : (isBatch ? t("tagEditor.applyBatch", { n: patchPreview.length + (hasCover ? 1 : 0) }) : t("common.save")) }}
         </button>
       </div>
@@ -582,6 +628,7 @@ function blobToBase64(blob: Blob): Promise<string> {
   text-transform: lowercase;
 }
 .lyrics-input { font-family: var(--font-mono); resize: vertical; min-height: 60px; }
+.lyrics-keyword-row { display: flex; gap: 6px; margin-top: 6px; }
 .field-hint {
   display: block;
   margin: 0.6rem 0 0;

@@ -1,11 +1,12 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue";
 import type { CSSProperties } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatSize } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
+import { classifyUploadItems, isUploadIncluded, OPENYYY_ENCRYPTED_EXTENSIONS, suffixOf, uploadPathFor, type UploadItem } from "../lib/uploadQueue";
 import { normalizeForMatch } from "../lib/trackMatch";
 import TagEditor from "../components/TagEditor.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
@@ -27,16 +28,24 @@ const path = ref("music");
 const dirs = ref<DirEntry[]>([]);
 const files = ref<FileEntry[]>([]);
 const loading = ref(false);
+type FileSortKey = "name" | "size" | "type";
+const fileSortKey = ref<FileSortKey>("name");
+const fileSortDirection = ref<"asc" | "desc">("asc");
+const foldersFirst = ref(true);
 
 const showUpload = ref(false);
 const uploadInput = ref<HTMLInputElement | null>(null);
-const uploadQueue = ref<File[]>([]);
+const syncUploadInput = ref<HTMLInputElement | null>(null);
+const uploadQueue = ref<UploadItem<File>[]>([]);
 const uploadProgressList = ref<number[]>([]); // 0-100 per file; -1 = failed
 const uploadDoneCount = ref(0);
 const uploadFailedNames = ref<string[]>([]);
 const uploadBusy = ref(false);
 const uploadMsg = ref("");
 const uploadErr = ref(false);
+const includeLyrics = ref(true);
+const includeVariants = ref(true);
+const UPLOAD_CONCURRENCY = 3;
 
 interface CrossCopyItem { file: FileEntry; status: "pending" | "copying" | "done" | "failed"; error?: string; }
 const crossCopyModal = ref<{ files: FileEntry[] } | null>(null);
@@ -89,8 +98,9 @@ const demoMode = useDemoMode();
 // any file can be selected. The backend still validates the suffix
 // regardless, so this is purely a UX hint.
 const COMPANION_ACCEPT = ".lrc,.ttml,.krc,.txt,image/*";
+const OPENYYY_ACCEPT = Array.from(OPENYYY_ENCRYPTED_EXTENSIONS, (ext) => `.${ext}`).join(",");
 const uploadAcceptMode = ref<"music" | "all">("music");
-const uploadAccept = computed(() => (uploadAcceptMode.value === "music" ? `audio/*,${COMPANION_ACCEPT}` : undefined));
+const uploadAccept = computed(() => (uploadAcceptMode.value === "music" ? `audio/*,${COMPANION_ACCEPT},${OPENYYY_ACCEPT}` : undefined));
 // Parse metadata on upload (default on). When off, the file lands in
 // R2/D1 with tag_scanned=0 and a manual scan picks it up later.
 const uploadParseMetadata = ref(true);
@@ -123,6 +133,12 @@ const selectedFileEntries = computed(() => files.value.filter((f) => selectedFil
 const selectedTotal = computed(() => selectedDirEntries.value.length + selectedFileEntries.value.length);
 const hasDirSelection = computed(() => selectedDirEntries.value.length > 0);
 const allSelected = computed(() => selectedTotal.value > 0 && selectedTotal.value === dirs.value.length + files.value.length);
+const activeUploadItems = computed(() => uploadQueue.value.filter((item) =>
+  isUploadIncluded(item, { includeLyrics: includeLyrics.value, includeVariants: includeVariants.value }),
+));
+
+function uploadKindLabel(kind: UploadItem["kind"]) { return t(`files.uploadKinds.${kind}`); }
+function openOpenYYY() { window.open("https://openyyy.com", "_blank", "noopener,noreferrer"); }
 
 function clearSelection() {
   selectedFiles.value.clear();
@@ -178,8 +194,9 @@ async function loadDir() {
     const text = await storageFetch("files/list", { source: currentSource.value, path: path.value });
     const data = JSON.parse(text);
     if (data.ok !== true) throw new Error(data.error || "list failed");
-    dirs.value = (data.dirs || []).slice().sort((a: DirEntry, b: DirEntry) => a.name.localeCompare(b.name));
-    files.value = (data.files || []).slice().sort((a: FileEntry, b: FileEntry) => a.name.localeCompare(b.name));
+    dirs.value = (data.dirs || []).slice();
+    files.value = (data.files || []).slice();
+    applyFileSort();
   } catch {
     dirs.value = [];
     files.value = [];
@@ -188,6 +205,19 @@ async function loadDir() {
     loading.value = false;
   }
 }
+
+function compareEntries(a: FileEntry, b: FileEntry) {
+  let result: number;
+  if (fileSortKey.value === "size") result = a.size - b.size;
+  else if (fileSortKey.value === "type") result = suffixOf(a.name).localeCompare(suffixOf(b.name)) || a.name.localeCompare(b.name);
+  else result = a.name.localeCompare(b.name);
+  return fileSortDirection.value === "asc" ? result : -result;
+}
+function applyFileSort() {
+  dirs.value = dirs.value.slice().sort((a, b) => fileSortDirection.value === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+  files.value = files.value.slice().sort(compareEntries);
+}
+watch([fileSortKey, fileSortDirection, foldersFirst], applyFileSort);
 
 function selectSource(id: string) {
   currentSource.value = id;
@@ -229,37 +259,38 @@ function goCrumb(index: number) {
 
 function onUploadFile(e: Event) {
   const target = e.target as HTMLInputElement;
-  if (target.files?.length) uploadQueue.value = Array.from(target.files);
+  if (target.files?.length) uploadQueue.value = classifyUploadItems(Array.from(target.files));
 }
 
 async function doUpload() {
-  if (!uploadQueue.value.length) { uploadMsg.value = t("files.selectFileFirst"); uploadErr.value = true; return; }
+  const queued = activeUploadItems.value;
+  if (!queued.length) { uploadMsg.value = t("files.selectFileFirst"); uploadErr.value = true; return; }
   uploadBusy.value = true;
   uploadErr.value = false;
   uploadDoneCount.value = 0;
   uploadFailedNames.value = [];
   uploadProgressList.value = uploadQueue.value.map(() => 0);
-  const total = uploadQueue.value.length;
+  const total = queued.length;
   // uploads push real bytes through this browser; pause the
   // background metadata pool for the duration so it doesn't compete for
   // bandwidth.
   try {
-    for (let i = 0; i < total; i++) {
-      const file = uploadQueue.value[i];
-      uploadMsg.value = t("files.uploadingFile", { current: i + 1, total });
+    await mapConcurrent(queued.map((item) => ({ item, index: uploadQueue.value.indexOf(item) })), UPLOAD_CONCURRENCY, async ({ item, index }) => {
+      const file = item.file;
+      uploadMsg.value = t("files.uploadingFile", { current: uploadDoneCount.value + uploadFailedNames.value.length + 1, total });
       try {
-        const raw = await uploadFile(file, uploadTarget.value, path.value || undefined, {
-          profiles: preTranscodeProfiles.value.length ? preTranscodeProfiles.value : undefined,
+        const raw = await uploadFile(file, uploadTarget.value, uploadPathFor(path.value, item), {
+          profiles: item.kind === "audio" || item.kind === "variant" ? preTranscodeProfiles.value : undefined,
           onProgress: (loaded, size) => {
-            uploadProgressList.value[i] = size > 0 ? Math.round((loaded / size) * 100) : 0;
+            uploadProgressList.value[index] = size > 0 ? Math.round((loaded / size) * 100) : 0;
           },
         });
-        uploadProgressList.value[i] = 100;
+        uploadProgressList.value[index] = 100;
         uploadDoneCount.value++;
         // When "parse metadata on upload" is on, parse the file's
         // tags in-browser and submit them so the song relinks to the right
         // album/artist immediately, no worker-pool round-trip needed.
-        if (uploadParseMetadata.value) {
+        if (uploadParseMetadata.value && (item.kind === "audio" || item.kind === "variant")) {
           try {
             const resp = JSON.parse(raw) as { id?: string };
             if (resp.id) {
@@ -273,14 +304,14 @@ async function doUpload() {
           }
         }
       } catch (e) {
-        uploadProgressList.value[i] = -1;
+        uploadProgressList.value[index] = -1;
         uploadFailedNames.value.push(file.name);
         // Surface the backend's error message (e.g. demo upload cap, R2
         // storage limit) so the user knows why this specific file failed.
         const reason = e instanceof Error ? e.message : String(e);
         showToast(`${t("files.uploadFailed")}: ${reason}`, "error");
       }
-    }
+    });
     if (uploadFailedNames.value.length === 0) {
       showToast(t("files.uploadDone", { n: total }));
       uploadMsg.value = "";
@@ -295,6 +326,7 @@ async function doUpload() {
     uploadQueue.value = [];
     uploadProgressList.value = [];
     if (uploadInput.value) uploadInput.value.value = "";
+    if (syncUploadInput.value) syncUploadInput.value.value = "";
   }
 }
 
@@ -842,11 +874,15 @@ function scrapeQueryFromForm(form: Record<string, string>): string {
   return [init.title, init.artist].filter(Boolean).join(" ");
 }
 
-function applyScrapeResult(
+async function applyScrapeResult(
   form: Record<string, string>,
   applyFlags: Record<string, boolean>,
   r: ScrapeResult,
+  applyCoverUrl: (url: string) => Promise<void>,
 ) {
+  if (r.coverUrl) {
+    try { await applyCoverUrl(r.coverUrl); } catch { /* TagEditor keeps coverError visible; continue with metadata. */ }
+  }
   if (r.title) form.title = r.title;
   if (r.artist) form.artist = r.artist;
   if (r.albumArtist) form.albumArtist = r.albumArtist;
@@ -944,9 +980,15 @@ async function onTagEditorSubmit(patch: Record<string, string | number>, cover?:
         editErr.value = true;
         editMsg.value = res.error || t("tagEditor.batchFailed");
       } else {
-        editMsg.value = t("tagEditor.batchSaved", { succeeded: res.succeeded ?? 0, failed: res.failed ?? 0 });
-        clearSelection();
-        setTimeout(() => { editorOpen.value = false; }, 1500);
+        const fileFailures = (res.results || []).flatMap((r) => (r.files || []).filter((f) => !f.written).map((f) => f.reason || "write skipped"));
+        const totalFailures = (res.failed ?? 0) + fileFailures.length;
+        editErr.value = totalFailures > 0;
+        editMsg.value = t("tagEditor.batchSaved", { succeeded: res.succeeded ?? 0, failed: totalFailures })
+          + (fileFailures.length ? ` (${fileFailures.slice(0, 3).join("; ")})` : "");
+        if (!totalFailures) {
+          clearSelection();
+          setTimeout(() => { editorOpen.value = false; }, 1500);
+        }
       }
     } else {
       if (!editTargetId.value) return;
@@ -956,9 +998,13 @@ async function onTagEditorSubmit(patch: Record<string, string | number>, cover?:
         editMsg.value = res.error || t("library.editFailed");
       } else {
         const written = (res.files || []).filter((x) => x.written).length;
-        editMsg.value = t("library.editSaved", { written, total: (res.files || []).length });
-        // brief delay so the user reads it, then close
-        setTimeout(() => { editorOpen.value = false; }, 1200);
+        const failures = (res.files || []).filter((x) => !x.written);
+        editErr.value = failures.length > 0;
+        editMsg.value = t("library.editSaved", { written, total: (res.files || []).length })
+          + (failures.length ? ` (${failures.map((x) => x.reason || "write skipped").slice(0, 3).join("; ")})` : "");
+        // Keep the editor open when any source could not be written so the
+        // user can inspect the reason and retry; successful edits close.
+        if (!failures.length) setTimeout(() => { editorOpen.value = false; }, 1200);
       }
     }
   } catch {
@@ -1200,7 +1246,14 @@ onBeforeUnmount(() => {
             </select>
           </div>
         </div>
-        <button class="btn-primary" :disabled="!uploadQueue.length || uploadBusy" @click="doUpload">{{ t("files.uploadBtn") }}</button>
+        <button class="btn-primary" :disabled="!activeUploadItems.length || uploadBusy" @click="doUpload">
+          {{ uploadBusy ? t("files.uploading") : t("files.uploadBtn") }}
+        </button>
+      </div>
+      <div class="sync-upload-row">
+        <input ref="syncUploadInput" type="file" multiple webkitdirectory :accept="uploadAccept" class="sync-upload-input" @change="onUploadFile" />
+        <button type="button" class="btn-secondary" :disabled="uploadBusy" @click="syncUploadInput?.click()">{{ t("files.syncUpload") }}</button>
+        <span class="upload-options-hint">{{ t("files.syncUploadHint") }}</span>
       </div>
       <div class="upload-options-row">
         <label class="toggle" :title="t('files.parseMetadataHint')">
@@ -1211,7 +1264,7 @@ onBeforeUnmount(() => {
         <span class="upload-options-hint">{{ t("files.parseMetadataHint") }}</span>
       </div>
       <div class="pre-transcode-block">
-        <button type="button" class="pre-transcode-toggle" @click="showPreTranscode = !showPreTranscode">
+        <button type="button" class="pre-transcode-toggle" :aria-expanded="showPreTranscode" @click="showPreTranscode = !showPreTranscode">
           <span>{{ t("files.preTranscode.title") }}</span>
           <span class="pre-transcode-caret">{{ showPreTranscode ? '−' : '+' }}</span>
         </button>
@@ -1225,11 +1278,24 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
+      <div class="sync-options-row">
+        <label class="toggle"><input type="checkbox" v-model="includeLyrics" /><span class="toggle-slider"></span></label>
+        <span class="upload-options-label">{{ t("files.includeLyrics") }}</span>
+        <label class="toggle"><input type="checkbox" v-model="includeVariants" /><span class="toggle-slider"></span></label>
+        <span class="upload-options-label">{{ t("files.includeVariants") }}</span>
+      </div>
+      <div class="openyyy-guide">
+        <div><strong>{{ t("files.openYYY.title") }}</strong> {{ t("files.openYYY.hint") }}</div>
+        <button type="button" class="btn-secondary" @click="openOpenYYY">{{ t("files.openYYY.open") }}</button>
+      </div>
       <!-- Upload queue list with per-file progress bars -->
       <div v-if="uploadQueue.length || uploadBusy" class="upload-queue">
         <div class="mono-label upload-queue-header">{{ t("files.uploadQueue") }}</div>
-        <div v-for="(file, i) in uploadQueue" :key="i" class="upload-queue-item">
-          <span class="upload-queue-name">{{ file.name }}</span>
+        <div v-for="(item, i) in uploadQueue" :key="i" class="upload-queue-item" :class="{ excluded: !activeUploadItems.includes(item) }">
+          <input v-model="item.selected" type="checkbox" class="upload-item-select" :disabled="item.kind === 'encrypted' || uploadBusy" :aria-label="t('files.uploadItemSelect', { name: item.file.name })" />
+          <span class="upload-queue-name">{{ item.file.name }}</span>
+          <span class="upload-kind">{{ uploadKindLabel(item.kind) }}</span>
+          <span v-if="item.kind === 'lyrics' || item.kind === 'variant'" class="upload-pair">{{ item.stem }}</span>
           <div class="upload-queue-bar">
             <div
               class="upload-queue-fill"
@@ -1237,7 +1303,7 @@ onBeforeUnmount(() => {
               :style="{ width: Math.max(0, uploadProgressList[i] ?? 0) + '%' }"
             ></div>
           </div>
-          <span class="upload-queue-pct"><template v-if="uploadProgressList[i] === -1"><Icon name="cross" /></template><template v-else>{{ (uploadProgressList[i] ?? 0) + '%' }}</template></span>
+          <span class="upload-queue-pct"><template v-if="item.kind === 'encrypted'">{{ t("files.convertFirst") }}</template><template v-else-if="uploadProgressList[i] === -1"><Icon name="cross" /></template><template v-else>{{ (uploadProgressList[i] ?? 0) + '%' }}</template></span>
         </div>
         <div v-if="uploadBusy" class="upload-queue-overall">{{ uploadMsg }}</div>
       </div>
@@ -1254,6 +1320,16 @@ onBeforeUnmount(() => {
           <button class="crumb" :disabled="i === crumbs.length - 1" @click="goCrumb(i)">{{ seg }}</button>
         </template>
         <span class="browser-stats">{{ t("files.stats", { dirs: dirs.length, files: files.length }) }}</span>
+        <div class="file-sort-controls">
+          <label>{{ t("files.sortBy") }}</label>
+          <select v-model="fileSortKey" class="form-input" :aria-label="t('files.sortBy')">
+            <option value="name">{{ t("files.sortName") }}</option>
+            <option value="size">{{ t("files.sortSize") }}</option>
+            <option value="type">{{ t("files.sortType") }}</option>
+          </select>
+          <button class="btn-secondary sort-direction" @click="fileSortDirection = fileSortDirection === 'asc' ? 'desc' : 'asc'">{{ fileSortDirection === "asc" ? t("files.sortAscending") : t("files.sortDescending") }}</button>
+          <button class="btn-secondary sort-direction" @click="foldersFirst = !foldersFirst">{{ foldersFirst ? t("files.foldersFirst") : t("files.foldersLast") }}</button>
+        </div>
         <button v-if="canUpload" class="btn-secondary btn-new-folder" @click="openNewFolderModal">
           {{ t("files.newFolder") }}
         </button>
@@ -1284,7 +1360,7 @@ onBeforeUnmount(() => {
         <button class="btn-secondary batch-actions-clear" @click="clearSelection()">{{ t("files.clearSelection") }}</button>
       </div>
 
-      <div class="entry-list" @contextmenu="onRowContextMenu($event, { kind: 'blank' })">
+      <div class="entry-list" :class="{ 'folders-last': !foldersFirst }" @contextmenu="onRowContextMenu($event, { kind: 'blank' })">
         <div v-if="loading" class="list-loading">{{ t("common.loading") }}</div>
         <template v-else>
           <!-- Select-all header: checked when every dir+file is selected,
@@ -1578,11 +1654,14 @@ onBeforeUnmount(() => {
     >
      <!-- Scrape button — single mode only, batch has no one obvious
           "which song" query to scrape against (same reasoning as Library.vue) -->
-      <template v-if="editorMode === 'single'" #extras="{ form, apply }">
+      <template v-if="editorMode === 'single'" #extras="{ form, apply, applyCoverUrl }">
         <ScrapeButton
           :initial-query="scrapeQueryFromForm(form)"
           :song-master-id="editTargetId || ''"
-          @apply="(r: ScrapeResult) => applyScrapeResult(form, apply, r)"
+          :current-title="form.title"
+          :current-artist="form.artist"
+          :current-album="form.album"
+          @apply="(r: ScrapeResult) => applyScrapeResult(form, apply, r, applyCoverUrl)"
         />
       </template>
     </TagEditor>
@@ -1781,6 +1860,11 @@ onBeforeUnmount(() => {
 .upload-file-row { display: flex; gap: 0.5rem; align-items: center; }
 .upload-file-row .form-input { flex: 1; min-width: 0; }
 .upload-type-select { width: auto; flex: 0 0 auto; }
+.sync-upload-row, .sync-options-row, .openyyy-guide { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.65rem; flex-wrap: wrap; }
+.sync-upload-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.sync-options-row { padding: 0.55rem 0; border-top: 1px solid var(--color-border-subtle); }
+.openyyy-guide { padding: 0.6rem 0.75rem; border: 1px solid var(--color-border-subtle); background: var(--color-bg-primary); font-size: var(--fs-xs); color: var(--color-text-muted); }
+.openyyy-guide strong { color: var(--color-text-secondary); }
 .upload-dest {
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
@@ -1798,14 +1882,14 @@ onBeforeUnmount(() => {
 }
 .upload-options-label { font-size: var(--fs-sm); color: var(--color-text-secondary); }
 .upload-options-hint { font-size: var(--fs-xs); color: var(--color-text-muted); }
-.pre-transcode-block { margin-top: 0.4rem; }
+.pre-transcode-block { margin-top: 0.6rem; border: 1px solid var(--color-border-default); background: var(--color-bg-primary); }
 .pre-transcode-toggle {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   background: none;
   border: none;
-  padding: 0.3rem 0;
+  width: 100%; justify-content: space-between; padding: 0.55rem 0.7rem;
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   color: var(--color-text-secondary);
@@ -1813,7 +1897,7 @@ onBeforeUnmount(() => {
 }
 .pre-transcode-toggle:hover { color: var(--color-text-primary); }
 .pre-transcode-caret { color: var(--color-accent-primary); }
-.pre-transcode-body { padding: 0.3rem 0 0.2rem; }
+.pre-transcode-body { padding: 0.3rem 0.7rem 0.6rem; border-top: 1px solid var(--color-border-subtle); }
 .pre-transcode-profiles { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.4rem; }
 .pre-transcode-pill {
   display: inline-flex;
@@ -1838,7 +1922,12 @@ onBeforeUnmount(() => {
 .upload-queue { margin-top: 0.75rem; padding-top: 0.6rem; border-top: 1px solid var(--color-border-subtle); }
 .upload-queue-header { font-size: var(--fs-xs); color: var(--color-text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.4rem; }
 .upload-queue-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.2rem 0; font-family: var(--font-mono); font-size: var(--fs-sm); }
+.upload-queue-item.excluded { opacity: 0.55; }
+.upload-item-select { flex-shrink: 0; accent-color: var(--color-accent-primary); }
 .upload-queue-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); }
+.upload-kind, .upload-pair { flex-shrink: 0; font-size: var(--fs-xs); color: var(--color-text-muted); }
+.upload-kind { border: 1px solid var(--color-border-subtle); padding: 0.1rem 0.3rem; }
+.upload-pair { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upload-queue-bar { width: 120px; height: 4px; background: var(--color-border); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
 .upload-queue-fill { height: 100%; background: var(--color-accent-primary); transition: width 0.2s; }
 .upload-queue-fill.fill-error { background: var(--color-status-error); }
@@ -1975,8 +2064,14 @@ onBeforeUnmount(() => {
   color: var(--color-text-muted);
   letter-spacing: 0.08em;
 }
+.file-sort-controls { display: flex; align-items: center; gap: 0.35rem; font-size: var(--fs-xs); color: var(--color-text-muted); }
+.file-sort-controls .form-input { width: auto; padding: 0.2rem 0.35rem; font-size: var(--fs-xs); }
+.sort-direction { padding: 0.2rem 0.45rem; font-size: var(--fs-xs); }
 
-.entry-list { min-height: 12rem; }
+.entry-list { min-height: 12rem; display: flex; flex-direction: column; }
+.folders-last .dir-row { order: 2; }
+.folders-last .file-row { order: 1; }
+.folders-last .select-all-row { order: 0; }
 .list-loading {
   padding: 1.5rem; text-align: center;
   font-family: var(--font-mono); font-size: var(--fs-sm);

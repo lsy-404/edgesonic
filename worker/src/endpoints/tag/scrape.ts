@@ -264,9 +264,8 @@ async function proxyFetch(
     case "lrc":
       return intent === "search" ? fetchLrcAlbums() : fetchLrcAlbumDetail(body.songId!);
     case "netease":
-      return intent === "search"
-        ? fetchNetEaseSearch(body.query!)
-        : fetchNetEaseLyric(body.songId!);
+      if (intent === "search") return fetchNetEaseSearch(body.query!);
+      return intent === "detail" ? fetchNetEaseDetail(body.songId!) : fetchNetEaseLyric(body.songId!);
     case "qmusic":
       return intent === "search"
         ? fetchQMusicSearch(body.query!)
@@ -301,7 +300,10 @@ async function fetchLrcAlbumDetail(slug: string): Promise<unknown> {
 
 // ---- NetEase ----
 async function fetchNetEaseSearch(query: string): Promise<unknown> {
-  const url = "https://music.163.com/api/search/get/web";
+  // `/api/search/get/web` now returns an encrypted `result` string. The
+  // legacy `/api/search/get` endpoint still returns the documented
+  // `{ result: { songs } }` payload consumed by the normaliser.
+  const url = "https://music.163.com/api/search/get";
   const form = new URLSearchParams({ s: query, type: "1", offset: "0", limit: "20" });
   const resp = await timedFetch(url, {
     method: "POST",
@@ -324,6 +326,17 @@ async function fetchNetEaseLyric(songId: string): Promise<unknown> {
     headers: { "Referer": "https://music.163.com/", "User-Agent": UA },
   });
   if (!resp.ok) throw new Error(`netease lyric HTTP ${resp.status}`);
+  return await resp.json();
+}
+
+async function fetchNetEaseDetail(songId: string): Promise<unknown> {
+  if (!/^\d+$/.test(songId)) throw new Error("netease songId must be numeric");
+  const url = `https://music.163.com/api/song/detail?ids=${encodeURIComponent(`[${songId}]`)}`;
+  const resp = await timedFetch(url, {
+    method: "GET",
+    headers: { "Referer": "https://music.163.com/", "User-Agent": UA },
+  });
+  if (!resp.ok) throw new Error(`netease detail HTTP ${resp.status}`);
   return await resp.json();
 }
 

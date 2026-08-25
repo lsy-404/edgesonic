@@ -728,11 +728,15 @@ function scrapeQueryFromForm(form: Record<string, string>): string {
   return [init.title, init.artist].filter(Boolean).join(" ");
 }
 
-function applyScrapeResult(
+async function applyScrapeResult(
   form: Record<string, string>,
   applyFlags: Record<string, boolean>,
   r: ScrapeResult,
+  applyCoverUrl: (url: string) => Promise<void>,
 ) {
+  if (r.coverUrl) {
+    try { await applyCoverUrl(r.coverUrl); } catch { /* TagEditor keeps coverError visible; continue with metadata. */ }
+  }
   if (r.title) form.title = r.title;
   if (r.artist) form.artist = r.artist;
   if (r.albumArtist) form.albumArtist = r.albumArtist;
@@ -767,6 +771,7 @@ async function onEditorSubmit(patch: Record<string, string | number>, cover?: { 
         const files = res.files || [];
         const written = files.filter((x) => x.written).length;
         const skipped = files.filter((x) => !x.written).map((x) => x.reason).filter(Boolean);
+        editErr.value = skipped.length > 0;
         editMsg.value = t("library.editSaved", { written, total: files.length })
           + (skipped.length ? ` (${skipped.join("; ")})` : "");
       }
@@ -777,14 +782,18 @@ async function onEditorSubmit(patch: Record<string, string | number>, cover?: { 
         editErr.value = true;
         editMsg.value = res.error || t("tagEditor.batchFailed");
       } else {
-        editMsg.value = t("tagEditor.batchSaved", { succeeded: res.succeeded ?? 0, failed: res.failed ?? 0 });
+        const fileFailures = (res.results || []).flatMap((r) => (r.files || []).filter((f) => !f.written).map((f) => f.reason || "write skipped"));
+        const totalFailures = (res.failed ?? 0) + fileFailures.length;
+        editErr.value = totalFailures > 0;
+        editMsg.value = t("tagEditor.batchSaved", { succeeded: res.succeeded ?? 0, failed: totalFailures })
+          + (fileFailures.length ? ` (${fileFailures.slice(0, 3).join("; ")})` : "");
         // optimistic local update for batched fields
         for (const target of editTargets.value) {
           if (typeof patch.title === "string") target.title = patch.title;
           if (typeof patch.artist === "string") target.artist = patch.artist;
           if (typeof patch.album === "string") target.album = patch.album;
         }
-        selectedIds.value = [];
+        if (!totalFailures) selectedIds.value = [];
       }
     }
   } catch {
@@ -1673,11 +1682,14 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
     >
      <!-- Scrape button in extras slot. Single-mode only; batch UX has no
            obvious "one master query" so we hide the button there. -->
-      <template v-if="editorMode === 'single'" #extras="{ form, apply }">
+      <template v-if="editorMode === 'single'" #extras="{ form, apply, applyCoverUrl }">
         <ScrapeButton
           :initial-query="scrapeQueryFromForm(form)"
           :song-master-id="editTargets[0]?.id || ''"
-          @apply="(r: ScrapeResult) => applyScrapeResult(form, apply, r)"
+          :current-title="form.title"
+          :current-artist="form.artist"
+          :current-album="form.album"
+          @apply="(r: ScrapeResult) => applyScrapeResult(form, apply, r, applyCoverUrl)"
         />
       </template>
     </TagEditor>

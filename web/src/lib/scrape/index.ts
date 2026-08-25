@@ -48,7 +48,7 @@ const ADAPTERS: Record<ScrapeSource, {
   resolve?: (result: ScrapeResult, p: ProxyFn) => Promise<ScrapeResult>;
 } | undefined> = {
   lrc: { search: lrc.search, fetchLyric: lrc.fetchLyric, resolve: lrc.resolve },
-  netease: { search: netease.search, fetchLyric: netease.fetchLyric },
+  netease: { search: netease.search, fetchLyric: netease.fetchLyric, resolve: netease.resolve },
   qmusic: { search: qmusic.search, fetchLyric: qmusic.fetchLyric },
   kugou: { search: kugou.search, fetchLyric: kugou.fetchLyric },
   // No kuwo/migu adapters ship today; the keys exist in types so the
@@ -63,28 +63,47 @@ interface SearchOpts {
   proxyFetch: ProxyFn;
   /** Per-source limit (we keep ≤ 20 by upstream API design). */
   perSourceLimit?: number;
+  /** Optional metadata gives ranking a stronger artist/title signal. */
+  current?: Partial<Pick<ScrapeResult, "title" | "artist" | "album">>;
 }
 
-/** Fan-out search to every enabled source; concatenate in priority order. */
+/** Fan-out enabled sources concurrently, then rank the combined result set. */
 export async function searchAll(opts: SearchOpts): Promise<SearchResponse> {
   const limit = opts.perSourceLimit ?? 10;
-  const results: ScrapeResult[] = [];
-  const errors: Array<{ source: ScrapeSource; error: string }> = [];
-
-  // Sequential to honor priority order in the output list; the typical query
-  // returns within ~2s per source, and users only ever scrape one song at a
-  // time — parallelism here would just complicate ordering.
-  for (const src of opts.sources) {
+  const jobs = opts.sources.map(async (src) => {
     const ad = ADAPTERS[src];
-    if (!ad) continue;
-    try {
-      const rows = await ad.search(opts.query, opts.proxyFetch);
-      results.push(...rows.slice(0, limit));
-    } catch (e) {
-      errors.push({ source: src, error: e instanceof Error ? e.message : String(e) });
-    }
-  }
-  return { results, errors };
+    if (!ad) return { source: src, rows: [] as ScrapeResult[] };
+    const rows = await ad.search(opts.query, opts.proxyFetch);
+    return { source: src, rows: rows.slice(0, limit) };
+  });
+  const settled = await Promise.allSettled(jobs);
+  const errors: Array<{ source: ScrapeSource; error: string }> = [];
+  const results: ScrapeResult[] = [];
+  settled.forEach((item, index) => {
+    const source = opts.sources[index];
+    if (item.status === "fulfilled") results.push(...item.value.rows);
+    else errors.push({ source, error: item.reason instanceof Error ? item.reason.message : String(item.reason) });
+  });
+  return { results: results.map((row, index) => ({ row, index, score: matchScore(row, opts.query, opts.current) })).sort((a, b) => b.score - a.score || a.index - b.index).map((entry) => entry.row), errors };
+}
+
+function normalise(value: string): string { return value.toLocaleLowerCase().replace(/[\s\p{P}\p{S}_]+/gu, " ").trim(); }
+function fieldScore(actual: string, expected: string | undefined, exact: number, contains: number): number {
+  const wanted = normalise(expected || "");
+  if (!wanted) return 0;
+  if (actual === wanted) return exact;
+  return actual.includes(wanted) || wanted.includes(actual) ? contains : 0;
+}
+function matchScore(row: ScrapeResult, query: string, current?: SearchOpts["current"]): number {
+  const title = normalise(row.title); const artist = normalise(row.artist); const album = normalise(row.album || "");
+  const haystack = `${title} ${artist} ${album}`;
+  const wanted = normalise(query);
+  let score = (`${title} ${artist}` === wanted || `${artist} ${title}` === wanted) ? 180 : (wanted && haystack.includes(wanted) ? 80 : 0);
+  for (const token of wanted.split(" ").filter(Boolean)) if (haystack.includes(token)) score += 4;
+  score += fieldScore(title, current?.title, 120, 60);
+  score += fieldScore(artist, current?.artist, 100, 50);
+  score += fieldScore(album, current?.album, 80, 40);
+  return score;
 }
 
 interface LyricOpts {
@@ -100,7 +119,16 @@ export async function fetchLyric(opts: LyricOpts): Promise<string> {
 }
 
 export async function resolveResult(result: ScrapeResult, proxyFetch: ProxyFn): Promise<ScrapeResult> {
-  return (await ADAPTERS[result.source]?.resolve?.(result, proxyFetch)) || result;
+  const adapter = ADAPTERS[result.source];
+  if (!adapter) return result;
+  let resolved = (await adapter.resolve?.(result, proxyFetch)) || result;
+  if (!resolved.lyrics && resolved.songId) {
+    try {
+      const lyrics = await adapter.fetchLyric(resolved.songId, proxyFetch);
+      if (lyrics) resolved = { ...resolved, lyrics };
+    } catch { /* Keep the available detail fields when a provider has no lyric. */ }
+  }
+  return resolved;
 }
 
 // ===========================================================================
