@@ -767,6 +767,7 @@ async function saveCio() {
 const r2PresignEnabled = ref<boolean>(false);
 const webdavPresignEnabled = ref<boolean>(true);
 const r2SecretsConfigured = ref<boolean>(false);
+const r2CredentialValid = ref<boolean | null>(null);
 const r2PresignBusy = ref(false);
 const webdavPresignBusy = ref(false);
 
@@ -779,7 +780,10 @@ async function loadR2PresignStatus() {
   if (!canManageSettings.value) return;
   try {
     const data = JSON.parse(await edgesonicFetch("r2presign/status"));
-    if (data?.ok) r2SecretsConfigured.value = !!data.secretsConfigured;
+    if (data?.ok) {
+      r2SecretsConfigured.value = !!data.secretsConfigured;
+      r2CredentialValid.value = typeof data.credentialValid === "boolean" ? data.credentialValid : null;
+    }
   } catch { /* status endpoint may be absent on older deploys — silent */ }
 }
 
@@ -2419,10 +2423,12 @@ onMounted(() => {
         <div v-if="canManageSettings" class="sub-block">
           <div class="sub-header">
             <span class="mono-label">{{ t("settings.common.presign.title") }}</span>
-            <span class="status-badge" :class="r2SecretsConfigured ? 'success' : 'warning'">
-              {{ r2SecretsConfigured
-                ? t("settings.common.presign.secretsConfigured")
-                : t("settings.common.presign.secretsMissing") }}
+            <span class="status-badge" :class="!r2SecretsConfigured ? 'warning' : (r2CredentialValid === false ? 'error' : 'success')">
+              {{ !r2SecretsConfigured
+                ? t("settings.common.presign.secretsMissing")
+                : (r2CredentialValid === false
+                  ? t("settings.common.presign.credentialInvalid")
+                  : t("settings.common.presign.secretsConfigured")) }}
             </span>
           </div>
           <p class="feature-desc tc-desc" style="margin-left:0">
@@ -2439,6 +2445,15 @@ onMounted(() => {
               <li><code>R2_SECRET_ACCESS_KEY</code></li>
               <li><code>CF_ACCOUNT_ID</code> <span style="opacity:0.7">— from Cloudflare integration block above</span></li>
             </ul>
+            <p class="feature-desc" style="margin:0.4rem 0 0;color:var(--color-text-muted)">
+              {{ t("settings.common.presign.secretPushHint") }}
+            </p>
+          </div>
+
+          <div v-else-if="r2CredentialValid === false" class="presign-warning">
+            <p class="feature-desc" style="margin:0;color:var(--color-status-error)">
+              {{ t("settings.common.presign.r2CredentialInvalidHint") }}
+            </p>
             <p class="feature-desc" style="margin:0.4rem 0 0;color:var(--color-text-muted)">
               {{ t("settings.common.presign.secretPushHint") }}
             </p>

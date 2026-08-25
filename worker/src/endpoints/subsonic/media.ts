@@ -36,7 +36,7 @@ import {
   AUDIO_MAX_AGE_SEC, COVER_MAX_AGE_SEC, applyPrivateCache, etagMatches, instanceEtag,
 } from "../../utils/httpCache";
 import type { TranscodeProfile, TranscodeInput } from "../../transcode/engine";
-import { presignR2Get } from "../../utils/r2presign";
+import { presignR2Get, isR2PresignHealthy } from "../../utils/r2presign";
 import { selectSongSource } from "./sources";
 
 import type { User } from "../../types/entities";
@@ -369,7 +369,15 @@ const streamHandler = async (c: Context) => {
       // no-CORP cross-origin response no longer gets blocked by the embedder
       // policy.
       if (presignOn === "1" && schemeAllowed && accessKeyId && secretKey && accountId) {
-        try {
+        const bucket = env.R2_BUCKET_NAME || "edgesonic-music";
+        // Skip presigning when the cached live probe says R2 rejects the credential.
+        let execCtx: { waitUntil?: (p: Promise<unknown>) => void } | undefined;
+        try { execCtx = c.executionCtx as unknown as { waitUntil?: (p: Promise<unknown>) => void }; } catch { execCtx = undefined; }
+        const credentialsHealthy = isR2PresignHealthy(
+          { bucket, accessKeyId, secretAccessKey: secretKey, accountId },
+          execCtx,
+        );
+        if (credentialsHealthy) try {
           const key = selected.storage_uri.substring("r2://".length);
           // The signature has to outlive the whole play. The browser follows
           // the 302 once and then sends its later Range requests straight to
@@ -387,7 +395,7 @@ const streamHandler = async (c: Context) => {
             || 0;
           const ttlSec = Math.max(600, trackSeconds * 2);
           const presigned = await presignR2Get({
-            bucket: env.R2_BUCKET_NAME || "edgesonic-music",
+            bucket,
             key,
             accessKeyId,
             secretAccessKey: secretKey,

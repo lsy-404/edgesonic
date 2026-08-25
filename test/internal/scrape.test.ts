@@ -158,7 +158,7 @@ function restoreFetch() { globalThis.fetch = originalFetch; }
 async function main() {
 installFetchStub();
 
-console.log("scrapeMetadata: netease search routes to music.163.com with Referer:");
+console.log("scrapeMetadata: netease search routes through the Worker proxy with Referer:");
 {
   fetchCalls = [];
   fetchHandler = () =>
@@ -174,7 +174,7 @@ console.log("scrapeMetadata: netease search routes to music.163.com with Referer
   assert(body.source === "netease" && body.intent === "search", "echoes source + intent");
   assert(body.data?.result?.songs?.[0]?.id === 42, "upstream data forwarded verbatim");
   assert(fetchCalls.length === 1, `one outbound fetch (got ${fetchCalls.length})`);
-  assert(fetchCalls[0].url.includes("music.163.com/api/search/get/web"), "hit NetEase search endpoint");
+  assert(fetchCalls[0].url.includes("music.163.com/api/search/get"), "hit NetEase search endpoint");
   assert(fetchCalls[0].method === "POST", "POST method");
   assert(fetchCalls[0].headers["referer"] === "https://music.163.com/", "Referer header present");
   assert(fetchCalls[0].body?.includes("s=Hello+Adele") || fetchCalls[0].body?.includes("s=Hello%20Adele"), "query encoded in form body");

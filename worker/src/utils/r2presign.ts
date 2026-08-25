@@ -30,7 +30,7 @@
 //
 // Region is hardcoded to "auto" — R2 ignores the region but SigV4 requires one.
 
-import { hex, hmac, sha256Hex, uriEncode } from "./sigv4";
+import { buildAuthorizationHeader, hex, hmac, sha256Hex, uriEncode } from "./sigv4";
 
 const SERVICE = "s3";
 const REGION = "auto";
@@ -125,4 +125,88 @@ export async function presignR2Get(opts: PresignOpts): Promise<string> {
     .join("&");
 
   return `https://${host}${canonicalUri}?${queryString}`;
+}
+
+// ---- Credential health ------------------------------------------------------
+// A locally valid signature does not prove R2 still accepts the credential.
+// Probe R2 and cache the verdict without blocking the streaming hot path.
+
+export interface R2CredentialCheck {
+  ok: boolean;
+  status: number;
+}
+
+/**
+ * HeadBucket: the cheapest real probe of whether R2 currently accepts this
+ * credential. Unlike GetObject, it doesn't depend on any object existing, so
+ * a 401/403 here means the credential is rejected, not that a key is missing.
+ */
+export async function checkR2Credentials(opts: {
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  accountId: string;
+}): Promise<R2CredentialCheck> {
+  const host = `${opts.bucket}.${opts.accountId}.r2.cloudflarestorage.com`;
+  const url = new URL(`https://${host}/`);
+  const { authorization, amzDate, contentSha256 } = await buildAuthorizationHeader({
+    method: "HEAD",
+    url,
+    accessKeyId: opts.accessKeyId,
+    secretAccessKey: opts.secretAccessKey,
+    region: REGION,
+    service: SERVICE,
+    payloadHash: "UNSIGNED-PAYLOAD",
+  });
+  const resp = await fetch(url.toString(), {
+    method: "HEAD",
+    headers: {
+      Authorization: authorization,
+      "x-amz-date": amzDate,
+      "x-amz-content-sha256": contentSha256,
+      Host: host,
+    },
+  });
+  return { ok: resp.ok, status: resp.status };
+}
+
+const HEALTH_TTL_MS = 60_000;
+let health: { ok: boolean; checkedAt: number } | null = null;
+
+/**
+ * Stale-while-revalidate gate for the presign hot path: never blocks the
+ * caller on a live probe. A fresh isolate assumes healthy (zero added
+ * latency) while a background check runs; only a confirmed-bad result, cached
+ * for HEALTH_TTL_MS, turns later calls away from presign before they're handed
+ * a URL R2 will reject. Bounds the blast radius of a bad credential to roughly
+ * one request per isolate instead of every request until a human notices.
+ */
+export function isR2PresignHealthy(
+  opts: { bucket: string; accessKeyId: string; secretAccessKey: string; accountId: string },
+  ctx?: { waitUntil?: (p: Promise<unknown>) => void },
+): boolean {
+  const now = Date.now();
+  const stale = !health || now - health.checkedAt >= HEALTH_TTL_MS;
+  // A background probe must be attached to the request lifecycle.
+  // Without waitUntil, leave the current cached verdict unchanged.
+  if (stale && ctx?.waitUntil) {
+    const checking = checkR2Credentials(opts)
+      .then(({ ok, status }) => {
+        health = { ok, checkedAt: Date.now() };
+        if (!ok) {
+          console.error(`[r2presign] R2 rejected the stored credential (HTTP ${status}) — falling back to the R2 binding until the next check`);
+        }
+      })
+      .catch((err) => {
+        health = { ok: false, checkedAt: Date.now() };
+        console.error("[r2presign] credential health probe failed — falling back to the R2 binding:", err);
+      });
+    ctx.waitUntil(checking);
+  }
+  return health ? health.ok : true;
+}
+
+/** Test-only: clear the cached verdict so each scenario starts unknown. */
+export function resetR2PresignHealthForTesting(): void {
+  health = null;
 }

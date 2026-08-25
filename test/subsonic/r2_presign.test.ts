@@ -30,23 +30,57 @@
 //   5. needsTranscode (format=mp3 mismatch)              → 200 (transcode/raw fallback, no 302)
 //   6. non-r2 scheme (webdav)                            → 200 (no 302; webdav adapter 404 body)
 //   7. Range header signed into the URL                  → Location contains X-Amz-SignedHeaders=host;range
-//   8. presignR2Get unit: URL shape, host, query params, signature presence
+//   8. presignR2Get unit: URL shape and independently cross-validated signature
 //   9. validator: enable_r2_presign accepts 0/1, rejects other
 //  10. octet-stream R2 object + .flac suffix           → stream returns audio/flac
 //  11. R2_BUCKET_NAME env var set                       → presign targets that bucket, not the
 //                                                          hardcoded "edgesonic-music" fallback
+//  12. checkR2Credentials: HeadBucket probe → ok on 200, ok:false + status on 401
+//  13. isR2PresignHealthy: fail-open, background verdict, and TTL reuse
+//  14. stream: cached-bad credential health → skips presign, falls back to 200 (binding)
+//  15. /rest/r2presign/status: secrets missing / credential valid / credential rejected by R2
 //
 // Run: npx tsx test/subsonic/r2_presign.test.ts
 
 import { DatabaseSync } from "node:sqlite";
+import { createHash, createHmac } from "node:crypto";
 import { Hono } from "hono";
 import { mediaRoutes } from "../../worker/src/endpoints/subsonic/media";
-import { presignR2Get } from "../../worker/src/utils/r2presign";
+import { r2presignRoutes } from "../../worker/src/endpoints/edgesonic/r2presign";
+import {
+  presignR2Get,
+  checkR2Credentials,
+  isR2PresignHealthy,
+  resetR2PresignHealthForTesting,
+} from "../../worker/src/utils/r2presign";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
   if (cond) console.log(`  ✓ ${msg}`);
   else { failures++; console.error(`  ✗ ${msg}`); }
+}
+
+// ---------------------------------------------------------------------------
+// Keep credential-health tests hermetic by intercepting only R2 S3 probes.
+// ---------------------------------------------------------------------------
+const origFetch = globalThis.fetch;
+let r2ProbeStatus = 200;
+let r2ProbeCalls = 0;
+function installR2ProbeStub() {
+  r2ProbeCalls = 0;
+  globalThis.fetch = (async (input: any, init?: any) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (url && url.includes(".r2.cloudflarestorage.com/")) {
+      r2ProbeCalls++;
+      return new Response(r2ProbeStatus === 200 ? null : "<Error><Code>Unauthorized</Code></Error>", {
+        status: r2ProbeStatus,
+      });
+    }
+    return origFetch(input as any, init);
+  }) as typeof fetch;
+}
+function restoreR2ProbeStub() {
+  globalThis.fetch = origFetch;
 }
 
 // ---------------------------------------------------------------------------
@@ -187,8 +221,51 @@ function setFeature(sqlite: DatabaseSync, key: string, value: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Re-derive SigV4 with Node crypto rather than reusing production helpers, so
+// the test can distinguish a well-formed URL from a correctly signed one.
+// ---------------------------------------------------------------------------
+function rfc3986Encode(s: string): string {
+  return Array.from(s).map((ch) => {
+    if (/[A-Za-z0-9\-_.~]/.test(ch)) return ch;
+    return Array.from(Buffer.from(ch, "utf8")).map((b) => "%" + b.toString(16).toUpperCase().padStart(2, "0")).join("");
+  }).join("");
+}
+function referenceR2Signature(opts: {
+  bucket: string; accountId: string; key: string;
+  accessKeyId: string; secretAccessKey: string; ttlSec: number; amzDate: string;
+}): string {
+  const host = `${opts.bucket}.${opts.accountId}.r2.cloudflarestorage.com`;
+  const dateStamp = opts.amzDate.slice(0, 8);
+  const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
+  const canonicalUri = "/" + opts.key.split("/").map(rfc3986Encode).join("/");
+  const qp: Record<string, string> = {
+    "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
+    "X-Amz-Content-Sha256": "UNSIGNED-PAYLOAD",
+    "X-Amz-Credential": `${opts.accessKeyId}/${credentialScope}`,
+    "X-Amz-Date": opts.amzDate,
+    "X-Amz-Expires": String(opts.ttlSec),
+    "X-Amz-SignedHeaders": "host",
+  };
+  const canonicalQuery = Object.keys(qp).sort().map((k) => `${rfc3986Encode(k)}=${rfc3986Encode(qp[k])}`).join("&");
+  const canonicalHeaders = `host:${host}\n`;
+  const canonicalRequest = ["GET", canonicalUri, canonicalQuery, canonicalHeaders, "host", "UNSIGNED-PAYLOAD"].join("\n");
+  const hashedCanonicalRequest = createHash("sha256").update(canonicalRequest, "utf8").digest("hex");
+  const stringToSign = ["AWS4-HMAC-SHA256", opts.amzDate, credentialScope, hashedCanonicalRequest].join("\n");
+  const hmacSha256 = (key: Buffer, msg: string) => createHmac("sha256", key).update(msg, "utf8").digest();
+  const kDate = hmacSha256(Buffer.from("AWS4" + opts.secretAccessKey, "utf8"), dateStamp);
+  const kRegion = hmacSha256(kDate, "auto");
+  const kService = hmacSha256(kRegion, "s3");
+  const kSigning = hmacSha256(kService, "aws4_request");
+  return hmacSha256(kSigning, stringToSign).toString("hex");
+}
+
+// ---------------------------------------------------------------------------
 async function main() {
-  console.log("presignR2Get: URL shape, host, query params, signature presence");
+  // Install before stream tests can schedule a credential-health probe.
+  installR2ProbeStub();
+  resetR2PresignHealthForTesting();
+
+  console.log("presignR2Get: URL shape, host, query params");
   {
     const url = await presignR2Get({
       bucket: "edgesonic-music",
@@ -205,7 +282,35 @@ async function main() {
     assert(url.includes("X-Amz-Expires=300"), "TTL param");
     assert(url.includes("X-Amz-SignedHeaders=host"), "signed headers (host only)");
     assert(url.includes("X-Amz-Content-Sha256=UNSIGNED-PAYLOAD"), "UNSIGNED-PAYLOAD marker present");
-    assert(url.includes("X-Amz-Signature="), "signature present");
+  }
+
+  console.log("\npresignR2Get: signature independently cross-validated (Node crypto, spec-derived — not sigv4.ts)");
+  for (const key of [
+    "music/album/track.flac",
+    "music/OST/Helldivers 2/No Diver Left Behind - Wilbert Roget II.flac",
+    "music/红海行动 - 蛟龙突击队.flac",
+  ]) {
+    const url = await presignR2Get({
+      bucket: "edgesonic-music",
+      key,
+      accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+      secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+      accountId: "df4481f3ce1fa0394b4617442a97d147",
+      ttlSec: 300,
+    });
+    const parsed = new URL(url);
+    const amzDate = parsed.searchParams.get("X-Amz-Date") || "";
+    const actual = parsed.searchParams.get("X-Amz-Signature") || "";
+    const expected = referenceR2Signature({
+      bucket: "edgesonic-music",
+      accountId: "df4481f3ce1fa0394b4617442a97d147",
+      key,
+      accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+      secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+      ttlSec: 300,
+      amzDate,
+    });
+    assert(actual.length === 64 && actual === expected, `signature matches independent re-derivation for key "${key}"`);
   }
 
   console.log("\npresignR2Get: TTL clamped to [1, 604800]");
@@ -433,6 +538,130 @@ async function main() {
     r = await postUpdate("2");
     assert(r.status === 400, `'2' rejected (got ${r.status})`);
   }
+
+  const CRED = {
+    bucket: "edgesonic-music",
+    accountId: "df4481f3ce1fa0394b4617442a97d147",
+    accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+    secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+  };
+
+  console.log("\ncheckR2Credentials: HeadBucket probe reflects what R2 actually returns");
+  {
+    r2ProbeStatus = 200;
+    let r = await checkR2Credentials(CRED);
+    assert(r.ok === true && r.status === 200, `200 → ok (got ok=${r.ok} status=${r.status})`);
+
+    r2ProbeStatus = 401;
+    r = await checkR2Credentials(CRED);
+    assert(r.ok === false && r.status === 401, `401 → not ok, status surfaced (got ok=${r.ok} status=${r.status})`);
+    r2ProbeStatus = 200;
+  }
+
+  console.log("\nisR2PresignHealthy: fails open on a cold cache, then reflects the background probe once it settles");
+  {
+    resetR2PresignHealthForTesting();
+    r2ProbeStatus = 401; // credential is bad throughout this block
+    const before = r2ProbeCalls;
+    let captured: Promise<unknown> | undefined;
+    const ctx = { waitUntil: (p: Promise<unknown>) => { captured = p; } };
+
+    const first = isR2PresignHealthy(CRED, ctx);
+    assert(first === true, "cold cache: fails open (returns healthy) instead of blocking the caller");
+    assert(captured !== undefined, "kicks off a background probe via ctx.waitUntil");
+    await captured;
+
+    const second = isR2PresignHealthy(CRED, ctx);
+    assert(second === false, "once the background probe settles, reflects the real (bad) verdict");
+    assert(r2ProbeCalls - before === 1, `only one live probe fired for cold-cache + immediate recheck (delta ${r2ProbeCalls - before})`);
+
+    const third = isR2PresignHealthy(CRED, ctx);
+    assert(third === false, "still within the TTL window: reuses the cached verdict");
+    assert(r2ProbeCalls - before === 1, `TTL window: no additional probe fired (delta ${r2ProbeCalls - before})`);
+
+    r2ProbeStatus = 200;
+    resetR2PresignHealthForTesting();
+  }
+
+  console.log("\nstream: cached-bad credential health → skips presign, falls back to 200 (binding)");
+  {
+    resetR2PresignHealthForTesting();
+    r2ProbeStatus = 401;
+    // Prime the cache as known-bad because the Hono harness has no execution context.
+    let captured: Promise<unknown> | undefined;
+    isR2PresignHealthy(CRED, { waitUntil: (p) => { captured = p; } });
+    await captured;
+
+    const sqlite = buildDb();
+    setFeature(sqlite, "enable_r2_presign", "1");
+    const { get } = makeApp(sqlite, {
+      R2_ACCESS_KEY_ID: CRED.accessKeyId,
+      R2_SECRET_ACCESS_KEY: CRED.secretAccessKey,
+      CF_ACCOUNT_ID: CRED.accountId,
+    });
+    const r = await get("/rest/stream?id=sm-1&format=raw");
+    assert(r.status === 200, `200 fallback, not 302 (got ${r.status})`);
+    assert(r.headers.get("Location") === null, "no Location — presign skipped because the credential is known-bad");
+
+    r2ProbeStatus = 200;
+    resetR2PresignHealthForTesting();
+  }
+
+  console.log("\n/edgesonic/r2presign/status: secrets missing / credential valid / credential rejected by R2");
+  {
+    const sqlite = buildDb();
+    sqlite.exec(`
+      CREATE TABLE user_permissions (
+        level INTEGER NOT NULL, permission TEXT NOT NULL,
+        enabled INTEGER DEFAULT 0, max_rph INTEGER DEFAULT 0,
+        PRIMARY KEY (level, permission)
+      );
+      INSERT INTO user_permissions VALUES (3, 'manage_permissions', 1, 0);
+    `);
+    setFeature(sqlite, "enable_r2_presign", "1");
+    const app = new Hono<{ Bindings: any; Variables: any }>();
+    app.use("*", async (c, next) => {
+      c.set("user", { username: "admin", level: 3, enabled: 1, password: "x" });
+      c.set("authMethod", "session");
+      return next();
+    });
+    app.route("/edgesonic", r2presignRoutes);
+
+    async function status(envOverrides: Record<string, unknown>) {
+      const env: any = { DB: makeD1(sqlite), INSTANCE_ID: "t", ...envOverrides };
+      const res = await app.fetch(new Request("http://test/edgesonic/r2presign/status"), env);
+      return JSON.parse(await res.text());
+    }
+
+    let data = await status({});
+    assert(data.secretsConfigured === false, "secrets missing → secretsConfigured false");
+    assert(data.credentialValid === null, "secrets missing → credentialValid not attempted (null)");
+    assert(data.active === false, "secrets missing → active false");
+
+    r2ProbeStatus = 200;
+    data = await status({
+      R2_ACCESS_KEY_ID: CRED.accessKeyId,
+      R2_SECRET_ACCESS_KEY: CRED.secretAccessKey,
+      CF_ACCOUNT_ID: CRED.accountId,
+    });
+    assert(data.secretsConfigured === true, "secrets set → secretsConfigured true");
+    assert(data.credentialValid === true, "R2 accepts the credential → credentialValid true");
+    assert(data.active === true, "flag on + secrets set + credential valid → active true");
+
+    r2ProbeStatus = 401;
+    data = await status({
+      R2_ACCESS_KEY_ID: CRED.accessKeyId,
+      R2_SECRET_ACCESS_KEY: CRED.secretAccessKey,
+      CF_ACCOUNT_ID: CRED.accountId,
+    });
+    assert(data.secretsConfigured === true, "secrets set → secretsConfigured still true even when rejected (this is the field the 2026-08-18 incident showed can't be trusted alone)");
+    assert(data.credentialValid === false, "R2 rejects the credential → credentialValid false");
+    assert(data.active === false, "active correctly false — the old secretsConfigured-only check would have reported true here");
+
+    r2ProbeStatus = 200;
+  }
+
+  restoreR2ProbeStub();
 
   if (failures > 0) {
     console.error(`\n${failures} assertion(s) failed`);
