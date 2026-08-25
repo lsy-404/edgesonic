@@ -779,6 +779,7 @@ async function onEditorSubmit(patch: Record<string, string | number>, cover?: { 
         editMsg.value = res.error || t("tagEditor.batchFailed");
       } else {
         const fileFailures = (res.results || []).flatMap((r) => (r.files || []).filter((f) => !f.written).map((f) => f.reason || "write skipped"));
+        editErr.value = fileFailures.length > 0;
         editMsg.value = t("tagEditor.batchSaved", { succeeded: res.succeeded ?? 0, failed: (res.failed ?? 0) + fileFailures.length })
           + (fileFailures.length ? ` (${fileFailures.slice(0, 3).join("; ")})` : "");
         // optimistic local update for batched fields
@@ -787,7 +788,7 @@ async function onEditorSubmit(patch: Record<string, string | number>, cover?: { 
           if (typeof patch.artist === "string") target.artist = patch.artist;
           if (typeof patch.album === "string") target.album = patch.album;
         }
-        selectedIds.value = [];
+        if (!fileFailures.length) selectedIds.value = [];
       }
     }
   } catch {

@@ -945,10 +945,13 @@ async function onTagEditorSubmit(patch: Record<string, string | number>, cover?:
         editMsg.value = res.error || t("tagEditor.batchFailed");
       } else {
         const fileFailures = (res.results || []).flatMap((r) => (r.files || []).filter((f) => !f.written).map((f) => f.reason || "write skipped"));
+        editErr.value = fileFailures.length > 0;
         editMsg.value = t("tagEditor.batchSaved", { succeeded: res.succeeded ?? 0, failed: (res.failed ?? 0) + fileFailures.length })
           + (fileFailures.length ? ` (${fileFailures.slice(0, 3).join("; ")})` : "");
-        clearSelection();
-        setTimeout(() => { editorOpen.value = false; }, 1500);
+        if (!fileFailures.length) {
+          clearSelection();
+          setTimeout(() => { editorOpen.value = false; }, 1500);
+        }
       }
     } else {
       if (!editTargetId.value) return;
@@ -962,8 +965,9 @@ async function onTagEditorSubmit(patch: Record<string, string | number>, cover?:
         editErr.value = failures.length > 0;
         editMsg.value = t("library.editSaved", { written, total: (res.files || []).length })
           + (failures.length ? ` (${failures.map((x) => x.reason || "write skipped").slice(0, 3).join("; ")})` : "");
-        // brief delay so the user reads it, then close
-        setTimeout(() => { editorOpen.value = false; }, 1200);
+        // Keep the editor open when any source could not be written so the
+        // user can inspect the reason and retry; successful edits close.
+        if (!failures.length) setTimeout(() => { editorOpen.value = false; }, 1200);
       }
     }
   } catch {
