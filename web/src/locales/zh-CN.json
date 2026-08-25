@@ -366,6 +366,7 @@
     "includeLyrics": "包含同名歌词",
     "includeVariants": "包含音频变体",
     "convertFirst": "请先本地转换",
+    "uploadItemSelect": "上传时包含 {name}",
     "uploadKinds": {
       "audio": "音频",
       "lyrics": "歌词附件",

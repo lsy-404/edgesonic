@@ -365,6 +365,7 @@
     "includeLyrics": "Include matching lyrics",
     "includeVariants": "Include audio variants",
     "convertFirst": "CONVERT FIRST",
+    "uploadItemSelect": "Include {name} in upload",
     "uploadKinds": {
       "audio": "audio",
       "lyrics": "lyrics sidecar",

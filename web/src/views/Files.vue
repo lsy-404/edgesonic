@@ -6,6 +6,7 @@ import type { CSSProperties } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatSize } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
+import { classifyUploadItems, isUploadIncluded, OPENYYY_ENCRYPTED_EXTENSIONS, suffixOf, uploadPathFor, type UploadItem } from "../lib/uploadQueue";
 import { normalizeForMatch } from "../lib/trackMatch";
 import TagEditor from "../components/TagEditor.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
@@ -35,9 +36,7 @@ const foldersFirst = ref(true);
 const showUpload = ref(false);
 const uploadInput = ref<HTMLInputElement | null>(null);
 const syncUploadInput = ref<HTMLInputElement | null>(null);
-type UploadKind = "audio" | "lyrics" | "variant" | "sidecar" | "encrypted";
-interface UploadItem { file: File; kind: UploadKind; stem: string; relativeDir: string; }
-const uploadQueue = ref<UploadItem[]>([]);
+const uploadQueue = ref<UploadItem<File>[]>([]);
 const uploadProgressList = ref<number[]>([]); // 0-100 per file; -1 = failed
 const uploadDoneCount = ref(0);
 const uploadFailedNames = ref<string[]>([]);
@@ -47,15 +46,6 @@ const uploadErr = ref(false);
 const includeLyrics = ref(true);
 const includeVariants = ref(true);
 const UPLOAD_CONCURRENCY = 3;
-const AUDIO_EXTENSIONS = new Set(["mp3", "flac", "wav", "ogg", "opus", "m4a", "aac", "aiff", "alac", "ape", "wma"]);
-const LYRIC_EXTENSIONS = new Set(["lrc", "ttml", "krc"]);
-const OPENYYY_ENCRYPTED_EXTENSIONS = new Set([
-  "ncm", "uc", "mg3d", "kwm", "xm", "x2m", "x3m", "tm0", "tm2", "tm3", "tm6", "cache",
-  "qmc0", "qmc2", "qmc3", "qmc4", "qmc6", "qmc8", "qmcflac", "qmcogg", "tkm",
-  "bkcmp3", "bkcm4a", "bkcflac", "bkcwav", "bkcape", "bkcogg", "bkcwma",
-  "mggl", "mflac", "mflac0", "mflach", "mgg", "mgg0", "mgg1", "mmp4",
-  "666c6163", "6d7033", "6f6767", "6d3461", "776176", "kgm", "kgma", "vpr",
-]);
 
 interface CrossCopyItem { file: FileEntry; status: "pending" | "copying" | "done" | "failed"; error?: string; }
 const crossCopyModal = ref<{ files: FileEntry[] } | null>(null);
@@ -144,34 +134,10 @@ const selectedTotal = computed(() => selectedDirEntries.value.length + selectedF
 const hasDirSelection = computed(() => selectedDirEntries.value.length > 0);
 const allSelected = computed(() => selectedTotal.value > 0 && selectedTotal.value === dirs.value.length + files.value.length);
 const activeUploadItems = computed(() => uploadQueue.value.filter((item) =>
-  item.kind !== "encrypted" && (item.kind !== "lyrics" || includeLyrics.value) && (item.kind !== "variant" || includeVariants.value),
+  isUploadIncluded(item, { includeLyrics: includeLyrics.value, includeVariants: includeVariants.value }),
 ));
 
-function suffixOf(name: string) { return name.split(".").pop()?.toLowerCase() || ""; }
-function stemOf(name: string) { return name.replace(/\.[^.]+$/, "").toLocaleLowerCase(); }
-function relativeDirOf(file: File) {
-  const relative = (file as File & { webkitRelativePath?: string }).webkitRelativePath || "";
-  const slash = relative.lastIndexOf("/");
-  return slash > -1 ? relative.slice(0, slash) : "";
-}
-function classifyUploadItems(selected: File[]): UploadItem[] {
-  const audioStems = new Map<string, number>();
-  return selected.map((file) => {
-    const suffix = suffixOf(file.name);
-    const stem = stemOf(file.name);
-    let kind: UploadKind = "sidecar";
-    if (LYRIC_EXTENSIONS.has(suffix)) kind = "lyrics";
-    else if (OPENYYY_ENCRYPTED_EXTENSIONS.has(suffix)) kind = "encrypted";
-    else if (AUDIO_EXTENSIONS.has(suffix)) {
-      const count = audioStems.get(stem) || 0;
-      audioStems.set(stem, count + 1);
-      kind = count === 0 ? "audio" : "variant";
-    }
-    return { file, kind, stem, relativeDir: relativeDirOf(file) };
-  });
-}
-function uploadKindLabel(kind: UploadKind) { return t(`files.uploadKinds.${kind}`); }
-function uploadPathFor(item: UploadItem) { return item.relativeDir ? joinPath(path.value, item.relativeDir) : path.value || undefined; }
+function uploadKindLabel(kind: UploadItem["kind"]) { return t(`files.uploadKinds.${kind}`); }
 function openOpenYYY() { window.open("https://openyyy.com", "_blank", "noopener,noreferrer"); }
 
 function clearSelection() {
@@ -313,7 +279,7 @@ async function doUpload() {
       const file = item.file;
       uploadMsg.value = t("files.uploadingFile", { current: uploadDoneCount.value + uploadFailedNames.value.length + 1, total });
       try {
-        const raw = await uploadFile(file, uploadTarget.value, uploadPathFor(item), {
+        const raw = await uploadFile(file, uploadTarget.value, uploadPathFor(path.value, item), {
           profiles: item.kind === "audio" || item.kind === "variant" ? preTranscodeProfiles.value : undefined,
           onProgress: (loaded, size) => {
             uploadProgressList.value[index] = size > 0 ? Math.round((loaded / size) * 100) : 0;
@@ -1312,6 +1278,7 @@ onBeforeUnmount(() => {
       <div v-if="uploadQueue.length || uploadBusy" class="upload-queue">
         <div class="mono-label upload-queue-header">{{ t("files.uploadQueue") }}</div>
         <div v-for="(item, i) in uploadQueue" :key="i" class="upload-queue-item" :class="{ excluded: !activeUploadItems.includes(item) }">
+          <input v-model="item.selected" type="checkbox" class="upload-item-select" :disabled="item.kind === 'encrypted' || uploadBusy" :aria-label="t('files.uploadItemSelect', { name: item.file.name })" />
           <span class="upload-queue-name">{{ item.file.name }}</span>
           <span class="upload-kind">{{ uploadKindLabel(item.kind) }}</span>
           <span v-if="item.kind === 'lyrics' || item.kind === 'variant'" class="upload-pair">{{ item.stem }}</span>
@@ -1939,6 +1906,7 @@ onBeforeUnmount(() => {
 .upload-queue-header { font-size: var(--fs-xs); color: var(--color-text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.4rem; }
 .upload-queue-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.2rem 0; font-family: var(--font-mono); font-size: var(--fs-sm); }
 .upload-queue-item.excluded { opacity: 0.55; }
+.upload-item-select { flex-shrink: 0; accent-color: var(--color-accent-primary); }
 .upload-queue-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); }
 .upload-kind, .upload-pair { flex-shrink: 0; font-size: var(--fs-xs); color: var(--color-text-muted); }
 .upload-kind { border: 1px solid var(--color-border-subtle); padding: 0.1rem 0.3rem; }
