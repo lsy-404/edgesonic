@@ -79,6 +79,8 @@ function onExistingCoverError() {
 
 const coverKeyword = ref<"" | typeof KW_WRITE | typeof KW_EXPORT>("");
 const coverSource = ref<"" | "picked" | "write">("");
+const lyricKeyword = ref<"" | typeof KW_NULL | typeof KW_WRITE | typeof KW_EXPORT>("");
+const lyricBeforeKeyword = ref("");
 
 function resetFromProps() {
   const i = props.initialTags || {};
@@ -103,6 +105,8 @@ function resetFromProps() {
   coverError.value = "";
   coverKeyword.value = "";
   coverSource.value = "";
+  lyricKeyword.value = "";
+  lyricBeforeKeyword.value = "";
   existingCoverBroken.value = false;
 }
 
@@ -135,7 +139,9 @@ function buildPatch(): Record<string, string | number> {
   if (wantField("album", form.album)) patch.album = form.album.trim();
   if (wantField("albumArtist", form.albumArtist)) patch.albumArtist = form.albumArtist.trim();
   if (wantField("genre", form.genre)) patch.genre = form.genre.trim();
-  if (wantField("lyrics", form.lyrics)) patch.lyrics = form.lyrics.trim();
+  if (lyricKeyword.value) {
+    if (!isBatch.value || apply.lyrics) patch.lyrics = lyricKeyword.value;
+  } else if (wantField("lyrics", form.lyrics)) patch.lyrics = form.lyrics.trim();
   if (!isKeyword(form.year.trim())) {
     if (wantField("year", form.year)) {
       const n = parseInt(form.year, 10);
@@ -173,6 +179,24 @@ function onSubmit() {
     cover = { data: coverData.value, mime: coverMime.value };
   }
   emit("submit", patch, cover);
+}
+
+function chooseLyricKeyword(keyword: typeof KW_NULL | typeof KW_WRITE | typeof KW_EXPORT) {
+  if (lyricKeyword.value === keyword) {
+    lyricKeyword.value = "";
+    form.lyrics = lyricBeforeKeyword.value;
+    return;
+  }
+  if (!lyricKeyword.value) lyricBeforeKeyword.value = form.lyrics;
+  lyricKeyword.value = keyword;
+  if (lyricKeyword.value) {
+    form.lyrics = keyword;
+    if (isBatch.value) apply.lyrics = true;
+  }
+}
+
+function onLyricsInput() {
+  if (lyricKeyword.value) lyricKeyword.value = "";
 }
 
 function onClose() {
@@ -483,7 +507,12 @@ function blobToBase64(blob: Blob): Promise<string> {
           <input v-if="isBatch" type="checkbox" v-model="apply.lyrics" class="apply-check" :title="t('tagEditor.applyField')" />
           <div class="form-group" style="flex:1">
             <label class="form-label">{{ t("tagEditor.fieldLyrics") }}</label>
-            <textarea v-model="form.lyrics" class="form-textarea lyrics-input" rows="3" :disabled="isBatch && !apply.lyrics"></textarea>
+            <textarea v-model="form.lyrics" @input="onLyricsInput" class="form-textarea lyrics-input" rows="3" :disabled="isBatch && !apply.lyrics"></textarea>
+            <div class="lyrics-keyword-row">
+              <button v-for="keyword in [KW_NULL, KW_WRITE, KW_EXPORT]" :key="keyword" type="button"
+                class="cover-kw-btn" :class="{ active: lyricKeyword === keyword }"
+                @click="chooseLyricKeyword(keyword)">{{ keyword }}</button>
+            </div>
             <p class="keyword-hint mono-label" v-html="t('tagEditor.lyricsKeywords')"></p>
           </div>
         </div>
@@ -582,6 +611,7 @@ function blobToBase64(blob: Blob): Promise<string> {
   text-transform: lowercase;
 }
 .lyrics-input { font-family: var(--font-mono); resize: vertical; min-height: 60px; }
+.lyrics-keyword-row { display: flex; gap: 6px; margin-top: 6px; }
 .field-hint {
   display: block;
   margin: 0.6rem 0 0;

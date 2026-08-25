@@ -944,9 +944,15 @@ async function onTagEditorSubmit(patch: Record<string, string | number>, cover?:
         editErr.value = true;
         editMsg.value = res.error || t("tagEditor.batchFailed");
       } else {
-        editMsg.value = t("tagEditor.batchSaved", { succeeded: res.succeeded ?? 0, failed: res.failed ?? 0 });
-        clearSelection();
-        setTimeout(() => { editorOpen.value = false; }, 1500);
+        const fileFailures = (res.results || []).flatMap((r) => (r.files || []).filter((f) => !f.written).map((f) => f.reason || "write skipped"));
+        const totalFailures = (res.failed ?? 0) + fileFailures.length;
+        editErr.value = totalFailures > 0;
+        editMsg.value = t("tagEditor.batchSaved", { succeeded: res.succeeded ?? 0, failed: totalFailures })
+          + (fileFailures.length ? ` (${fileFailures.slice(0, 3).join("; ")})` : "");
+        if (!totalFailures) {
+          clearSelection();
+          setTimeout(() => { editorOpen.value = false; }, 1500);
+        }
       }
     } else {
       if (!editTargetId.value) return;
@@ -956,9 +962,13 @@ async function onTagEditorSubmit(patch: Record<string, string | number>, cover?:
         editMsg.value = res.error || t("library.editFailed");
       } else {
         const written = (res.files || []).filter((x) => x.written).length;
-        editMsg.value = t("library.editSaved", { written, total: (res.files || []).length });
-        // brief delay so the user reads it, then close
-        setTimeout(() => { editorOpen.value = false; }, 1200);
+        const failures = (res.files || []).filter((x) => !x.written);
+        editErr.value = failures.length > 0;
+        editMsg.value = t("library.editSaved", { written, total: (res.files || []).length })
+          + (failures.length ? ` (${failures.map((x) => x.reason || "write skipped").slice(0, 3).join("; ")})` : "");
+        // Keep the editor open when any source could not be written so the
+        // user can inspect the reason and retry; successful edits close.
+        if (!failures.length) setTimeout(() => { editorOpen.value = false; }, 1200);
       }
     }
   } catch {

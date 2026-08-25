@@ -67,6 +67,7 @@ interface FileResult {
   uri: string;
   written: boolean;
   reason?: string;
+  sidecar?: string;
 }
 
 interface ApplyResult {
@@ -261,23 +262,29 @@ async function applyTagsToSong(
   // normal lyric string edit.
   const lyricsKeyword = isLyricsKeyword(tags.lyrics) ? tags.lyrics : undefined;
   if (lyricsKeyword) delete tags.lyrics;
+  const hasOrdinaryTags = Object.keys(tags).length > 0;
 
   // lyrics string so buildUSLTFrame / buildVorbisComment emit it. We re-inject
   // it into `tags.lyrics` (a real string, not a keyword) right before the
   // rewriteInstance loop. The D1 row is already current (no UPDATE needed for
   // a `{write}` since the value is unchanged), so we skip the COALESCE path
   // for lyrics by leaving tags.lyrics set only when the keyword is `{write}`.
-  if (lyricsKeyword === KW_WRITE && master.lyrics) {
+  if (lyricsKeyword === KW_WRITE && master.lyrics && hasOrdinaryTags) {
     tags.lyrics = master.lyrics;
   }
 
-  // same directory as each instance. These are best-effort; read-only sources
-  // (url://, subsonic://) are silently skipped. D1 is untouched by export.
+  // Sidecar operations are reported per instance. They must not be allowed to
+  // masquerade as a successful tag edit when a source is read-only or a PUT
+  // fails.
+  const sidecarFiles: FileResult[] = [];
   if (lyricsKeyword === KW_EXPORT || coverKeyword === KW_EXPORT) {
     const instances = await queries.getSongInstances(master.id);
     for (const inst of instances) {
       if (lyricsKeyword === KW_EXPORT && master.lyrics) {
-        await exportLrcSidecar(env, sources, inst.storage_uri, master.lyrics).catch(() => {});
+        const result = await exportLrcSidecar(env, sources, inst.storage_uri, master.lyrics).catch((e): SidecarResult => ({ written: false, reason: e instanceof Error ? e.message : String(e) }));
+        sidecarFiles.push({ instanceId: inst.id, uri: inst.storage_uri, written: result.written, reason: result.reason, sidecar: result.path });
+      } else if (lyricsKeyword === KW_EXPORT) {
+        sidecarFiles.push({ instanceId: inst.id, uri: inst.storage_uri, written: false, reason: "no lyrics in library" });
       }
       if (coverKeyword === KW_EXPORT) {
         const album = await db.prepare("SELECT cover_r2_key FROM albums WHERE id = ?")
@@ -286,8 +293,12 @@ async function applyTagsToSong(
           const obj = await env.MUSIC_BUCKET.get(album.cover_r2_key);
           if (obj) {
             const bytes = new Uint8Array(await obj.arrayBuffer());
-            await exportCoverSidecar(env, sources, inst.storage_uri, bytes).catch(() => {});
+            const result = await exportCoverSidecar(env, sources, inst.storage_uri, bytes).catch((e): SidecarResult => ({ written: false, reason: e instanceof Error ? e.message : String(e) }));
+            sidecarFiles.push({ instanceId: inst.id, uri: inst.storage_uri, written: result.written, reason: result.reason, sidecar: result.path });
           }
+          else sidecarFiles.push({ instanceId: inst.id, uri: inst.storage_uri, written: false, reason: "cover not found" });
+        } else {
+          sidecarFiles.push({ instanceId: inst.id, uri: inst.storage_uri, written: false, reason: "cover not found" });
         }
       }
     }
@@ -298,7 +309,7 @@ async function applyTagsToSong(
       (!coverKeyword || coverKeyword === KW_EXPORT) &&
       (!lyricsKeyword || lyricsKeyword === KW_EXPORT);
     if (onlyExport) {
-      return { ok: true, masterId: master.id, albumId: master.album_id, artistId: master.artist_id, files: [] };
+      return { ok: true, masterId: master.id, albumId: master.album_id, artistId: master.artist_id, files: sidecarFiles };
     }
   }
 
@@ -322,6 +333,26 @@ async function applyTagsToSong(
     // — the tag patch (if any) still applies.
   }
 
+  // Keyword-only lyric actions must never derive a new artist/album link.
+  // `{write}` is a file operation, while `{null}` only clears the library
+  // value. Both are valid without any ordinary tag fields.
+  if (!Object.keys(tags).length && !cover && lyricsKeyword === KW_NULL) {
+    await db.prepare("UPDATE song_masters SET lyrics = NULL, updated_at = ? WHERE id = ?")
+      .bind(Math.floor(Date.now() / 1000), master.id).run();
+    return { ok: true, masterId: master.id, albumId: master.album_id, artistId: master.artist_id, files: sidecarFiles };
+  }
+  if (!Object.keys(tags).length && !cover && lyricsKeyword === KW_WRITE) {
+    const instances = await queries.getSongInstances(master.id);
+    const files = [...sidecarFiles];
+    for (const inst of instances) {
+      const res = master.lyrics
+        ? await rewriteInstance(env, sources, inst.storage_uri, (inst.suffix || "").toLowerCase(), inst.content_type, { lyrics: master.lyrics }).catch((e): { written: boolean; reason?: string } => ({ written: false, reason: e instanceof Error ? e.message : String(e) }))
+        : { written: false, reason: "no lyrics in library" };
+      files.push({ instanceId: inst.id, uri: inst.storage_uri, written: res.written, reason: res.reason });
+    }
+    return { ok: true, masterId: master.id, albumId: master.album_id, artistId: master.artist_id, files };
+  }
+
   // --- D1 relink (same id derivation as scanTags so edits and scans converge) ---
   // Cover-only edits skip D1 mutation entirely — there is no field to relink.
   if (!Object.keys(tags).length && cover) {
@@ -337,7 +368,7 @@ async function applyTagsToSong(
       }
       files.push({ instanceId: inst.id, uri: inst.storage_uri, written: res.written, reason: res.reason });
     }
-    return { ok: true, masterId: master.id, albumId: master.album_id, artistId: master.artist_id, files };
+    return { ok: true, masterId: master.id, albumId: master.album_id, artistId: master.artist_id, files: [...sidecarFiles, ...files] };
   }
 
   const curArtist = await db.prepare("SELECT name FROM artists WHERE id = ?")
@@ -417,7 +448,7 @@ async function applyTagsToSong(
 
   // --- file write-back per instance ---
   const instances = await queries.getSongInstances(master.id);
-  const files: FileResult[] = [];
+  const files: FileResult[] = [...sidecarFiles];
   for (const inst of instances) {
     const res = await rewriteInstance(env, sources, inst.storage_uri, (inst.suffix || "").toLowerCase(), inst.content_type, tags, cover)
       .catch((e): { written: boolean; reason?: string; newSize?: number } =>
@@ -575,7 +606,7 @@ async function rewriteInstance(
 
     const need = requiredPrefixLen(whole, suffix);
     if (need === null || need > whole.length) return { written: false, reason: "unsupported tag layout" };
-    const rw = rebuildTagPrefix(whole, suffix, tags);
+    const rw = rebuildTagPrefix(whole, suffix, tags, cover);
     if (!rw) return { written: false, reason: "unsupported tag layout" };
 
     const out = new Uint8Array(rw.newPrefix.length + (whole.length - rw.oldPrefixLen));
@@ -594,7 +625,7 @@ async function rewriteInstance(
   return { written: false, reason: "read-only source" };
 }
 
-// subsonic://) are silently skipped. Errors are swallowed by the caller.
+interface SidecarResult { written: boolean; path?: string; reason?: string }
 
 /** Derive the sidecar path for a given song instance: same directory, same
  *  base name, with `newExt` substituted. Returns null for unsupported schemes. */
@@ -613,32 +644,33 @@ async function exportLrcSidecar(
   sources: Map<string, SourceRow>,
   storageUri: string,
   lyrics: string,
-): Promise<void> {
+): Promise<SidecarResult> {
   const lrcUri = deriveSidecarPath(storageUri, "lrc");
-  if (!lrcUri) return;
+  if (!lrcUri) return { written: false, reason: "invalid source path" };
   const data = new TextEncoder().encode(lyrics);
   if (lrcUri.startsWith("r2://")) {
     await env.MUSIC_BUCKET.put(lrcUri.substring(5), data, {
       httpMetadata: { contentType: "text/plain; charset=utf-8" },
     });
-    return;
+    return { written: true, path: lrcUri };
   }
   if (lrcUri.startsWith("webdav://")) {
     const rest = lrcUri.substring(9);
     const slash = rest.indexOf("/");
     const src = sources.get(rest.substring(0, slash));
-    if (!src) return;
+    if (!src) return { written: false, path: lrcUri, reason: "source not found or disabled" };
     const root = (src.root_path || "").replace(/^\/+|\/+$/g, "");
     const url = src.base_url.replace(/\/+$/, "") + (root ? `/${root}` : "") + "/" + encodePath(rest.substring(slash + 1));
     const auth = `Basic ${btoa(`${src.username || ""}:${src.password || ""}`)}`;
-    await fetch(url, {
+    const response = await fetch(url, {
       method: "PUT",
       headers: { Authorization: auth, "Content-Type": "text/plain; charset=utf-8" },
       body: data,
     });
-    return;
+    if (!response.ok) return { written: false, path: lrcUri, reason: `PUT failed: HTTP ${response.status}` };
+    return { written: true, path: lrcUri };
   }
-  // url://, subsonic:// — read-only, skip silently.
+  return { written: false, path: lrcUri, reason: "read-only source" };
 }
 
 /** Write R2 cover bytes to `<songDir>/cover.jpg` next to the instance. */
@@ -647,30 +679,31 @@ async function exportCoverSidecar(
   sources: Map<string, SourceRow>,
   storageUri: string,
   coverBytes: Uint8Array,
-): Promise<void> {
+): Promise<SidecarResult> {
   const lastSlash = storageUri.lastIndexOf("/");
-  if (lastSlash < 0) return;
+  if (lastSlash < 0) return { written: false, reason: "invalid source path" };
   const coverUri = storageUri.substring(0, lastSlash + 1) + "cover.jpg";
   if (coverUri.startsWith("r2://")) {
     await env.MUSIC_BUCKET.put(coverUri.substring(5), coverBytes, {
       httpMetadata: { contentType: "image/jpeg" },
     });
-    return;
+    return { written: true, path: coverUri };
   }
   if (coverUri.startsWith("webdav://")) {
     const rest = coverUri.substring(9);
     const slash = rest.indexOf("/");
     const src = sources.get(rest.substring(0, slash));
-    if (!src) return;
+    if (!src) return { written: false, path: coverUri, reason: "source not found or disabled" };
     const root = (src.root_path || "").replace(/^\/+|\/+$/g, "");
     const url = src.base_url.replace(/\/+$/, "") + (root ? `/${root}` : "") + "/" + encodePath(rest.substring(slash + 1));
     const auth = `Basic ${btoa(`${src.username || ""}:${src.password || ""}`)}`;
-    await fetch(url, {
+    const response = await fetch(url, {
       method: "PUT",
       headers: { Authorization: auth, "Content-Type": "image/jpeg" },
       body: coverBytes,
     });
-    return;
+    if (!response.ok) return { written: false, path: coverUri, reason: `PUT failed: HTTP ${response.status}` };
+    return { written: true, path: coverUri };
   }
-  // url://, subsonic:// — read-only, skip silently.
+  return { written: false, path: coverUri, reason: "read-only source" };
 }
