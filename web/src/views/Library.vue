@@ -767,6 +767,7 @@ async function onEditorSubmit(patch: Record<string, string | number>, cover?: { 
         const files = res.files || [];
         const written = files.filter((x) => x.written).length;
         const skipped = files.filter((x) => !x.written).map((x) => x.reason).filter(Boolean);
+        editErr.value = skipped.length > 0;
         editMsg.value = t("library.editSaved", { written, total: files.length })
           + (skipped.length ? ` (${skipped.join("; ")})` : "");
       }

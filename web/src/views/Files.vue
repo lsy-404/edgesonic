@@ -958,7 +958,10 @@ async function onTagEditorSubmit(patch: Record<string, string | number>, cover?:
         editMsg.value = res.error || t("library.editFailed");
       } else {
         const written = (res.files || []).filter((x) => x.written).length;
-        editMsg.value = t("library.editSaved", { written, total: (res.files || []).length });
+        const failures = (res.files || []).filter((x) => !x.written);
+        editErr.value = failures.length > 0;
+        editMsg.value = t("library.editSaved", { written, total: (res.files || []).length })
+          + (failures.length ? ` (${failures.map((x) => x.reason || "write skipped").slice(0, 3).join("; ")})` : "");
         // brief delay so the user reads it, then close
         setTimeout(() => { editorOpen.value = false; }, 1200);
       }
