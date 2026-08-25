@@ -50,7 +50,7 @@ export interface ScrapeError {
 }
 
 export interface SearchResponse {
-  /** Results in source-priority order — multiple sources concatenated. */
+  /** Results globally ranked by query/metadata match score. */
   results: ScrapeResult[];
   /** Per-source errors (one row per source that failed). */
   errors: ScrapeError[];

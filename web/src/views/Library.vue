@@ -728,11 +728,15 @@ function scrapeQueryFromForm(form: Record<string, string>): string {
   return [init.title, init.artist].filter(Boolean).join(" ");
 }
 
-function applyScrapeResult(
+async function applyScrapeResult(
   form: Record<string, string>,
   applyFlags: Record<string, boolean>,
   r: ScrapeResult,
+  applyCoverUrl: (url: string) => Promise<void>,
 ) {
+  if (r.coverUrl) {
+    try { await applyCoverUrl(r.coverUrl); } catch { /* TagEditor keeps coverError visible; continue with metadata. */ }
+  }
   if (r.title) form.title = r.title;
   if (r.artist) form.artist = r.artist;
   if (r.albumArtist) form.albumArtist = r.albumArtist;
@@ -1678,11 +1682,11 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
     >
      <!-- Scrape button in extras slot. Single-mode only; batch UX has no
            obvious "one master query" so we hide the button there. -->
-      <template v-if="editorMode === 'single'" #extras="{ form, apply }">
+      <template v-if="editorMode === 'single'" #extras="{ form, apply, applyCoverUrl }">
         <ScrapeButton
           :initial-query="scrapeQueryFromForm(form)"
           :song-master-id="editTargets[0]?.id || ''"
-          @apply="(r: ScrapeResult) => applyScrapeResult(form, apply, r)"
+          @apply="(r: ScrapeResult) => applyScrapeResult(form, apply, r, applyCoverUrl)"
         />
       </template>
     </TagEditor>

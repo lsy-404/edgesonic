@@ -57,15 +57,17 @@ function matches(album: LrcAlbum, song: LrcSong, query: string): boolean {
 }
 
 async function fetchJson<T>(url: string, proxyFetch: ProxyFn, intent: "search" | "detail", songId?: string): Promise<T> {
+  let proxyError = "unknown";
+  try {
+    const proxied = await proxyFetch({ source: SOURCE, intent, ...(songId ? { songId } : {}) }) as { ok?: boolean; data?: T; error?: string };
+    if (proxied?.ok && proxied.data != null) return proxied.data;
+    proxyError = proxied?.error || "invalid proxy response";
+  } catch (error) { proxyError = error instanceof Error ? error.message : String(error); }
   try {
     const response = await fetch(url, { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return await response.json() as T;
-  } catch (error) {
-    const proxied = await proxyFetch({ source: SOURCE, intent, ...(songId ? { songId } : {}) }) as { ok?: boolean; data?: T; error?: string };
-    if (!proxied.ok || !proxied.data) throw new Error(`lrc ${intent}: ${proxied.error || (error instanceof Error ? error.message : "unknown")}`);
-    return proxied.data;
-  }
+  } catch (error) { throw new Error(`lrc ${intent}: ${proxyError}; direct fallback: ${error instanceof Error ? error.message : String(error)}`); }
 }
 
 export async function search(query: string, proxyFetch: ProxyFn): Promise<ScrapeResult[]> {

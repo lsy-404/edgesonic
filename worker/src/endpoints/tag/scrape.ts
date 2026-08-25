@@ -301,7 +301,10 @@ async function fetchLrcAlbumDetail(slug: string): Promise<unknown> {
 
 // ---- NetEase ----
 async function fetchNetEaseSearch(query: string): Promise<unknown> {
-  const url = "https://music.163.com/api/search/get/web";
+  // `/api/search/get/web` now returns an encrypted `result` string. The
+  // legacy `/api/search/get` endpoint still returns the documented
+  // `{ result: { songs } }` payload consumed by the normaliser.
+  const url = "https://music.163.com/api/search/get";
   const form = new URLSearchParams({ s: query, type: "1", offset: "0", limit: "20" });
   const resp = await timedFetch(url, {
     method: "POST",

@@ -297,6 +297,23 @@ async function handleCoverFile(file: File | Blob, source: "picked" | "write" = "
   }
 }
 
+async function applyCoverUrl(url: string): Promise<void> {
+  coverError.value = "";
+  coverBusy.value = true;
+  try {
+    const response = await fetch(url, { mode: "cors" });
+    if (!response.ok) throw new Error(`Cover download HTTP ${response.status}`);
+    const blob = await response.blob();
+    await handleCoverFile(blob, "picked");
+    if (coverError.value) throw new Error(coverError.value);
+  } catch (error) {
+    coverError.value = error instanceof Error ? error.message : String(error);
+    throw error;
+  } finally {
+    coverBusy.value = false;
+  }
+}
+
 async function useAlbumCoverForWrite() {
   if (!props.existingCoverUrl) {
     coverError.value = t("tagEditor.cover.errNoAlbumCover");
@@ -521,13 +538,13 @@ function blobToBase64(blob: Blob): Promise<string> {
       <p class="field-hint">{{ isBatch ? t("tagEditor.hintBatch") : t("tagEditor.hintSingle") }}</p>
 
       <!-- extras slot — scrape buttons are injected here -->
-      <slot name="extras" :patch-preview="patchPreview" :form="form" :apply="apply"></slot>
+      <slot name="extras" :patch-preview="patchPreview" :form="form" :apply="apply" :apply-cover-url="applyCoverUrl"></slot>
 
       <p v-if="message" :class="['te-msg', { error: error }]">{{ message }}</p>
 
       <div class="modal-actions">
         <button class="btn-secondary" @click="onClose">{{ t("common.cancel") }}</button>
-        <button class="btn-primary" :disabled="busy || (patchPreview.length === 0 && !hasCover)" @click="onSubmit">
+        <button class="btn-primary" :disabled="busy || coverBusy || (patchPreview.length === 0 && !hasCover)" @click="onSubmit">
           {{ busy ? t("common.loading") : (isBatch ? t("tagEditor.applyBatch", { n: patchPreview.length + (hasCover ? 1 : 0) }) : t("common.save")) }}
         </button>
       </div>

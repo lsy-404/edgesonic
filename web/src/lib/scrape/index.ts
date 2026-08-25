@@ -63,28 +63,44 @@ interface SearchOpts {
   proxyFetch: ProxyFn;
   /** Per-source limit (we keep ≤ 20 by upstream API design). */
   perSourceLimit?: number;
+  /** Optional metadata gives ranking a stronger artist/title signal. */
+  current?: Partial<Pick<ScrapeResult, "title" | "artist" | "album">>;
 }
 
-/** Fan-out search to every enabled source; concatenate in priority order. */
+/** Fan-out enabled sources concurrently, then rank the combined result set. */
 export async function searchAll(opts: SearchOpts): Promise<SearchResponse> {
   const limit = opts.perSourceLimit ?? 10;
-  const results: ScrapeResult[] = [];
-  const errors: Array<{ source: ScrapeSource; error: string }> = [];
-
-  // Sequential to honor priority order in the output list; the typical query
-  // returns within ~2s per source, and users only ever scrape one song at a
-  // time — parallelism here would just complicate ordering.
-  for (const src of opts.sources) {
+  const jobs = opts.sources.map(async (src) => {
     const ad = ADAPTERS[src];
-    if (!ad) continue;
-    try {
-      const rows = await ad.search(opts.query, opts.proxyFetch);
-      results.push(...rows.slice(0, limit));
-    } catch (e) {
-      errors.push({ source: src, error: e instanceof Error ? e.message : String(e) });
-    }
+    if (!ad) return { source: src, rows: [] as ScrapeResult[] };
+    const rows = await ad.search(opts.query, opts.proxyFetch);
+    return { source: src, rows: rows.slice(0, limit) };
+  });
+  const settled = await Promise.allSettled(jobs);
+  const errors: Array<{ source: ScrapeSource; error: string }> = [];
+  const results: ScrapeResult[] = [];
+  settled.forEach((item, index) => {
+    const source = opts.sources[index];
+    if (item.status === "fulfilled") results.push(...item.value.rows);
+    else errors.push({ source, error: item.reason instanceof Error ? item.reason.message : String(item.reason) });
+  });
+  const queryFields = [opts.query, opts.current?.title, opts.current?.artist, opts.current?.album].filter((value): value is string => Boolean(value)).map(normalise);
+  return { results: results.map((row, index) => ({ row, index, score: matchScore(row, queryFields) })).sort((a, b) => b.score - a.score || a.index - b.index).map((entry) => entry.row), errors };
+}
+
+function normalise(value: string): string { return value.toLocaleLowerCase().replace(/[\s\p{P}\p{S}_]+/gu, " ").trim(); }
+function matchScore(row: ScrapeResult, fields: string[]): number {
+  const title = normalise(row.title); const artist = normalise(row.artist); const album = normalise(row.album || "");
+  const haystack = `${title} ${artist} ${album}`;
+  let score = 0;
+  for (const field of fields) {
+    if (!field) continue;
+    if (title === field) score += 100;
+    else if (title.includes(field)) score += 60;
+    else if (haystack.includes(field)) score += 25;
+    for (const token of field.split(" ").filter(Boolean)) if (haystack.includes(token)) score += 3;
   }
-  return { results, errors };
+  return score;
 }
 
 interface LyricOpts {

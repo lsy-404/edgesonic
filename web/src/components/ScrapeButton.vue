@@ -2,7 +2,7 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
 import Icon from "./Icon.vue";
@@ -68,6 +68,9 @@ const busy = ref(false);
 const results = ref<ScrapeResult[]>([]);
 const errors = ref<Array<{ source: ScrapeSource; error: string }>>([]);
 const error = ref("");
+const detail = ref<ScrapeResult | null>(null);
+const selected = ref<Record<string, boolean>>({ title: true, artist: true, albumArtist: true, album: true, year: true, lyrics: true, cover: true });
+const fieldKeys = ["title", "artist", "albumArtist", "album", "year", "lyrics", "cover"] as const;
 
 watch(() => props.initialQuery, (v) => { query.value = v; });
 
@@ -128,19 +131,50 @@ function openPanel() {
 
 function closePanel() {
   open.value = false;
+  detail.value = null;
+}
+
+function onWindowKeydown(event: KeyboardEvent) { if (event.key === "Escape" && open.value) closePanel(); }
+window.addEventListener("keydown", onWindowKeydown);
+onBeforeUnmount(() => window.removeEventListener("keydown", onWindowKeydown));
+
+async function showDetail(r: ScrapeResult) {
+  busy.value = true; error.value = "";
+  selected.value = { title: true, artist: true, albumArtist: true, album: true, year: true, lyrics: true, cover: true };
+  try { detail.value = await resolveResult(r, makeProxyFetch(tagPost)); }
+  catch (e) { error.value = e instanceof Error ? e.message : String(e); }
+  busy.value = false;
+}
+
+function fieldValue(result: ScrapeResult, field: typeof fieldKeys[number]): string {
+  if (field === "cover") return result.coverUrl || "—";
+  const value = result[field];
+  return value == null || value === "" ? "—" : String(value);
 }
 
 async function applyResult(r: ScrapeResult) {
   busy.value = true;
-  let resolved: ScrapeResult;
+  let resolved: ScrapeResult = r;
   try {
-    resolved = await resolveResult(r, makeProxyFetch(tagPost));
+    // Detail results are already resolved; only a compact search row needs
+    // the additional detail request.
+    if (r !== detail.value) resolved = await resolveResult(r, makeProxyFetch(tagPost));
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
     busy.value = false;
     return;
   }
-  emit("apply", resolved);
+  const partial: ScrapeResult = {
+    ...resolved,
+    title: selected.value.title ? resolved.title : "",
+    artist: selected.value.artist ? resolved.artist : "",
+    albumArtist: selected.value.albumArtist ? resolved.albumArtist : undefined,
+    album: selected.value.album ? resolved.album : undefined,
+    year: selected.value.year ? resolved.year : undefined,
+    lyrics: selected.value.lyrics ? resolved.lyrics : undefined,
+    coverUrl: selected.value.cover ? resolved.coverUrl : undefined,
+  };
+  emit("apply", partial);
   // Fire-and-forget audit row. Failure here doesn't block the apply (the user
   // already got their tags merged; the row is best-effort tracking).
   try {
@@ -150,8 +184,10 @@ async function applyResult(r: ScrapeResult) {
         source: resolved.source,
         songId: resolved.songId,
         query: query.value.trim(),
-        result: resolved,
-        mode: "tags",
+        result: partial,
+        mode: selected.value.cover && resolved.coverUrl
+          ? (fieldKeys.some((field) => field !== "cover" && selected.value[field]) ? "both" : "cover")
+          : "tags",
       },
       tagPost,
     );
@@ -168,7 +204,9 @@ async function applyResult(r: ScrapeResult) {
       {{ t("scrape.button") }}
     </button>
 
-    <div v-if="open" class="scrape-panel">
+    <Teleport to="body">
+    <div v-if="open" class="scrape-modal-backdrop" @click.self="closePanel">
+      <div class="scrape-panel" role="dialog" aria-modal="true">
       <div class="scrape-search-row">
         <input
           v-model="query"
@@ -184,7 +222,7 @@ async function applyResult(r: ScrapeResult) {
       </div>
 
       <p v-if="!compact" class="scrape-hint mono-label">
-        {{ t("scrape.hint", { sources: enabledSources.map((s) => sourceLabel[s]).join(" → ") }) }}
+        {{ t("scrape.hint") }}
       </p>
 
       <p v-if="error" class="scrape-error">{{ error }}</p>
@@ -204,10 +242,19 @@ async function applyResult(r: ScrapeResult) {
             <span class="scrape-row-album">{{ r.album || "" }}</span>
             <span v-if="r.year" class="scrape-row-year">{{ r.year }}</span>
           </div>
-          <button class="btn-primary btn-sm" @click="applyResult(r)">{{ t("scrape.apply") }}</button>
+          <button class="btn-secondary btn-sm" @click="showDetail(r)">{{ t("scrape.details") }}</button>
         </div>
       </div>
+      <div v-if="detail" class="scrape-detail">
+        <div class="scrape-detail-head"><strong>{{ t("scrape.details") }}</strong><button class="btn-primary btn-sm" @click="applyResult(detail)">{{ t("scrape.applySelected") }}</button></div>
+        <div v-for="field in fieldKeys" :key="field" class="scrape-detail-field">
+          <label><input v-model="selected[field]" type="checkbox" /> {{ t(`scrape.fields.${field}`) }}</label>
+          <span>{{ fieldValue(detail, field) }}</span>
+        </div>
+      </div>
+      </div>
     </div>
+    </Teleport>
   </div>
 </template>
 
@@ -225,7 +272,9 @@ async function applyResult(r: ScrapeResult) {
 .scrape-icon { font-family: var(--font-mono); color: var(--color-accent-primary); }
 
 .scrape-panel {
-  margin-top: 0.7rem;
+  width: min(900px, calc(100vw - 2rem));
+  max-height: min(82vh, 760px);
+  overflow: auto;
   padding: 0.75rem;
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border-subtle);
@@ -234,6 +283,10 @@ async function applyResult(r: ScrapeResult) {
   flex-direction: column;
   gap: 0.55rem;
 }
+.scrape-modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgb(0 0 0 / 70%); }
+.scrape-detail { border-top: 1px solid var(--color-border-subtle); padding-top: .75rem; display:flex; flex-direction:column; gap:.4rem; }
+.scrape-detail-head { display:flex; justify-content:space-between; align-items:center; }
+.scrape-detail-field { display:grid; grid-template-columns: minmax(120px, 180px) 1fr; gap:.75rem; padding:.35rem; background:var(--color-bg-secondary); overflow-wrap:anywhere; }
 .scrape-search-row { display: flex; gap: 0.5rem; align-items: center; }
 .scrape-query { flex: 1; min-width: 180px; }
 
