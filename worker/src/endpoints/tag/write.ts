@@ -30,6 +30,8 @@ import type { TagWriteCover } from "../../utils/tagwrite";
 import { encodePath } from "../storage/scan";
 import type { SongTags } from "../../utils/tags";
 import { dispatchWorkBatch } from "../edgesonic/work";
+import { deserializeRich, normalizeRichLyrics, richLyricsToLrc } from "../../utils/richLyrics";
+import { parseNetEaseLyrics } from "../../../../shared/neteaseLyrics";
 
 export const tagEditRoutes = new Hono();
 
@@ -47,6 +49,12 @@ function isKeyword(v: unknown): boolean {
 // channel (coverData carries the literal — see parseCoverKeyword below).
 function isLyricsKeyword(v: unknown): boolean {
   return isKeyword(v) && (v === KW_NULL || v === KW_WRITE || v === KW_EXPORT);
+}
+
+function libraryLyricsForFile(master: { lyrics: string | null; lyrics_rich: string | null }): string | null {
+  if (master.lyrics?.trim()) return parseNetEaseLyrics(master.lyrics);
+  const rich = deserializeRich(master.lyrics_rich);
+  return rich ? richLyricsToLrc(normalizeRichLyrics(rich)) : null;
 }
 
 const HEAD_FETCH = 512 * 1024;
@@ -269,8 +277,9 @@ async function applyTagsToSong(
   // rewriteInstance loop. The D1 row is already current (no UPDATE needed for
   // a `{write}` since the value is unchanged), so we skip the COALESCE path
   // for lyrics by leaving tags.lyrics set only when the keyword is `{write}`.
-  if (lyricsKeyword === KW_WRITE && master.lyrics && hasOrdinaryTags) {
-    tags.lyrics = master.lyrics;
+  const libraryLyrics = lyricsKeyword === KW_WRITE || lyricsKeyword === KW_EXPORT ? libraryLyricsForFile(master) : null;
+  if (libraryLyrics && hasOrdinaryTags) {
+    tags.lyrics = libraryLyrics;
   }
 
   // Sidecar operations are reported per instance. They must not be allowed to
@@ -280,8 +289,8 @@ async function applyTagsToSong(
   if (lyricsKeyword === KW_EXPORT || coverKeyword === KW_EXPORT) {
     const instances = await queries.getSongInstances(master.id);
     for (const inst of instances) {
-      if (lyricsKeyword === KW_EXPORT && master.lyrics) {
-        const result = await exportLrcSidecar(env, sources, inst.storage_uri, master.lyrics).catch((e): SidecarResult => ({ written: false, reason: e instanceof Error ? e.message : String(e) }));
+      if (lyricsKeyword === KW_EXPORT && libraryLyrics) {
+        const result = await exportLrcSidecar(env, sources, inst.storage_uri, libraryLyrics).catch((e): SidecarResult => ({ written: false, reason: e instanceof Error ? e.message : String(e) }));
         sidecarFiles.push({ instanceId: inst.id, uri: inst.storage_uri, written: result.written, reason: result.reason, sidecar: result.path });
       } else if (lyricsKeyword === KW_EXPORT) {
         sidecarFiles.push({ instanceId: inst.id, uri: inst.storage_uri, written: false, reason: "no lyrics in library" });
@@ -345,8 +354,8 @@ async function applyTagsToSong(
     const instances = await queries.getSongInstances(master.id);
     const files = [...sidecarFiles];
     for (const inst of instances) {
-      const res = master.lyrics
-        ? await rewriteInstance(env, sources, inst.storage_uri, (inst.suffix || "").toLowerCase(), inst.content_type, { lyrics: master.lyrics }).catch((e): { written: boolean; reason?: string } => ({ written: false, reason: e instanceof Error ? e.message : String(e) }))
+      const res = libraryLyrics
+        ? await rewriteInstance(env, sources, inst.storage_uri, (inst.suffix || "").toLowerCase(), inst.content_type, { lyrics: libraryLyrics }).catch((e): { written: boolean; reason?: string } => ({ written: false, reason: e instanceof Error ? e.message : String(e) }))
         : { written: false, reason: "no lyrics in library" };
       files.push({ instanceId: inst.id, uri: inst.storage_uri, written: res.written, reason: res.reason });
     }

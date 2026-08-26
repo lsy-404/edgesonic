@@ -32,7 +32,7 @@ function buildDb() {
     CREATE TABLE user_permissions (level INTEGER, permission TEXT, enabled INTEGER, max_rph INTEGER, PRIMARY KEY(level, permission));
     CREATE TABLE artists (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT, image_r2_key TEXT, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE albums (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT, year INTEGER, genre TEXT, cover_r2_key TEXT, song_count INTEGER DEFAULT 0, duration INTEGER DEFAULT 0, size INTEGER DEFAULT 0, compilation INTEGER DEFAULT 0, created_at INTEGER, updated_at INTEGER);
-    CREATE TABLE song_masters (id TEXT PRIMARY KEY, album_id TEXT NOT NULL, artist_id TEXT NOT NULL, album_artist_id TEXT, title TEXT NOT NULL, sort_title TEXT, track INTEGER, disc INTEGER, duration INTEGER, genre TEXT, compilation INTEGER DEFAULT 0, participants TEXT, lyrics TEXT, created_at INTEGER, updated_at INTEGER);
+    CREATE TABLE song_masters (id TEXT PRIMARY KEY, album_id TEXT NOT NULL, artist_id TEXT NOT NULL, album_artist_id TEXT, title TEXT NOT NULL, sort_title TEXT, track INTEGER, disc INTEGER, duration INTEGER, genre TEXT, compilation INTEGER DEFAULT 0, participants TEXT, lyrics TEXT, lyrics_rich TEXT, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE song_artists (song_id TEXT, artist_id TEXT, position INTEGER DEFAULT 0, PRIMARY KEY(song_id, artist_id));
     CREATE TABLE song_instances (id TEXT PRIMARY KEY, master_id TEXT, storage_uri TEXT, suffix TEXT, content_type TEXT, size INTEGER DEFAULT 0, bit_rate INTEGER DEFAULT 0, duration INTEGER, missing INTEGER DEFAULT 0, tag_scanned INTEGER DEFAULT 0, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE storage_sources (id TEXT PRIMARY KEY, base_url TEXT, username TEXT, password TEXT, root_path TEXT, enabled INTEGER DEFAULT 1);
@@ -91,6 +91,23 @@ async function main() {
     const sidecar = b.objects.get("music/song.lrc");
     assert(response.status === 200 && body.files?.[0].written === true, "export reports written=true");
     assert(sidecar && new TextDecoder().decode(sidecar).includes("世界"), "export stores UTF-8 LRC bytes at same-name sidecar");
+  }
+  console.log("{write}/{export} use existing rich JSON lyrics when line lyrics are empty:");
+  {
+    const sqlite = buildDb();
+    sqlite.prepare("UPDATE song_masters SET lyrics = NULL, lyrics_rich = ? WHERE id='sg-1'").run(JSON.stringify({
+      tracks: [{ kind: "main", lang: "xxx", synced: true, line: [
+        { value: JSON.stringify({ t: 0, c: [{ tx: "烟" }, { tx: "花" }] }) },
+        { value: JSON.stringify({ t: 2025, c: [{ tx: "2025ver" }] }) },
+      ], cueLine: [], agents: [] }],
+    }));
+    const b = bucket();
+    const response = await appFor(sqlite, b)({ id: "sg-1", tags: { lyrics: "{export}" } });
+    const body = await response.json() as any;
+    const sidecar = b.objects.get("music/song.lrc");
+    const text = sidecar ? new TextDecoder().decode(sidecar) : "";
+    assert(response.status === 200 && body.files?.[0].written === true, "rich lyrics export succeeds without lyrics column");
+    assert(text === "[00:00.000]烟花\n[00:02.025]2025ver", "rich JSON lines export as ordinary LRC");
   }
   {
     const sqlite = buildDb();

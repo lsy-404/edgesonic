@@ -35,6 +35,8 @@
 // messy) and never throw — a parse failure yields `null` so callers can
 // fall back to plain LRC.
 
+import { parseNetEaseLyricLine } from "../../../shared/neteaseLyrics";
+
 export interface RichCue {
   start: number; // ms
   end?: number; // ms (all-or-nothing across a cueLine)
@@ -77,6 +79,38 @@ export interface RichTrack {
 
 export interface RichLyrics {
   tracks: RichTrack[];
+}
+
+/** Normalize legacy NetEase JSON lines embedded in an already-rich payload. */
+export function normalizeRichLyrics(rich: RichLyrics): RichLyrics {
+  let changed = false;
+  const tracks = rich.tracks.map((track) => {
+    const line = track.line.map((entry) => {
+      const parsed = parseNetEaseLyricLine(entry.value);
+      if (!parsed) return entry;
+      changed = true;
+      return { ...entry, start: parsed.time, value: parsed.text };
+    });
+    return { ...track, line };
+  });
+  return changed ? { ...rich, tracks } : rich;
+}
+
+/** Serialize the main rich track as ordinary timestamped LRC. */
+export function richLyricsToLrc(rich: RichLyrics): string | null {
+  const track = rich.tracks.find((entry) => entry.kind === "main") ?? rich.tracks[0];
+  if (!track) return null;
+  const lines = track.line
+    .filter((entry) => typeof entry.start === "number" && Number.isFinite(entry.start) && entry.start >= 0 && entry.value.trim())
+    .map((entry) => `[${formatRichLrcTime(entry.start!)}]${entry.value}`);
+  return lines.length > 0 ? lines.join("\n") : null;
+}
+
+function formatRichLrcTime(milliseconds: number): string {
+  const rounded = Math.round(milliseconds);
+  const minutes = Math.floor(rounded / 60000);
+  const seconds = Math.floor(rounded / 1000) % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(rounded % 1000).padStart(3, "0")}`;
 }
 
 // ---------------------------------------------------------------------------

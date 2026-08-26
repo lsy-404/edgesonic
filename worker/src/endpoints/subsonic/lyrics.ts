@@ -43,6 +43,7 @@ import { fetchExternalLyric, fetchExternalLyricRich } from "../../utils/lyricfet
 import { fetchLrcSidecar, fetchSidecarRich } from "../../utils/lrcSidecar";
 import {
   deserializeRich,
+  normalizeRichLyrics,
   parseEnhancedLrcToRich,
   parseLrcToRich,
   serializeRich,
@@ -52,26 +53,12 @@ import {
 import { subsonicOK } from "../../utils/xml";
 import { subsonicError } from "../../auth";
 import { ensureRichLyricsColumn } from "../../utils/schema_patch";
-import { parseNetEaseLyricLine, parseNetEaseLyrics } from "../../../../shared/neteaseLyrics";
+import { parseNetEaseLyrics } from "../../../../shared/neteaseLyrics";
 
 export const lyricsRoutes = new Hono();
 
 function normalizeLineLyrics(value: string): string {
   return parseNetEaseLyrics(value);
-}
-
-function normalizeRichLyrics(rich: RichLyrics): RichLyrics {
-  let changed = false;
-  const tracks = rich.tracks.map((track) => {
-    const line = track.line.map((entry) => {
-      const parsed = parseNetEaseLyricLine(entry.value);
-      if (!parsed) return entry;
-      changed = true;
-      return { ...entry, start: parsed.time, value: parsed.text };
-    });
-    return line === track.line ? track : { ...track, line };
-  });
-  return changed ? { ...rich, tracks } : rich;
 }
 
 // Reused by both endpoints: given a master row, return existing lyrics or
