@@ -41,7 +41,7 @@ filesRoutes.use("*", async (c, next) => {
 });
 
 // ── Upload (raw body stream — studio-style) ──────────────────────────────
-// POST /rest/files/upload?name=file.mp3&source=r2|webdav&path=music
+// POST /rest/files/upload?name=file.mp3&source=r2|webdav&path=music&conflict=error|overwrite|rename
 //
 // 093h — Upload goes directly to music/{path}/{name} on R2 (no more _uploads/
 // placeholder album). We create a song_instance row with tag_scanned=0 and
@@ -74,7 +74,7 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   const isAudio = isAudioSuffix(suffix);
   // Build R2 key: music/ is the base; path is a sub-path relative to music/
   const cleanPath = path.replace(/^music\/?/, "").replace(/\/+$/, "");
-  const r2Key = "music/" + (cleanPath ? cleanPath + "/" : "") + name;
+  const requestedKey = "music/" + (cleanPath ? cleanPath + "/" : "") + name;
 
   const db = env.DB;
   const now = Math.floor(Date.now() / 1000);
@@ -97,14 +97,20 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     }
   }
 
-  // Cumulative R2 storage guard (both modes). When R2_MAX_LIMIT env or the
-  // r2_max_storage_bytes feature_string is set, sum existing R2 object sizes
-  // and reject uploads that would push the total past the ceiling.
+  const target = await resolveUploadTarget(env, source, requestedKey, c.req.query("conflict"));
+  if ("error" in target) return c.json(target.error.body, target.error.status);
+  const r2Key = target.key;
+
+  // Cumulative R2 storage guard. An overwrite replaces its old bytes, so its
+  // projection subtracts the object being replaced instead of charging both.
   if (source !== "webdav") {
     const totalCap = await r2MaxStorageBytes(env);
     if (totalCap > 0) {
       const used = await demoR2TotalBytes(env.MUSIC_BUCKET);
-      const projected = used + (sizeHeader || 0);
+      const oldSize = target.policy === "overwrite" && target.existed
+        ? (await env.MUSIC_BUCKET.head(r2Key))?.size || 0
+        : 0;
+      const projected = Math.max(0, used - oldSize) + (sizeHeader || 0);
       if (projected > totalCap) {
         return c.json({
           ok: false,
@@ -120,12 +126,21 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     const fullUrl = `${creds.baseUrl.replace(/\/$/, "")}/${r2Key.split("/").map(encodeURIComponent).join("/")}`;
     const resp = await fetch(fullUrl, {
       method: "PUT",
-      headers: { Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}`, "Content-Type": contentType },
+      headers: {
+        Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}`,
+        "Content-Type": contentType,
+        ...(target.policy === "overwrite" ? {} : { "If-None-Match": "*" }),
+      },
       body: rawBody,
     });
+    if (resp.status === 412) return c.json(uploadConflict(source, r2Key), 409);
     if (!resp.ok) return c.json({ ok: false, error: `WebDAV upload failed: ${resp.status}` }, 500);
   } else {
-    await env.MUSIC_BUCKET.put(r2Key, rawBody, { httpMetadata: { contentType } });
+    const written = await env.MUSIC_BUCKET.put(r2Key, rawBody, {
+      httpMetadata: { contentType },
+      ...(target.policy === "overwrite" ? {} : { onlyIf: new Headers({ "If-None-Match": "*" }) }),
+    });
+    if (written === null) return c.json(uploadConflict(source, r2Key), 409);
   }
 
   // A companion file is just bytes sitting next to the track — no song row,
@@ -133,7 +148,7 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   // filename (utils/lrcSidecar). Registering one as a song_instance is what
   // used to happen with allow_all_file_types on, and it produced a phantom
   // track under "Pending Uploads" that no metadata pass could ever resolve.
-  if (!isAudio) return c.json({ ok: true, key: r2Key });
+  if (!isAudio) return c.json(uploadSuccess({ key: r2Key, source, target }));
 
   // DB record: create a song_instance pointing at the uploaded file. We need
   // a master_id FK, so create a placeholder master that applyMetadataResult
@@ -144,15 +159,22 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     ? (await db.prepare("SELECT id FROM storage_sources WHERE type = 'webdav' AND enabled = 1 LIMIT 1").first<{ id: string }>())?.id || "webdav"
     : "r2-local";
   const storageUri = source === "webdav" ? `webdav://${sourceId}/${r2Key}` : `r2://${r2Key}`;
-  const instanceId = `si-upload-${crypto.randomUUID().substring(0, 12)}`;
-  const masterId = `sm-upload-${crypto.randomUUID().substring(0, 12)}`;
   const title = name.replace(/\.[^.]+$/, "");
 
   try {
+    const existing = await db.prepare(
+      "SELECT id, master_id FROM song_instances WHERE storage_uri = ? AND source_type = 'original' LIMIT 1",
+    ).bind(storageUri).first<{ id: string; master_id: string }>();
+    if (existing) {
+      await db.prepare(
+        "UPDATE song_instances SET source_id = ?, suffix = ?, content_type = ?, size = ?, tag_scanned = 0, missing = 0, updated_at = ? WHERE id = ?",
+      ).bind(sourceId, suffix, contentType, sizeHeader || 0, now, existing.id).run();
+      return finishAudioUpload(c, env, r2Key, storageUri, existing.id, source, target);
+    }
+
+    const instanceId = `si-upload-${crypto.randomUUID().substring(0, 12)}`;
+    const masterId = `sm-upload-${crypto.randomUUID().substring(0, 12)}`;
     await db.batch([
-      // Placeholder master under a transient "Pending Uploads" album. The
-      // metadata worker's applyMetadataResult will move this master's
-      // title/album_id/artist_id to the correct values once tags are parsed.
       db.prepare("INSERT OR IGNORE INTO artists (id, name, sort_name) VALUES ('unknown-artist', 'Unknown Artist', 'unknown artist')"),
       db.prepare("INSERT OR IGNORE INTO albums (id, name, sort_name) VALUES ('pending-uploads', 'Pending Uploads', 'pending uploads')"),
       db.prepare("INSERT INTO song_masters (id, album_id, artist_id, title, created_at, updated_at) VALUES (?, 'pending-uploads', 'unknown-artist', ?, ?, ?)")
@@ -160,12 +182,57 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
       db.prepare("INSERT INTO song_instances (id, master_id, source_id, source_type, storage_uri, suffix, content_type, size, tag_scanned, created_at, updated_at) VALUES (?, ?, ?, 'original', ?, ?, ?, ?, 0, ?, ?)")
         .bind(instanceId, masterId, sourceId, storageUri, suffix, contentType, sizeHeader || 0, now, now),
     ]);
+    return finishAudioUpload(c, env, r2Key, storageUri, instanceId, source, target);
   } catch (e) {
-    if (source !== "webdav") await env.MUSIC_BUCKET.delete(r2Key);
+    if (source !== "webdav" && !(target.policy === "overwrite" && target.existed)) await env.MUSIC_BUCKET.delete(r2Key);
     return c.json({ ok: false, error: `DB insert failed: ${e instanceof Error ? e.message : String(e)}` }, 500);
   }
+});
 
-  // 093h — dispatch a metadata task so the browser worker pool parses the
+// POST /storage/files/upload-conflicts { source, files: [{ name, path }] }
+// Lets the client ask about a batch before it starts sending file bytes.
+filesRoutes.post("/files/upload-conflicts", permissionMiddleware("upload"), async (c) => {
+  const env = c.env as Env;
+  const body = await c.req.json<{ source?: string; files?: Array<{ name?: string; path?: string }> }>();
+  const source = body.source || "r2";
+  if (!Array.isArray(body.files) || body.files.length === 0) {
+    return c.json({ ok: false, error: "files must contain at least one item" }, 400);
+  }
+  if (body.files.some((file) => !file.name)) {
+    return c.json({ ok: false, error: "Every file needs a name" }, 400);
+  }
+  try {
+    const items = await Promise.all(body.files.map(async (file) => {
+      const path = (file.path || "").replace(/^music\/?/, "").replace(/\/+$/, "");
+      const key = `music/${path ? `${path}/` : ""}${file.name}`;
+      const exists = await doesUploadTargetExist(env, source, key);
+      return {
+        name: file.name,
+        key,
+        storageUri: source === "webdav" ? `webdav://webdav/${key}` : `r2://${key}`,
+        conflict: exists,
+      };
+    }));
+    return c.json({ ok: true, source, items, conflicts: items.filter((item) => item.conflict) });
+  } catch (error) {
+    return c.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, 502);
+  }
+});
+
+async function finishAudioUpload(
+  c: import("hono").Context,
+  env: Env,
+  r2Key: string,
+  storageUri: string,
+  instanceId: string,
+  source: string,
+  target: UploadTarget,
+): Promise<Response> {
+  const db = env.DB;
+  const suffix = r2Key.split(".").pop() || "bin";
+  const sizeHeader = parseInt(c.req.header("Content-Length") || "0", 10);
+
+  // Dispatch a metadata task so the browser worker pool parses the
   // uploaded file's tags and relinks the master to the right album/artist.
   // Best-effort: if the pool is disabled or dispatch fails, the file still
   // lives in R2 + D1; a manual scan will pick it up later.
@@ -206,8 +273,74 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     }
   }
 
-  return c.json({ ok: true, key: r2Key, id: instanceId, storageUri });
-});
+  return c.json(uploadSuccess({ key: r2Key, id: instanceId, storageUri, source, target }));
+}
+
+type UploadTarget = { key: string; policy: "error" | "overwrite" | "rename"; existed: boolean; requestedKey: string };
+const MAX_RENAME_ATTEMPTS = 1000;
+
+async function resolveUploadTarget(env: Env, source: string, requestedKey: string, requestedPolicy: string | undefined): Promise<UploadTarget | { error: { status: 400 | 409 | 502; body: Record<string, unknown> } }> {
+  const policy = requestedPolicy === "overwrite" || requestedPolicy === "rename" ? requestedPolicy : "error";
+  if (requestedPolicy && policy === "error" && requestedPolicy !== "error") {
+    return { error: { status: 400, body: { ok: false, error: "Invalid conflict policy", conflict: { requestedKey, policies: ["error", "overwrite", "rename"] } } } };
+  }
+  try {
+    if (!await doesUploadTargetExist(env, source, requestedKey)) return { key: requestedKey, policy, existed: false, requestedKey };
+    if (policy === "overwrite") return { key: requestedKey, policy, existed: true, requestedKey };
+    if (policy === "rename") {
+      const dot = requestedKey.lastIndexOf(".");
+      const base = dot > requestedKey.lastIndexOf("/") ? requestedKey.slice(0, dot) : requestedKey;
+      const extension = base === requestedKey ? "" : requestedKey.slice(dot);
+      for (let n = 1; n <= MAX_RENAME_ATTEMPTS; n++) {
+        const key = `${base} (${n})${extension}`;
+        if (!await doesUploadTargetExist(env, source, key)) return { key, policy, existed: true, requestedKey };
+      }
+      return { error: { status: 409, body: { ok: false, error: "No available renamed path", conflict: { requestedKey, policies: ["reject", "overwrite", "rename"] } } } };
+    }
+    return { error: { status: 409, body: uploadConflict(source, requestedKey) } };
+  } catch (error) {
+    return { error: { status: 502, body: { ok: false, error: error instanceof Error ? error.message : String(error) } } };
+  }
+}
+
+async function doesUploadTargetExist(env: Env, source: string, key: string): Promise<boolean> {
+  if (source !== "webdav") return Boolean(await env.MUSIC_BUCKET.head(key));
+  const creds = await getSourceCredentials(env.DB, "webdav", env);
+  if (!creds) throw new Error("No WebDAV source configured");
+  const url = `${creds.baseUrl.replace(/\/$/, "")}/${key.split("/").map(encodeURIComponent).join("/")}`;
+  const response = await fetch(url, { method: "HEAD", headers: { Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}` } });
+  if (response.status === 404) return false;
+  if (response.ok) return true;
+  throw new Error(`WebDAV conflict check failed: ${response.status}`);
+}
+
+function uploadConflict(source: string, requestedKey: string): Record<string, unknown> {
+  return {
+    ok: false,
+    error: "File already exists",
+    conflict: {
+      requestedKey,
+      storageUri: source === "webdav" ? `webdav://webdav/${requestedKey}` : `r2://${requestedKey}`,
+      policies: ["error", "overwrite", "rename"],
+    },
+  };
+}
+
+function uploadSuccess(input: { key: string; id?: string; storageUri?: string; source: string; target: UploadTarget }): Record<string, unknown> {
+  return {
+    ok: true,
+    key: input.key,
+    id: input.id,
+    storageUri: input.storageUri,
+    conflict: {
+      policy: input.target.policy,
+      requestedKey: input.target.requestedKey,
+      finalKey: input.key,
+      overwritten: input.target.existed && input.target.policy === "overwrite",
+      renamed: input.key !== input.target.requestedKey,
+    },
+  };
+}
 
 // Browsers leave the Content-Type empty or octet-stream for the extensions
 // they don't know — .lrc and friends among them — so fall back to the suffix.

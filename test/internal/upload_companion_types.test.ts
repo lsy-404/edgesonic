@@ -60,6 +60,7 @@ function makeR2Bucket() {
     async put(key: string, _body: unknown, opts?: { httpMetadata?: { contentType?: string } }) {
       store.set(key, { contentType: opts?.httpMetadata?.contentType || "application/octet-stream" });
     },
+    async head(key: string) { return store.has(key) ? { key } : null; },
     async get() { return null; },
     async delete() { /* unused here */ },
     async list() { return { objects: [], delimitedPrefixes: [] as string[], truncated: false, cursor: undefined }; },
