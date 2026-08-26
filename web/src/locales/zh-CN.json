@@ -411,6 +411,18 @@
     "uploadingFile": "上传中 {current} / {total}",
     "uploadDone": "上传完成，共 {n} 个文件",
     "uploadPartialFail": "已上传 {done} 个，{failed} 个失败",
+    "uploadResult": "上传完成：{done} 个成功，{skipped} 个跳过，{failed} 个失败",
+    "uploadConflict": {
+      "title": "发现同名文件",
+      "message": "目标位置已有 {n} 个同名文件。请选择本批次的处理方式。",
+      "hint": "覆盖会替换原文件；保留两份会自动添加序号。后续转换得到的同名音频也会使用本次选择。",
+      "skip": "跳过同名文件",
+      "overwrite": "覆盖原文件",
+      "rename": "保留两份",
+      "skipped": "已跳过",
+      "cancelledBeforeStart": "已取消上传，文件仍保留在队列中。",
+      "checkFailed": "无法检查同名文件"
+    },
     "source": "存储源",
     "root": "根目录",
     "stats": "{dirs} 个文件夹 · {files} 个文件",

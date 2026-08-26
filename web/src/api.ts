@@ -664,7 +664,7 @@ export function useAuth() {
     file: File,
     target: string,
     path?: string,
-    opts?: { masterId?: string; profiles?: string[]; onProgress?: (loaded: number, total: number) => void },
+    opts?: { masterId?: string; profiles?: string[]; conflict?: "error" | "overwrite" | "rename"; onProgress?: (loaded: number, total: number) => void },
   ): Promise<string> {
     const qs = signedParams();
     qs.set("name", file.name);
@@ -672,6 +672,7 @@ export function useAuth() {
     if (path) qs.set("path", path);
     if (opts?.masterId) qs.set("master_id", opts.masterId);
     if (opts?.profiles?.length) qs.set("profiles", opts.profiles.join(","));
+    if (opts?.conflict) qs.set("conflict", opts.conflict);
     return new Promise<string>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${STORAGE_BASE}/files/upload?${qs.toString()}`);
@@ -698,6 +699,21 @@ export function useAuth() {
       xhr.onerror = () => reject(new Error("Upload network error"));
       xhr.send(file);
     });
+  }
+
+  interface UploadConflictEntry { name: string; key: string; storageUri: string; conflict: boolean }
+  async function checkUploadConflicts(
+    source: string,
+    files: Array<{ name: string; path?: string }>,
+  ): Promise<{ items: UploadConflictEntry[]; conflicts: UploadConflictEntry[] }> {
+    const data = JSON.parse(await storagePost("files/upload-conflicts", { source, files })) as {
+      ok?: boolean;
+      error?: string;
+      items?: UploadConflictEntry[];
+      conflicts?: UploadConflictEntry[];
+    };
+    if (!data.ok) throw new Error(data.error || "Upload conflict check failed");
+    return { items: data.items || [], conflicts: data.conflicts || [] };
   }
 
   // Cross-source copy: POST /storage/files/crossCopy with JSON body.
@@ -727,7 +743,7 @@ export function useAuth() {
     permissions, hasPerm, nickname, avatarKey, email, emailVerified, displayName,
     activation, fetchActivationStatus, redeemActivationCode, probeGuestEnabled,
     fetchMe, updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
-    login, guestLogin, logout, handleAuthError, authFetch, authPost, uploadFile, crossCopy, makeSalt, md5,
+    login, guestLogin, logout, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
     getLoginConfig, register, requestPasswordReset, confirmPasswordReset, confirmEmailVerify,
     tagFetch, tagPost, storageFetch, storagePost, edgesonicFetch, edgesonicPost,
     readTags, writeTags, batchWriteTags, rescanSongs, submitMetadata, tidyFolder,

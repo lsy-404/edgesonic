@@ -410,6 +410,18 @@
     "uploadingFile": "Uploading {current} / {total}",
     "uploadDone": "Upload complete, {n} files",
     "uploadPartialFail": "Uploaded {done}, {failed} failed",
+    "uploadResult": "Upload complete: {done} succeeded, {skipped} skipped, {failed} failed",
+    "uploadConflict": {
+      "title": "Files already exist",
+      "message": "The destination already contains {n} files with the same name. Choose how to handle this batch.",
+      "hint": "Replace overwrites the existing file; keep both adds a number. Converted audio conflicts will use the same choice.",
+      "skip": "Skip existing",
+      "overwrite": "Replace existing",
+      "rename": "Keep both",
+      "skipped": "Skipped",
+      "cancelledBeforeStart": "Upload cancelled. The files remain in the queue.",
+      "checkFailed": "Could not check for existing files"
+    },
     "source": "Source",
     "root": "ROOT",
     "stats": "{dirs} DIRS · {files} FILES",

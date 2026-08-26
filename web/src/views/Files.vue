@@ -18,7 +18,7 @@ import { extractMetadata } from "../lib/metadata";
 import Icon from "../components/Icon.vue";
 
 const { t } = useI18n();
-const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitMetadata } = useAuth();
+const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, checkUploadConflicts, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitMetadata } = useAuth();
 
 interface StorageSource { id: string; type: string; name: string; baseUrl: string; }
 interface DirEntry { name: string; modifiedAt: number | null; }
@@ -40,7 +40,7 @@ const uploadInput = ref<HTMLInputElement | null>(null);
 const syncUploadInput = ref<HTMLInputElement | null>(null);
 interface LocalConversionState {
   sourceName: string;
-  status: "pending" | "converting" | "uploading" | "uploaded" | "failed";
+  status: "pending" | "converting" | "uploading" | "uploaded" | "skipped" | "failed";
   progress: number;
   cipher?: string;
   outputName?: string;
@@ -49,7 +49,7 @@ interface LocalConversionState {
 }
 type LocalUploadItem = UploadItem<File> & { conversion?: LocalConversionState };
 const uploadQueue = ref<LocalUploadItem[]>([]);
-const uploadProgressList = ref<number[]>([]); // 0-100 per file; -1 = failed
+const uploadProgressList = ref<number[]>([]); // 0-100 per file; -1 = failed, -2 = skipped
 const uploadDoneCount = ref(0);
 const uploadFailedNames = ref<string[]>([]);
 const uploadBusy = ref(false);
@@ -61,6 +61,11 @@ const includeVariants = ref(true);
 const UPLOAD_CONCURRENCY = 3;
 const CONVERSION_CONCURRENCY = 2;
 const MAX_CONVERSION_BYTES = 256 * 1024 * 1024;
+type UploadConflictChoice = "skip" | "overwrite" | "rename" | "cancel";
+interface UploadConflictEntry { name: string; key: string }
+const uploadConflictModal = ref<{ files: UploadConflictEntry[] } | null>(null);
+let uploadConflictResolver: ((choice: UploadConflictChoice) => void) | null = null;
+let uploadConflictPromise: Promise<UploadConflictChoice> | null = null;
 
 interface CrossCopyItem { file: FileEntry; status: "pending" | "copying" | "done" | "failed"; error?: string; }
 const crossCopyModal = ref<{ files: FileEntry[] } | null>(null);
@@ -285,6 +290,30 @@ function isEncryptedUploadIncluded(item: LocalUploadItem) {
     (encryptedUploadKind(item) !== "variant" || includeVariants.value);
 }
 
+function uploadObjectKey(file: File, item: LocalUploadItem) {
+  const targetPath = (uploadPathFor(path.value, item) || "").replace(/^music\/?/, "").replace(/\/+$/, "");
+  return `music/${targetPath ? `${targetPath}/` : ""}${file.name}`;
+}
+
+function askUploadConflict(files: UploadConflictEntry[]): Promise<UploadConflictChoice> {
+  if (uploadConflictPromise) {
+    const known = new Set(uploadConflictModal.value?.files.map((file) => file.key) || []);
+    uploadConflictModal.value?.files.push(...files.filter((file) => !known.has(file.key)));
+    return uploadConflictPromise;
+  }
+  uploadConflictModal.value = { files: [...files] };
+  uploadConflictPromise = new Promise<UploadConflictChoice>((resolve) => { uploadConflictResolver = resolve; });
+  return uploadConflictPromise;
+}
+
+function chooseUploadConflict(choice: UploadConflictChoice) {
+  const resolve = uploadConflictResolver;
+  uploadConflictResolver = null;
+  uploadConflictPromise = null;
+  uploadConflictModal.value = null;
+  resolve?.(choice);
+}
+
 function onUploadFile(e: Event) {
   const target = e.target as HTMLInputElement;
   if (!target.files?.length) return;
@@ -292,7 +321,7 @@ function onUploadFile(e: Event) {
   uploadMsg.value = "";
   uploadQueue.value = normalizeAudioOrder(classifyUploadItems(Array.from(target.files)).map((item) => (
     item.kind === "encrypted"
-      ? { ...item, conversion: { sourceName: item.file.name, status: "pending", progress: 0 } }
+      ? { ...item, selected: true, conversion: { sourceName: item.file.name, status: "pending", progress: 0 } }
       : item
   )));
   uploadProgressList.value = uploadQueue.value.map(() => 0);
@@ -310,15 +339,64 @@ async function doUpload() {
   uploadFailedNames.value = [];
   uploadProgressList.value = uploadQueue.value.map(() => 0);
   const total = ready.length + encrypted.length;
+  let resetQueue = true;
+  let uploadCancelled = false;
+  let uploadSkippedCount = 0;
+  let conflictChoice: UploadConflictChoice | null = null;
   // uploads push real bytes through this browser; pause the
   // background metadata pool for the duration so it doesn't compete for
   // bandwidth.
   try {
-    const uploadOne = async (item: LocalUploadItem, index: number, file: File, kind: UploadItem["kind"]): Promise<boolean> => {
-      uploadMsg.value = t("files.uploadingFile", { current: uploadDoneCount.value + uploadFailedNames.value.length + 1, total });
+    const knownConflicts = ready.length > 0
+      ? await checkUploadConflicts(uploadTarget.value, ready.map((item) => ({
+        name: item.file.name,
+        path: uploadPathFor(path.value, item),
+      })))
+      : { items: [], conflicts: [] };
+    let readyToUpload = ready;
+    if (knownConflicts.conflicts.length > 0) {
+      conflictChoice = await askUploadConflict(knownConflicts.conflicts);
+      if (conflictChoice === "cancel") {
+        resetQueue = false;
+        uploadMsg.value = t("files.uploadConflict.cancelledBeforeStart");
+        return;
+      }
+      if (conflictChoice === "skip") {
+        const conflictKeys = new Set(knownConflicts.conflicts.map((entry) => entry.key));
+        readyToUpload = ready.filter((item) => {
+          if (!conflictKeys.has(uploadObjectKey(item.file, item))) return true;
+          uploadProgressList.value[uploadQueue.value.indexOf(item)] = -2;
+          uploadSkippedCount++;
+          return false;
+        });
+      }
+    }
+
+    const resolvePolicy = async (item: LocalUploadItem, index: number, file: File): Promise<"error" | "overwrite" | "rename" | null> => {
+      if (uploadCancelled) {
+        uploadProgressList.value[index] = -2;
+        uploadSkippedCount++;
+        return null;
+      }
+      if (conflictChoice === "overwrite" || conflictChoice === "rename") return conflictChoice;
+      const checked = await checkUploadConflicts(uploadTarget.value, [{ name: file.name, path: uploadPathFor(path.value, item) }]);
+      if (checked.conflicts.length === 0) return "error";
+      if (conflictChoice === null) conflictChoice = await askUploadConflict(checked.conflicts);
+      if (conflictChoice === "cancel") uploadCancelled = true;
+      if (conflictChoice === "skip" || conflictChoice === "cancel") {
+        uploadProgressList.value[index] = -2;
+        uploadSkippedCount++;
+        return null;
+      }
+      return conflictChoice;
+    };
+
+    const uploadOne = async (item: LocalUploadItem, index: number, file: File, kind: UploadItem["kind"], policy: "error" | "overwrite" | "rename"): Promise<boolean> => {
+      uploadMsg.value = t("files.uploadingFile", { current: uploadDoneCount.value + uploadFailedNames.value.length + uploadSkippedCount + 1, total });
       try {
         const raw = await uploadFile(file, uploadTarget.value, uploadPathFor(path.value, item), {
           profiles: kind === "audio" || kind === "variant" ? preTranscodeProfiles.value : undefined,
+          conflict: policy,
           onProgress: (loaded, size) => {
             uploadProgressList.value[index] = size > 0 ? Math.round((loaded / size) * 100) : 0;
           },
@@ -353,13 +431,16 @@ async function doUpload() {
       }
     };
     await runUploadPipeline({
-      ready: ready.map((item) => ({ item, index: uploadQueue.value.indexOf(item) })),
+      ready: readyToUpload.map((item) => ({ item, index: uploadQueue.value.indexOf(item) })),
       encrypted: encrypted.map((item) => ({ item, index: uploadQueue.value.indexOf(item) })),
       uploadConcurrency: UPLOAD_CONCURRENCY,
       conversionConcurrency: CONVERSION_CONCURRENCY,
       maxConversionBytes: MAX_CONVERSION_BYTES,
       conversionBytes: ({ item }) => item.file.size,
-      uploadReady: async ({ item, index }) => { await uploadOne(item, index, item.file, item.kind); },
+      uploadReady: async ({ item, index }) => {
+        const policy = conflictChoice === "overwrite" || conflictChoice === "rename" ? conflictChoice : "error";
+        await uploadOne(item, index, item.file, item.kind, policy);
+      },
       convert: async ({ item }) => {
         item.conversion = { ...item.conversion!, status: "converting", progress: 1 };
         const result = await convertEncryptedFile(item.file, suffixOf(item.file.name), (progress) => {
@@ -375,8 +456,14 @@ async function doUpload() {
         return result.file;
       },
       uploadConverted: async ({ item, index }, file) => {
-        if (await uploadOne(item, index, file, encryptedUploadKind(item))) {
+        const policy = await resolvePolicy(item, index, file);
+        if (!policy) {
+          if (item.conversion) item.conversion.status = "skipped";
+        } else if (await uploadOne(item, index, file, encryptedUploadKind(item), policy)) {
           if (item.conversion) item.conversion.status = "uploaded";
+        } else if (item.conversion) {
+          item.conversion.status = "failed";
+          item.conversion.error = t("files.uploadFailed");
         }
       },
       onConversionFailure: ({ item }, error) => {
@@ -393,22 +480,29 @@ async function doUpload() {
       },
     });
     conversionBusy.value = false;
-    if (uploadFailedNames.value.length === 0) {
+    if (uploadFailedNames.value.length === 0 && uploadSkippedCount === 0) {
       showToast(t("files.uploadDone", { n: total }));
       uploadMsg.value = "";
     } else {
-      uploadMsg.value = t("files.uploadPartialFail", { done: uploadDoneCount.value, failed: uploadFailedNames.value.length });
-      uploadErr.value = true;
-      showToast(uploadMsg.value, "error");
+      uploadMsg.value = t("files.uploadResult", { done: uploadDoneCount.value, skipped: uploadSkippedCount, failed: uploadFailedNames.value.length });
+      uploadErr.value = uploadFailedNames.value.length > 0;
+      showToast(uploadMsg.value, uploadErr.value ? "error" : "success");
     }
     loadDir();
+  } catch (error) {
+    resetQueue = false;
+    uploadErr.value = true;
+    uploadMsg.value = `${t("files.uploadConflict.checkFailed")}: ${error instanceof Error ? error.message : String(error)}`;
+    showToast(uploadMsg.value, "error");
   } finally {
     uploadBusy.value = false;
     conversionBusy.value = false;
-    uploadQueue.value = [];
-    uploadProgressList.value = [];
-    if (uploadInput.value) uploadInput.value.value = "";
-    if (syncUploadInput.value) syncUploadInput.value.value = "";
+    if (resetQueue) {
+      uploadQueue.value = [];
+      uploadProgressList.value = [];
+      if (uploadInput.value) uploadInput.value.value = "";
+      if (syncUploadInput.value) syncUploadInput.value.value = "";
+    }
   }
 }
 
@@ -1272,6 +1366,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  chooseUploadConflict("cancel");
   cancelLongPress();
   closeContextMenu();
 });
@@ -1373,7 +1468,7 @@ onBeforeUnmount(() => {
       <!-- Upload queue list with per-file progress bars -->
       <div v-if="uploadQueue.length || uploadBusy" class="upload-queue">
         <div class="mono-label upload-queue-header">{{ t("files.uploadQueue") }}</div>
-        <div v-for="(item, i) in uploadQueue" :key="i" class="upload-queue-item" :class="{ excluded: !activeUploadItems.includes(item) }">
+        <div v-for="(item, i) in uploadQueue" :key="i" class="upload-queue-item" :class="{ excluded: !activeUploadItems.includes(item) && !isEncryptedUploadIncluded(item) }">
           <input v-model="item.selected" type="checkbox" class="upload-item-select" :disabled="item.kind === 'encrypted' || uploadBusy || conversionBusy" :aria-label="t('files.uploadItemSelect', { name: item.file.name })" />
           <span class="upload-queue-file">
             <span class="upload-queue-name">
@@ -1394,9 +1489,11 @@ onBeforeUnmount(() => {
           <span class="upload-queue-pct" :title="item.conversion?.error">
             <template v-if="item.conversion?.status === 'pending' || item.conversion?.status === 'converting'">{{ t("files.localConvert.convertingItem", { percent: item.conversion.progress }) }}</template>
             <template v-else-if="item.conversion?.status === 'failed'">{{ t("files.localConvert.failed") }}</template>
+            <template v-else-if="item.conversion?.status === 'skipped'">{{ t("files.uploadConflict.skipped") }}</template>
             <template v-else-if="item.conversion?.status === 'uploading'">{{ t("files.localConvert.uploading") }}</template>
             <template v-else-if="item.conversion?.status === 'uploaded'">{{ t("files.localConvert.uploaded") }}</template>
             <template v-else-if="uploadProgressList[i] === -1"><Icon name="cross" /></template>
+            <template v-else-if="uploadProgressList[i] === -2">{{ t("files.uploadConflict.skipped") }}</template>
             <template v-else>{{ (uploadProgressList[i] ?? 0) + '%' }}</template>
           </span>
         </div>
@@ -1405,6 +1502,23 @@ onBeforeUnmount(() => {
       <p v-if="uploadMsg && !uploadBusy" :class="['upload-msg', { error: uploadErr }]">{{ uploadMsg }}</p>
       <div class="corner corner-tl"></div>
       <div class="corner corner-br"></div>
+    </div>
+
+    <div v-if="uploadConflictModal" class="modal-backdrop" @click.self="chooseUploadConflict('cancel')">
+      <div class="modal upload-conflict-modal" role="dialog" aria-modal="true" :aria-label="t('files.uploadConflict.title')" @keydown.escape="chooseUploadConflict('cancel')">
+        <div class="modal-title">{{ t("files.uploadConflict.title") }}</div>
+        <p class="modal-confirm-text">{{ t("files.uploadConflict.message", { n: uploadConflictModal.files.length }) }}</p>
+        <ul class="upload-conflict-list">
+          <li v-for="file in uploadConflictModal.files" :key="file.key" :title="file.key">{{ file.key.replace(/^music\//, "") }}</li>
+        </ul>
+        <p class="upload-conflict-hint">{{ t("files.uploadConflict.hint") }}</p>
+        <div class="modal-actions upload-conflict-actions">
+          <button class="btn-secondary" @click="chooseUploadConflict('cancel')">{{ t("common.cancel") }}</button>
+          <button class="btn-secondary" @click="chooseUploadConflict('skip')">{{ t("files.uploadConflict.skip") }}</button>
+          <button class="btn-secondary" @click="chooseUploadConflict('overwrite')">{{ t("files.uploadConflict.overwrite") }}</button>
+          <button class="btn-primary" @click="chooseUploadConflict('rename')">{{ t("files.uploadConflict.rename") }}</button>
+        </div>
+      </div>
     </div>
 
     <section class="file-browser">
@@ -2118,6 +2232,15 @@ onBeforeUnmount(() => {
 }
 .batch-actions-clear { margin-left: auto; }
 .modal-confirm-text { margin: 0.5rem 0 0; font-size: var(--fs-sm); color: var(--color-text-secondary); line-height: 1.5; }
+.upload-conflict-modal { width: min(620px, 94vw); max-width: 620px; }
+.upload-conflict-list {
+  max-height: 220px; overflow-y: auto; margin: 1rem 0; padding: 0.65rem 0.75rem 0.65rem 2rem;
+  border: 1px solid var(--color-border-subtle); background: var(--color-bg-primary);
+  font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--color-text-secondary);
+}
+.upload-conflict-list li { padding: 0.2rem 0; overflow-wrap: anywhere; }
+.upload-conflict-hint { margin: 0; color: var(--color-text-muted); font-size: var(--fs-xs); line-height: 1.5; }
+.upload-conflict-actions { flex-wrap: wrap; }
 
 .cross-queue { margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border-subtle); }
 .cross-queue-bar { height: 4px; background: var(--color-border); border-radius: 2px; overflow: hidden; margin-bottom: 0.5rem; }
