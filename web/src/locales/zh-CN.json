@@ -374,19 +374,20 @@
       "lyrics": "歌词附件",
       "variant": "音频变体",
       "sidecar": "附件",
-      "encrypted": "待本地转换"
+      "encrypted": "需要本地转换"
     },
     "localConvert": {
       "title": "EdgeSonic 浏览器本地转换。",
       "hint": "选择加密音乐后会在浏览器工作线程中转换；只有转换得到的普通音频才会上传，原文件不会离开设备。",
       "formats": "NCM · QMC · KWM · KGM · XM · X2M/X3M · MG3D",
-      "converting": "正在本地转换…",
+      "converting": "正在本地转换并上传…",
       "convertingItem": "转换 {percent}%",
-      "converted": "已本地转换",
+      "uploading": "正在上传转换后的音频",
+      "uploaded": "已转换并上传",
       "failed": "转换失败",
       "convertingSummary": "本地转换 {current} / {total}",
-      "done": "已在本地转换 {n} 个文件，可开始上传",
-      "partial": "已本地转换 {converted} 个，{failed} 个失败",
+      "done": "已在本地转换 {n} 个文件",
+      "partial": "已转换 {converted} 个，{failed} 个无法转换",
       "errors": {
         "missing_key": "文件没有内嵌密钥，当前无法仅凭此文件转换",
         "invalid_file": "文件损坏、格式不符或当前版本无法识别",
@@ -396,7 +397,7 @@
     "fileTypeFilter": "文件类型筛选",
     "fileTypeMusic": "音乐、歌词与图片",
     "fileTypeAll": "所有文件",
-    "parseMetadata": "上传时顺便解析元信息",
+    "parseMetadata": "上传时解析元信息",
     "parseMetadataHint": "在浏览器内读取标签并提交，使文件立刻关联到正确的专辑/艺术家。批量上传时可关闭，稍后手动扫描。",
     "preTranscode": {
       "title": "预转码选项",

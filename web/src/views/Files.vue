@@ -8,6 +8,7 @@ import { useAuth, parseXmlAttrs, formatSize } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
 import { classifyUploadItems, ENCRYPTED_AUDIO_EXTENSIONS, isUploadIncluded, normalizeAudioVariants, suffixOf, uploadPathFor, type UploadItem } from "../lib/uploadQueue";
 import { convertEncryptedFile, LocalFileConversionError } from "../lib/localAudioConvert";
+import { runUploadPipeline } from "../lib/uploadPipeline";
 import { normalizeForMatch } from "../lib/trackMatch";
 import { compareDirectoryEntries, compareFileEntries, type FileSortDirection, type FileSortKey } from "../lib/fileSort";
 import TagEditor from "../components/TagEditor.vue";
@@ -39,9 +40,10 @@ const uploadInput = ref<HTMLInputElement | null>(null);
 const syncUploadInput = ref<HTMLInputElement | null>(null);
 interface LocalConversionState {
   sourceName: string;
-  status: "pending" | "converting" | "converted" | "failed";
+  status: "pending" | "converting" | "uploading" | "uploaded" | "failed";
   progress: number;
   cipher?: string;
+  outputName?: string;
   error?: string;
   errorCode?: LocalFileConversionError["code"];
 }
@@ -52,7 +54,6 @@ const uploadDoneCount = ref(0);
 const uploadFailedNames = ref<string[]>([]);
 const uploadBusy = ref(false);
 const conversionBusy = ref(false);
-let conversionGeneration = 0;
 const uploadMsg = ref("");
 const uploadErr = ref(false);
 const includeLyrics = ref(true);
@@ -272,96 +273,40 @@ function conversionErrorText(error: unknown) {
   return { code, detail, text: t(`files.localConvert.errors.${code}`) };
 }
 
-async function convertEncryptedQueue(items: LocalUploadItem[], generation: number) {
-  const targets = items
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => item.kind === "encrypted");
-  if (!targets.length) return;
-  conversionBusy.value = true;
-  uploadErr.value = false;
-  uploadMsg.value = t("files.localConvert.convertingSummary", { current: 0, total: targets.length });
-  let converted = 0;
-  let failed = 0;
-  await mapConcurrent(targets, CONVERSION_CONCURRENCY, async ({ item }) => {
-    if (generation !== conversionGeneration) return;
-    item.conversion = { sourceName: item.file.name, status: "converting", progress: 1 };
-    try {
-      const sourceExtension = suffixOf(item.file.name);
-      const result = await convertEncryptedFile(item.file, sourceExtension, (progress) => {
-        if (generation === conversionGeneration && item.conversion) item.conversion.progress = progress;
-      });
-      if (generation !== conversionGeneration) return;
-      item.file = result.file;
-      item.kind = "audio";
-      item.selected = true;
-      item.conversion = { ...item.conversion, status: "converted", progress: 100, cipher: result.cipher };
-      converted++;
-    } catch (error) {
-      if (generation !== conversionGeneration) return;
-      const failure = conversionErrorText(error);
-      item.selected = false;
-      item.conversion = {
-        ...item.conversion,
-        status: "failed",
-        progress: 0,
-        error: `${failure.text}${failure.detail ? `: ${failure.detail}` : ""}`,
-        errorCode: failure.code,
-      };
-      failed++;
-    } finally {
-      if (generation === conversionGeneration) {
-        uploadMsg.value = t("files.localConvert.convertingSummary", { current: converted + failed, total: targets.length });
-      }
-    }
-  });
-  if (generation !== conversionGeneration) return;
-  normalizeAudioVariants(uploadQueue.value);
-  conversionBusy.value = false;
-  if (failed > 0) {
-    uploadErr.value = true;
-    uploadMsg.value = t("files.localConvert.partial", { converted, failed });
-    showToast(uploadMsg.value, "error");
-  } else {
-    uploadMsg.value = t("files.localConvert.done", { n: converted });
-    showToast(uploadMsg.value);
-  }
-}
-
 function onUploadFile(e: Event) {
   const target = e.target as HTMLInputElement;
   if (!target.files?.length) return;
-  conversionGeneration++;
   uploadErr.value = false;
   uploadMsg.value = "";
-  uploadQueue.value = classifyUploadItems(Array.from(target.files)).map((item) => (
+  uploadQueue.value = normalizeAudioVariants(classifyUploadItems(Array.from(target.files)).map((item) => (
     item.kind === "encrypted"
       ? { ...item, conversion: { sourceName: item.file.name, status: "pending", progress: 0 } }
       : item
-  ));
+  )));
   uploadProgressList.value = uploadQueue.value.map(() => 0);
-  void convertEncryptedQueue(uploadQueue.value, conversionGeneration);
 }
 
 async function doUpload() {
-  if (conversionBusy.value) return;
-  const queued = activeUploadItems.value;
-  if (!queued.length) { uploadMsg.value = t("files.selectFileFirst"); uploadErr.value = true; return; }
+  if (uploadBusy.value) return;
+  const ready = activeUploadItems.value;
+  const encrypted = uploadQueue.value.filter((item) => item.kind === "encrypted" && item.conversion?.status !== "failed");
+  if (!ready.length && !encrypted.length) { uploadMsg.value = t("files.selectFileFirst"); uploadErr.value = true; return; }
   uploadBusy.value = true;
+  conversionBusy.value = encrypted.length > 0;
   uploadErr.value = false;
   uploadDoneCount.value = 0;
   uploadFailedNames.value = [];
   uploadProgressList.value = uploadQueue.value.map(() => 0);
-  const total = queued.length;
+  const total = ready.length + encrypted.length;
   // uploads push real bytes through this browser; pause the
   // background metadata pool for the duration so it doesn't compete for
   // bandwidth.
   try {
-    await mapConcurrent(queued.map((item) => ({ item, index: uploadQueue.value.indexOf(item) })), UPLOAD_CONCURRENCY, async ({ item, index }) => {
-      const file = item.file;
+    const uploadOne = async (item: LocalUploadItem, index: number, file: File, kind: UploadItem["kind"]): Promise<boolean> => {
       uploadMsg.value = t("files.uploadingFile", { current: uploadDoneCount.value + uploadFailedNames.value.length + 1, total });
       try {
         const raw = await uploadFile(file, uploadTarget.value, uploadPathFor(path.value, item), {
-          profiles: item.kind === "audio" || item.kind === "variant" ? preTranscodeProfiles.value : undefined,
+          profiles: kind === "audio" || kind === "variant" ? preTranscodeProfiles.value : undefined,
           onProgress: (loaded, size) => {
             uploadProgressList.value[index] = size > 0 ? Math.round((loaded / size) * 100) : 0;
           },
@@ -371,7 +316,7 @@ async function doUpload() {
         // When "parse metadata on upload" is on, parse the file's
         // tags in-browser and submit them so the song relinks to the right
         // album/artist immediately, no worker-pool round-trip needed.
-        if (uploadParseMetadata.value && (item.kind === "audio" || item.kind === "variant")) {
+        if (uploadParseMetadata.value && (kind === "audio" || kind === "variant")) {
           try {
             const resp = JSON.parse(raw) as { id?: string };
             if (resp.id) {
@@ -384,6 +329,7 @@ async function doUpload() {
             // will pick it up later.
           }
         }
+        return true;
       } catch (e) {
         uploadProgressList.value[index] = -1;
         uploadFailedNames.value.push(file.name);
@@ -391,8 +337,48 @@ async function doUpload() {
         // storage limit) so the user knows why this specific file failed.
         const reason = e instanceof Error ? e.message : String(e);
         showToast(`${t("files.uploadFailed")}: ${reason}`, "error");
+        return false;
       }
+    };
+    await runUploadPipeline({
+      ready: ready.map((item) => ({ item, index: uploadQueue.value.indexOf(item) })),
+      encrypted: encrypted.map((item) => ({ item, index: uploadQueue.value.indexOf(item) })),
+      uploadConcurrency: UPLOAD_CONCURRENCY,
+      conversionConcurrency: CONVERSION_CONCURRENCY,
+      uploadReady: async ({ item, index }) => { await uploadOne(item, index, item.file, item.kind); },
+      convert: async ({ item }) => {
+        item.conversion = { ...item.conversion!, status: "converting", progress: 1 };
+        const result = await convertEncryptedFile(item.file, suffixOf(item.file.name), (progress) => {
+          if (item.conversion) item.conversion.progress = progress;
+        });
+        item.conversion = {
+          ...item.conversion,
+          status: "uploading",
+          progress: 100,
+          cipher: result.cipher,
+          outputName: result.file.name,
+        };
+        return result.file;
+      },
+      uploadConverted: async ({ item, index }, file) => {
+        if (await uploadOne(item, index, file, "audio")) {
+          if (item.conversion) item.conversion.status = "uploaded";
+        }
+      },
+      onConversionFailure: ({ item }, error) => {
+        const failure = conversionErrorText(error);
+        item.selected = false;
+        item.conversion = {
+          ...item.conversion!,
+          status: "failed",
+          progress: 0,
+          error: `${failure.text}${failure.detail ? `: ${failure.detail}` : ""}`,
+          errorCode: failure.code,
+        };
+        uploadFailedNames.value.push(item.file.name);
+      },
     });
+    conversionBusy.value = false;
     if (uploadFailedNames.value.length === 0) {
       showToast(t("files.uploadDone", { n: total }));
       uploadMsg.value = "";
@@ -404,6 +390,7 @@ async function doUpload() {
     loadDir();
   } finally {
     uploadBusy.value = false;
+    conversionBusy.value = false;
     uploadQueue.value = [];
     uploadProgressList.value = [];
     if (uploadInput.value) uploadInput.value.value = "";
@@ -1320,20 +1307,20 @@ onBeforeUnmount(() => {
         <div class="form-group" style="flex:2">
           <label class="form-label">{{ t("files.file") }}</label>
           <div class="upload-file-row">
-            <input ref="uploadInput" type="file" multiple :accept="uploadAccept" class="form-input" :disabled="uploadBusy || conversionBusy" @change="onUploadFile" />
+            <input ref="uploadInput" type="file" multiple :accept="uploadAccept" class="form-input" :disabled="uploadBusy" @change="onUploadFile" />
             <select v-if="canSelectAllFiles" v-model="uploadAcceptMode" class="form-input upload-type-select" :aria-label="t('files.fileTypeFilter')">
               <option value="music">{{ t("files.fileTypeMusic") }}</option>
               <option value="all">{{ t("files.fileTypeAll") }}</option>
             </select>
           </div>
         </div>
-        <button class="btn-primary" :disabled="!activeUploadItems.length || uploadBusy || conversionBusy" @click="doUpload">
+        <button class="btn-primary" :disabled="(!activeUploadItems.length && !uploadQueue.some((item) => item.kind === 'encrypted' && item.conversion?.status !== 'failed')) || uploadBusy" @click="doUpload">
           {{ conversionBusy ? t("files.localConvert.converting") : uploadBusy ? t("files.uploading") : t("files.uploadBtn") }}
         </button>
       </div>
       <div class="sync-upload-row">
         <input ref="syncUploadInput" type="file" multiple webkitdirectory :accept="uploadAccept" class="sync-upload-input" @change="onUploadFile" />
-        <button type="button" class="btn-secondary" :disabled="uploadBusy || conversionBusy" @click="syncUploadInput?.click()">{{ t("files.syncUpload") }}</button>
+        <button type="button" class="btn-secondary" :disabled="uploadBusy" @click="syncUploadInput?.click()">{{ t("files.syncUpload") }}</button>
         <span class="upload-options-hint">{{ t("files.syncUploadHint") }}</span>
       </div>
       <div class="upload-options-row">
@@ -1376,7 +1363,7 @@ onBeforeUnmount(() => {
           <input v-model="item.selected" type="checkbox" class="upload-item-select" :disabled="item.kind === 'encrypted' || uploadBusy || conversionBusy" :aria-label="t('files.uploadItemSelect', { name: item.file.name })" />
           <span class="upload-queue-file">
             <span class="upload-queue-name">
-              <template v-if="item.conversion?.status === 'converted'">{{ item.conversion.sourceName }} → {{ item.file.name }}</template>
+              <template v-if="item.conversion?.outputName">{{ item.conversion.sourceName }} → {{ item.conversion.outputName }}</template>
               <template v-else>{{ item.file.name }}</template>
             </span>
             <span v-if="item.conversion?.status === 'failed'" class="upload-conversion-error">{{ item.conversion.error }}</span>
@@ -1393,7 +1380,8 @@ onBeforeUnmount(() => {
           <span class="upload-queue-pct" :title="item.conversion?.error">
             <template v-if="item.conversion?.status === 'pending' || item.conversion?.status === 'converting'">{{ t("files.localConvert.convertingItem", { percent: item.conversion.progress }) }}</template>
             <template v-else-if="item.conversion?.status === 'failed'">{{ t("files.localConvert.failed") }}</template>
-            <template v-else-if="item.conversion?.status === 'converted' && !uploadBusy">{{ t("files.localConvert.converted") }}</template>
+            <template v-else-if="item.conversion?.status === 'uploading'">{{ t("files.localConvert.uploading") }}</template>
+            <template v-else-if="item.conversion?.status === 'uploaded'">{{ t("files.localConvert.uploaded") }}</template>
             <template v-else-if="uploadProgressList[i] === -1"><Icon name="cross" /></template>
             <template v-else>{{ (uploadProgressList[i] ?? 0) + '%' }}</template>
           </span>

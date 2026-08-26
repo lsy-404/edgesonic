@@ -373,19 +373,20 @@
       "lyrics": "lyrics sidecar",
       "variant": "audio variant",
       "sidecar": "sidecar",
-      "encrypted": "awaiting local conversion"
+      "encrypted": "local conversion required"
     },
     "localConvert": {
       "title": "EdgeSonic browser-local conversion.",
       "hint": "Encrypted music is converted in a browser worker. Only the ordinary output is uploaded; the source file never leaves this device.",
       "formats": "NCM · QMC · KWM · KGM · XM · X2M/X3M · MG3D",
-      "converting": "Converting locally…",
+      "converting": "Converting and uploading locally…",
       "convertingItem": "Convert {percent}%",
-      "converted": "Converted locally",
+      "uploading": "Uploading converted audio",
+      "uploaded": "Converted and uploaded",
       "failed": "Conversion failed",
       "convertingSummary": "Local conversion {current} / {total}",
-      "done": "Converted {n} files locally; ready to upload",
-      "partial": "Converted {converted}; {failed} failed",
+      "done": "Converted {n} files locally",
+      "partial": "Converted {converted}; {failed} could not be converted",
       "errors": {
         "missing_key": "No embedded key; this file cannot be converted by itself",
         "invalid_file": "Damaged, mismatched, or currently unrecognized file",
