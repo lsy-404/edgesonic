@@ -219,7 +219,40 @@ export async function applyHistoricalSongDedupe(db: D1Database): Promise<Histori
 
     const statements: D1PreparedStatement[] = [];
     for (const duplicateMasterId of duplicateMasterIds) {
+      const duplicateMaster = component.masters.find((master) => master.id === duplicateMasterId)!;
       statements.push(
+        db.prepare(
+          `UPDATE song_masters SET
+             title = COALESCE(NULLIF(title, ''), NULLIF(?, '')),
+             artist_id = COALESCE(NULLIF(artist_id, ''), NULLIF(?, '')),
+             album_id = COALESCE(NULLIF(album_id, ''), NULLIF(?, '')),
+             album_artist_id = COALESCE(NULLIF(album_artist_id, ''), NULLIF(?, '')),
+             cover_r2_key = COALESCE(NULLIF(cover_r2_key, ''), NULLIF(?, '')),
+             sort_title = COALESCE(NULLIF(sort_title, ''), NULLIF(?, '')),
+             track = COALESCE(track, ?),
+             disc = COALESCE(disc, ?),
+             duration = COALESCE(duration, ?),
+             genre = COALESCE(NULLIF(genre, ''), NULLIF(?, '')),
+             participants = COALESCE(NULLIF(participants, ''), NULLIF(?, '')),
+             lyrics = COALESCE(NULLIF(lyrics, ''), NULLIF(?, '')),
+             lyrics_rich = COALESCE(NULLIF(lyrics_rich, ''), NULLIF(?, ''))
+           WHERE id = ?`,
+        ).bind(
+          duplicateMaster.title,
+          duplicateMaster.artist_id,
+          duplicateMaster.album_id,
+          duplicateMaster.album_artist_id,
+          duplicateMaster.cover_r2_key,
+          duplicateMaster.sort_title,
+          duplicateMaster.track,
+          duplicateMaster.disc,
+          duplicateMaster.duration,
+          duplicateMaster.genre,
+          duplicateMaster.participants,
+          duplicateMaster.lyrics,
+          duplicateMaster.lyrics_rich,
+          survivor.id,
+        ),
         db.prepare("INSERT OR IGNORE INTO song_artists (song_id, artist_id, position) SELECT ?, artist_id, position FROM song_artists WHERE song_id = ?").bind(survivor.id, duplicateMasterId),
         db.prepare("DELETE FROM song_artists WHERE song_id = ?").bind(duplicateMasterId),
         db.prepare(

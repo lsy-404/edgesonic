@@ -72,8 +72,8 @@ function buildDb() {
     INSERT INTO user_permissions VALUES (3, 'maintenance_cleanup', 1, 0);
 
     INSERT INTO song_masters VALUES
-      ('sm-rich', 'Fireworks', 'artist-rich', 'album-rich', 'artist-rich', 'covers/fireworks', 'fireworks', 1, 1, 300, 'Pop', '["composer"]', 'lyrics', '{"rich":true}', 10),
-      ('sm-old', 'Fireworks 2025ver', 'unknown-artist', 'pending-uploads', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 5),
+      ('sm-rich', 'Fireworks', 'artist-rich', 'album-rich', 'artist-rich', 'covers/fireworks', 'fireworks', 1, 1, 300, 'Pop', '["composer"]', NULL, NULL, 10),
+      ('sm-old', 'Fireworks 2025ver', 'unknown-artist', 'pending-uploads', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'rescued lyrics', NULL, 5),
       ('sm-same-title-a', 'Same Title', 'artist-a', 'album-a', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1),
       ('sm-same-title-b', 'Same Title', 'artist-b', 'album-b', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 2);
     INSERT INTO song_instances VALUES
@@ -141,6 +141,8 @@ async function main() {
     const body = await response.json() as any;
     assert(response.status === 200 && body.applied === true && body.duplicateMasters === 1, "apply reports the completed group");
     assert(!(sqlite.prepare("SELECT 1 FROM song_masters WHERE id='sm-old'").get()), "duplicate master is deleted");
+    const survivor = sqlite.prepare("SELECT title, cover_r2_key, lyrics FROM song_masters WHERE id='sm-rich'").get() as any;
+    assert(survivor.title === "Fireworks" && survivor.cover_r2_key === "covers/fireworks" && survivor.lyrics === "rescued lyrics", "complementary metadata fills only survivor gaps without replacing its cover or title");
     assert((sqlite.prepare("SELECT master_id FROM song_instances WHERE id='si-old-transcode'").get() as any).master_id === "sm-rich", "non-duplicate format instance follows survivor");
     assert(!(sqlite.prepare("SELECT 1 FROM song_instances WHERE id='si-old'").get()), "redundant same-object instance row is removed");
     assert((sqlite.prepare("SELECT parent_instance_id FROM song_instances WHERE id='si-old-transcode'").get() as any).parent_instance_id === "si-rich", "instance parent reference is rewritten");
