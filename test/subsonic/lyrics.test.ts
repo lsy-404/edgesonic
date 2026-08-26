@@ -381,6 +381,34 @@ async function main() {
     assert(fetchCalls.length === 0, "did NOT hit external fetch (lyrics_rich populated)");
   }
 
+  console.log("\ngetLyricsBySongId — existing rich lines containing NetEase JSON are normalized:");
+  {
+    fetchCalls = [];
+    fetchHandler = () => new Response("UNEXPECTED", { status: 500 });
+    const sqlite = buildDb();
+    const richJson = JSON.stringify({
+      tracks: [{
+        kind: "main",
+        lang: "xxx",
+        synced: true,
+        line: [
+          { value: JSON.stringify({ t: 0, c: [{ tx: "烟" }, { tx: "花" }] }) },
+          { value: JSON.stringify({ t: 2025, c: [{ tx: "2025ver" }] }) },
+        ],
+        cueLine: [],
+        agents: [],
+      }],
+    });
+    sqlite.prepare("UPDATE song_masters SET lyrics_rich = ? WHERE id = 'sg-1'").run(richJson);
+    const { get } = makeApp(sqlite);
+    const r = await get("/rest/getLyricsBySongId?id=sg-1&enhanced=true");
+    const xml = await r.text();
+    assert(xml.includes('start="0"') && xml.includes("烟花"), "rich JSON line becomes timestamped text");
+    assert(xml.includes('start="2025"') && xml.includes("2025ver"), "rich JSON line uses its embedded timestamp");
+    assert(!xml.includes("{&quot;t&quot;:0"), "rich response does not expose JSON line payload");
+    assert(fetchCalls.length === 0, "does not fetch when rich JSON lyrics are stored");
+  }
+
   console.log("\ngetLyricsBySongId — v1 (no enhanced) strips cueLine/kind:");
   {
     fetchCalls = [];

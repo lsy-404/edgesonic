@@ -52,12 +52,26 @@ import {
 import { subsonicOK } from "../../utils/xml";
 import { subsonicError } from "../../auth";
 import { ensureRichLyricsColumn } from "../../utils/schema_patch";
-import { parseNetEaseLyrics } from "../../../../shared/neteaseLyrics";
+import { parseNetEaseLyricLine, parseNetEaseLyrics } from "../../../../shared/neteaseLyrics";
 
 export const lyricsRoutes = new Hono();
 
 function normalizeLineLyrics(value: string): string {
   return parseNetEaseLyrics(value);
+}
+
+function normalizeRichLyrics(rich: RichLyrics): RichLyrics {
+  let changed = false;
+  const tracks = rich.tracks.map((track) => {
+    const line = track.line.map((entry) => {
+      const parsed = parseNetEaseLyricLine(entry.value);
+      if (!parsed) return entry;
+      changed = true;
+      return { ...entry, start: parsed.time, value: parsed.text };
+    });
+    return line === track.line ? track : { ...track, line };
+  });
+  return changed ? { ...rich, tracks } : rich;
 }
 
 // Reused by both endpoints: given a master row, return existing lyrics or
@@ -159,7 +173,7 @@ async function resolveRichLyrics(
 ): Promise<RichLyrics | null> {
   // 1. Already-populated rich column.
   const cached = deserializeRich(existingRich);
-  if (cached && cached.tracks.length > 0) return cached;
+  if (cached && cached.tracks.length > 0) return normalizeRichLyrics(cached);
 
   // 2. Sibling rich sidecar (only worth the R2/WebDAV round-trip when the
   // caller asked for enhanced; v1 callers are satisfied by `lyrics`).

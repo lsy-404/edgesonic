@@ -1,6 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Convert NetEase's JSON-per-line lyric payload to ordinary timestamped LRC. */
+export interface NetEaseLyricLine {
+  time: number;
+  text: string;
+}
+
+/** Parse one NetEase JSON lyric line for consumers that already have structure. */
+export function parseNetEaseLyricLine(payload: unknown): NetEaseLyricLine | null {
+  if (typeof payload !== "string") return null;
+  const source = payload.trim();
+  if (!source.startsWith("{")) return null;
+  try {
+    const value = JSON.parse(source) as { t?: unknown; c?: unknown };
+    if (typeof value.t !== "number" || !Number.isFinite(value.t) || value.t < 0 || !Array.isArray(value.c)) return null;
+    const text = value.c.map((part) => part && typeof part === "object" && typeof (part as { tx?: unknown }).tx === "string" ? (part as { tx: string }).tx : "").join("");
+    return text ? { time: Math.round(value.t), text } : null;
+  } catch {
+    return null;
+  }
+}
+
 export function parseNetEaseLyrics(payload: unknown): string {
   if (typeof payload !== "string" || !payload.trim()) return typeof payload === "string" ? payload : "";
   const parsed: Array<{ time: number; text: string; index: number }> = [];
@@ -9,12 +29,8 @@ export function parseNetEaseLyrics(payload: unknown): string {
     const source = raw.trim();
     if (!source.startsWith("{")) continue;
     sawJsonLine = true;
-    try {
-      const value = JSON.parse(source) as { t?: unknown; c?: unknown };
-      if (typeof value.t !== "number" || !Number.isFinite(value.t) || value.t < 0 || !Array.isArray(value.c)) continue;
-      const text = value.c.map((part) => part && typeof part === "object" && typeof (part as { tx?: unknown }).tx === "string" ? (part as { tx: string }).tx : "").join("");
-      if (text) parsed.push({ time: Math.round(value.t), text, index });
-    } catch { /* Keep other valid lines. */ }
+    const value = parseNetEaseLyricLine(source);
+    if (value) parsed.push({ ...value, index });
   }
   if (!sawJsonLine || parsed.length === 0) return payload;
   parsed.sort((a, b) => a.time - b.time || a.index - b.index);
