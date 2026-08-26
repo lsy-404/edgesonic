@@ -64,6 +64,10 @@ function buildDb() {
     CREATE TABLE clone_id_map (source_key TEXT, item_type TEXT, remote_id TEXT, local_id TEXT, updated_at INTEGER, PRIMARY KEY(source_key, item_type, remote_id));
     CREATE TABLE play_queues (user_id TEXT PRIMARY KEY, song_ids TEXT, current_id TEXT, updated_at INTEGER);
     CREATE TABLE transcode_jobs (id TEXT PRIMARY KEY, instance_id TEXT, output_instance_id TEXT);
+    CREATE TABLE work_queue (
+      id TEXT PRIMARY KEY, task_type TEXT NOT NULL, payload TEXT NOT NULL, status TEXT NOT NULL,
+      claimed_by TEXT, claimed_at INTEGER, heartbeat_at INTEGER, error_message TEXT
+    );
     CREATE TABLE user_permissions (level INTEGER, permission TEXT, enabled INTEGER, max_rph INTEGER, PRIMARY KEY(level, permission));
     INSERT INTO user_permissions VALUES (3, 'maintenance_cleanup', 1, 0);
 
@@ -92,6 +96,11 @@ function buildDb() {
     INSERT INTO clone_id_map VALUES ('peer-1', 'song', 'remote-1', 'sm-old', 0);
     INSERT INTO play_queues VALUES ('alice', '["sm-old","sm-same-title-a"]', 'sm-old', 0);
     INSERT INTO transcode_jobs VALUES ('job-1', 'si-old', 'si-old');
+    INSERT INTO work_queue VALUES
+      ('wt-metadata-si-old-queued', 'metadata', '{"instanceId":"si-old"}', 'queued', NULL, NULL, NULL, NULL),
+      ('wt-metadata-si-old-claimed', 'metadata', '{"instanceId":"si-old"}', 'claimed', 'worker-a', 90, 95, NULL),
+      ('wt-metadata-si-rich', 'metadata', '{"instanceId":"si-rich"}', 'queued', NULL, NULL, NULL, NULL),
+      ('wt-scrape-si-old', 'scrape', '{"instanceId":"si-old"}', 'queued', NULL, NULL, NULL, NULL);
   `);
   return sqlite;
 }
@@ -137,6 +146,15 @@ async function main() {
     assert((sqlite.prepare("SELECT parent_instance_id FROM song_instances WHERE id='si-old-transcode'").get() as any).parent_instance_id === "si-rich", "instance parent reference is rewritten");
     const job = sqlite.prepare("SELECT instance_id, output_instance_id FROM transcode_jobs WHERE id='job-1'").get() as any;
     assert(job.instance_id === "si-rich" && job.output_instance_id === "si-rich", "transcode references point at retained instance");
+    const canceledTasks = sqlite.prepare(
+      "SELECT id, status, claimed_by, claimed_at, heartbeat_at, error_message FROM work_queue WHERE id IN ('wt-metadata-si-old-queued', 'wt-metadata-si-old-claimed') ORDER BY id",
+    ).all() as any[];
+    assert(canceledTasks.length === 2 && canceledTasks.every((task) =>
+      task.status === "canceled" && task.claimed_by === null && task.claimed_at === null && task.heartbeat_at === null
+        && task.error_message === "canceled: duplicate instance merged",
+    ), "queued and claimed duplicate metadata tasks are canceled and released");
+    assert((sqlite.prepare("SELECT status FROM work_queue WHERE id='wt-metadata-si-rich'").get() as any).status === "queued", "canonical metadata task remains queued");
+    assert((sqlite.prepare("SELECT status FROM work_queue WHERE id='wt-scrape-si-old'").get() as any).status === "queued", "non-metadata payload is untouched");
     assert((sqlite.prepare("SELECT song_master_id FROM playlist_songs").get() as any).song_master_id === "sm-rich", "playlist reference is migrated");
     assert((sqlite.prepare("SELECT song_master_id FROM share_entries").get() as any).song_master_id === "sm-rich", "share reference is migrated");
     assert((sqlite.prepare("SELECT song_id FROM now_playing WHERE username='alice'").get() as any).song_id === "sm-rich", "active playback reference is migrated");

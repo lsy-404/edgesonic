@@ -267,6 +267,17 @@ export async function applyHistoricalSongDedupe(db: D1Database): Promise<Histori
           db.prepare("UPDATE song_instances SET parent_instance_id = ? WHERE parent_instance_id = ? AND id != ?").bind(canonical.id, duplicate.id, canonical.id),
           db.prepare("UPDATE transcode_jobs SET instance_id = ? WHERE instance_id = ?").bind(canonical.id, duplicate.id),
           db.prepare("UPDATE transcode_jobs SET output_instance_id = ? WHERE output_instance_id = ?").bind(canonical.id, duplicate.id),
+          db.prepare(
+            `UPDATE work_queue
+             SET status = 'canceled',
+                 claimed_by = NULL,
+                 claimed_at = NULL,
+                 heartbeat_at = NULL,
+                 error_message = 'canceled: duplicate instance merged'
+             WHERE task_type = 'metadata'
+               AND status IN ('queued', 'claimed')
+               AND json_extract(payload, '$.instanceId') = ?`,
+          ).bind(duplicate.id),
           db.prepare("DELETE FROM song_instances WHERE id = ?").bind(duplicate.id),
         );
       }
