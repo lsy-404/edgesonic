@@ -95,6 +95,48 @@ async function main() {
   assert(memoryEvents.includes("convert:second"), "byte reservation releases after converted upload settles");
   assert(memoryEvents.includes("failed:oversized:ConversionMemoryLimitError"), "a file above the byte limit fails before conversion");
 
+  let heldBytes = 0;
+  let peakHeldBytes = 0;
+  let releaseFirstReservation!: () => void;
+  let releaseCompetingReservation!: () => void;
+  let signalFullUpload!: () => void;
+  let signalCompetingUpload!: () => void;
+  const firstReservation = new Promise<void>((resolve) => { releaseFirstReservation = resolve; });
+  const competingReservation = new Promise<void>((resolve) => { releaseCompetingReservation = resolve; });
+  const fullUploadStarted = new Promise<void>((resolve) => { signalFullUpload = resolve; });
+  const competingUploadStarted = new Promise<void>((resolve) => { signalCompetingUpload = resolve; });
+  const competingPipeline = runUploadPipeline({
+    ready: [] as Array<{ name: string; size: number }> ,
+    encrypted: [{ name: "full", size: 10 }, { name: "left", size: 6 }, { name: "right", size: 6 }],
+    uploadConcurrency: 3,
+    conversionConcurrency: 3,
+    maxConversionBytes: 10,
+    conversionBytes(item) { return item.size; },
+    async uploadReady() { /* no ready inputs */ },
+    async convert(item) {
+      heldBytes += item.size;
+      peakHeldBytes = Math.max(peakHeldBytes, heldBytes);
+      return item;
+    },
+    async uploadConverted(_item, output) {
+      if (output.name === "full") {
+        signalFullUpload();
+        await firstReservation;
+      } else {
+        signalCompetingUpload();
+        await competingReservation;
+      }
+      heldBytes -= output.size;
+    },
+    onConversionFailure() { throw new Error("unexpected conversion failure"); },
+  });
+  await fullUploadStarted;
+  releaseFirstReservation();
+  await competingUploadStarted;
+  assert(peakHeldBytes <= 10 && heldBytes === 6, "competing byte waiters receive reservations atomically without exceeding the limit");
+  releaseCompetingReservation();
+  await competingPipeline;
+
   const queue = classifyUploadItems([
     { name: "song.ncm" },
     { name: "song.mp3" },

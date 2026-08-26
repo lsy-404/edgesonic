@@ -42,23 +42,26 @@ class Semaphore {
 
 class ByteGate {
   private used = 0;
-  private readonly waiters: Array<{ size: number; resolve: () => void }> = [];
+  private readonly waiters: Array<{ size: number; resolve: (release: () => void) => void }> = [];
 
   constructor(private readonly limit: number) {}
 
   async reserve(size: number): Promise<() => void> {
     if (size > this.limit) throw new ConversionMemoryLimitError(size, this.limit);
     if (this.used + size > this.limit) {
-      await new Promise<void>((resolve) => this.waiters.push({ size, resolve }));
+      return new Promise<() => void>((resolve) => this.waiters.push({ size, resolve }));
     }
     this.used += size;
+    return this.releaseFor(size);
+  }
+
+  private releaseFor(size: number) {
     return () => {
       this.used -= size;
-      for (let index = 0; index < this.waiters.length;) {
-        const next = this.waiters[index];
-        if (this.used + next.size > this.limit) { index++; continue; }
-        this.waiters.splice(index, 1);
-        next.resolve();
+      while (this.waiters[0] && this.used + this.waiters[0].size <= this.limit) {
+        const next = this.waiters.shift()!;
+        this.used += next.size;
+        next.resolve(this.releaseFor(next.size));
       }
     };
   }
