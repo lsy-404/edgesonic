@@ -250,6 +250,7 @@ export async function applyHistoricalSongDedupe(db: D1Database): Promise<Histori
         db.prepare("DELETE FROM bookmarks WHERE song_master_id = ?").bind(duplicateMasterId),
         db.prepare("UPDATE playlist_songs SET song_master_id = ? WHERE song_master_id = ?").bind(survivor.id, duplicateMasterId),
         db.prepare("UPDATE share_entries SET song_master_id = ? WHERE song_master_id = ?").bind(survivor.id, duplicateMasterId),
+        db.prepare("UPDATE now_playing SET song_id = ? WHERE song_id = ?").bind(survivor.id, duplicateMasterId),
         db.prepare("UPDATE scrape_jobs SET song_master_id = ? WHERE song_master_id = ?").bind(survivor.id, duplicateMasterId),
         db.prepare("UPDATE clone_id_map SET local_id = ?, updated_at = ? WHERE item_type = 'song' AND local_id = ?").bind(survivor.id, now, duplicateMasterId),
         db.prepare("UPDATE song_instances SET master_id = ?, updated_at = ? WHERE master_id = ?").bind(survivor.id, now, duplicateMasterId),

@@ -59,6 +59,7 @@ function buildDb() {
     );
     CREATE TABLE playlist_songs (playlist_id TEXT, song_master_id TEXT, position INTEGER, PRIMARY KEY(playlist_id, position));
     CREATE TABLE share_entries (share_id TEXT, song_master_id TEXT, position INTEGER, PRIMARY KEY(share_id, position));
+    CREATE TABLE now_playing (username TEXT PRIMARY KEY, song_id TEXT NOT NULL, started_at INTEGER, client_id TEXT, updated_at INTEGER);
     CREATE TABLE scrape_jobs (id TEXT PRIMARY KEY, song_master_id TEXT);
     CREATE TABLE clone_id_map (source_key TEXT, item_type TEXT, remote_id TEXT, local_id TEXT, updated_at INTEGER, PRIMARY KEY(source_key, item_type, remote_id));
     CREATE TABLE play_queues (user_id TEXT PRIMARY KEY, song_ids TEXT, current_id TEXT, updated_at INTEGER);
@@ -86,6 +87,7 @@ function buildDb() {
       ('alice', 'sm-old', 2000, 'new bookmark', 2, 20);
     INSERT INTO playlist_songs VALUES ('pl-1', 'sm-old', 0);
     INSERT INTO share_entries VALUES ('share-1', 'sm-old', 0);
+    INSERT INTO now_playing VALUES ('alice', 'sm-old', 100, 'desktop', 100);
     INSERT INTO scrape_jobs VALUES ('scrape-1', 'sm-old');
     INSERT INTO clone_id_map VALUES ('peer-1', 'song', 'remote-1', 'sm-old', 0);
     INSERT INTO play_queues VALUES ('alice', '["sm-old","sm-same-title-a"]', 'sm-old', 0);
@@ -137,6 +139,7 @@ async function main() {
     assert(job.instance_id === "si-rich" && job.output_instance_id === "si-rich", "transcode references point at retained instance");
     assert((sqlite.prepare("SELECT song_master_id FROM playlist_songs").get() as any).song_master_id === "sm-rich", "playlist reference is migrated");
     assert((sqlite.prepare("SELECT song_master_id FROM share_entries").get() as any).song_master_id === "sm-rich", "share reference is migrated");
+    assert((sqlite.prepare("SELECT song_id FROM now_playing WHERE username='alice'").get() as any).song_id === "sm-rich", "active playback reference is migrated");
     assert((sqlite.prepare("SELECT song_master_id FROM scrape_jobs").get() as any).song_master_id === "sm-rich", "scrape history reference is migrated");
     assert((sqlite.prepare("SELECT local_id FROM clone_id_map").get() as any).local_id === "sm-rich", "clone identity map is migrated");
     const annotation = sqlite.prepare("SELECT play_count, play_date, rating, starred FROM annotations WHERE item_id='sm-rich'").get() as any;
