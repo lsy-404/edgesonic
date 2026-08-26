@@ -41,11 +41,29 @@ import { deriveBitrate, bitrateNeedsRepair } from "../../utils/audioMetrics";
 import { sniffImageMime, resolveImageMime } from "../../utils/imageType";
 import { getSourceCredentials } from "../../adapters/index";
 import { wakePool } from "./work";
+import { applyHistoricalSongDedupe, previewHistoricalSongDedupe } from "../../utils/historicalSongDedupe";
 
 export const maintenanceRoutes = new Hono<{
   Bindings: Env;
   Variables: { user: User };
 }>();
+
+// POST /edgesonic/maintenance/dedupeHistoricalSongs
+// Body: { apply?: boolean }. Without apply=true this is a read-only preview.
+// Matching is exclusively by identical storage_uri; title, artist, and album
+// metadata are never used to infer a duplicate. The D1-only operation keeps
+// one metadata-rich master, migrates references, and never deletes storage.
+maintenanceRoutes.post("/maintenance/dedupeHistoricalSongs",
+  permissionMiddleware("maintenance_cleanup"),
+  async (c) => {
+    const body = await c.req.json<{ apply?: boolean }>().catch((): { apply?: boolean } => ({}));
+    const applied = body.apply === true;
+    const result = applied
+      ? await applyHistoricalSongDedupe(c.env.DB)
+      : await previewHistoricalSongDedupe(c.env.DB);
+    return c.json({ ok: true, applied, ...result });
+  },
+);
 
 // hardcoded level check was replaced by permissionMiddleware against three
 // new permission rows (maintenance_cleanup / maintenance_reclaim /
