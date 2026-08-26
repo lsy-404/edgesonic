@@ -30,6 +30,8 @@
 // Callers that only want line-level LRC ignore `rich`; callers that want
 // cue data pass `rich` through the enhanced-LRC parser in richLyrics.ts.
 
+import { parseNetEaseLyrics } from "../../../shared/neteaseLyrics";
+
 const FETCH_TIMEOUT_MS = 6000;
 
 // Real-browser UA to dodge NetEase's anti-bot heuristic. Same string as
@@ -112,8 +114,8 @@ async function fetchNetEaseLyricRich(artist: string, title: string): Promise<Net
     const klyric = lyricJson.klyric?.lyric;
     const trim = (s: string | undefined): string | null =>
       s && typeof s === "string" && s.trim().length > 0 ? s.trim() : null;
-    const l = trim(lrc);
-    const k = trim(klyric);
+    const l = trim(lrc ? parseNetEaseLyrics(lrc) : lrc);
+    const k = trim(klyric ? parseNetEaseLyrics(klyric) : klyric);
     if (!l && !k) return null;
     return { lrc: l, klyric: k };
   } catch {

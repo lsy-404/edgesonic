@@ -24,6 +24,7 @@
 // Both paths return the same upstream JSON shape; only the transport differs.
 
 import type { ScrapeResult } from "./types";
+import { parseNetEaseLyrics } from "../../../../shared/neteaseLyrics";
 
 const SOURCE = "netease" as const;
 const DIRECT_SEARCH = "https://music.163.com/api/search/get";
@@ -63,7 +64,7 @@ export async function search(query: string, proxyFetch: ProxyFn): Promise<Scrape
 /** Fetch inline lyrics by songId. NetEase returns LRC text. */
 export async function fetchLyric(songId: string, proxyFetch: ProxyFn): Promise<string> {
   const upstream = await proxyFirst<NetEaseLyricResp>("lyric", () => proxyFetch({ source: SOURCE, intent: "lyric", songId }), () => directLyric(songId));
-  return upstream.lrc?.lyric || "";
+  return parseNetEaseLyrics(upstream.lrc?.lyric || "");
 }
 
 export async function resolve(result: ScrapeResult, proxyFetch: ProxyFn): Promise<ScrapeResult> {
