@@ -36,6 +36,7 @@ browseRoutes.get("/files/list", permissionMiddleware("download"), async (c) => {
       path,
       dirs: listing.delimitedPrefixes.map((p) => ({
         name: p.substring(prefix.length).replace(/\/$/, ""),
+        modifiedAt: null,
       })),
       // ".keep" is the 0-byte marker files/mkdir drops to make an otherwise
       // real-object-free R2 "folder" show up via the delimiter above — hide
@@ -47,6 +48,7 @@ browseRoutes.get("/files/list", permissionMiddleware("download"), async (c) => {
           size: o.size,
           contentType: o.httpMetadata?.contentType || null,
           uri: `r2://${o.key}`,
+          modifiedAt: o.uploaded ? Math.floor(o.uploaded.getTime() / 1000) : null,
         })),
     });
   }
@@ -66,7 +68,7 @@ browseRoutes.get("/files/list", permissionMiddleware("download"), async (c) => {
       Depth: "1",
       "Content-Type": "application/xml",
     },
-    body: `<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/><d:getcontenttype/></d:prop></d:propfind>`,
+    body: `<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/><d:getcontenttype/><d:getlastmodified/></d:prop></d:propfind>`,
   });
   if (!resp.ok && resp.status !== 207) {
     return c.json({ ok: false, error: `PROPFIND failed: HTTP ${resp.status}` }, 502);
@@ -78,12 +80,16 @@ browseRoutes.get("/files/list", permissionMiddleware("download"), async (c) => {
     ok: true,
     source: src.id,
     path,
-    dirs: entries.filter((e) => e.isDir).map((e) => ({ name: e.path.split("/").pop() || e.path })),
+    dirs: entries.filter((e) => e.isDir).map((e) => ({
+      name: e.path.split("/").pop() || e.path,
+      modifiedAt: e.lastModified,
+    })),
     files: entries.filter((e) => !e.isDir).map((e) => ({
       name: e.path.split("/").pop() || e.path,
       size: e.size,
       contentType: e.contentType,
       uri: `webdav://${src.id}/${e.path}`,
+      modifiedAt: e.lastModified,
     })),
   });
 });

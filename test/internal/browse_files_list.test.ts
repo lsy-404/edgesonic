@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// 147 — GET /storage/files/list, r2 branch: verifies an empty folder created by
+// GET /storage/files/list, r2 branch: verifies an empty folder created by
 // files/mkdir (a "<path>/.keep" marker object) shows up as a directory in its
 // parent listing, and that ".keep" itself never leaks out as a visible file
 // when browsing into that folder.
@@ -35,13 +35,13 @@ function assert(cond: unknown, msg: string) {
 // In-memory R2 bucket shim with delimiter-aware list() (mirrors R2's actual
 // commonPrefix-grouping semantics closely enough for this test).
 // ---------------------------------------------------------------------------
-interface R2Item { key: string; size: number; contentType: string }
+interface R2Item { key: string; size: number; contentType: string; uploaded: Date }
 
 function makeR2Bucket() {
   const store = new Map<string, R2Item>();
   return {
     async put(key: string, _body: unknown, opts?: { httpMetadata?: { contentType?: string } }) {
-      store.set(key, { key, size: 0, contentType: opts?.httpMetadata?.contentType || "application/octet-stream" });
+      store.set(key, { key, size: 0, contentType: opts?.httpMetadata?.contentType || "application/octet-stream", uploaded: new Date("2026-08-25T12:34:56Z") });
     },
     async list({ prefix, delimiter }: { prefix: string; delimiter: string }) {
       const objects: (R2Item & { httpMetadata: { contentType: string } })[] = [];
@@ -61,7 +61,7 @@ function makeR2Bucket() {
   };
 }
 
-function makeApp(bucket: ReturnType<typeof makeR2Bucket>) {
+function makeApp(bucket: ReturnType<typeof makeR2Bucket>, sourceRow?: Record<string, unknown>) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.use("*", async (c, next) => {
@@ -73,7 +73,9 @@ function makeApp(bucket: ReturnType<typeof makeR2Bucket>) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const env: Record<string, any> = {
-    DB: { prepare() { return { bind() { return this; }, async first() { return { enabled: 1, max_rph: 0 }; } }; } },
+    DB: { prepare(sql: string) { return { bind() { return this; }, async first() {
+      return sql.includes("FROM storage_sources") ? sourceRow || null : { enabled: 1, max_rph: 0 };
+    } }; } },
     MUSIC_BUCKET: bucket,
   };
 
@@ -100,10 +102,55 @@ async function main() {
   console.log("\nfiles/list r2 inside folder → .keep hidden, real file kept:");
   {
     const r = await app.get("/storage/files/list?source=r2&path=music/newfolder");
-    const j = await r.json<{ ok: boolean; files: { name: string }[] }>();
+    const j = await r.json<{ ok: boolean; files: { name: string; modifiedAt: number | null }[] }>();
     assert(j.ok, "ok=true");
     assert(!j.files.some((f) => f.name === ".keep"), "'.keep' not present in its own folder's listing");
     assert(j.files.some((f) => f.name === "track.mp3"), "real file 'track.mp3' still listed");
+    assert(j.files.find((f) => f.name === "track.mp3")?.modifiedAt === 1787661296, "R2 upload time is returned as unix seconds");
+  }
+
+  console.log("\nfiles/list WebDAV → requests and returns last-modified time:");
+  {
+    const originalFetch = globalThis.fetch;
+    let requestedBody = "";
+    globalThis.fetch = async (_input, init) => {
+      requestedBody = String(init?.body || "");
+      return new Response(`<?xml version="1.0"?>
+        <d:multistatus xmlns:d="DAV:">
+          <d:response>
+            <d:href>/root/music/</d:href>
+            <d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat>
+          </d:response>
+          <d:response>
+            <d:href>/root/music/album/</d:href>
+            <d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype><d:getlastmodified>Mon, 24 Aug 2026 10:00:00 GMT</d:getlastmodified></d:prop></d:propstat>
+          </d:response>
+          <d:response>
+            <d:href>/root/music/track.mp3</d:href>
+            <d:propstat><d:prop><d:resourcetype/><d:getcontentlength>123</d:getcontentlength><d:getcontenttype>audio/mpeg</d:getcontenttype><d:getlastmodified>Tue, 25 Aug 2026 12:34:56 GMT</d:getlastmodified></d:prop></d:propstat>
+          </d:response>
+        </d:multistatus>`, { status: 207 });
+    };
+    try {
+      const davApp = makeApp(bucket, {
+        id: "dav",
+        base_url: "https://dav.example/root",
+        username: "user",
+        password: "pass",
+        root_path: null,
+      });
+      const r = await davApp.get("/storage/files/list?source=dav&path=music");
+      const j = await r.json<{
+        ok: boolean;
+        dirs: { name: string; modifiedAt: number | null }[];
+        files: { name: string; modifiedAt: number | null }[];
+      }>();
+      assert(requestedBody.includes("getlastmodified"), "PROPFIND asks for getlastmodified");
+      assert(j.dirs[0]?.modifiedAt === 1787565600, "WebDAV directory time is returned as unix seconds");
+      assert(j.files[0]?.modifiedAt === 1787661296, "WebDAV file time is returned as unix seconds");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   }
 
   console.log(`\n${failures === 0 ? "All tests passed." : `${failures} test(s) FAILED.`}`);

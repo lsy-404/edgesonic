@@ -9,6 +9,7 @@ import { mapConcurrent } from "../lib/concurrency";
 import { classifyUploadItems, ENCRYPTED_AUDIO_EXTENSIONS, isUploadIncluded, normalizeAudioVariants, suffixOf, uploadPathFor, type UploadItem } from "../lib/uploadQueue";
 import { convertEncryptedFile, LocalFileConversionError } from "../lib/localAudioConvert";
 import { normalizeForMatch } from "../lib/trackMatch";
+import { compareDirectoryEntries, compareFileEntries, type FileSortDirection, type FileSortKey } from "../lib/fileSort";
 import TagEditor from "../components/TagEditor.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
 import type { ScrapeResult } from "../lib/scrape";
@@ -19,8 +20,8 @@ const { t } = useI18n();
 const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitMetadata } = useAuth();
 
 interface StorageSource { id: string; type: string; name: string; baseUrl: string; }
-interface DirEntry { name: string; }
-interface FileEntry { name: string; size: number; contentType: string | null; uri: string; }
+interface DirEntry { name: string; modifiedAt: number | null; }
+interface FileEntry { name: string; size: number; contentType: string | null; uri: string; modifiedAt: number | null; }
 
 const sources = ref<StorageSource[]>([]);
 const currentSource = ref("r2");
@@ -29,9 +30,8 @@ const path = ref("music");
 const dirs = ref<DirEntry[]>([]);
 const files = ref<FileEntry[]>([]);
 const loading = ref(false);
-type FileSortKey = "name" | "size" | "type";
 const fileSortKey = ref<FileSortKey>("name");
-const fileSortDirection = ref<"asc" | "desc">("asc");
+const fileSortDirection = ref<FileSortDirection>("asc");
 const foldersFirst = ref(true);
 
 const showUpload = ref(false);
@@ -218,18 +218,15 @@ async function loadDir() {
   }
 }
 
-function compareEntries(a: FileEntry, b: FileEntry) {
-  let result: number;
-  if (fileSortKey.value === "size") result = a.size - b.size;
-  else if (fileSortKey.value === "type") result = suffixOf(a.name).localeCompare(suffixOf(b.name)) || a.name.localeCompare(b.name);
-  else result = a.name.localeCompare(b.name);
-  return fileSortDirection.value === "asc" ? result : -result;
-}
 function applyFileSort() {
-  dirs.value = dirs.value.slice().sort((a, b) => fileSortDirection.value === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
-  files.value = files.value.slice().sort(compareEntries);
+  dirs.value = dirs.value.slice().sort((a, b) => compareDirectoryEntries(a, b, fileSortKey.value, fileSortDirection.value));
+  files.value = files.value.slice().sort((a, b) => compareFileEntries(a, b, fileSortKey.value, fileSortDirection.value));
 }
 watch([fileSortKey, fileSortDirection, foldersFirst], applyFileSort);
+
+function formatModifiedTime(value: number | null): string {
+  return value === null ? t("files.timeUnknown") : new Date(value * 1000).toLocaleString();
+}
 
 function selectSource(id: string) {
   currentSource.value = id;
@@ -1422,6 +1419,7 @@ onBeforeUnmount(() => {
             <option value="name">{{ t("files.sortName") }}</option>
             <option value="size">{{ t("files.sortSize") }}</option>
             <option value="type">{{ t("files.sortType") }}</option>
+            <option value="modified">{{ t("files.sortModified") }}</option>
           </select>
           <button class="btn-secondary sort-direction" @click="fileSortDirection = fileSortDirection === 'asc' ? 'desc' : 'asc'">{{ fileSortDirection === "asc" ? t("files.sortAscending") : t("files.sortDescending") }}</button>
           <button class="btn-secondary sort-direction" @click="foldersFirst = !foldersFirst">{{ foldersFirst ? t("files.foldersFirst") : t("files.foldersLast") }}</button>
@@ -1548,6 +1546,7 @@ onBeforeUnmount(() => {
             </template>
             <template v-else>
               <span class="entry-name">{{ f.name }}</span>
+              <span class="entry-time">{{ formatModifiedTime(f.modifiedAt) }}</span>
               <span class="entry-size">{{ formatSize(f.size) }}</span>
               <!-- Every per-row action lives in the menu now; the row keeps
                    one trigger instead of a strip of icon buttons. -->
@@ -2166,6 +2165,8 @@ onBeforeUnmount(() => {
 .file-sort-controls { display: flex; align-items: center; gap: 0.35rem; font-size: var(--fs-xs); color: var(--color-text-muted); }
 .file-sort-controls .form-input { width: auto; padding: 0.2rem 0.35rem; font-size: var(--fs-xs); }
 .sort-direction { padding: 0.2rem 0.45rem; font-size: var(--fs-xs); }
+.entry-time { margin-left: auto; color: var(--color-text-muted); font-size: var(--fs-xs); white-space: nowrap; }
+.entry-time + .entry-size { margin-left: 0; }
 
 .entry-list { min-height: 12rem; display: flex; flex-direction: column; }
 .folders-last .dir-row { order: 2; }
@@ -2207,6 +2208,10 @@ onBeforeUnmount(() => {
 @media (max-width: 960px) {
   .file-browser { margin: 0 -1rem; }
   .breadcrumb, .entry-row { padding-left: 1rem; padding-right: 1rem; }
+}
+
+@media (max-width: 640px) {
+  .entry-time { display: none; }
 }
 
 /* R2 operation buttons */
