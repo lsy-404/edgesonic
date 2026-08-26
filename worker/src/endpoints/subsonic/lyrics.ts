@@ -52,8 +52,13 @@ import {
 import { subsonicOK } from "../../utils/xml";
 import { subsonicError } from "../../auth";
 import { ensureRichLyricsColumn } from "../../utils/schema_patch";
+import { parseNetEaseLyrics } from "../../../../shared/neteaseLyrics";
 
 export const lyricsRoutes = new Hono();
+
+function normalizeLineLyrics(value: string): string {
+  return parseNetEaseLyrics(value);
+}
 
 // Reused by both endpoints: given a master row, return existing lyrics or
 // fetch externally + persist. Never throws — fetch failures return null.
@@ -74,7 +79,7 @@ async function resolveLyrics(
   title: string | null,
   existing: string | null | undefined,
 ): Promise<string | null> {
-  if (existing && existing.trim().length > 0) return existing;
+  if (existing && existing.trim().length > 0) return normalizeLineLyrics(existing);
 
   // sidecar lookup needs a song_instances.storage_uri; pick the first
   // eligible instance (R2 preferred by getSongInstances' ordering). Only
@@ -86,17 +91,18 @@ async function resolveLyrics(
     for (const inst of instances) {
       const lrc = await fetchLrcSidecar(env, inst.storage_uri);
       if (lrc) {
+        const normalized = normalizeLineLyrics(lrc);
         // Persist for cache locality so the next call skips the R2/WebDAV
         // round-trip entirely. Best-effort — a transient D1 failure is
         // logged but never blocks the response.
         try {
           await db.prepare(
             "UPDATE song_masters SET lyrics = ?, updated_at = ? WHERE id = ?",
-          ).bind(lrc, Math.floor(Date.now() / 1000), masterId).run();
+          ).bind(normalized, Math.floor(Date.now() / 1000), masterId).run();
         } catch {
           // intentionally silent.
         }
-        return lrc;
+        return normalized;
       }
     }
   } catch {
@@ -105,6 +111,7 @@ async function resolveLyrics(
 
   const fetched = await fetchExternalLyric(artist, title);
   if (!fetched) return null;
+  const normalized = normalizeLineLyrics(fetched);
 
   // Persist for cache locality. A failure here (e.g. transient D1) is logged
   // but never blocks the response — the caller still gets the freshly fetched
@@ -113,12 +120,12 @@ async function resolveLyrics(
     await db.prepare(
       "UPDATE song_masters SET lyrics = ?, updated_at = ? WHERE id = ?",
     )
-      .bind(fetched, Math.floor(Date.now() / 1000), masterId)
+      .bind(normalized, Math.floor(Date.now() / 1000), masterId)
       .run();
   } catch {
     // intentionally silent — see comment above.
   }
-  return fetched;
+  return normalized;
 }
 
 // Rich-lyrics resolver. Returns a parsed RichLyrics payload (with
@@ -200,7 +207,7 @@ async function resolveRichLyrics(
   //    the serializer can reuse the same code path for v1 responses. If the
   //    LRC is also empty, return null — the endpoint emits an empty list.
   if (existingLrc && existingLrc.trim().length > 0) {
-    return parseLrcToRich(existingLrc);
+    return parseLrcToRich(normalizeLineLyrics(existingLrc));
   }
   return null;
 }
@@ -328,7 +335,7 @@ const getLyricsBySongIdHandler = async (c: Context): Promise<Response> => {
 
   // When no rich payload (and no LRC), still try the line-level resolver so
   // a fresh external fetch has a chance to populate `lyrics`.
-  let lineLyrics: string | null = master.lyrics ?? null;
+  let lineLyrics: string | null = master.lyrics ? normalizeLineLyrics(master.lyrics) : null;
   if (!rich) {
     lineLyrics = await resolveLyrics(env, env.DB, master.id, artistName, master.title, master.lyrics);
   }

@@ -120,6 +120,8 @@ function buildDb() {
     INSERT INTO song_masters (id, album_id, artist_id, title, lyrics)
       VALUES ('sg-1', 'al-1', 'ar-1', 'Hello', '[00:00.00]Hello, it''s me\n[00:03.00]I was wondering');
     INSERT INTO song_masters (id, album_id, artist_id, title, lyrics)
+      VALUES ('sg-json', 'al-1', 'ar-1', '烟花 2025ver', '{"t":0,"c":[{"tx":"第一句"}]}\n{"t":1250,"c":[{"tx":"第二句"}]}');
+    INSERT INTO song_masters (id, album_id, artist_id, title, lyrics)
       VALUES ('sg-2', 'al-1', 'ar-1', 'Skyfall', NULL);
   `);
   return sqlite;
@@ -198,6 +200,34 @@ async function main() {
     assert(xml.includes('title="Hello"'), "echoes title attribute");
     assert(xml.includes("Hello, it&apos;s me"), "embeds stored lyrics text (escaped)");
     assert(fetchCalls.length === 0, "did NOT hit external fetch (D1 already populated)");
+  }
+
+  console.log("\ngetLyrics — existing NetEase JSON-per-line lyric is normalized on read:");
+  {
+    fetchCalls = [];
+    fetchHandler = () => new Response("UNEXPECTED", { status: 500 });
+    const sqlite = buildDb();
+    const { get } = makeApp(sqlite);
+    const r = await get("/rest/getLyrics?artist=Adele&title=%E7%83%9F%E8%8A%B1%202025ver");
+    const xml = await r.text();
+    assert(xml.includes("[00:00.000]第一句"), "converts stored JSON line at the first timestamp");
+    assert(xml.includes("[00:01.250]第二句"), "converts stored JSON line at the second timestamp");
+    assert(!xml.includes('{&quot;t&quot;:0'), "does not expose stored JSON payload");
+    assert(fetchCalls.length === 0, "does not fetch when stored JSON lyric exists");
+  }
+
+  console.log("\ngetLyricsBySongId — existing NetEase JSON-per-line lyric is parsed for structured output:");
+  {
+    fetchCalls = [];
+    fetchHandler = () => new Response("UNEXPECTED", { status: 500 });
+    const sqlite = buildDb();
+    const { get } = makeApp(sqlite);
+    const r = await get("/rest/getLyricsBySongId?id=sg-json");
+    const xml = await r.text();
+    assert(xml.includes('start="0"') && xml.includes("第一句"), "structured output contains first JSON lyric line");
+    assert(xml.includes('start="1250"') && xml.includes("第二句"), "structured output contains second JSON lyric line");
+    assert(!xml.includes('{&quot;t&quot;:0'), "structured output does not expose stored JSON payload");
+    assert(fetchCalls.length === 0, "does not fetch when structured output has stored JSON lyric");
   }
 
   console.log("\ngetLyrics — D1 miss, external NetEase hit writes back:");
