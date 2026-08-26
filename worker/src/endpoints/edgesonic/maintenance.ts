@@ -48,11 +48,7 @@ export const maintenanceRoutes = new Hono<{
   Variables: { user: User };
 }>();
 
-// POST /edgesonic/maintenance/dedupeHistoricalSongs
-// Body: { apply?: boolean }. Without apply=true this is a read-only preview.
-// Matching is exclusively by identical storage_uri; title, artist, and album
-// metadata are never used to infer a duplicate. The D1-only operation keeps
-// one metadata-rich master, migrates references, and never deletes storage.
+// Exact storage URI matches are merged in D1 without deleting storage objects.
 maintenanceRoutes.post("/maintenance/dedupeHistoricalSongs",
   permissionMiddleware("maintenance_cleanup"),
   async (c) => {
