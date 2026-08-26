@@ -145,6 +145,10 @@ function makeR2() {
         httpMetadata: { contentType: v.contentType },
       };
     },
+    async head(key: string) {
+      const v = map.get(key);
+      return v ? { key, size: v.data.length, httpMetadata: { contentType: v.contentType } } : null;
+    },
     async put(key: string, data: ArrayBuffer | Uint8Array, opts?: { httpMetadata?: { contentType?: string } }) {
       const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
       map.set(key, { data: bytes, contentType: opts?.httpMetadata?.contentType || "application/octet-stream" });
