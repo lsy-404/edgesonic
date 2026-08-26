@@ -76,6 +76,26 @@ export function normalizeAudioVariants<T extends UploadFileLike>(items: UploadIt
   return items;
 }
 
+export function audioKindAtIndex<T extends UploadFileLike>(items: UploadItem<T>[], index: number): "audio" | "variant" {
+  const item = items[index];
+  const key = `${item.relativeDir}\u0000${item.stem}`;
+  for (let current = 0; current < index; current++) {
+    const candidate = items[current];
+    if ((candidate.kind === "audio" || candidate.kind === "variant" || candidate.kind === "encrypted") &&
+      `${candidate.relativeDir}\u0000${candidate.stem}` === key) return "variant";
+  }
+  return "audio";
+}
+
+export function normalizeAudioOrder<T extends UploadFileLike>(items: UploadItem<T>[]) {
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
+    if (item.kind !== "audio" && item.kind !== "variant") continue;
+    item.kind = audioKindAtIndex(items, index);
+  }
+  return items;
+}
+
 export function isUploadIncluded(item: UploadItem, options: { includeLyrics: boolean; includeVariants: boolean }) {
   return item.selected && item.kind !== "encrypted" &&
     (item.kind !== "lyrics" || options.includeLyrics) &&

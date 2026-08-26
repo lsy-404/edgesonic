@@ -6,9 +6,9 @@ import type { CSSProperties } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatSize } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
-import { classifyUploadItems, ENCRYPTED_AUDIO_EXTENSIONS, isUploadIncluded, normalizeAudioVariants, suffixOf, uploadPathFor, type UploadItem } from "../lib/uploadQueue";
+import { audioKindAtIndex, classifyUploadItems, ENCRYPTED_AUDIO_EXTENSIONS, isUploadIncluded, normalizeAudioOrder, suffixOf, uploadPathFor, type UploadItem } from "../lib/uploadQueue";
 import { convertEncryptedFile, LocalFileConversionError } from "../lib/localAudioConvert";
-import { runUploadPipeline } from "../lib/uploadPipeline";
+import { ConversionMemoryLimitError, runUploadPipeline } from "../lib/uploadPipeline";
 import { normalizeForMatch } from "../lib/trackMatch";
 import { compareDirectoryEntries, compareFileEntries, type FileSortDirection, type FileSortKey } from "../lib/fileSort";
 import TagEditor from "../components/TagEditor.vue";
@@ -45,7 +45,7 @@ interface LocalConversionState {
   cipher?: string;
   outputName?: string;
   error?: string;
-  errorCode?: LocalFileConversionError["code"];
+  errorCode?: LocalFileConversionError["code"] | "memory_limit";
 }
 type LocalUploadItem = UploadItem<File> & { conversion?: LocalConversionState };
 const uploadQueue = ref<LocalUploadItem[]>([]);
@@ -60,6 +60,7 @@ const includeLyrics = ref(true);
 const includeVariants = ref(true);
 const UPLOAD_CONCURRENCY = 3;
 const CONVERSION_CONCURRENCY = 2;
+const MAX_CONVERSION_BYTES = 256 * 1024 * 1024;
 
 interface CrossCopyItem { file: FileEntry; status: "pending" | "copying" | "done" | "failed"; error?: string; }
 const crossCopyModal = ref<{ files: FileEntry[] } | null>(null);
@@ -268,9 +269,20 @@ function goCrumb(index: number) {
 }
 
 function conversionErrorText(error: unknown) {
-  const code = error instanceof LocalFileConversionError ? error.code : "invalid_file";
+  const code: LocalFileConversionError["code"] | "memory_limit" = error instanceof LocalFileConversionError
+    ? error.code
+    : error instanceof ConversionMemoryLimitError ? "memory_limit" : "invalid_file";
   const detail = error instanceof Error ? error.message : String(error);
   return { code, detail, text: t(`files.localConvert.errors.${code}`) };
+}
+
+function encryptedUploadKind(item: LocalUploadItem): "audio" | "variant" {
+  return audioKindAtIndex(uploadQueue.value, uploadQueue.value.indexOf(item));
+}
+
+function isEncryptedUploadIncluded(item: LocalUploadItem) {
+  return item.kind === "encrypted" && item.conversion?.status !== "failed" &&
+    (encryptedUploadKind(item) !== "variant" || includeVariants.value);
 }
 
 function onUploadFile(e: Event) {
@@ -278,7 +290,7 @@ function onUploadFile(e: Event) {
   if (!target.files?.length) return;
   uploadErr.value = false;
   uploadMsg.value = "";
-  uploadQueue.value = normalizeAudioVariants(classifyUploadItems(Array.from(target.files)).map((item) => (
+  uploadQueue.value = normalizeAudioOrder(classifyUploadItems(Array.from(target.files)).map((item) => (
     item.kind === "encrypted"
       ? { ...item, conversion: { sourceName: item.file.name, status: "pending", progress: 0 } }
       : item
@@ -289,7 +301,7 @@ function onUploadFile(e: Event) {
 async function doUpload() {
   if (uploadBusy.value) return;
   const ready = activeUploadItems.value;
-  const encrypted = uploadQueue.value.filter((item) => item.kind === "encrypted" && item.conversion?.status !== "failed");
+  const encrypted = uploadQueue.value.filter(isEncryptedUploadIncluded);
   if (!ready.length && !encrypted.length) { uploadMsg.value = t("files.selectFileFirst"); uploadErr.value = true; return; }
   uploadBusy.value = true;
   conversionBusy.value = encrypted.length > 0;
@@ -345,6 +357,8 @@ async function doUpload() {
       encrypted: encrypted.map((item) => ({ item, index: uploadQueue.value.indexOf(item) })),
       uploadConcurrency: UPLOAD_CONCURRENCY,
       conversionConcurrency: CONVERSION_CONCURRENCY,
+      maxConversionBytes: MAX_CONVERSION_BYTES,
+      conversionBytes: ({ item }) => item.file.size,
       uploadReady: async ({ item, index }) => { await uploadOne(item, index, item.file, item.kind); },
       convert: async ({ item }) => {
         item.conversion = { ...item.conversion!, status: "converting", progress: 1 };
@@ -361,7 +375,7 @@ async function doUpload() {
         return result.file;
       },
       uploadConverted: async ({ item, index }, file) => {
-        if (await uploadOne(item, index, file, "audio")) {
+        if (await uploadOne(item, index, file, encryptedUploadKind(item))) {
           if (item.conversion) item.conversion.status = "uploaded";
         }
       },
@@ -1314,7 +1328,7 @@ onBeforeUnmount(() => {
             </select>
           </div>
         </div>
-        <button class="btn-primary" :disabled="(!activeUploadItems.length && !uploadQueue.some((item) => item.kind === 'encrypted' && item.conversion?.status !== 'failed')) || uploadBusy" @click="doUpload">
+        <button class="btn-primary" :disabled="(!activeUploadItems.length && !uploadQueue.some(isEncryptedUploadIncluded)) || uploadBusy" @click="doUpload">
           {{ conversionBusy ? t("files.localConvert.converting") : uploadBusy ? t("files.uploading") : t("files.uploadBtn") }}
         </button>
       </div>

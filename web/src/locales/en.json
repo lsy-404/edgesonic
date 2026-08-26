@@ -390,6 +390,7 @@
       "errors": {
         "missing_key": "No embedded key; this file cannot be converted by itself",
         "invalid_file": "Damaged, mismatched, or currently unrecognized file",
+        "memory_limit": "This file is too large for the local conversion memory limit",
         "unsupported_format": "This encrypted format is not supported by EdgeSonic yet"
       }
     },

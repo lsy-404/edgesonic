@@ -391,6 +391,7 @@
       "errors": {
         "missing_key": "文件没有内嵌密钥，当前无法仅凭此文件转换",
         "invalid_file": "文件损坏、格式不符或当前版本无法识别",
+        "memory_limit": "文件超过本地转换的内存上限",
         "unsupported_format": "EdgeSonic 暂不支持此加密格式"
       }
     },
