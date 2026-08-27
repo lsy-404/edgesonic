@@ -347,7 +347,7 @@
         "className": "Sandbox",
         "mode": "ask",
         "image": {
-          "reference": "docker.io/wuyilingwei/edgesonic-transcoder@sha256:__BUILD_IMAGE_DIGEST__"
+          "reference": "docker.io/DOCKERHUB_NAMESPACE/edgesonic-transcoder@sha256:__BUILD_IMAGE_DIGEST__"
         },
         "note": {
           "en": "Transcoding runs in this container. This release publishes the matching pre-built image, and the deployment pins its immutable digest when the container is enabled.",

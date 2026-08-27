@@ -86,7 +86,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/edgesonic-transcoder:${{ steps.tag.outputs.tag }}
-            docker.io/${{ github.repository_owner }}/edgesonic-transcoder:${{ steps.tag.outputs.tag }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/edgesonic-transcoder:${{ steps.tag.outputs.tag }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.tag.outputs.tag }}
@@ -175,6 +175,7 @@ jobs:
         env:
           TAG: ${{ steps.tag.outputs.tag }}
           ALLOW_MAJOR: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_major_update || false }}
+          IMAGE_REPOSITORY: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/edgesonic-transcoder
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           set -euo pipefail
@@ -182,7 +183,7 @@ jobs:
           VERSION=$(node -e 'console.log(JSON.parse(process.argv[1]).version.replace(/-dev\.[^-]+(?:-dirty)?$|-dirty$/, ""))' "$BUILD_INFO")
           BUILD_TIME=$(node -e 'console.log(JSON.parse(process.argv[1]).buildTime)' "$BUILD_INFO")
           API_STAGE="${RUNNER_TEMP}/edgesonic-update-stage"
-          node scripts/build-update-bundle.mjs "$API_STAGE" "$VERSION" "$BUILD_TIME" "$ALLOW_MAJOR" "$TAG" "$IMAGE_DIGEST"
+          node scripts/build-update-bundle.mjs "$API_STAGE" "$VERSION" "$BUILD_TIME" "$ALLOW_MAJOR" "$TAG" "$IMAGE_REPOSITORY" "$IMAGE_DIGEST"
           cp "${RUNNER_TEMP}/edgesonic-update.tar.gz" .
           cp "${RUNNER_TEMP}/edgesonic-update.tar.gz.sha256" .
           cp "${RUNNER_TEMP}/edgesonic-update-manifest.json" .
