@@ -191,18 +191,33 @@ export const usePlayerStore = defineStore("player", () => {
   // Track. `current.value?.id !== id` guards against a stale response
   // landing after the user has already skipped to another track.
   const starred = ref(false);
+  let starredRequest = 0;
+
+  function applyStarred(id: string, value: boolean) {
+    for (const track of queue.value) {
+      if (track.id === id) track.starred = value;
+    }
+    if (current.value?.id === id) starred.value = value;
+  }
+
+  function setStarred(id: string, value: boolean) {
+    starredRequest++;
+    applyStarred(id, value);
+  }
+
   async function _refreshStarred(id: string) {
+    const request = ++starredRequest;
     try {
       const { authFetch, username } = useAuth();
       const xml = await getTrackMetadataXml({ id }, { authFetch, scope: username.value });
-      if (current.value?.id !== id) return;
-      starred.value = !!parseXmlAttrs(xml, "song")[0]?.starred;
+      if (request !== starredRequest || current.value?.id !== id) return;
+      applyStarred(id, !!parseXmlAttrs(xml, "song")[0]?.starred);
     } catch {
-      if (current.value?.id === id) starred.value = false;
+      if (request === starredRequest && current.value?.id === id) applyStarred(id, false);
     }
   }
   watch(current, (tr) => {
-    if (!tr) { starred.value = false; return; }
+    if (!tr) { starredRequest++; starred.value = false; return; }
     void _refreshStarred(tr.id);
   }, { immediate: true });
 
@@ -210,12 +225,13 @@ export const usePlayerStore = defineStore("player", () => {
     const tr = current.value;
     if (!tr) return;
     const next = !starred.value;
-    starred.value = next; // optimistic
+    const request = ++starredRequest;
+    applyStarred(tr.id, next); // optimistic
     try {
       const { authFetch } = useAuth();
       await authFetch(next ? "star" : "unstar", { id: tr.id });
     } catch {
-      if (current.value?.id === tr.id) starred.value = !next; // revert on failure
+      if (request === starredRequest && current.value?.id === tr.id) applyStarred(tr.id, !next); // revert on failure
     }
   }
 
@@ -1230,6 +1246,6 @@ export const usePlayerStore = defineStore("player", () => {
     queue, index, playing, currentTime, duration, volume, bufferedRanges,
     current, hasTrack, playMode, starred, localCoverUrl, playbackQuality,
     setQueue, playNext, playAt, toggle, next, prev, seek, setVolume,
-    cyclePlayMode, toggleStar, clear, resumePlaybackIfNeeded, reportCoverMissing,
+    cyclePlayMode, toggleStar, setStarred, clear, resumePlaybackIfNeeded, reportCoverMissing,
   };
 });

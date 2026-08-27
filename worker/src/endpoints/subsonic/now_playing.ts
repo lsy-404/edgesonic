@@ -30,8 +30,8 @@ import { createQueries } from "../../db/queries";
 import { permissionMiddleware } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
 import { subsonicOK } from "../../utils/xml";
-import { mapSong } from "../../types/subsonic";
-import type { User, SongMaster } from "../../types/entities";
+import { mapSong, type AnnotationLite } from "../../types/subsonic";
+import type { Annotation, User, SongMaster } from "../../types/entities";
 
 export const nowPlayingRoutes = new Hono<{
   Bindings: Env;
@@ -42,6 +42,16 @@ const XML = { "Content-Type": "application/xml; charset=UTF-8" } as const;
 const attrs = (o: object) => ({
   _attributes: o as Record<string, string | number | boolean | undefined>,
 });
+
+function liteOf(row: Annotation | undefined): AnnotationLite | undefined {
+  if (!row) return undefined;
+  return {
+    starred: row.starred,
+    starred_at: row.starred_at,
+    rating: row.rating,
+    play_count: row.play_count,
+  };
+}
 
 // Row shape from D1 `now_playing` table.
 interface NowPlayingEntry {
@@ -95,6 +105,7 @@ const getNowPlayingHandler = async (c: import("hono").Context<{
   const songIds = entries.map((e) => e.songId);
   const queries = createQueries(env.DB);
   const songs = await queries.getSongMastersByIds(songIds);
+  const songAnn = await queries.getAnnotationsMap(user.username, "song", songs.map((s) => s.id));
   // We also need artist/album names; join in a tiny secondary lookup.
   const songsWithNames = await Promise.all(
     songs.map(async (s) => {
@@ -124,7 +135,7 @@ const getNowPlayingHandler = async (c: import("hono").Context<{
       // with username, minutesAgo, playerId, plus the joined artist/album
       // names (mirrors what getStarred / getRandomSongs do).
       return attrs({
-        ...mapSong(song, song.album_id),
+        ...mapSong(song, song.album_id, liteOf(songAnn.get(`song:${song.id}`))),
         artist: song.artist_name ?? undefined,
         album: song.album_name ?? undefined,
         username: e.username,

@@ -634,7 +634,23 @@ function removeStarred(kind: StarKind, id: string) {
 }
 
 function onStarChanged(kind: StarKind, item: StarEntity, value: boolean) {
-  item.starred = value;
+  if (kind === "song") {
+    const songId = item.id;
+    const songLists: Track[][] = [
+      allSongs.value,
+      songs.value,
+      starredLists.value.songs,
+      searchResults.value?.songs ?? [],
+    ];
+    for (const list of songLists) {
+      for (const song of list) {
+        if (song.id === songId) song.starred = value;
+      }
+    }
+    player.setStarred(songId, value);
+  } else {
+    item.starred = value;
+  }
   if (starredOnly && !value) removeStarred(kind, item.id);
 }
 

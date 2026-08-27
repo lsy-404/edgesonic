@@ -127,16 +127,20 @@ function buildDb(opts: { lastfmKey: string }) {
       VALUES ('sg-cold', 'al-25', 'ar-adele', 'Million Years Ago', 3, 280, 300);
 
     -- play_count: Hello=10 (alice 6 + bob 4), WhenWe=3 (alice), Cold=0
-    INSERT INTO annotations (user_id, item_id, item_type, play_count) VALUES
-      ('alice', 'sg-hello', 'song', 6),
-      ('bob',   'sg-hello', 'song', 4),
-      ('alice', 'sg-whenwe', 'song', 3);
+    INSERT INTO annotations (user_id, item_id, item_type, play_count, starred, starred_at) VALUES
+      ('alice', 'sg-hello', 'song', 6, 1, 100),
+      ('bob',   'sg-hello', 'song', 4, 0, NULL),
+      ('alice', 'sg-whenwe', 'song', 3, 0, NULL);
   `);
   return sqlite;
 }
 
 function makeApp(sqlite: DatabaseSync) {
   const app = new Hono<{ Bindings: any; Variables: any }>();
+  app.use("*", async (c, next) => {
+    c.set("user", { username: "alice", level: 2, enabled: 1, password: "x" });
+    return next();
+  });
   app.route("/rest", infoRoutes);
   const env = { DB: makeD1(sqlite), KV: makeKV(), INSTANCE_ID: "test-instance" };
   return {
@@ -185,6 +189,7 @@ async function main() {
     const whenWeIdx = text.indexOf('title="When We Were Young"');
     assert(helloIdx > -1 && whenWeIdx > -1, "both songs present");
     assert(helloIdx < whenWeIdx, "Hello before WhenWe (higher play_count)");
+    assert(/title="Hello"[^>]*starred="[^"]+"/.test(text), "current user's starred state is returned");
     assert(!text.includes('title="Million Years Ago"'), "Cold excluded by LIMIT=2");
     assert(fetchCalls.length === 0, "no last.fm call when local fills count");
   }

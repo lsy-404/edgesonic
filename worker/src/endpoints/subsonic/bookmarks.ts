@@ -31,9 +31,10 @@ import {
   mapBookmark,
   mapSong,
   mapPlayQueue,
+  type AnnotationLite,
 } from "../../types/subsonic";
 import { subsonicError } from "../../auth";
-import type { User, SongMaster } from "../../types/entities";
+import type { Annotation, User, SongMaster } from "../../types/entities";
 
 export const bookmarksRoutes = new Hono<{
   Bindings: Env;
@@ -44,6 +45,16 @@ const XML = { "Content-Type": "application/xml; charset=UTF-8" } as const;
 const attrs = (o: object) => ({
   _attributes: o as Record<string, string | number | boolean | undefined>,
 });
+
+function liteOf(row: Annotation | undefined): AnnotationLite | undefined {
+  if (!row) return undefined;
+  return {
+    starred: row.starred,
+    starred_at: row.starred_at,
+    rating: row.rating,
+    play_count: row.play_count,
+  };
+}
 
 // ============================================================================
 // Parameter parsing — GET query and POST form bodies share semantics in the
@@ -113,6 +124,7 @@ const getBookmarksHandler = async (c: Context<{ Bindings: Env; Variables: { user
   // Resolve song metadata for each bookmark
   const ids = bookmarks.map((b) => b.song_master_id);
   const songs = await queries.getSongMastersByIds(ids);
+  const songAnn = await queries.getAnnotationsMap(user.username, "song", songs.map((s) => s.id));
   const songById = new Map<string, SongMaster>();
   for (const s of songs) songById.set(s.id, s);
 
@@ -127,7 +139,7 @@ const getBookmarksHandler = async (c: Context<{ Bindings: Env; Variables: { user
               _attributes: mapBookmark(b, user.username) as unknown as Record<
                 string, string | number | boolean | undefined
               >,
-              entry: attrs(mapSong(song, song.album_id)),
+              entry: attrs(mapSong(song, song.album_id, liteOf(songAnn.get(`song:${song.id}`)))),
             };
           })
           .filter((x): x is NonNullable<typeof x> => x !== null),
@@ -206,6 +218,7 @@ const getPlayQueueHandler = async (c: Context<{ Bindings: Env; Variables: { user
   }
 
   const fetched = songIds.length > 0 ? await queries.getSongMastersByIds(songIds) : [];
+  const songAnn = await queries.getAnnotationsMap(user.username, "song", fetched.map((s) => s.id));
   const songById = new Map<string, SongMaster>();
   for (const s of fetched) songById.set(s.id, s);
   // Preserve queue order (and drop ids whose song was deleted upstream).
@@ -221,7 +234,7 @@ const getPlayQueueHandler = async (c: Context<{ Bindings: Env; Variables: { user
         _attributes: mapPlayQueue(row, user.username) as unknown as Record<
           string, string | number | boolean | undefined
         >,
-        entry: ordered.map((s) => attrs(mapSong(s, s.album_id))),
+        entry: ordered.map((s) => attrs(mapSong(s, s.album_id, liteOf(songAnn.get(`song:${s.id}`))))),
       },
     }),
     200, XML

@@ -39,8 +39,8 @@ import type { Context } from "hono";
 import { createQueries } from "../../db/queries";
 import { subsonicOK } from "../../utils/xml";
 import { subsonicError } from "../../auth";
-import type { User } from "../../types/entities";
-import { mapSong } from "../../types/subsonic";
+import type { Annotation, User } from "../../types/entities";
+import { mapSong, type AnnotationLite } from "../../types/subsonic";
 import {
   LastfmUnconfigured,
   LastfmFetchError,
@@ -58,6 +58,20 @@ const XML = { "Content-Type": "application/xml; charset=UTF-8" } as const;
 const attrs = (o: object) => ({
   _attributes: o as Record<string, string | number | boolean | undefined>,
 });
+
+function currentUserId(c: Context): string {
+  return (c.get("user") as User | undefined)?.username ?? "";
+}
+
+function liteOf(row: Annotation | undefined): AnnotationLite | undefined {
+  if (!row) return undefined;
+  return {
+    starred: row.starred,
+    starred_at: row.starred_at,
+    rating: row.rating,
+    play_count: row.play_count,
+  };
+}
 
 // Wrap an async handler so any LastfmUnconfigured 鈫?code 30, any
 // LastfmFetchError 鈫?code 0, anything else 鈫?code 0 with truncated message.
@@ -273,12 +287,13 @@ async function similarSongsHandler(
       // Subsonic spec: drop unmatched silently 鈥?clients can't play foreign ids.
       if (row) matched.push(row);
     }
+    const songAnn = await queries.getAnnotationsMap(currentUserId(c), "song", matched.map((s) => s.id));
 
     return c.text(
       subsonicOK({
         [tag]: {
           song: matched.map((s) => attrs({
-            ...mapSong(s, s.album_id),
+            ...mapSong(s, s.album_id, liteOf(songAnn.get(`song:${s.id}`))),
             artist: s.artist_name ?? undefined,
             album: s.album_name ?? undefined,
           })),
@@ -345,12 +360,13 @@ const getTopSongsHandler = async (c: Context): Promise<Response> => {
       }
     }
   }
+  const songAnn = await queries.getAnnotationsMap(currentUserId(c), "song", matched.map((s) => s.id));
 
   return c.text(
     subsonicOK({
       topSongs: {
         song: matched.map((s) => attrs({
-          ...mapSong(s, s.album_id),
+          ...mapSong(s, s.album_id, liteOf(songAnn.get(`song:${s.id}`))),
           artist: s.artist_name ?? undefined,
           album: s.album_name ?? undefined,
         })),

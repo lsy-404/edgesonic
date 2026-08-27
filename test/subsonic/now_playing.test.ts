@@ -26,6 +26,7 @@ import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { annotationRoutes } from "../../worker/src/endpoints/subsonic/annotation";
 import { nowPlayingRoutes } from "../../worker/src/endpoints/subsonic/now_playing";
+import { bookmarksRoutes } from "../../worker/src/endpoints/subsonic/bookmarks";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -121,6 +122,17 @@ function buildDb() {
       client_id TEXT NOT NULL DEFAULT '',
       updated_at INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE bookmarks (
+      user_id TEXT NOT NULL, song_master_id TEXT NOT NULL,
+      position_ms INTEGER NOT NULL, comment TEXT,
+      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, song_master_id)
+    );
+    CREATE TABLE play_queues (
+      user_id TEXT PRIMARY KEY, song_ids TEXT NOT NULL,
+      current_id TEXT, position_ms INTEGER NOT NULL,
+      changed_by TEXT, updated_at INTEGER NOT NULL
+    );
 
     INSERT INTO users (username, master_password, level) VALUES ('alice', 'x', 2);
     INSERT INTO users (username, master_password, level) VALUES ('bob', 'x', 2);
@@ -158,6 +170,7 @@ function makeApp(
   });
   app.route("/rest", annotationRoutes);
   app.route("/rest", nowPlayingRoutes);
+  app.route("/rest", bookmarksRoutes);
   const env = { DB: makeD1(sqlite) };
   return {
     env,
@@ -256,6 +269,9 @@ async function main() {
     sqlite.prepare(
       "INSERT INTO now_playing (username, song_id, started_at, client_id, updated_at) VALUES (?, ?, ?, ?, ?)"
     ).run("bob", "sg-2", now - 60, "Symfonium", now);
+    sqlite.prepare(
+      "INSERT INTO annotations (user_id, item_id, item_type, play_count, starred, starred_at) VALUES (?, ?, 'song', 0, 1, ?)"
+    ).run("alice", "sg-1", now - 30);
 
     const { hit } = makeApp(sqlite, { username: "alice", level: 2 });
     const r = await hit("GET", "/rest/getNowPlaying");
@@ -268,6 +284,7 @@ async function main() {
     assert(text.includes('title="Song A"'), "song title from D1");
     assert(text.includes('artist="Artist One"'), "artist name joined");
     assert(text.includes('album="First Album"'), "album name joined");
+    assert(/starred="[^"]+"/.test(text), "current user's starred state is returned");
   }
 
   console.log("getNowPlaying: admin (level=3) sees ALL entries");
@@ -330,6 +347,27 @@ async function main() {
     const r = await hit("GET", "/rest/getNowPlaying.view");
     assert(r.status === 200, ".view returns 200");
     assert((await r.text()).includes('username="alice"'), ".view returns same body");
+  }
+
+  console.log("bookmarks and saved queue: entries retain the current user's starred state");
+  {
+    const sqlite = buildDb();
+    const now = Math.floor(Date.now() / 1000);
+    sqlite.prepare(
+      "INSERT INTO annotations (user_id, item_id, item_type, play_count, starred, starred_at) VALUES (?, ?, 'song', 0, 1, ?)"
+    ).run("alice", "sg-1", now);
+    sqlite.prepare(
+      "INSERT INTO bookmarks (user_id, song_master_id, position_ms, comment, created_at, updated_at) VALUES (?, ?, 0, NULL, ?, ?)"
+    ).run("alice", "sg-1", now, now);
+    sqlite.prepare(
+      "INSERT INTO play_queues (user_id, song_ids, current_id, position_ms, changed_by, updated_at) VALUES (?, ?, ?, 0, NULL, ?)"
+    ).run("alice", '["sg-1","sg-2"]', "sg-1", now);
+
+    const { hit } = makeApp(sqlite, { username: "alice", level: 2 });
+    const bookmarks = await hit("GET", "/rest/getBookmarks");
+    assert(/starred="[^"]+"/.test(await bookmarks.text()), "bookmark song has starred metadata");
+    const queue = await hit("GET", "/rest/getPlayQueue");
+    assert(/starred="[^"]+"/.test(await queue.text()), "saved queue song has starred metadata");
   }
 
   if (failures > 0) {
