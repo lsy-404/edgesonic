@@ -18,7 +18,7 @@
 // Built-in themes with behaviour (the animated SP element themes) register
 // here exactly the same way an externally-loaded theme would — there is no
 // separate "built-in" code path.
-import { reactive, type Component } from "vue";
+import { shallowReactive, type Component } from "vue";
 
 export interface ThemeDefinition {
   /** Matches the `data-theme="{id}"` attribute set by theme.ts. */
@@ -48,7 +48,7 @@ export interface ThemeDefinition {
 // relative path for a lazy built-in, or a runtime URL for an external
 // theme — is the one and only loading mechanism. See themes/builtin.ts
 // (lazy built-ins) and loadExternalTheme below (external).
-const registry = reactive(new Map<string, ThemeDefinition>());
+const registry = shallowReactive(new Map<string, ThemeDefinition>());
 
 export function registerTheme(def: ThemeDefinition) {
   registry.set(def.id, def);

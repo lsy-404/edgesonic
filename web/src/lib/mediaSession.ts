@@ -5,13 +5,31 @@ export interface MediaSessionTrack {
   artwork?: string;
 }
 
-type Action = MediaSessionAction;
+export interface MediaSessionControls {
+  currentTime: () => number;
+  play: () => void;
+  pause: () => void;
+  previous: () => void;
+  next: () => void;
+  seek: (seconds: number) => void;
+}
 
-export function setupMediaSession(actions: Partial<Record<Action, (details: MediaSessionActionDetails) => void>>): void {
+export function setupMediaSession(controls: MediaSessionControls): void {
   if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+  const actions: Partial<Record<MediaSessionAction, MediaSessionActionHandler>> = {
+    play: controls.play,
+    pause: controls.pause,
+    previoustrack: controls.previous,
+    nexttrack: controls.next,
+    seekbackward: (details) => controls.seek(controls.currentTime() - (details.seekOffset ?? 10)),
+    seekforward: (details) => controls.seek(controls.currentTime() + (details.seekOffset ?? 10)),
+    seekto: (details) => {
+      if (details.seekTime != null) controls.seek(details.seekTime);
+    },
+  };
   for (const [name, handler] of Object.entries(actions)) {
     if (!handler) continue;
-    try { navigator.mediaSession.setActionHandler(name as Action, handler); } catch { /* unsupported action */ }
+    try { navigator.mediaSession.setActionHandler(name as MediaSessionAction, handler); } catch { /* unsupported action */ }
   }
 }
 

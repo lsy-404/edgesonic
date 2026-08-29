@@ -218,7 +218,13 @@ onBeforeUnmount(() => {
 
   <UpdateBanner />
 
-  <div v-if="demoMode.enabled" class="demo-badge" role="status" aria-live="polite">
+  <div
+    v-if="demoMode.enabled"
+    class="demo-badge"
+    :class="{ 'demo-badge-authenticated': isLoggedIn }"
+    role="status"
+    aria-live="polite"
+  >
     <span class="demo-badge-text">{{ t("demo.badge") }}</span>
     <a
       class="demo-badge-deploy"
@@ -256,7 +262,14 @@ onBeforeUnmount(() => {
   <router-view v-if="!isLoggedIn || isBare" />
 
   <!-- 登录后框架：NavBar + Sidebar + Main + PlayerBar -->
-  <div v-else class="shell" :class="{ 'now-playing-shell': route.path === '/now-playing' }">
+  <div
+    v-else
+    class="shell"
+    :class="{
+      'now-playing-shell': route.path === '/now-playing',
+      'demo-shell': demoMode.enabled,
+    }"
+  >
     <nav class="navbar">
       <!-- left: logo; on mobile it toggles the sidebar -->
       <div class="nav-left">
@@ -286,6 +299,7 @@ onBeforeUnmount(() => {
           type="search"
           :placeholder="t('app.globalSearch.placeholder')"
           :aria-keyshortcuts="'Meta+K Control+K'"
+          @keydown.enter.prevent="submitGlobalSearch"
           @keydown.esc.prevent="clearGlobalSearch"
         />
         <button type="submit" class="nav-global-search-submit" :aria-label="t('app.globalSearch.submit')" :title="t('app.globalSearch.shortcut')">
@@ -648,6 +662,10 @@ onBeforeUnmount(() => {
   .now-playing-collapse { display: inline-flex; left: 1rem; }
 }
 
+@media (max-width: 600px) {
+  .nav-logo .logo-text { display: none; }
+}
+
 /* --- Activation expired banner (persistent, click → Settings) --- */
 .activation-banner {
   position: fixed;
@@ -701,4 +719,7 @@ onBeforeUnmount(() => {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+.demo-badge-authenticated { top: calc(var(--nav-h) + 0.45rem); }
+.demo-shell .sidebar { top: calc(var(--nav-h) + 2.25rem); }
+.demo-shell .main { padding-top: calc(var(--nav-h) + 3.75rem); }
 </style>

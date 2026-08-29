@@ -22,6 +22,7 @@ console.log("global search reliability:");
 assert(app.includes('role="search"'), "top bar exposes a search form");
 assert(app.includes('path: "/library", query: { q }'), "top bar submits a query to Library");
 assert(app.includes("onGlobalSearchShortcut") && app.includes("event.key.toLowerCase() === \"k\""), "Cmd/Ctrl+K focuses global search");
+assert(app.includes('@keydown.enter.prevent="submitGlobalSearch"'), "Enter submits the global search form");
 assert(app.includes('@keydown.esc.prevent="clearGlobalSearch"'), "Escape clears the global search field");
 assert(library.includes("watch(() => route.query.q"), "Library restores queries from route state");
 assert(library.includes("updateSearchRoute(query)"), "Library writes local query changes back to the route");

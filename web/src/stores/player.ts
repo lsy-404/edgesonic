@@ -277,18 +277,34 @@ export const usePlayerStore = defineStore("player", () => {
   let elA: HTMLAudioElement | null = null;
   let elB: HTMLAudioElement | null = null;
   let active: HTMLAudioElement | null = null;
+
+  function mediaArtworkUrl(coverId: string): string {
+    return `/rest/getCoverArt?${new URLSearchParams({
+      v: "1.16.1",
+      c: "EdgeSonicWeb",
+      id: coverId,
+      size: "512",
+    }).toString()}`;
+  }
+
   function syncMediaControls() {
-    syncMediaSession(current.value ? { title: current.value.title, artist: current.value.artist, album: current.value.album, artwork: current.value.coverArt ? coverArtUrl(current.value.coverArt, 512) : undefined } : null,
+    syncMediaSession(current.value ? {
+      title: current.value.title,
+      artist: current.value.artist,
+      album: current.value.album,
+      artwork: current.value.coverArt ? mediaArtworkUrl(current.value.coverArt) : undefined,
+    } : null,
       !current.value ? "none" : playing.value ? "playing" : "paused",
       active && duration.value > 0 ? { duration: duration.value, position: currentTime.value } : undefined);
   }
   watch([current, playing, currentTime, duration], syncMediaControls, { immediate: true });
   setupMediaSession({
-    play: () => { if (active) void active.play().catch(() => {}); },
-    pause: () => { active?.pause(); }, previoustrack: () => prev(), nexttrack: () => next(),
-    seekbackward: (details) => seek(currentTime.value - (details.seekOffset ?? 10)),
-    seekforward: (details) => seek(currentTime.value + (details.seekOffset ?? 10)),
-    seekto: (details) => { if (details.seekTime != null) seek(details.seekTime); },
+    currentTime: () => currentTime.value,
+    play: () => { if (!playing.value) toggle(); },
+    pause: () => { if (playing.value) toggle(); },
+    previous: prev,
+    next,
+    seek,
   });
   let preloaded: PreloadedTrack | null = null;
   let _isUnloading = false;
