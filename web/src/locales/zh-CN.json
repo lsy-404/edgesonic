@@ -45,12 +45,42 @@
     },
     "logout": "登出",
     "openNavigation": "打开导航",
+    "globalSearch": {
+      "label": "搜索媒体库",
+      "placeholder": "搜索音乐…",
+      "submit": "搜索",
+      "shortcut": "搜索媒体库（Ctrl 或 Cmd + K）"
+    },
     "levels": {
       "guest": "访客",
       "user": "用户",
       "admin": "管理员",
       "super": "超管"
     }
+  },
+  "pageTitles": {
+    "Login": "登录",
+    "Register": "注册",
+    "Forgot Password": "找回密码",
+    "Reset Password": "重置密码",
+    "Verify Email": "验证邮箱",
+    "Confirm Email Change": "确认邮箱变更",
+    "Activation": "账户激活",
+    "Dashboard": "仪表盘",
+    "Library": "媒体库",
+    "Liked": "我喜欢",
+    "Sources": "存储源",
+    "Files": "文件",
+    "Users": "用户",
+    "Settings": "设置",
+    "Tools": "工具",
+    "Radio": "电台",
+    "Podcasts": "播客",
+    "Shares": "分享",
+    "Playlists": "歌单",
+    "Now Playing": "正在播放",
+    "About": "关于",
+    "Work Mode": "工作模式"
   },
   "login": {
     "subtitle": "无服务器音乐控制台",
@@ -284,7 +314,10 @@
     "hideInstrumental": "忽略伴奏",
     "hideInstrumentalHint": "隐藏标题带伴奏 / inst 等尾部标记的曲目",
     "searchPlaceholder": "搜索媒体库…",
+    "searchLabel": "搜索媒体库",
+    "clearSearch": "清除搜索",
     "searchNoResults": "未找到匹配结果",
+    "searchFailed": "搜索失败，请检查网络后重试。",
     "addToPlaylist": "加入歌单",
     "addedToPlaylist": "已加入",
     "createNewPlaylist": "新建歌单…",

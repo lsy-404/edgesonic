@@ -44,12 +44,42 @@
     },
     "logout": "LOGOUT",
     "openNavigation": "Open navigation",
+    "globalSearch": {
+      "label": "Search the library",
+      "placeholder": "Search music…",
+      "submit": "Search",
+      "shortcut": "Search library (Ctrl or Cmd + K)"
+    },
     "levels": {
       "guest": "GUEST",
       "user": "USER",
       "admin": "ADMIN",
       "super": "SUPER"
     }
+  },
+  "pageTitles": {
+    "Login": "Login",
+    "Register": "Register",
+    "Forgot Password": "Forgot Password",
+    "Reset Password": "Reset Password",
+    "Verify Email": "Verify Email",
+    "Confirm Email Change": "Confirm Email Change",
+    "Activation": "Activation",
+    "Dashboard": "Dashboard",
+    "Library": "Library",
+    "Liked": "Liked",
+    "Sources": "Sources",
+    "Files": "Files",
+    "Users": "Users",
+    "Settings": "Settings",
+    "Tools": "Tools",
+    "Radio": "Radio",
+    "Podcasts": "Podcasts",
+    "Shares": "Shares",
+    "Playlists": "Playlists",
+    "Now Playing": "Now Playing",
+    "About": "About",
+    "Work Mode": "Work Mode"
   },
   "login": {
     "subtitle": "SERVERLESS MUSIC CONSOLE",
@@ -283,7 +313,10 @@
     "hideInstrumental": "Hide instrumentals",
     "hideInstrumentalHint": "Skip titles ending in Instrumental / inst / 伴奏",
     "searchPlaceholder": "Search library…",
+    "searchLabel": "Search the library",
+    "clearSearch": "Clear search",
     "searchNoResults": "No matching results",
+    "searchFailed": "Search failed. Check your connection and try again.",
     "addToPlaylist": "Add to Playlist",
     "addedToPlaylist": "Added",
     "createNewPlaylist": "Create New Playlist…",

@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import { createApp } from "vue";
+import { createApp, watch } from "vue";
 import { createRouter, createWebHashHistory } from "vue-router";
 import { createPinia } from "pinia";
 import { i18n } from "./i18n";
@@ -69,6 +69,17 @@ const routes = [
 ];
 
 const router = createRouter({ history: createWebHashHistory(), routes });
+
+let activeRouteTitle = "";
+function syncDocumentTitle(title: unknown) {
+  activeRouteTitle = typeof title === "string" ? title : "";
+  const pageTitle = activeRouteTitle
+    ? i18n.global.t(`pageTitles.${activeRouteTitle}`)
+    : "EdgeSonic";
+  document.title = pageTitle === "EdgeSonic" ? pageTitle : `${pageTitle} · EdgeSonic`;
+}
+router.afterEach((to) => syncDocumentTitle(to.meta.title));
+watch(() => i18n.global.locale.value, () => syncDocumentTitle(activeRouteTitle));
 
 // 导航守卫：未登录跳 /login
 router.beforeEach((to) => {

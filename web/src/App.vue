@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, watch, onBeforeUnmount } from "vue";
+import { ref, computed, watch, onBeforeUnmount, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "./api";
@@ -63,6 +63,43 @@ watch(isLoggedIn, (now) => {
 
 const menuOpen = ref(false);
 watch(() => route.path, () => { menuOpen.value = false; });
+
+const globalSearchInput = ref<HTMLInputElement | null>(null);
+const globalSearchQuery = ref("");
+
+async function focusGlobalSearch() {
+  await nextTick();
+  globalSearchInput.value?.focus();
+  globalSearchInput.value?.select();
+}
+
+function submitGlobalSearch() {
+  const q = globalSearchQuery.value.trim();
+  if (!q) return;
+  void router.push({ path: "/library", query: { q } });
+}
+
+function clearGlobalSearch() {
+  globalSearchQuery.value = "";
+  if (route.path === "/library" && typeof route.query.q === "string") {
+    const nextQuery = { ...route.query };
+    delete nextQuery.q;
+    void router.replace({ query: nextQuery });
+  }
+  globalSearchInput.value?.blur();
+}
+
+function onGlobalSearchShortcut(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    void focusGlobalSearch();
+  }
+}
+
+watch(() => route.query.q, (q) => {
+  globalSearchQuery.value = typeof q === "string" ? q : "";
+}, { immediate: true });
+window.addEventListener("keydown", onGlobalSearchShortcut);
 
 function openMenuFromLogo() {
   menuOpen.value = true;
@@ -166,7 +203,11 @@ watch(
   },
   { immediate: true, flush: "post" },
 );
-onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
+onBeforeUnmount(() => {
+  bgCleanup?.();
+  bgCleanup = null;
+  window.removeEventListener("keydown", onGlobalSearchShortcut);
+});
 </script>
 
 <template>
@@ -234,6 +275,23 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
           <span class="logo-text">EDGESONIC</span>
         </router-link>
       </div>
+
+      <form class="nav-global-search" role="search" @submit.prevent="submitGlobalSearch">
+        <label class="sr-only" for="global-library-search">{{ t("app.globalSearch.label") }}</label>
+        <input
+          id="global-library-search"
+          ref="globalSearchInput"
+          v-model="globalSearchQuery"
+          class="form-input"
+          type="search"
+          :placeholder="t('app.globalSearch.placeholder')"
+          :aria-keyshortcuts="'Meta+K Control+K'"
+          @keydown.esc.prevent="clearGlobalSearch"
+        />
+        <button type="submit" class="nav-global-search-submit" :aria-label="t('app.globalSearch.submit')" :title="t('app.globalSearch.shortcut')">
+          <Icon name="search" />
+        </button>
+      </form>
 
       <!-- right: user -->
       <div class="nav-user">
@@ -349,6 +407,45 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
   display: flex;
   align-items: center;
   gap: 1.25rem;
+}
+.nav-global-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: min(28vw, 360px);
+}
+.nav-global-search .form-input {
+  width: 100%;
+  min-width: 0;
+  padding-right: 2.25rem;
+}
+.nav-global-search-submit {
+  position: absolute;
+  right: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.nav-global-search-submit:hover,
+.nav-global-search-submit:focus-visible { color: var(--color-accent-primary); }
+.nav-global-search-submit svg { width: 1rem; height: 1rem; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .nav-logo {
   display: flex; align-items: center; gap: 10px;
@@ -535,6 +632,11 @@ onBeforeUnmount(() => { bgCleanup?.(); bgCleanup = null; });
 
 /* --- Responsive: ≤960px 侧栏由 Logo 展开 --- */
 @media (max-width: 960px) {
+  .navbar { gap: 0.6rem; padding: 0 0.75rem; }
+  .nav-left { flex: 0 0 auto; }
+  .nav-global-search { flex: 1 1 auto; width: auto; min-width: 0; }
+  .nav-user { flex: 0 0 auto; }
+  .nav-user .status-badge { display: none; }
   .nav-logo-home { display: none; }
   .nav-logo-menu { display: flex; }
   .nav-links { display: none; }

@@ -2,7 +2,7 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, parseXmlInner, formatDuration } from "../api";
 import { usePlayerStore, type Track } from "../stores/player";
@@ -43,6 +43,7 @@ type Tab = "artists" | "albums" | "songs";
 type SortMode = "newest" | "oldestStarred" | "newestAdded" | "oldestAdded" | "nameAsc" | "nameDesc";
 // ?tab= lets other pages (dashboard stat cards) land on a specific view.
 const route = useRoute();
+const router = useRouter();
 const requestedTab = String(route.query.tab || "");
 const tab = ref<Tab>(
   requestedTab === "artists" || requestedTab === "albums" || requestedTab === "songs"
@@ -152,6 +153,7 @@ const currentArtist = ref<Artist | null>(null);
 const currentAlbum = ref<Album | null>(null);
 const loading = ref(false);
 const error = ref("");
+let detailRequest = 0;
 
 const ALBUM_PAGE = 100;
 const allAlbums = ref<Album[]>([]);
@@ -256,6 +258,7 @@ function refreshTargets(): void {
 }
 
 function switchTab(next: Tab) {
+  detailRequest++;
   tab.value = next;
   currentArtist.value = null;
   currentAlbum.value = null;
@@ -463,15 +466,21 @@ watch(sortMode, () => {
 });
 
 const SEARCH_DEBOUNCE_MS = 300;
-const searchQuery = ref("");
+const searchQuery = ref(typeof route.query.q === "string" ? route.query.q : "");
 const searching = ref(false);
 const searchResults = ref<{ artists: Artist[]; albums: Album[]; songs: Track[] } | null>(null);
+const searchError = ref("");
+const isSearchActive = computed(() => !!searchQuery.value.trim());
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
+let searchRequest = 0;
 
 async function runSearch(query: string) {
+  const request = ++searchRequest;
   searching.value = true;
+  searchError.value = "";
   // Drop any drilldown so the page-header title/breadcrumb don't show stale
   // artist/album context behind the search results view.
+  detailRequest++;
   currentArtist.value = null;
   currentAlbum.value = null;
   try {
@@ -482,6 +491,7 @@ async function runSearch(query: string) {
         : sortMode.value === "oldestAdded" ? "oldest"
         : sortMode.value === "nameDesc" ? "titleDesc" : "title",
     });
+    if (request !== searchRequest) return;
     searchResults.value = {
       artists: parseXmlAttrs(xml, "artist").map((a) => ({
         id: a.id || "", name: a.name || "", albumCount: a.albumCount || "",
@@ -495,21 +505,51 @@ async function runSearch(query: string) {
       songs: parseXmlAttrs(xml, "song").map(mapSongRow),
     };
   } catch {
-    searchResults.value = { artists: [], albums: [], songs: [] };
+    if (request !== searchRequest) return;
+    searchResults.value = null;
+    searchError.value = t("library.searchFailed");
   }
-  searching.value = false;
+  if (request === searchRequest) searching.value = false;
 }
+
+function updateSearchRoute(query: string) {
+  const current = typeof route.query.q === "string" ? route.query.q : "";
+  if (current === query) return;
+  const nextQuery = { ...route.query };
+  if (query) nextQuery.q = query;
+  else delete nextQuery.q;
+  void router.replace({ query: nextQuery });
+}
+
+watch(() => route.query.q, (q) => {
+  const query = typeof q === "string" ? q : "";
+  if (searchQuery.value !== query) searchQuery.value = query;
+}, { immediate: true });
 
 watch(searchQuery, (q) => {
   if (searchTimer) clearTimeout(searchTimer);
   const query = q.trim();
-  if (!query) { searchResults.value = null; return; }
+  searchRequest++;
+  if (!query) {
+    searching.value = false;
+    searchError.value = "";
+    searchResults.value = null;
+    updateSearchRoute("");
+    return;
+  }
+  updateSearchRoute(query);
+  searching.value = true;
+  searchError.value = "";
   searchTimer = setTimeout(() => void runSearch(query), SEARCH_DEBOUNCE_MS);
-});
+}, { immediate: true });
 
 function clearSearch() {
   searchQuery.value = "";
-  searchResults.value = null;
+}
+
+function retrySearch() {
+  const query = searchQuery.value.trim();
+  if (query) void runSearch(query);
 }
 
 function playFromSearch(i: number) {
@@ -517,6 +557,7 @@ function playFromSearch(i: number) {
 }
 
 async function openArtist(artist: Artist) {
+  const request = ++detailRequest;
   currentArtist.value = artist;
   currentAlbum.value = null;
   songs.value = [];
@@ -526,13 +567,17 @@ async function openArtist(artist: Artist) {
   void loadArtistInfo(artist);
   try {
     const xml = await authFetch("getArtist", { id: artist.id });
+    if (request !== detailRequest) return;
     albums.value = parseXmlAttrs(xml, "album").map((a) => ({
       id: a.id || "", name: a.name || a.title || "", artist: a.artist || artist.name,
       year: a.year || "", coverArt: a.coverArt || "", songCount: a.songCount || "",
       starred: !!a.starred, starredAt: a.starred || undefined, createdAt: a.created || undefined,
     }));
-  } catch { albums.value = []; }
-  loading.value = false;
+  } catch {
+    if (request === detailRequest) albums.value = [];
+  } finally {
+    if (request === detailRequest) loading.value = false;
+  }
 }
 
 async function loadArtistInfo(artist: Artist) {
@@ -559,10 +604,12 @@ async function loadArtistInfo(artist: Artist) {
 }
 
 async function openAlbum(album: Album) {
+  const request = ++detailRequest;
   currentAlbum.value = album;
   loading.value = true;
   try {
     const xml = await authFetch("getAlbum", { id: album.id });
+    if (request !== detailRequest) return;
     songs.value = parseXmlAttrs(xml, "song").map((s) => ({
       id: s.id || "",
       title: s.title || "",
@@ -574,8 +621,11 @@ async function openAlbum(album: Album) {
       starredAt: s.starred || undefined,
       createdAt: s.created || undefined,
     }));
-  } catch { songs.value = []; }
-  loading.value = false;
+  } catch {
+    if (request === detailRequest) songs.value = [];
+  } finally {
+    if (request === detailRequest) loading.value = false;
+  }
 }
 
 function playSong(i: number) {
@@ -830,6 +880,7 @@ function toggleSelected(id: string) {
 function clearSelection() { selectedIds.value = []; }
 
 function backToList() {
+  detailRequest++;
   currentArtist.value = null;
   currentAlbum.value = null;
   albums.value = [];
@@ -840,6 +891,7 @@ function backToList() {
 }
 
 function backToAlbums() {
+  detailRequest++;
   currentAlbum.value = null;
   songs.value = [];
 }
@@ -1151,11 +1203,12 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 
     <!-- Library-wide search — always visible, independent of tabs/drilldown. -->
     <div v-if="!starredOnly" class="library-search">
-      <input v-model="searchQuery" class="form-input search-input" :placeholder="t('library.searchPlaceholder')" />
-      <button v-if="searchQuery" class="search-clear" :title="t('common.close')" @click="clearSearch"><Icon name="cross" /></button>
+      <label class="sr-only" for="library-search">{{ t("library.searchLabel") }}</label>
+      <input id="library-search" v-model="searchQuery" class="form-input search-input" type="search" :placeholder="t('library.searchPlaceholder')" />
+      <button v-if="searchQuery" type="button" class="search-clear" :aria-label="t('library.clearSearch')" :title="t('common.close')" @click="clearSearch"><Icon name="cross" /></button>
     </div>
 
-    <template v-if="!searchResults">
+    <template v-if="!isSearchActive">
     <!-- View tabs and sorting (hidden while drilled into an artist/album) -->
     <div v-if="!currentArtist && !currentAlbum" class="library-controls">
       <div class="view-tabs">
@@ -1566,13 +1619,17 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
     </template>
 
     <!-- Library-wide search results: replaces tabs/drilldown while a query is active. -->
-    <div v-else class="search-results">
+    <div v-else class="search-results" aria-live="polite">
       <div v-if="searching" class="empty-state">{{ t("common.loading") }}</div>
+      <div v-else-if="searchError" class="empty-state search-error">
+        <div>{{ searchError }}</div>
+        <button type="button" class="btn-secondary btn-sm" @click="retrySearch">{{ t("common.retry") }}</button>
+      </div>
       <div
-        v-else-if="!searchResults.artists.length && !searchResults.albums.length && !searchResults.songs.length"
+        v-else-if="searchResults && !searchResults.artists.length && !searchResults.albums.length && !searchResults.songs.length"
         class="empty-state"
       >{{ t("library.searchNoResults") }}</div>
-      <template v-else>
+      <template v-else-if="searchResults">
         <div v-if="searchResults.artists.length" class="search-section">
           <div class="search-section-title">{{ t("library.tabArtists") }}</div>
           <div class="artist-grid">
