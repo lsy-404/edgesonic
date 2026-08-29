@@ -24,6 +24,7 @@ import { repairFlacPictureMime } from "../lib/flacRepair";
 import { extractEmbeddedCover } from "../lib/embeddedCover";
 import { i18n } from "../i18n";
 import { showError } from "./toast";
+import { setupMediaSession, syncMediaSession, clearMediaSession } from "../lib/mediaSession";
 
 export interface Track {
   id: string;
@@ -276,6 +277,19 @@ export const usePlayerStore = defineStore("player", () => {
   let elA: HTMLAudioElement | null = null;
   let elB: HTMLAudioElement | null = null;
   let active: HTMLAudioElement | null = null;
+  function syncMediaControls() {
+    syncMediaSession(current.value ? { title: current.value.title, artist: current.value.artist, album: current.value.album, artwork: current.value.coverArt ? coverArtUrl(current.value.coverArt, 512) : undefined } : null,
+      !current.value ? "none" : playing.value ? "playing" : "paused",
+      active && duration.value > 0 ? { duration: duration.value, position: currentTime.value } : undefined);
+  }
+  watch([current, playing, currentTime, duration], syncMediaControls, { immediate: true });
+  setupMediaSession({
+    play: () => { if (active) void active.play().catch(() => {}); },
+    pause: () => { active?.pause(); }, previoustrack: () => prev(), nexttrack: () => next(),
+    seekbackward: (details) => seek(currentTime.value - (details.seekOffset ?? 10)),
+    seekforward: (details) => seek(currentTime.value + (details.seekOffset ?? 10)),
+    seekto: (details) => { if (details.seekTime != null) seek(details.seekTime); },
+  });
   let preloaded: PreloadedTrack | null = null;
   let _isUnloading = false;
   // Pending seek position to restore after loadedmetadata fires (page-reload resume).
@@ -1171,6 +1185,7 @@ export const usePlayerStore = defineStore("player", () => {
     queue.value = [];
     index.value = -1;
     playing.value = false;
+    clearMediaSession();
     currentTime.value = 0;
     duration.value = 0;
     bufferedRanges.value = [];
