@@ -677,6 +677,7 @@
     "like": "Like",
     "unlike": "Unlike",
     "volume": "Volume",
+    "seekShortcut": "Seek: ←/→ 5 seconds, J/L 10 seconds",
     "queueTitle": "Play Queue ({n})",
     "queueEmpty": "Queue is empty",
     "playMode": {

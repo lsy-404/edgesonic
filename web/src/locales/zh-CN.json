@@ -674,6 +674,7 @@
     "like": "收藏",
     "unlike": "取消收藏",
     "volume": "音量",
+    "seekShortcut": "跳转：←/→ 5 秒，J/L 10 秒",
     "queueTitle": "播放列表 ({n})",
     "queueEmpty": "播放列表为空",
     "playMode": {

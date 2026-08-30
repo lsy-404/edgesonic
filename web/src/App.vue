@@ -14,6 +14,7 @@ import { activeTheme, resetTheme, restoreSavedTheme } from "./theme";
 import { getTheme } from "./themes/registry";
 import { ensureBuiltinThemeLoaded } from "./themes/builtin";
 import { activeToast, dismissToast } from "./stores/toast";
+import { createPlayerKeyboardShortcutHandler } from "./lib/playerKeyboardShortcuts";
 
 const router = useRouter();
 const route = useRoute();
@@ -100,6 +101,18 @@ watch(() => route.query.q, (q) => {
   globalSearchQuery.value = typeof q === "string" ? q : "";
 }, { immediate: true });
 window.addEventListener("keydown", onGlobalSearchShortcut);
+const onPlayerKeyboardShortcut = createPlayerKeyboardShortcutHandler({
+  hasTrack: () => isLoggedIn.value && !isBare.value && player.hasTrack,
+  currentTime: () => player.currentTime,
+  duration: () => player.duration,
+  volume: () => player.volume,
+  toggle: player.toggle,
+  previous: player.prev,
+  next: player.next,
+  seek: player.seek,
+  setVolume: player.setVolume,
+});
+window.addEventListener("keydown", onPlayerKeyboardShortcut);
 
 function openMenuFromLogo() {
   menuOpen.value = true;
@@ -207,6 +220,7 @@ onBeforeUnmount(() => {
   bgCleanup?.();
   bgCleanup = null;
   window.removeEventListener("keydown", onGlobalSearchShortcut);
+  window.removeEventListener("keydown", onPlayerKeyboardShortcut);
 });
 </script>
 

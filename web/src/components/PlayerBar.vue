@@ -188,14 +188,14 @@ function removeFromQueue(i: number) {
           <svg v-if="player.starred" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
           <svg v-else viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35zm0-2.7C16.76 14.24 20 11.39 20 8.5 20 6.5 18.5 5 16.5 5c-1.54 0-3.04.99-3.57 2.36h-1.87C10.54 5.99 9.04 5 7.5 5 5.5 5 4 6.5 4 8.5c0 2.89 3.24 5.74 8 10.15z"/></svg>
         </button>
-        <button class="pb-btn" :disabled="!player.hasTrack" :title="t('player.previous')" @click="player.prev()">
+        <button class="pb-btn" :disabled="!player.hasTrack" :title="`${t('player.previous')} (Shift+P)`" @click="player.prev()">
           <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M6 6h2v12H6V6zm3.5 6 8.5 6V6l-8.5 6z"/></svg>
         </button>
-        <button class="pb-btn pb-play" :disabled="!player.hasTrack" :title="player.playing ? t('player.pause') : t('player.play')" @click="player.toggle()">
+        <button class="pb-btn pb-play" :disabled="!player.hasTrack" :title="`${player.playing ? t('player.pause') : t('player.play')} (Space / K)`" @click="player.toggle()">
           <svg v-if="player.playing" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
           <svg v-else viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M8 5v14l11-7L8 5z"/></svg>
         </button>
-        <button class="pb-btn" :disabled="!player.hasTrack" :title="t('player.next')" @click="player.next()">
+        <button class="pb-btn" :disabled="!player.hasTrack" :title="`${t('player.next')} (Shift+N)`" @click="player.next()">
           <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
         </button>
         <button class="pb-btn pb-mode" :class="{ active: player.playMode !== 'sequential' }" :disabled="!player.hasTrack" :title="playModeTitle" @click="player.cyclePlayMode()">
@@ -206,7 +206,7 @@ function removeFromQueue(i: number) {
       </div>
       <div class="pb-progress-row">
         <span class="pb-time">{{ formatDuration(Math.floor(displayTime)) }}</span>
-        <div ref="progressEl" class="pb-progress" :class="{ disabled: !player.hasTrack }" @pointerdown="onProgressPointerDown">
+        <div ref="progressEl" class="pb-progress" :class="{ disabled: !player.hasTrack }" :title="t('player.seekShortcut')" @pointerdown="onProgressPointerDown">
           <div
             v-for="(seg, i) in bufferedSegments"
             :key="i"
@@ -238,10 +238,10 @@ function removeFromQueue(i: number) {
       </div>
       <input
         class="pb-volume"
-        type="range" min="0" max="1" step="0.02"
+        type="range" min="0" max="1" step="0.01"
         :value="player.volume"
         @input="onVolume"
-        :title="t('player.volume')"
+        :title="`${t('player.volume')} (↑ / ↓, M)`"
       />
       <button class="pb-queue-btn" :class="{ active: queueOpen }" @click="queueOpen = !queueOpen" :title="t('player.queueTitle', { n: player.queue.length })">
         <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 6h13v2H3V6zm0 5h13v2H3v-2zm0 5h9v2H3v-2zm15 0v-6l5 3-5 3z"/></svg>
