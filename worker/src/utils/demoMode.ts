@@ -162,7 +162,7 @@ export function isAudioSuffix(suffix: string): boolean {
 // allow_all_file_types — they are part of a music folder, not arbitrary
 // payloads — but they never get a song_instances row.
 export const COMPANION_SUFFIXES = new Set([
-  "lrc", "ttml", "krc", "txt",
+  "lrc", "ttml", "krc", "klrc", "txt",
   "jpg", "jpeg", "png", "webp", "gif", "avif", "bmp",
 ]);
 

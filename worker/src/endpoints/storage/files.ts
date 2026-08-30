@@ -359,6 +359,7 @@ function normalizeUploadContentType(contentType: string | null | undefined, suff
     case "wav": return "audio/wav";
     case "lrc":
     case "krc":
+    case "klrc":
     case "txt": return "text/plain; charset=utf-8";
     case "ttml": return "application/ttml+xml";
     case "jpg":

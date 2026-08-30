@@ -23,6 +23,7 @@ interface LyricLine {
   time: number;
   text: string;
   tr?: string;
+  synced: boolean;
   // word-level cues for this line; empty when only line timing exists.
   cues: LyricCue[];
   // When the source distinguishes multiple vocal agents (main +
@@ -34,7 +35,7 @@ interface LyricLine {
 const lyrics = ref<LyricLine[]>([]);
 const lyricsLoading = ref(false);
 const lyricsError = ref("");
-const hasSynced = computed(() => lyrics.value.some((l) => l.time > 0));
+const hasSynced = computed(() => lyrics.value.some((l) => l.synced));
 const hasCues = computed(() => lyrics.value.some((l) => l.cues.length > 0));
 const userScrolled = ref(false);
 const lyricsScrollEl = ref<HTMLElement | null>(null);
@@ -63,11 +64,12 @@ function parseLrcDual(text: string): LyricLine[] {
     } else {
       const entry = { text: content, tr: undefined as string | undefined };
       byTime.set(time, entry);
-      ordered.push({ time, text: content, cues: [] });
+      ordered.push({ time, text: content, synced: true, cues: [] });
     }
   }
   if (!hasTs) {
-    return text.split(/\r?\n/).filter((l) => l.trim()).map((t) => ({ time: 0, text: t, cues: [] }));
+    return text.split(/\r?\n/).map((t) => t.trim()).filter((t) => t && !isLyricMetadata(t))
+      .map((t) => ({ time: 0, text: t, synced: false, cues: [] }));
   }
   // Attach translations
   for (const entry of byTime.entries()) {
@@ -81,39 +83,32 @@ function parseLrcDual(text: string): LyricLine[] {
 // LyricLine[]. When cueLine data is present, lines carry `cues`; otherwise
 // we fall back to line-only timing.
 function parseStructuredLines(inner: string): LyricLine[] {
-  const lineRe = /<line(?:\s+start="(\d+)")?[^>]*>([^<]*)<\/line>/g;
+  const lineRe = /<line\b([^>]*)>([^<]*)<\/line>/g;
   let m: RegExpExecArray | null;
   const raw: { time: number; text: string; hasTime: boolean }[] = [];
   while ((m = lineRe.exec(inner)) !== null) {
-    const hasTime = m[1] !== undefined;
+    const start = /\bstart\s*=\s*"(\d+)"/i.exec(m[1]);
     const content = decodeEntities(m[2]).trim();
-    if (!content) continue;
-    raw.push({ time: hasTime ? parseInt(m[1], 10) / 1000 : 0, text: content, hasTime });
+    if (!content || isLyricMetadata(content)) continue;
+    raw.push({ time: start ? parseInt(start[1], 10) / 1000 : 0, text: content, hasTime: !!start });
   }
   const hasTs = raw.some((r) => r.hasTime);
   if (!hasTs) {
     // Unsynced lyrics: every line is its own entry, no timestamp grouping.
-    return raw.map((r) => ({ time: 0, text: r.text, cues: [] }));
+    return raw.map((r) => ({ time: 0, text: r.text, synced: false, cues: [] }));
   }
-  // Synced: consecutive lines sharing the same timestamp are the
-  // original+translation LRC convention — group the second under the first.
-  const byTime = new Map<number, { text: string; tr?: string }>();
+  // Only explicitly timestamped adjacent lines share the original/translation
+  // convention. Untimed text stays separate and cannot collapse at 0 seconds.
   const ordered: LyricLine[] = [];
   for (const r of raw) {
-    const existing = byTime.get(r.time);
-    if (existing) {
-      if (!existing.tr) existing.tr = r.text;
+    const previous = ordered[ordered.length - 1];
+    if (r.hasTime && previous?.synced && previous.time === r.time && !previous.tr) {
+      previous.tr = r.text;
     } else {
-      const entry = { text: r.text, tr: undefined as string | undefined };
-      byTime.set(r.time, entry);
-      ordered.push({ time: r.time, text: r.text, cues: [] });
+      ordered.push({ time: r.time, text: r.text, synced: r.hasTime, cues: [] });
     }
   }
-  for (const [time, entry] of byTime.entries()) {
-    const idx = ordered.findIndex((l) => l.time === time);
-    if (idx >= 0) ordered[idx].tr = entry.tr;
-  }
-  return ordered.sort((a, b) => a.time - b.time);
+  return ordered;
 }
 
 // Parse the enhanced structuredLyrics payload (with cueLine/cue/
@@ -122,15 +117,14 @@ function parseStructuredLines(inner: string): LyricLine[] {
 // track's text under each main line via `tr`.
 function parseEnhancedStructured(rootXml: string): LyricLine[] {
   // Split into <structuredLyrics ...>...</structuredLyrics> blocks. We do
-  // a regex split because the format middleware delivers the inner XML
-  // body of the lyricsList element (we already extracted that in
-  // trackPrefetch.ts).
+  // a regex split because trackPrefetch preserves the full
+  // structuredLyrics elements from the response.
   const trackRe = /<structuredLyrics\b[^>]*>([\s\S]*?)<\/structuredLyrics>/g;
   const tracks: Array<{
     kind: string;
     cueLines: Map<number, LyricCue[]>;
     agentNames: Map<number, string | undefined>;
-    lines: Array<{ start: number; value: string }>;
+    lines: Array<{ index: number; start: number; value: string; hasTime: boolean }>;
     hasTime: boolean;
   }> = [];
   let tm: RegExpExecArray | null;
@@ -139,16 +133,20 @@ function parseEnhancedStructured(rootXml: string): LyricLine[] {
     const kind = attrVal(blockAttrs, "kind") || "main";
     const inner = tm[1];
     // Lines
-    const lineRe = /<line(?:\s+start="(\d+)")?[^>]*>([^<]*)<\/line>/g;
-    const lines: Array<{ start: number; value: string }> = [];
+    const lineRe = /<line\b([^>]*)>([^<]*)<\/line>/g;
+    const lines: Array<{ index: number; start: number; value: string; hasTime: boolean }> = [];
     let lm: RegExpExecArray | null;
+    let lineIndex = 0;
     while ((lm = lineRe.exec(inner)) !== null) {
-      const start = lm[1] !== undefined ? parseInt(lm[1], 10) / 1000 : 0;
+      const index = lineIndex++;
+      const startAttr = /\bstart\s*=\s*"(\d+)"/i.exec(lm[1]);
+      const hasTime = !!startAttr;
+      const start = startAttr ? parseInt(startAttr[1], 10) / 1000 : 0;
       const value = decodeEntities(lm[2]).trim();
-      if (!value) continue;
-      lines.push({ start, value });
+      if (!value || isLyricMetadata(value)) continue;
+      lines.push({ index, start, value, hasTime });
     }
-    const hasTime = lines.some((l) => l.start > 0);
+    const hasTime = lines.some((l) => l.hasTime);
     // cueLine entries
     const cueLines = new Map<number, LyricCue[]>();
     const agentNames = new Map<number, string | undefined>();
@@ -180,18 +178,23 @@ function parseEnhancedStructured(rootXml: string): LyricLine[] {
   const translations = tracks.filter((t) => t.kind === "translation");
 
   const out: LyricLine[] = [];
-  main.lines.forEach((line, idx) => {
-    const cues = main.cueLines.get(idx) ?? [];
-    const agentName = main.agentNames.get(idx);
+  main.lines.forEach((line) => {
+    const synced = main.hasTime && line.hasTime;
+    const cues = main.cueLines.get(line.index) ?? [];
+    const agentName = main.agentNames.get(line.index);
     // Find a translation line at the same timestamp.
     let tr: string | undefined;
     for (const t of translations) {
-      const match = t.lines.find((tl) => Math.abs(tl.start - line.start) < 0.01);
+      const match = t.lines.find((tl) => tl.hasTime && line.hasTime && Math.abs(tl.start - line.start) < 0.01);
       if (match) { tr = match.value; break; }
     }
-    out.push({ time: line.start, text: line.value, cues, ...(tr ? { tr } : {}), ...(agentName ? { agentName } : {}) });
+    out.push({ time: line.start, text: line.value, synced, cues, ...(tr ? { tr } : {}), ...(agentName ? { agentName } : {}) });
   });
   return out.sort((a, b) => a.time - b.time);
+}
+
+function isLyricMetadata(value: string): boolean {
+  return /^\[[a-zA-Z#][^:\]]*:[^\]]*\]$/.test(value);
 }
 
 function attrVal(tag: string, name: string): string | undefined {
@@ -258,7 +261,9 @@ const activeIdx = computed(() => {
   const t = player.currentTime;
   let idx = -1;
   for (let i = 0; i < lyrics.value.length; i++) {
-    if (lyrics.value[i].time <= t) idx = i;
+    const line = lyrics.value[i];
+    if (!line.synced) continue;
+    if (line.time <= t) idx = i;
     else break;
   }
   return idx;
@@ -332,7 +337,7 @@ function activeLineIsCentered(): boolean {
 }
 
 function onLyricClick(line: LyricLine) {
-  if (!hasSynced.value || !player.hasTrack) return;
+  if (!line.synced || !player.hasTrack) return;
   userScrolled.value = false;
   player.seek(line.time);
   if (!player.playing) player.toggle();
@@ -384,7 +389,7 @@ watch(coverSrc, (src) => {
           v-for="(line, i) in lyrics"
           :key="i"
           class="np-lyric-line"
-          :class="{ active: hasSynced && i === activeIdx, clickable: hasSynced }"
+          :class="{ active: hasSynced && i === activeIdx, clickable: line.synced }"
           @click="onLyricClick(line)"
         >
           <!-- Karaoke word spans when cueLine data is available -->

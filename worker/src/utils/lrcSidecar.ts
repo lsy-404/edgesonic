@@ -31,7 +31,7 @@
 //   accumulate bytes from the stream and abort on overflow.
 //  - All failures are swallowed: a missing .lrc is the common case, not an
 //   error. The caller treats null as "no lyrics available".
-//  - The sidecar reader also recognizes `.ttml` and `.krc`. The
+//  - The sidecar reader also recognizes `.ttml`, `.krc`, and `.klrc`. The
 //   scan-time importer prefers the rich-format file when present and stores
 //   its parsed payload in song_masters.lyrics_rich; the plain `.lrc` (if
 //   also present) still fills `lyrics` for v1 clients.
@@ -50,7 +50,7 @@ const LRC_MAX_BYTES = 100 * 1024; // 100 KB hard cap
 // Sibling sidecar candidates, in priority order: rich formats first (so a
 // .ttml wins over a stale .lrc), then the plain LRC fallback. Each entry
 // is the target URI with the audio extension replaced by the sidecar ext.
-const SIDECAR_EXTS = [".ttml", ".krc", ".lrc"];
+const SIDECAR_EXTS = [".ttml", ".krc", ".klrc", ".lrc"];
 
 // Replace the file extension of a storage_uri's path component with the
 // given sidecar extension.
@@ -112,7 +112,7 @@ export async function fetchLrcSidecar(
   }
 }
 
-// Read a sibling rich-format sidecar (.ttml / .krc / enhanced .lrc) and
+// Read a sibling rich-format sidecar (.ttml / .krc / .klrc / enhanced .lrc) and
 // return the parsed RichLyrics payload, or null when no rich sidecar is
 // present or parsing fails. The plain .lrc fallback (parseLrcToRich) is
 // NOT applied here — callers want the rich payload only when a real
@@ -167,7 +167,7 @@ async function fetchSidecarBytes(
 // Scan-time importer: pull the sibling .lrc and, on hit, write it back to
 // song_masters.lyrics. Only writes when the column is currently empty so we
 // never overwrite a tag-written or externally-fetched value. Also pulls a
-// rich sidecar (.ttml / .krc / enhanced .lrc) and writes its JSON payload to
+// rich sidecar (.ttml / .krc / .klrc / enhanced .lrc) and writes its JSON payload to
 // song_masters.lyrics_rich when empty. Never throws.
 export async function importLrcOnScan(
   db: D1Database,

@@ -102,6 +102,11 @@ function extractXmlInner(xml: string, tag: string): string {
   return match ? match[1] : "";
 }
 
+function extractXmlElements(xml: string, tag: string): string {
+  const matches = xml.match(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?</${tag}>`, "gi"));
+  return matches?.join("") || "";
+}
+
 function cacheKey(scope: string, id: string): string {
   return `${scope}:${id}`;
 }
@@ -167,12 +172,12 @@ export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAut
     } catch {
       xml = "";
     }
-    const enhancedInner = extractXmlInner(xml, "structuredLyrics");
-    if (enhancedInner) {
+    const enhancedStructured = extractXmlElements(xml, "structuredLyrics");
+    if (enhancedStructured) {
       // Verify there's at least one cueLine; otherwise treat as v1.
       const hasCue = /<cueLine\b/.test(xml);
-      if (hasCue) return { structuredEnhanced: enhancedInner };
-      return { structured: enhancedInner };
+      if (hasCue) return { structuredEnhanced: enhancedStructured };
+      return { structured: extractXmlInner(xml, "structuredLyrics") };
     }
 
     // Fall back to v1 (no enhanced) — the server may have rejected the

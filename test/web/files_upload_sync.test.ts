@@ -36,16 +36,17 @@ assert(sameDir[0].kind === "audio" && sameDir[1].kind === "variant", "second aud
 const companions = classifyUploadItems(files([
   ["track.lrc", "disc-1/track.lrc"],
   ["track.ttml", "disc-1/track.ttml"],
+  ["track.klrc", "disc-1/track.klrc"],
   ["track.ncm", "disc-1/track.ncm"],
   ["cover.jpg", "disc-1/cover.jpg"],
 ]));
-assert(companions[0].kind === "lyrics" && companions[1].kind === "lyrics", "LRC and TTML are lyrics sidecars");
-assert(companions[2].kind === "encrypted" && !companions[2].selected, "encrypted input is recognized and excluded by default");
-companions[2].kind = "audio";
-companions[2].selected = true;
+assert(companions.slice(0, 3).every((item) => item.kind === "lyrics"), "LRC, TTML, and KLRC are lyrics sidecars");
+assert(companions[3].kind === "encrypted" && !companions[3].selected, "encrypted input is recognized and excluded by default");
+companions[3].kind = "audio";
+companions[3].selected = true;
 normalizeAudioVariants(companions);
-assert(companions[2].kind === "audio", "locally converted encrypted input rejoins the audio queue");
-assert(companions[3].kind === "sidecar", "ordinary non-audio companion remains uploadable");
+assert(companions[3].kind === "audio", "locally converted encrypted input rejoins the audio queue");
+assert(companions[4].kind === "sidecar", "ordinary non-audio companion remains uploadable");
 
 const convertedVariant = classifyUploadItems(files([
   ["track.flac", "disc-1/track.flac"],

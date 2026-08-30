@@ -633,8 +633,15 @@ export async function parseSidecarToRich(
       return null;
     }
   }
-  if (ext === "krc") {
-    return parseKrcToRich(bytes);
+  if (ext === "krc" || ext === "klrc") {
+    const binary = await parseKrcToRich(bytes);
+    if (binary) return binary;
+    try {
+      const text = new TextDecoder().decode(bytes);
+      return parseKrcTextToRich(text) ?? parseEnhancedLrcToRich(text) ?? parseLrcToRich(text);
+    } catch {
+      return null;
+    }
   }
   if (ext === "lrc") {
     try {

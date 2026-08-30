@@ -117,7 +117,7 @@ const demoMode = useDemoMode();
 // explicitly picks "all" from the dropdown, we drop the accept attribute so
 // any file can be selected. The backend still validates the suffix
 // regardless, so this is purely a UX hint.
-const COMPANION_ACCEPT = ".lrc,.ttml,.krc,.txt,image/*";
+const COMPANION_ACCEPT = ".lrc,.ttml,.krc,.klrc,.txt,image/*";
 const LOCAL_CONVERT_ACCEPT = Array.from(ENCRYPTED_AUDIO_EXTENSIONS, (ext) => `.${ext}`).join(",");
 const uploadAcceptMode = ref<"music" | "all">("music");
 const uploadAccept = computed(() => (uploadAcceptMode.value === "music" ? `audio/*,${COMPANION_ACCEPT},${LOCAL_CONVERT_ACCEPT}` : undefined));

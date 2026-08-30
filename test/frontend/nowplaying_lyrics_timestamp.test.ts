@@ -45,44 +45,41 @@ function assert(cond: unknown, msg: string) {
   else { failures++; console.error(`  ✗ ${msg}`); }
 }
 
-interface LyricLine { time: number; text: string; tr?: string }
+interface LyricLine { time: number; text: string; tr?: string; synced: boolean }
 
 function decodeEntities(s: string): string {
   return s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
 }
 
+function isLyricMetadata(value: string): boolean {
+  return /^\[[a-zA-Z#][^:\]]*:[^\]]*\]$/.test(value);
+}
+
 // Exact copy of NowPlaying.vue's parseStructuredLines — see file header.
 function parseStructuredLines(inner: string): LyricLine[] {
-  const lineRe = /<line(?:\s+start="(\d+)")?[^>]*>([^<]*)<\/line>/g;
+  const lineRe = /<line\b([^>]*)>([^<]*)<\/line>/g;
   let m: RegExpExecArray | null;
   const raw: { time: number; text: string; hasTime: boolean }[] = [];
   while ((m = lineRe.exec(inner)) !== null) {
-    const hasTime = m[1] !== undefined;
+    const start = /\bstart\s*=\s*"(\d+)"/i.exec(m[1]);
     const content = decodeEntities(m[2]).trim();
-    if (!content) continue;
-    raw.push({ time: hasTime ? parseInt(m[1], 10) / 1000 : 0, text: content, hasTime });
+    if (!content || isLyricMetadata(content)) continue;
+    raw.push({ time: start ? parseInt(start[1], 10) / 1000 : 0, text: content, hasTime: !!start });
   }
   const hasTs = raw.some((r) => r.hasTime);
   if (!hasTs) {
-    return raw.map((r) => ({ time: 0, text: r.text }));
+    return raw.map((r) => ({ time: 0, text: r.text, synced: false }));
   }
-  const byTime = new Map<number, { text: string; tr?: string }>();
   const ordered: LyricLine[] = [];
   for (const r of raw) {
-    const existing = byTime.get(r.time);
-    if (existing) {
-      if (!existing.tr) existing.tr = r.text;
+    const previous = ordered[ordered.length - 1];
+    if (r.hasTime && previous?.synced && previous.time === r.time && !previous.tr) {
+      previous.tr = r.text;
     } else {
-      const entry = { text: r.text, tr: undefined as string | undefined };
-      byTime.set(r.time, entry);
-      ordered.push({ time: r.time, text: r.text });
+      ordered.push({ time: r.time, text: r.text, synced: r.hasTime });
     }
   }
-  for (const [time, entry] of byTime.entries()) {
-    const idx = ordered.findIndex((l) => l.time === time);
-    if (idx >= 0) ordered[idx].tr = entry.tr;
-  }
-  return ordered.sort((a, b) => a.time - b.time);
+  return ordered;
 }
 
 async function main() {
@@ -93,7 +90,7 @@ async function main() {
     assert(out.length === 2, `2 lines parsed (got ${out.length})`);
     assert(out[0].time === 1, `first line time=1s (got ${out[0].time})`);
     assert(out[1].time === 4.5, `second line time=4.5s (got ${out[1].time})`);
-    assert(out.some((l) => l.time > 0), "hasSynced-equivalent check (some l.time > 0) is true — this is exactly what was broken before");
+    assert(out.every((l) => l.synced), "timestamped lines are marked as synced even when one starts at 0");
   }
 
   console.log("\nB. Dual-language: consecutive same-timestamp lines group as original+translation:");
@@ -110,7 +107,7 @@ async function main() {
     const xml = "<line>Line one</line><line>Line two</line><line>Line three</line>";
     const out = parseStructuredLines(xml);
     assert(out.length === 3, `all 3 lines kept as separate entries (got ${out.length})`);
-    assert(out.every((l) => l.time === 0), "every line time=0 (correctly unsynced, not incorrectly grouped as duplicates)");
+    assert(out.every((l) => l.time === 0 && !l.synced), "every line remains distinctly unsynced at time=0");
   }
 
   console.log("\nD. Blank lines are skipped:");
@@ -127,13 +124,25 @@ async function main() {
     assert(out[0]?.text === "Tom & Jerry", `entity decoded (got "${out[0]?.text}")`);
   }
 
-  console.log("\nF. Production source drift guard:");
+  console.log("\nF. Metadata and untimed text do not merge into the synchronized timeline:");
+  {
+    const xml = '<line>[ti:Track title]</line><line start="0">First lyric</line><line>spoken intro</line><line start="0">第一句翻译</line><line start="1000">Second lyric</line>';
+    const out = parseStructuredLines(xml);
+    assert(out.length === 4, `metadata is excluded and the untimed line stays separate (got ${out.length})`);
+    assert(out[0]?.text === "First lyric" && out[0]?.tr === undefined && out[0]?.synced, "first timestamped line is not merged with later 0-second content");
+    assert(out[1]?.text === "spoken intro" && !out[1]?.synced, "untimed lyric stays visible without entering the synced track");
+    assert(out[2]?.text === "第一句翻译" && out[2]?.synced, "non-adjacent same-time line is retained instead of being discarded");
+  }
+
+  console.log("\nG. Production source drift guard:");
   {
     const src = fs.readFileSync(path.resolve(__dirname, "../../web/src/views/NowPlaying.vue"), "utf-8");
     assert(src.includes("function parseStructuredLines"), "NowPlaying.vue still defines parseStructuredLines");
     assert(src.includes("parseStructuredLines(payload.structured)"), "the structuredLyrics branch calls parseStructuredLines, not the old text-only regex");
-    assert(!/<line\[\^>\]\*>/.test(src) || src.includes("start=\"(\\d+)\")?"),
-      "no longer relies on a start-attribute-blind <line> regex for the structured path");
+    assert(src.includes("const start = /\\bstart\\s*=\\s*\"(\\d+)\"/i.exec(m[1]);"),
+      "structured lines read a start attribute regardless of attribute order");
+    assert(src.includes("isLyricMetadata(content)"), "structured metadata is excluded before the timeline is built");
+    assert(src.includes("if (!line.synced) continue;"), "untimed text does not interrupt synchronized lyric tracking");
     assert(src.includes("let lyricsRequest = 0;"), "lyrics requests have a generation counter");
     assert(src.includes("userScrolled.value = false;"), "track changes restore automatic lyric following");
     assert(src.includes("function resetLyricsScroll()"), "track changes reset the lyric scroll container");

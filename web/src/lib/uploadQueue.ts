@@ -29,7 +29,7 @@ export interface UploadItem<T extends UploadFileLike = UploadFileLike> {
 }
 
 const AUDIO_EXTENSIONS = new Set(["mp3", "flac", "wav", "ogg", "opus", "m4a", "aac", "aiff", "alac", "ape", "wma"]);
-const LYRIC_EXTENSIONS = new Set(["lrc", "ttml", "krc"]);
+const LYRIC_EXTENSIONS = new Set(["lrc", "ttml", "krc", "klrc"]);
 export const ENCRYPTED_AUDIO_EXTENSIONS = new Set([
   "ncm", "uc", "mg3d", "kwm", "xm", "x2m", "x3m", "tm0", "tm2", "tm3", "tm6", "cache",
   "qmc0", "qmc2", "qmc3", "qmc4", "qmc6", "qmc8", "qmcflac", "qmcogg", "tkm",
