@@ -156,13 +156,14 @@ function parseEnhancedStructured(rootXml: string): LyricLine[] {
       const clAttrs = cm[0].slice(0, cm[0].indexOf(">"));
       const idx = parseInt(attrVal(clAttrs, "index") || "0", 10);
       const cues: LyricCue[] = [];
-      const cueRe = /<cue\b[^>]*>([^<]*)<\/cue>/g;
+      const cueRe = /<cue\b([^>]*?)(?:\/>|>([^<]*)<\/cue>)/g;
       let cum: RegExpExecArray | null;
       while ((cum = cueRe.exec(cm[1])) !== null) {
-        const cueAttrs = cum[0].slice(0, cum[0].indexOf(">"));
+        const cueAttrs = cum[1];
         const startMs = parseInt(attrVal(cueAttrs, "start") || "0", 10);
         const endMs = attrVal(cueAttrs, "end");
-        const value = decodeEntities(cum[1]);
+        const value = decodeEntities(attrVal(cueAttrs, "value") ?? cum[2] ?? "");
+        if (!value) continue;
         cues.push({ start: startMs / 1000, ...(endMs ? { end: parseInt(endMs, 10) / 1000 } : {}), value });
       }
       cueLines.set(idx, cues);

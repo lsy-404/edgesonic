@@ -55,6 +55,24 @@ function isLyricMetadata(value: string): boolean {
   return /^\[[a-zA-Z#][^:\]]*:[^\]]*\]$/.test(value);
 }
 
+function attrVal(tag: string, name: string): string | undefined {
+  const m = new RegExp(`\\b${name}\\s*=\\s*"([^"]*)"`, "i").exec(tag);
+  return m ? m[1] : undefined;
+}
+
+function parseCueValues(inner: string) {
+  const values: Array<{ value: string; start: number; end?: number }> = [];
+  const cueRe = /<cue\b([^>]*?)(?:\/>|>([^<]*)<\/cue>)/g;
+  let m: RegExpExecArray | null;
+  while ((m = cueRe.exec(inner)) !== null) {
+    const start = parseInt(attrVal(m[1], "start") || "0", 10);
+    const endValue = attrVal(m[1], "end");
+    const value = decodeEntities(attrVal(m[1], "value") ?? m[2] ?? "");
+    if (value) values.push({ value, start, ...(endValue ? { end: parseInt(endValue, 10) } : {}) });
+  }
+  return values;
+}
+
 // Exact copy of NowPlaying.vue's parseStructuredLines — see file header.
 function parseStructuredLines(inner: string): LyricLine[] {
   const lineRe = /<line\b([^>]*)>([^<]*)<\/line>/g;
@@ -134,7 +152,15 @@ async function main() {
     assert(out[2]?.text === "第一句翻译" && out[2]?.synced, "non-adjacent same-time line is retained instead of being discarded");
   }
 
-  console.log("\nG. Production source drift guard:");
+  console.log("\nG. Structured cue attributes preserve KLRC word timing:");
+  {
+    const cues = parseCueValues('<cue start="0" end="400" value="逐" byteStart="0" byteEnd="3"/><cue start="400" end="1000" value="字" byteStart="3" byteEnd="6"/>');
+    assert(cues.length === 2, `two self-closing cues are parsed (got ${cues.length})`);
+    assert(cues[0]?.value === "逐" && cues[0]?.start === 0 && cues[0]?.end === 400, "first cue reads the value attribute and timing");
+    assert(cues[1]?.value === "字" && cues[1]?.start === 400 && cues[1]?.end === 1000, "second cue retains its timing");
+  }
+
+  console.log("\nH. Production source drift guard:");
   {
     const src = fs.readFileSync(path.resolve(__dirname, "../../web/src/views/NowPlaying.vue"), "utf-8");
     assert(src.includes("function parseStructuredLines"), "NowPlaying.vue still defines parseStructuredLines");
@@ -143,6 +169,7 @@ async function main() {
       "structured lines read a start attribute regardless of attribute order");
     assert(src.includes("isLyricMetadata(content)"), "structured metadata is excluded before the timeline is built");
     assert(src.includes("if (!line.synced) continue;"), "untimed text does not interrupt synchronized lyric tracking");
+    assert(src.includes('attrVal(cueAttrs, "value") ?? cum[2] ?? ""'), "self-closing cue attributes provide the karaoke word text");
     assert(src.includes("let lyricsRequest = 0;"), "lyrics requests have a generation counter");
     assert(src.includes("userScrolled.value = false;"), "track changes restore automatic lyric following");
     assert(src.includes("function resetLyricsScroll()"), "track changes reset the lyric scroll container");

@@ -197,6 +197,7 @@ export function parseLrcToRich(lyrics: string): RichLyrics | null {
 // cues are the words between successive timestamps.
 // ---------------------------------------------------------------------------
 const INLINE_WORD_TS = /\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g;
+const ANGLE_WORD_TS = /<(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?>/g;
 
 export function parseEnhancedLrcToRich(lyrics: string): RichLyrics | null {
   const lines = lyrics.split(/\r?\n/);
@@ -303,6 +304,73 @@ export function parseEnhancedLrcToRich(lyrics: string): RichLyrics | null {
         agents: [],
       },
     ],
+  };
+}
+
+function parseAngleTimedLrcToRich(lyrics: string): RichLyrics | null {
+  const richLines: RichLine[] = [];
+  const cueLines: RichCueLine[] = [];
+  let lang = "xxx";
+  let offset = 0;
+  let hasCue = false;
+  let lineIdx = 0;
+
+  for (const raw of lyrics.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const meta = LRC_META.exec(line);
+    if (meta) {
+      const key = meta[1].toLowerCase();
+      const value = meta[2].trim();
+      if (key === "offset") {
+        const n = parseInt(value, 10);
+        if (Number.isFinite(n)) offset = n;
+      } else if (key === "la" || key === "language") {
+        if (value) lang = value;
+      }
+      continue;
+    }
+
+    const lineTimes = [...line.matchAll(LRC_TS)];
+    if (lineTimes.length === 0 || !line.startsWith("[")) continue;
+    const content = line.replace(LRC_TS, "").trim();
+    const wordTimes = [...content.matchAll(ANGLE_WORD_TS)];
+    const text = content.replace(ANGLE_WORD_TS, "").trim();
+    const lineStart = tsToMs(lineTimes[0]);
+    richLines.push({ start: lineStart, value: text });
+
+    if (wordTimes.length > 0) {
+      const cues: RichCue[] = [];
+      let cursor = 0;
+      for (let index = 0; index < wordTimes.length; index++) {
+        const marker = wordTimes[index];
+        const next = wordTimes[index + 1];
+        const value = content.slice(marker.index! + marker[0].length, next?.index).trim();
+        if (!value) continue;
+        const start = tsToMs(marker);
+        const end = next ? tsToMs(next) : undefined;
+        const byteStart = utf8ByteOffset(text, cursor);
+        cursor += value.length;
+        const byteEnd = utf8ByteOffset(text, cursor);
+        cues.push({ start, ...(end !== undefined ? { end } : {}), value, byteStart, byteEnd });
+      }
+      if (cues.length > 0) {
+        cueLines.push({
+          index: lineIdx,
+          start: lineStart,
+          ...(cues[cues.length - 1].end !== undefined ? { end: cues[cues.length - 1].end } : {}),
+          value: text,
+          cue: cues,
+        });
+        hasCue = true;
+      }
+    }
+    lineIdx++;
+  }
+
+  if (!hasCue) return null;
+  return {
+    tracks: [{ kind: "main", lang, synced: true, ...(offset !== 0 ? { offset } : {}), line: richLines, cueLine: cueLines, agents: [] }],
   };
 }
 
@@ -576,16 +644,23 @@ function parseKrcTextToRich(text: string): RichLyrics | null {
     richLines.push({ start: startMs, value: plain });
     synced = true;
 
-    // Words: word(offset_ms, duration_ms, 0)word2(...)
+    // Words normally use `<offset_ms,duration_ms,0>word` in KRC/KLRC. Some
+    // exporters write the equivalent `word(offset_ms,duration_ms,0)` form.
     const cues: RichCue[] = [];
     let cursor = 0;
-    const wordRe = /([^()]*?)\((\d+),(\d+),\d+\)/g;
+    const prefixedWordRe = /<(\d+),(\d+),-?\d+>([^<]*)/g;
+    const suffixedWordRe = /([^()]*?)\((\d+),(\d+),-?\d+\)/g;
     let wm: RegExpExecArray | null;
+    const wordRe = prefixedWordRe.test(rest) ? prefixedWordRe : suffixedWordRe;
+    wordRe.lastIndex = 0;
     while ((wm = wordRe.exec(rest)) !== null) {
-      const wText = wm[1].replace(/<[^>]+>/g, "").trim();
+      const prefixMarker = wordRe === prefixedWordRe;
+      const wText = (prefixMarker ? wm[3] : wm[1]).replace(/<[^>]+>/g, "").trim();
       if (!wText) continue;
-      const wStart = startMs + parseInt(wm[2], 10);
-      const wEnd = wStart + parseInt(wm[3], 10);
+      const offsetMs = parseInt(prefixMarker ? wm[1] : wm[2], 10);
+      const durationMs = parseInt(prefixMarker ? wm[2] : wm[3], 10);
+      const wStart = startMs + offsetMs;
+      const wEnd = wStart + durationMs;
       const bStart = utf8ByteOffset(plain, cursor);
       cursor += wText.length;
       const bEnd = utf8ByteOffset(plain, cursor);
@@ -638,7 +713,7 @@ export async function parseSidecarToRich(
     if (binary) return binary;
     try {
       const text = new TextDecoder().decode(bytes);
-      return parseKrcTextToRich(text) ?? parseEnhancedLrcToRich(text) ?? parseLrcToRich(text);
+      return parseKrcTextToRich(text) ?? parseAngleTimedLrcToRich(text) ?? parseEnhancedLrcToRich(text) ?? parseLrcToRich(text);
     } catch {
       return null;
     }
