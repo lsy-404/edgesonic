@@ -16,9 +16,11 @@ import ScrapeButton from "../components/ScrapeButton.vue";
 import type { ScrapeResult } from "../lib/scrape";
 import { extractMetadata } from "../lib/metadata";
 import Icon from "../components/Icon.vue";
+import { usePlayerStore, type Track } from "../stores/player";
 
 const { t } = useI18n();
 const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, checkUploadConflicts, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitMetadata } = useAuth();
+const player = usePlayerStore();
 
 interface StorageSource { id: string; type: string; name: string; baseUrl: string; }
 interface DirEntry { name: string; modifiedAt: number | null; }
@@ -976,7 +978,24 @@ const editErr = ref(false);
 const editExistingCoverUrl = computed(() => editCoverArt.value ? coverArtUrl(editCoverArt.value, 200) : undefined);
 
 const canEditTags = computed(() => hasPerm("edit_tags"));
-const isAudio = (name: string) => /\.(mp3|flac|wav|ogg|opus|m4a|aac)$/i.test(name);
+const isAudio = (name: string) => /\.(mp3|flac|wav|ogg|opus|m4a|aac|mp4|m4b|aiff|aif|wma|alac)$/i.test(name);
+const isPlayableAudio = (file: FileEntry) => isAudio(file.name) || file.contentType?.startsWith("audio/") === true;
+
+function toTrack(song: Record<string, string>): Track {
+  return {
+    id: song.id || "",
+    title: song.title || "",
+    artist: song.artist || "",
+    album: song.album || "",
+    coverArt: song.coverArt || undefined,
+    duration: parseInt(song.duration || "0", 10),
+    starred: !!song.starred,
+    starredAt: song.starred || undefined,
+    createdAt: song.created || undefined,
+    artistId: song.artistId || undefined,
+    albumId: song.albumId || undefined,
+  };
+}
 
 async function lookupSongByFilename(f: FileEntry, songCount = 5): Promise<Record<string, string> | null> {
   const stem = f.name.replace(/\.[^.]+$/, "");
@@ -985,6 +1004,20 @@ async function lookupSongByFilename(f: FileEntry, songCount = 5): Promise<Record
   const songs = parseXmlAttrs(xml, "song");
   if (!songs.length) return null;
   return songs.find((s) => normalizeForMatch(s.title) === searchStem) || songs[0];
+}
+
+async function playFile(f: FileEntry) {
+  if (!isPlayableAudio(f)) return;
+  try {
+    const hit = await lookupSongByFilename(f, 20);
+    if (!hit?.id) {
+      showToast(t("files.playLookupFailed"), "error");
+      return;
+    }
+    player.setQueue([toTrack(hit)], 0);
+  } catch {
+    showToast(t("files.playLookupFailed"), "error");
+  }
 }
 
 async function openTagEditor(f: FileEntry) {
@@ -1664,6 +1697,12 @@ onBeforeUnmount(() => {
               <span class="entry-name">{{ f.name }}</span>
               <span class="entry-time">{{ formatModifiedTime(f.modifiedAt) }}</span>
               <span class="entry-size">{{ formatSize(f.size) }}</span>
+              <button
+                v-if="isPlayableAudio(f)"
+                class="op-btn op-play"
+                :title="t('files.play')"
+                @click.stop="playFile(f)"
+              ><Icon name="play" /></button>
               <!-- Every per-row action lives in the menu now; the row keeps
                    one trigger instead of a strip of icon buttons. -->
               <button
@@ -1960,6 +1999,7 @@ onBeforeUnmount(() => {
 
         <template v-else-if="ctxFile">
           <div class="ctx-header">{{ ctxFile.name }}</div>
+          <button v-if="isPlayableAudio(ctxFile)" class="ctx-item" @click="ctxRun(() => playFile(ctxFile!))"><Icon name="play" /> {{ t("files.play") }}</button>
           <button
             v-if="canEditTags && isAudio(ctxFile.name)"
             class="ctx-item"
