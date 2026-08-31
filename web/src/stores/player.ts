@@ -31,6 +31,7 @@ export interface Track {
   title: string;
   artist: string;
   album: string;
+  streamUrl?: string;
   coverArt?: string;
   duration: number;
   starred?: boolean;
@@ -181,6 +182,20 @@ export const usePlayerStore = defineStore("player", () => {
 
   const current = computed<Track | null>(() => queue.value[index.value] || null);
   const hasTrack = computed(() => index.value >= 0 && index.value < queue.value.length);
+
+  function trackForId(trackId: string): Track | undefined {
+    return current.value?.id === trackId ? current.value : queue.value.find((track) => track.id === trackId);
+  }
+
+  function sourceUrlForTrack(track: Track): string {
+    return track.streamUrl || useAuth().streamUrl(track.id, streamQualityParams());
+  }
+
+  function sourceUrlForId(trackId: string): string {
+    const track = trackForId(trackId);
+    return track ? sourceUrlForTrack(track) : useAuth().streamUrl(trackId, streamQualityParams());
+  }
+
   let _resumePlayback = false;
 
   watch(playing, setPlaybackActive, { immediate: true });
@@ -439,7 +454,7 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   async function fetchFullBlob(trackId: string, signal?: AbortSignal, priority?: "low"): Promise<Blob> {
-    const { streamUrl, downloadUrl } = useAuth();
+    const { downloadUrl } = useAuth();
     let lastError: unknown = null;
     // Stream first: it is the same URL the <audio> element uses, so both share
     // one HTTP cache entry. /rest/download is a different URL and would always
@@ -451,10 +466,11 @@ export const usePlayerStore = defineStore("player", () => {
     // background-download slot leaks and the next-track preload starves.
     const ATTEMPT_TIMEOUT_MS = 60_000;
     const quality = streamQualityParams();
-    const attempts: Array<readonly [string, string]> = [["stream-full", streamUrl(trackId, quality)]];
+    const track = trackForId(trackId);
+    const attempts: Array<readonly [string, string]> = [["stream-full", sourceUrlForId(trackId)]];
     // Download always returns the original file, so it is only a valid retry
     // when the user explicitly selected automatic/original quality.
-    if (!quality) attempts.push(["download-full", downloadUrl(trackId)]);
+    if (!track?.streamUrl && !quality) attempts.push(["download-full", downloadUrl(trackId)]);
     for (const [label, url] of attempts) {
       const attemptController = new AbortController();
       let timedOut = false;
@@ -664,10 +680,9 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   function beginIncrementalFallback(el: HTMLAudioElement, trackId: string, resumeAt: number, shouldPlay: boolean) {
-    const { streamUrl } = useAuth();
     const state: IncrementalFallbackState = {
       trackId,
-      sourceUrl: streamUrl(trackId, streamQualityParams()),
+      sourceUrl: sourceUrlForId(trackId),
       chunks: [],
       downloaded: 0,
       stepIndex: 0,
@@ -911,6 +926,7 @@ export const usePlayerStore = defineStore("player", () => {
     const nextTrack = queue.value[ni];
     if (!nextTrack || prefetchedTrackId === nextTrack.id) return;
     prefetchedTrackId = nextTrack.id;
+    if (nextTrack.streamUrl) return;
     const { authFetch, coverArtUrl, username } = useAuth();
     preloadTrack(nextTrack, { authFetch, coverArtUrl, scope: username.value });
   }
@@ -1024,8 +1040,7 @@ export const usePlayerStore = defineStore("player", () => {
           targetEl.addEventListener("loadedmetadata", onMeta);
           return;
         }
-        const { streamUrl } = useAuth();
-        const sourceUrl = streamUrl(trackId, streamQualityParams());
+        const sourceUrl = sourceUrlForTrack(track);
         targetEl.src = sourceUrl;
         targetEl.load();
         targetEl.volume = volume.value;

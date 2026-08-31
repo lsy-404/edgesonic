@@ -978,7 +978,7 @@ const editErr = ref(false);
 const editExistingCoverUrl = computed(() => editCoverArt.value ? coverArtUrl(editCoverArt.value, 200) : undefined);
 
 const canEditTags = computed(() => hasPerm("edit_tags"));
-const isAudio = (name: string) => /\.(mp3|flac|wav|ogg|opus|m4a|aac|mp4|m4b|aiff|aif|wma|alac)$/i.test(name);
+const isAudio = (name: string) => /\.(mp3|flac|wav|ogg|opus|m4a|aac|mp4|m4b|aiff|aif|wma|alac|webm)$/i.test(name);
 const isPlayableAudio = (file: FileEntry) => isAudio(file.name) || file.contentType?.startsWith("audio/") === true;
 
 function toTrack(song: Record<string, string>): Track {
@@ -997,6 +997,21 @@ function toTrack(song: Record<string, string>): Track {
   };
 }
 
+function toFileTrack(f: FileEntry): Track {
+  const title = f.name.replace(/\.[^.]+$/, "");
+  return {
+    id: `file:${f.uri}`,
+    title,
+    artist: "",
+    album: "",
+    duration: 0,
+    streamUrl: restUrl("storage/files/stream", {
+      source: currentSource.value,
+      path: joinPath(path.value, f.name),
+    }),
+  };
+}
+
 async function lookupSongByFilename(f: FileEntry, songCount = 5): Promise<Record<string, string> | null> {
   const stem = f.name.replace(/\.[^.]+$/, "");
   const searchStem = normalizeForMatch(stem);
@@ -1008,16 +1023,11 @@ async function lookupSongByFilename(f: FileEntry, songCount = 5): Promise<Record
 
 async function playFile(f: FileEntry) {
   if (!isPlayableAudio(f)) return;
+  let hit: Record<string, string> | null = null;
   try {
-    const hit = await lookupSongByFilename(f, 20);
-    if (!hit?.id) {
-      showToast(t("files.playLookupFailed"), "error");
-      return;
-    }
-    player.setQueue([toTrack(hit)], 0);
-  } catch {
-    showToast(t("files.playLookupFailed"), "error");
-  }
+    hit = await lookupSongByFilename(f, 20);
+  } catch { /* A browsed file can still play before the library scan finishes. */ }
+  player.setQueue([hit?.id ? toTrack(hit) : toFileTrack(f)], 0);
 }
 
 async function openTagEditor(f: FileEntry) {

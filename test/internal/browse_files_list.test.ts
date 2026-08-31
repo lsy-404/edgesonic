@@ -35,13 +35,14 @@ function assert(cond: unknown, msg: string) {
 // In-memory R2 bucket shim with delimiter-aware list() (mirrors R2's actual
 // commonPrefix-grouping semantics closely enough for this test).
 // ---------------------------------------------------------------------------
-interface R2Item { key: string; size: number; contentType: string; uploaded: Date }
+interface R2Item { key: string; size: number; contentType: string; uploaded: Date; bytes: Uint8Array }
 
 function makeR2Bucket() {
   const store = new Map<string, R2Item>();
   return {
-    async put(key: string, _body: unknown, opts?: { httpMetadata?: { contentType?: string } }) {
-      store.set(key, { key, size: 0, contentType: opts?.httpMetadata?.contentType || "application/octet-stream", uploaded: new Date("2026-08-25T12:34:56Z") });
+    async put(key: string, body: unknown, opts?: { httpMetadata?: { contentType?: string } }) {
+      const bytes = body instanceof Uint8Array ? body : new Uint8Array([1, 2, 3, 4]);
+      store.set(key, { key, size: bytes.byteLength, bytes, contentType: opts?.httpMetadata?.contentType || "application/octet-stream", uploaded: new Date("2026-08-25T12:34:56Z") });
     },
     async list({ prefix, delimiter }: { prefix: string; delimiter: string }) {
       const objects: (R2Item & { httpMetadata: { contentType: string } })[] = [];
@@ -57,6 +58,18 @@ function makeR2Bucket() {
         }
       }
       return { objects, delimitedPrefixes: Array.from(prefixSet) };
+    },
+    async get(key: string, opts?: { range?: { offset: number; length?: number } }) {
+      const item = store.get(key);
+      if (!item) return null;
+      const start = opts?.range?.offset || 0;
+      const end = opts?.range?.length ? start + opts.range.length : undefined;
+      const bytes = item.bytes.slice(start, end);
+      return {
+        body: new Blob([bytes]).stream(),
+        size: item.size,
+        httpMetadata: { contentType: item.contentType },
+      };
     },
   };
 }
@@ -80,7 +93,7 @@ function makeApp(bucket: ReturnType<typeof makeR2Bucket>, sourceRow?: Record<str
   };
 
   return {
-    async get(url: string) { return app.fetch(new Request(`http://test${url}`), env); },
+    async get(url: string, headers?: HeadersInit) { return app.fetch(new Request(`http://test${url}`, { headers }), env); },
   };
 }
 
@@ -107,6 +120,24 @@ async function main() {
     assert(!j.files.some((f) => f.name === ".keep"), "'.keep' not present in its own folder's listing");
     assert(j.files.some((f) => f.name === "track.mp3"), "real file 'track.mp3' still listed");
     assert(j.files.find((f) => f.name === "track.mp3")?.modifiedAt === 1787661296, "R2 upload time is returned as unix seconds");
+  }
+
+  console.log("\nfiles/stream r2 → serves an unscanned file with media and range headers:");
+  {
+    await bucket.put("music/newfolder/direct.flac", new Uint8Array([10, 11, 12, 13]), { httpMetadata: { contentType: "application/octet-stream" } });
+    const full = await app.get("/storage/files/stream?source=r2&path=music/newfolder/direct.flac");
+    assert(full.status === 200, "full stream returns 200");
+    assert(full.headers.get("Content-Type") === "audio/flac", "octet-stream FLAC receives a browser-playable MIME type");
+    assert(full.headers.get("Accept-Ranges") === "bytes", "full stream advertises byte ranges");
+    assert((await full.arrayBuffer()).byteLength === 4, "full stream preserves bytes");
+
+    const ranged = await app.get("/storage/files/stream?source=r2&path=music/newfolder/direct.flac", { Range: "bytes=1-2" });
+    assert(ranged.status === 206, "range stream returns 206");
+    assert(ranged.headers.get("Content-Range") === "bytes 1-2/4", "range stream reports the selected byte span");
+    assert((await ranged.arrayBuffer()).byteLength === 2, "range stream preserves only requested bytes");
+
+    const invalid = await app.get("/storage/files/stream?source=r2&path=music/../outside.flac");
+    assert(invalid.status === 400, "path traversal is rejected");
   }
 
   console.log("\nfiles/list WebDAV → requests and returns last-modified time:");

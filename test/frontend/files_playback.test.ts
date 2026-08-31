@@ -18,10 +18,12 @@ assert(files.includes('import { usePlayerStore, type Track } from "../stores/pla
 assert(files.includes("const isPlayableAudio = (file: FileEntry)"), "recognizes playable file entries");
 assert(files.includes("async function playFile(f: FileEntry)"), "defines a file playback handler");
 assert(files.includes("const hit = await lookupSongByFilename(f, 20);"), "resolves the existing library song before playing");
-assert(files.includes("player.setQueue([toTrack(hit)], 0);"), "starts the shared player with the resolved track");
+assert(files.includes("function toFileTrack(f: FileEntry): Track"), "builds a direct track for unscanned files");
+assert(files.includes('restUrl("storage/files/stream"'), "uses the authenticated file-stream endpoint");
+assert(files.includes("player.setQueue([hit?.id ? toTrack(hit) : toFileTrack(f)], 0);"), "falls back to direct playback when the library has no matching song");
 assert(files.includes("v-if=\"isPlayableAudio(f)\"") && files.includes("@click.stop=\"playFile(f)\""), "audio rows expose a direct play button");
 assert(files.includes("v-if=\"isPlayableAudio(ctxFile)\"") && files.includes("playFile(ctxFile!)"), "the context menu also exposes playback");
-assert(!files.includes("streamUrl(f.uri"), "does not bypass the player's source selection with a raw file URI");
+assert(!files.includes("streamUrl(f.uri"), "does not expose a raw storage URI to the player");
 
 const localeKeys = ["play", "playLookupFailed"];
 for (const locale of ["en", "zh-CN"]) {
