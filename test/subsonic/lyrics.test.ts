@@ -409,8 +409,9 @@ async function main() {
     });
     const r = await get("/rest/getLyricsBySongId?id=sg-1&enhanced=true");
     const xml = await r.text();
-    assert(xml.includes("<cueLine") && xml.includes('value="逐"') && xml.includes('value="字"'),
+    assert(xml.includes("<cueLine") && xml.includes(">逐</cue>") && xml.includes(">字</cue>"),
       "enhanced response replaces stale line-only data with KLRC cues");
+    assert(!/<cue\b[^>]*\bvalue=/.test(xml), "cue text uses the OpenSubsonic XML body instead of a private value attribute");
     const stored = sqlite.prepare("SELECT lyrics_rich FROM song_masters WHERE id = 'sg-1'").get() as { lyrics_rich: string };
     assert(stored.lyrics_rich.includes('"cue"'), "refreshed KLRC cue data is persisted");
     assert(fetchCalls.length === 0, "does not use an external lyric when a KLRC sidecar exists");

@@ -254,11 +254,11 @@ const enhancedXml = subsonicOK({
       cueLine: {
         _attributes: { index: 0, start: 1000, end: 2000, value: "눈을 뜬 순간" },
         cue: [
-          { _attributes: { start: 1000, end: 1500, value: "눈", byteStart: 0, byteEnd: 2 } },
-          { _attributes: { start: 1500, end: 2000, value: "을", byteStart: 3, byteEnd: 5 } },
+          { _attributes: { start: 1000, end: 1500, byteStart: 0, byteEnd: 2 }, _text: "눈" },
+          { _attributes: { start: 1500, end: 2000, byteStart: 3, byteEnd: 5 }, _text: "을" },
         ],
       },
-      agents: { _attributes: { id: "lead", role: "main", name: "Lead" } },
+      agent: { _attributes: { id: "lead", role: "main", name: "Lead" } },
     },
   },
 });
@@ -271,6 +271,7 @@ assert(Array.isArray(el.cueLine[0].cue), "cue is array");
 assert(el.cueLine[0].cue[0].byteStart === 0 && el.cueLine[0].cue[0].byteEnd === 2,
   "cue.byteStart/byteEnd typed as int");
 assert(el.cueLine[0].cue[0].end === 1500, "cue.end typed as int");
+assert(el.cueLine[0].cue[0].value === "눈", "cue text is retained as the standard JSON value");
 assert(Array.isArray(el.agents), "agents is array");
 assert(el.agents[0].id === "lead" && el.agents[0].role === "main", "agents attrs preserved");
 

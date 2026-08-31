@@ -158,6 +158,10 @@ async function main() {
     assert(cues.length === 2, `two self-closing cues are parsed (got ${cues.length})`);
     assert(cues[0]?.value === "逐" && cues[0]?.start === 0 && cues[0]?.end === 400, "first cue reads the value attribute and timing");
     assert(cues[1]?.value === "字" && cues[1]?.start === 400 && cues[1]?.end === 1000, "second cue retains its timing");
+
+    const standardCues = parseCueValues('<cue start="0" end="400" byteStart="0" byteEnd="3">逐</cue><cue start="400" end="1000" byteStart="3" byteEnd="6">字</cue>');
+    assert(standardCues.length === 2 && standardCues[0]?.value === "逐" && standardCues[1]?.value === "字",
+      "standard OpenSubsonic cue text is parsed without private attributes");
   }
 
   console.log("\nH. Production source drift guard:");

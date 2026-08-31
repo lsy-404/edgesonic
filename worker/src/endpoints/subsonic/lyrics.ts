@@ -416,7 +416,7 @@ function serializeTrack(
     synced: track.synced,
   };
   if (track.offset !== undefined) attrs.offset = track.offset;
-  if (enhanced && track.kind !== "main") attrs.kind = track.kind;
+  if (enhanced) attrs.kind = track.kind;
 
   const lineEntries = track.line.map((l) => ({
     _attributes: l.start !== undefined ? { start: l.start } : {},
@@ -444,16 +444,16 @@ function serializeTrack(
             _attributes: {
               start: cu.start,
               ...(cu.end !== undefined ? { end: cu.end } : {}),
-              value: cu.value,
               byteStart: cu.byteStart,
               byteEnd: cu.byteEnd,
             },
+            _text: cu.value,
           })),
         };
       });
     }
     if (track.agents.length > 0) {
-      out.agents = track.agents.map((a) => ({
+      out.agent = track.agents.map((a) => ({
         _attributes: {
           id: a.id,
           role: a.role,

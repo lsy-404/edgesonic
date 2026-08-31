@@ -146,7 +146,7 @@ const ARRAY_PAIRS = new Set([
   "subsonic-response/openSubsonicExtensions",
   "openSubsonicExtensions/versions",
   "lyricsList/structuredLyrics", "structuredLyrics/line",
-  "structuredLyrics/cueLine", "cueLine/cue", "structuredLyrics/agents",
+  "structuredLyrics/cueLine", "cueLine/cue", "structuredLyrics/agent",
   "tokenInfo/permission",
   "scanResult/source",
 ]);
@@ -167,6 +167,10 @@ const EMPTY_ARRAY_DEFAULTS: Record<string, string[]> = {
 // `{"start":..,"value":".."}`; an unsynced line without attrs must still be
 // `{"value":".."}`, not a bare string.
 const OBJECT_TEXT_TAGS = new Set(["line"]);
+
+const JSON_CHILD_NAMES: Record<string, string> = {
+  "structuredLyrics/agent": "agents",
+};
 
 // ---------------------------------------------------------------------------
 // Lightweight Subsonic XML → JSON converter.
@@ -200,7 +204,8 @@ function nodeToObject(n: Node): Record<string, unknown> {
   }
   for (const [tag, items] of Object.entries(grouped)) {
     const forceArray = ARRAY_PAIRS.has(`${n.tag}/${tag}`);
-    obj[tag] = forceArray || items.length > 1
+    const outputName = JSON_CHILD_NAMES[`${n.tag}/${tag}`] || tag;
+    obj[outputName] = forceArray || items.length > 1
       ? items.map(leafOrObject)
       : leafOrObject(items[0]);
   }
