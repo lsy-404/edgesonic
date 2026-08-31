@@ -122,21 +122,21 @@ async function main() {
     assert(j.files.find((f) => f.name === "track.mp3")?.modifiedAt === 1787661296, "R2 upload time is returned as unix seconds");
   }
 
-  console.log("\nfiles/stream r2 → serves an unscanned file with media and range headers:");
+  console.log("\nfiles/audio r2 → serves an unscanned file with media and range headers:");
   {
     await bucket.put("music/newfolder/direct.flac", new Uint8Array([10, 11, 12, 13]), { httpMetadata: { contentType: "application/octet-stream" } });
-    const full = await app.get("/storage/files/stream?source=r2&path=music/newfolder/direct.flac");
+    const full = await app.get("/storage/files/audio?source=r2&path=music/newfolder/direct.flac");
     assert(full.status === 200, "full stream returns 200");
     assert(full.headers.get("Content-Type") === "audio/flac", "octet-stream FLAC receives a browser-playable MIME type");
     assert(full.headers.get("Accept-Ranges") === "bytes", "full stream advertises byte ranges");
     assert((await full.arrayBuffer()).byteLength === 4, "full stream preserves bytes");
 
-    const ranged = await app.get("/storage/files/stream?source=r2&path=music/newfolder/direct.flac", { Range: "bytes=1-2" });
+    const ranged = await app.get("/storage/files/audio?source=r2&path=music/newfolder/direct.flac", { Range: "bytes=1-2" });
     assert(ranged.status === 206, "range stream returns 206");
     assert(ranged.headers.get("Content-Range") === "bytes 1-2/4", "range stream reports the selected byte span");
     assert((await ranged.arrayBuffer()).byteLength === 2, "range stream preserves only requested bytes");
 
-    const invalid = await app.get("/storage/files/stream?source=r2&path=music/../outside.flac");
+    const invalid = await app.get("/storage/files/audio?source=r2&path=music/../outside.flac");
     assert(invalid.status === 400, "path traversal is rejected");
   }
 

@@ -1005,7 +1005,7 @@ function toFileTrack(f: FileEntry): Track {
     artist: "",
     album: "",
     duration: 0,
-    streamUrl: restUrl("storage/files/stream", {
+    streamUrl: restUrl("storage/files/audio", {
       source: currentSource.value,
       path: joinPath(path.value, f.name),
     }),

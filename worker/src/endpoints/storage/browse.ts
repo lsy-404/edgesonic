@@ -132,10 +132,10 @@ browseRoutes.get("/files/list", permissionMiddleware("download"), async (c) => {
   });
 });
 
-// GET /storage/files/stream?source=r2|<sourceId>&path=<full-file-path>
+// GET /storage/files/audio?source=r2|<sourceId>&path=<full-file-path>
 // Streams a browsed audio file even before metadata scanning has registered a
 // song instance, while retaining the same download permission as file listing.
-browseRoutes.get("/files/stream", permissionMiddleware("download"), async (c) => {
+browseRoutes.get("/files/audio", permissionMiddleware("download"), async (c) => {
   const env = c.env as Env;
   const source = c.req.query("source") || "r2";
   const path = normalizeFilePath(c.req.query("path"));
