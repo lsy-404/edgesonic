@@ -22,7 +22,7 @@ import { urlAdapter } from "../../adapters/url";
 import { createWebDAVAdapter } from "../../adapters/webdav";
 import { createSubsonicAdapter } from "../../adapters/subsonic";
 import type { StreamResult } from "../../adapters/index";
-import { subsonicError } from "../../auth";
+import { permissionMiddleware, subsonicError } from "../../auth";
 import { getFeature, getFeatureString, parseChain } from "../../utils/features";
 import { resolveImageMime } from "../../utils/imageType";
 // Transcode factory is statically imported (it lazy-loads the Sandbox /
@@ -38,6 +38,7 @@ import {
 import type { TranscodeProfile, TranscodeInput } from "../../transcode/engine";
 import { presignR2Get, isR2PresignHealthy } from "../../utils/r2presign";
 import { selectSongSource } from "./sources";
+import { streamStoredFile } from "../../utils/fileAudio";
 
 import type { User } from "../../types/entities";
 
@@ -834,4 +835,11 @@ function register(path: string, handler: (c: Context) => Promise<Response> | Res
 }
 
 register("stream", streamHandler);
+for (const path of ["/streamFile", "/streamFile.view"]) {
+  mediaRoutes.get(path, permissionMiddleware("download"), (c) => streamStoredFile(c.env as Env, {
+    source: c.req.query("source"),
+    path: c.req.query("path"),
+    range: c.req.header("Range"),
+  }));
+}
 register("getCoverArt", getCoverArtHandler);

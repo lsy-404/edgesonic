@@ -19,7 +19,7 @@ assert(files.includes('import { usePlayerStore, type Track } from "../stores/pla
 assert(files.includes("const isPlayableAudio = (file: FileEntry)"), "recognizes playable file entries");
 assert(files.includes("async function playFile(f: FileEntry)"), "defines a file playback handler");
 assert(files.includes("function toFileTrack(f: FileEntry): Track"), "builds a direct track for unscanned files");
-assert(files.includes('restUrl("storage/files/audio"'), "uses the authenticated file-audio endpoint");
+assert(files.includes('restUrl("streamFile"'), "uses the authenticated player stream endpoint");
 assert(files.includes("player.setQueue([toFileTrack(f)], 0);"), "starts direct playback without waiting for a library lookup");
 assert(files.includes("v-if=\"isPlayableAudio(f)\"") && files.includes("@click.stop=\"playFile(f)\""), "audio rows expose a direct play button");
 assert(files.includes("v-if=\"isPlayableAudio(ctxFile)\"") && files.includes("playFile(ctxFile!)"), "the context menu also exposes playback");
