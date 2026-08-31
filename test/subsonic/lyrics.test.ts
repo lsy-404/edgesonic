@@ -130,11 +130,25 @@ function buildDb() {
 // ---------------------------------------------------------------------------
 // Hono harness
 // ---------------------------------------------------------------------------
-function makeApp(sqlite: DatabaseSync) {
+function makeApp(sqlite: DatabaseSync, r2Files: Record<string, string> = {}) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.route("/rest", lyricsRoutes);
-  const env = { DB: makeD1(sqlite) };
+  const env = {
+    DB: makeD1(sqlite),
+    MUSIC_BUCKET: {
+      async get(key: string) {
+        const text = r2Files[key];
+        if (text === undefined) return null;
+        const bytes = new TextEncoder().encode(text);
+        return {
+          body: new Blob([bytes]).stream(),
+          size: bytes.byteLength,
+          httpMetadata: { contentType: "text/plain" },
+        };
+      },
+    },
+  };
   return {
     async get(url: string) {
       const req = new Request(`http://test${url}`);
@@ -379,6 +393,27 @@ async function main() {
     assert(xml.includes('lang="ko"'), "main lang=ko");
     assert(xml.includes('lang="en"'), "translation lang=en");
     assert(fetchCalls.length === 0, "did NOT hit external fetch (lyrics_rich populated)");
+  }
+
+  console.log("\ngetLyricsBySongId — stale line-only rich data is refreshed from a KLRC sidecar:");
+  {
+    fetchCalls = [];
+    fetchHandler = () => new Response("UNEXPECTED", { status: 500 });
+    const sqlite = buildDb();
+    sqlite.prepare("INSERT INTO song_instances (id, master_id, storage_uri, suffix) VALUES ('si-klrc', 'sg-1', 'r2://music/Hello.mp3', 'mp3')").run();
+    sqlite.prepare("UPDATE song_masters SET lyrics_rich = ? WHERE id = 'sg-1'").run(JSON.stringify({
+      tracks: [{ kind: "main", lang: "xxx", synced: true, line: [{ start: 0, value: "逐字" }], cueLine: [], agents: [] }],
+    }));
+    const { get } = makeApp(sqlite, {
+      "music/Hello.klrc": "[0,1000]<0,400,0>逐<400,600,0>字",
+    });
+    const r = await get("/rest/getLyricsBySongId?id=sg-1&enhanced=true");
+    const xml = await r.text();
+    assert(xml.includes("<cueLine") && xml.includes('value="逐"') && xml.includes('value="字"'),
+      "enhanced response replaces stale line-only data with KLRC cues");
+    const stored = sqlite.prepare("SELECT lyrics_rich FROM song_masters WHERE id = 'sg-1'").get() as { lyrics_rich: string };
+    assert(stored.lyrics_rich.includes('"cue"'), "refreshed KLRC cue data is persisted");
+    assert(fetchCalls.length === 0, "does not use an external lyric when a KLRC sidecar exists");
   }
 
   console.log("\ngetLyricsBySongId — existing rich lines containing NetEase JSON are normalized:");

@@ -159,8 +159,9 @@ async function resolveRichLyrics(
   enhanced: boolean,
 ): Promise<RichLyrics | null> {
   // 1. Already-populated rich column.
-  const cached = deserializeRich(existingRich);
-  if (cached && cached.tracks.length > 0) return normalizeRichLyrics(cached);
+  const stored = deserializeRich(existingRich);
+  const cached = stored && stored.tracks.length > 0 ? normalizeRichLyrics(stored) : null;
+  if (cached && (!enhanced || hasWordCues(cached))) return cached;
 
   // 2. Sibling rich sidecar (only worth the R2/WebDAV round-trip when the
   // caller asked for enhanced; v1 callers are satisfied by `lyrics`).
@@ -184,6 +185,10 @@ async function resolveRichLyrics(
     } catch {
       // Sidecar lookup must never break getLyricsBySongId.
     }
+
+    // A legacy line-only rich record is still usable if no same-name rich
+    // sidecar is available. Do not replace it with an external match.
+    if (cached) return cached;
 
     // 3. NetEase klyric. Only fetched when enhanced is requested — v1
     //    callers don't need word-level data and this would double the
@@ -211,6 +216,10 @@ async function resolveRichLyrics(
     return parseLrcToRich(normalizeLineLyrics(existingLrc));
   }
   return null;
+}
+
+function hasWordCues(rich: RichLyrics): boolean {
+  return rich.tracks.some((track) => track.cueLine.some((line) => line.cue.length > 0));
 }
 
 // ---------------------------------------------------------------------------

@@ -394,12 +394,12 @@ watch(coverSrc, (src) => {
           @click="onLyricClick(line)"
         >
           <!-- Karaoke word spans when cueLine data is available -->
-          <div v-if="line.cues.length > 0 && i === activeIdx" class="np-lyric-original np-lyric-karaoke">
+          <div v-if="line.cues.length > 0" class="np-lyric-original np-lyric-karaoke">
             <span
               v-for="(cue, ci) in line.cues"
               :key="ci"
               class="np-cue"
-              :class="{ 'np-cue-active': ci === activeCueIdx, 'np-cue-sung': ci < activeCueIdx }"
+              :class="{ 'np-cue-active': i === activeIdx && ci === activeCueIdx, 'np-cue-sung': i === activeIdx && ci < activeCueIdx }"
             >{{ cue.value }}</span>
           </div>
           <div v-else class="np-lyric-original">{{ line.text }}</div>

@@ -170,6 +170,8 @@ async function main() {
     assert(src.includes("isLyricMetadata(content)"), "structured metadata is excluded before the timeline is built");
     assert(src.includes("if (!line.synced) continue;"), "untimed text does not interrupt synchronized lyric tracking");
     assert(src.includes('attrVal(cueAttrs, "value") ?? cum[2] ?? ""'), "self-closing cue attributes provide the karaoke word text");
+    assert(src.includes('v-if="line.cues.length > 0"'), "cue-bearing lines render as individual cue spans instead of a sentence fallback");
+    assert(src.includes("i === activeIdx && ci === activeCueIdx"), "only the active line marks its current cue as sung");
     assert(src.includes("let lyricsRequest = 0;"), "lyrics requests have a generation counter");
     assert(src.includes("userScrolled.value = false;"), "track changes restore automatic lyric following");
     assert(src.includes("function resetLyricsScroll()"), "track changes reset the lyric scroll container");
