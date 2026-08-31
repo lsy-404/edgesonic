@@ -6,6 +6,7 @@ import { useI18n } from "vue-i18n";
 import { usePlayerStore } from "../stores/player";
 import { useAuth } from "../api";
 import { getTrackLyrics } from "../lib/trackPrefetch";
+import { cuePlaybackProgress } from "../lib/lyricProgress";
 
 const player = usePlayerStore();
 const { t } = useI18n();
@@ -36,7 +37,6 @@ const lyrics = ref<LyricLine[]>([]);
 const lyricsLoading = ref(false);
 const lyricsError = ref("");
 const hasSynced = computed(() => lyrics.value.some((l) => l.synced));
-const hasCues = computed(() => lyrics.value.some((l) => l.cues.length > 0));
 const userScrolled = ref(false);
 const lyricsScrollEl = ref<HTMLElement | null>(null);
 const suppressScrollUntil = ref(0);
@@ -270,30 +270,9 @@ const activeIdx = computed(() => {
   return idx;
 });
 
-// Within the active line, find the cue whose [start, end) contains
-// the current playback time. Returns -1 when no cue is active (e.g. the
-// line is unsynced, or playback is between cues).
-const activeLineCues = computed(() => {
-  const idx = activeIdx.value;
-  if (idx < 0) return null;
-  const line = lyrics.value[idx];
-  if (!line || line.cues.length === 0) return null;
-  return line.cues;
-});
-
-const activeCueIdx = computed(() => {
-  const cues = activeLineCues.value;
-  if (!cues) return -1;
-  const t = player.currentTime;
-  let idx = -1;
-  for (let i = 0; i < cues.length; i++) {
-    const start = cues[i].start;
-    const end = cues[i].end ?? (i + 1 < cues.length ? cues[i + 1].start : Infinity);
-    if (t >= start && t < end) return i;
-    if (t >= start) idx = i;
-  }
-  return idx;
-});
+function cueProgress(line: LyricLine, lineIndex: number, cueIndex: number): number {
+  return cuePlaybackProgress(lyrics.value, lineIndex, cueIndex, player.currentTime, player.duration);
+}
 
 async function centerActiveLyric(idx = activeIdx.value) {
   if (idx < 0 || userScrolled.value || !lyricsScrollEl.value) return;
@@ -399,7 +378,7 @@ watch(coverSrc, (src) => {
               v-for="(cue, ci) in line.cues"
               :key="ci"
               class="np-cue"
-              :class="{ 'np-cue-active': i === activeIdx && ci === activeCueIdx, 'np-cue-sung': i === activeIdx && ci < activeCueIdx }"
+              :style="{ '--cue-progress': cueProgress(line, i, ci) }"
             >{{ cue.value }}</span>
           </div>
           <div v-else class="np-lyric-original">{{ line.text }}</div>
@@ -508,14 +487,19 @@ watch(coverSrc, (src) => {
 /* word karaoke */
 .np-lyric-karaoke { display: inline; }
 .np-cue {
-  color: var(--color-text-muted);
-  transition: color 0.18s, font-weight 0.18s;
+  --cue-progress: 0;
+  color: transparent;
+  background: linear-gradient(
+    90deg,
+    var(--color-accent-primary) 0%,
+    var(--color-accent-primary) calc(var(--cue-progress) * 100%),
+    var(--color-text-muted) calc(var(--cue-progress) * 100%),
+    var(--color-text-muted) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  transition: background 0.1s linear;
   white-space: pre;
-}
-.np-cue-sung { color: var(--color-text-secondary); }
-.np-cue-active {
-  color: var(--color-accent-primary);
-  font-weight: 600;
 }
 .np-lyric-agent {
   font-size: 0.8rem;

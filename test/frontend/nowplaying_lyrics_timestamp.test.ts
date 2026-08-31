@@ -175,7 +175,9 @@ async function main() {
     assert(src.includes("if (!line.synced) continue;"), "untimed text does not interrupt synchronized lyric tracking");
     assert(src.includes('attrVal(cueAttrs, "value") ?? cum[2] ?? ""'), "self-closing cue attributes provide the karaoke word text");
     assert(src.includes('v-if="line.cues.length > 0"'), "cue-bearing lines render as individual cue spans instead of a sentence fallback");
-    assert(src.includes("i === activeIdx && ci === activeCueIdx"), "only the active line marks its current cue as sung");
+    assert(src.includes("function cueProgress(line: LyricLine, lineIndex: number, cueIndex: number)"), "cue fill is calculated from precise playback time");
+    assert(src.includes("'--cue-progress': cueProgress(line, i, ci)"), "each cue receives its own continuous fill progress");
+    assert(src.includes("calc(var(--cue-progress) * 100%)"), "cue styling uses a left-to-right progress gradient");
     assert(src.includes("let lyricsRequest = 0;"), "lyrics requests have a generation counter");
     assert(src.includes("userScrolled.value = false;"), "track changes restore automatic lyric following");
     assert(src.includes("function resetLyricsScroll()"), "track changes reset the lyric scroll container");
