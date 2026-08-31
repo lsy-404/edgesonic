@@ -1023,11 +1023,7 @@ async function lookupSongByFilename(f: FileEntry, songCount = 5): Promise<Record
 
 async function playFile(f: FileEntry) {
   if (!isPlayableAudio(f)) return;
-  let hit: Record<string, string> | null = null;
-  try {
-    hit = await lookupSongByFilename(f, 20);
-  } catch { /* A browsed file can still play before the library scan finishes. */ }
-  player.setQueue([hit?.id ? toTrack(hit) : toFileTrack(f)], 0);
+  player.setQueue([toFileTrack(f)], 0);
 }
 
 async function openTagEditor(f: FileEntry) {

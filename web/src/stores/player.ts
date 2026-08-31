@@ -1008,6 +1008,22 @@ export const usePlayerStore = defineStore("player", () => {
       const trackId = track.id;
       targetEl.removeAttribute("src");
       targetEl.load();
+      if (track.streamUrl) {
+        targetEl.src = track.streamUrl;
+        targetEl.load();
+        targetEl.volume = volume.value;
+        if (_pendingRestoreTime !== null) {
+          const t = _pendingRestoreTime;
+          _pendingRestoreTime = null;
+          const onMeta = () => {
+            if (active) { active.currentTime = t; currentTime.value = t; }
+            active?.removeEventListener("loadedmetadata", onMeta);
+          };
+          targetEl.addEventListener("loadedmetadata", onMeta);
+        }
+        if (autoplay) void targetEl.play().catch(() => { playing.value = false; });
+        return;
+      }
       const requestedQuality = playbackQuality.value;
       // Manual cache first: a hit plays the whole track locally with zero
       // network. On a miss, stream directly for fast start. Do not also fetch

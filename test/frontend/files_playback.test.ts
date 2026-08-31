@@ -12,20 +12,21 @@ function assert(condition: unknown, message: string) {
 
 const root = join(__dirname, "..", "..");
 const files = readFileSync(join(root, "web", "src", "views", "Files.vue"), "utf8");
+const player = readFileSync(join(root, "web", "src", "stores", "player.ts"), "utf8");
 
 console.log("File-page playback:");
 assert(files.includes('import { usePlayerStore, type Track } from "../stores/player";'), "uses the shared player store");
 assert(files.includes("const isPlayableAudio = (file: FileEntry)"), "recognizes playable file entries");
 assert(files.includes("async function playFile(f: FileEntry)"), "defines a file playback handler");
-assert(files.includes("const hit = await lookupSongByFilename(f, 20);"), "resolves the existing library song before playing");
 assert(files.includes("function toFileTrack(f: FileEntry): Track"), "builds a direct track for unscanned files");
 assert(files.includes('restUrl("storage/files/audio"'), "uses the authenticated file-audio endpoint");
-assert(files.includes("player.setQueue([hit?.id ? toTrack(hit) : toFileTrack(f)], 0);"), "falls back to direct playback when the library has no matching song");
+assert(files.includes("player.setQueue([toFileTrack(f)], 0);"), "starts direct playback without waiting for a library lookup");
 assert(files.includes("v-if=\"isPlayableAudio(f)\"") && files.includes("@click.stop=\"playFile(f)\""), "audio rows expose a direct play button");
 assert(files.includes("v-if=\"isPlayableAudio(ctxFile)\"") && files.includes("playFile(ctxFile!)"), "the context menu also exposes playback");
 assert(!files.includes("streamUrl(f.uri"), "does not expose a raw storage URI to the player");
+assert(player.includes("if (track.streamUrl) {") && player.includes("targetEl.src = track.streamUrl;"), "direct file streams attach before an asynchronous cache lookup");
 
-const localeKeys = ["play", "playLookupFailed"];
+const localeKeys = ["play"];
 for (const locale of ["en", "zh-CN"]) {
   const messages = JSON.parse(readFileSync(join(root, "web", "src", "locales", `${locale}.json`), "utf8"));
   for (const key of localeKeys) assert(typeof messages.files?.[key] === "string", `${locale} provides files.${key}`);

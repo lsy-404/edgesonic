@@ -482,7 +482,6 @@
     "copyTo": "复制到",
     "deleteFile": "删除文件",
     "play": "播放",
-    "playLookupFailed": "无法播放此文件。请先读取标签，确保它已出现在媒体库中。",
     "moreActions": "更多操作",
     "open": "打开",
     "refresh": "刷新",

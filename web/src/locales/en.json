@@ -485,7 +485,6 @@
     "copyTo": "Copy To",
     "deleteFile": "Delete File",
     "play": "Play",
-    "playLookupFailed": "This file is not ready to play. Read its tags first so it appears in the library.",
     "moreActions": "More actions",
     "open": "Open",
     "refresh": "Refresh",
