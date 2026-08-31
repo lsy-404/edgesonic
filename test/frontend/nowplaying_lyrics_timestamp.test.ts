@@ -178,6 +178,8 @@ async function main() {
     assert(src.includes("function cueProgress(line: LyricLine, lineIndex: number, cueIndex: number)"), "cue fill is calculated from precise playback time");
     assert(src.includes("'--cue-progress': cueProgress(line, i, ci)"), "each cue receives its own continuous fill progress");
     assert(src.includes("calc(var(--cue-progress) * 100%)"), "cue styling uses a left-to-right progress gradient");
+    assert(src.includes("requestAnimationFrame(animateKaraokeTime)"), "karaoke fill advances on animation frames between audio time updates");
+    assert(src.includes("color-mix(in srgb"), "the fill edge blends instead of snapping between highlight states");
     assert(src.includes("let lyricsRequest = 0;"), "lyrics requests have a generation counter");
     assert(src.includes("userScrolled.value = false;"), "track changes restore automatic lyric following");
     assert(src.includes("function resetLyricsScroll()"), "track changes reset the lyric scroll container");

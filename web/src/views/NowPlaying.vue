@@ -37,12 +37,50 @@ const lyrics = ref<LyricLine[]>([]);
 const lyricsLoading = ref(false);
 const lyricsError = ref("");
 const hasSynced = computed(() => lyrics.value.some((l) => l.synced));
+const karaokeTime = ref(0);
 const userScrolled = ref(false);
 const lyricsScrollEl = ref<HTMLElement | null>(null);
 const suppressScrollUntil = ref(0);
 const autoScrolling = ref(false);
 const ACTIVE_CENTER_TOLERANCE_PX = 24;
 let lyricsReturnTimer: ReturnType<typeof setTimeout> | null = null;
+let karaokeFrame = 0;
+let karaokeAnchorTime = 0;
+let karaokeAnchorAt = 0;
+
+function projectedKaraokeTime(now: number): number {
+  return karaokeAnchorTime + Math.max(0, now - karaokeAnchorAt) / 1000;
+}
+
+function updateKaraokeAnchor(time: number) {
+  const now = performance.now();
+  const projected = projectedKaraokeTime(now);
+  karaokeAnchorTime = time;
+  karaokeAnchorAt = now;
+  if (!player.playing || Math.abs(time - projected) > 0.12) karaokeTime.value = time;
+}
+
+function animateKaraokeTime(now: number) {
+  if (!player.playing) {
+    karaokeFrame = 0;
+    karaokeTime.value = player.currentTime;
+    return;
+  }
+  karaokeTime.value = projectedKaraokeTime(now);
+  karaokeFrame = requestAnimationFrame(animateKaraokeTime);
+}
+
+function syncKaraokeClock() {
+  updateKaraokeAnchor(player.currentTime);
+  if (player.playing && !karaokeFrame) karaokeFrame = requestAnimationFrame(animateKaraokeTime);
+  if (!player.playing && karaokeFrame) {
+    cancelAnimationFrame(karaokeFrame);
+    karaokeFrame = 0;
+  }
+}
+
+watch(() => player.currentTime, syncKaraokeClock, { immediate: true });
+watch(() => player.playing, syncKaraokeClock, { immediate: true });
 
 function parseLrcDual(text: string): LyricLine[] {
   const re = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\](.*)/g;
@@ -271,7 +309,7 @@ const activeIdx = computed(() => {
 });
 
 function cueProgress(line: LyricLine, lineIndex: number, cueIndex: number): number {
-  return cuePlaybackProgress(lyrics.value, lineIndex, cueIndex, player.currentTime, player.duration);
+  return cuePlaybackProgress(lyrics.value, lineIndex, cueIndex, karaokeTime.value, player.duration);
 }
 
 async function centerActiveLyric(idx = activeIdx.value) {
@@ -303,7 +341,10 @@ function onLyricsScroll() {
   }, 1200);
 }
 
-onBeforeUnmount(() => { if (lyricsReturnTimer) clearTimeout(lyricsReturnTimer); });
+onBeforeUnmount(() => {
+  if (lyricsReturnTimer) clearTimeout(lyricsReturnTimer);
+  if (karaokeFrame) cancelAnimationFrame(karaokeFrame);
+});
 
 function activeLineIsCentered(): boolean {
   const idx = activeIdx.value;
@@ -488,17 +529,19 @@ watch(coverSrc, (src) => {
 .np-lyric-karaoke { display: inline; }
 .np-cue {
   --cue-progress: 0;
+  --cue-edge: 3px;
   color: transparent;
   background: linear-gradient(
     90deg,
     var(--color-accent-primary) 0%,
-    var(--color-accent-primary) calc(var(--cue-progress) * 100%),
-    var(--color-text-muted) calc(var(--cue-progress) * 100%),
+    var(--color-accent-primary) calc(var(--cue-progress) * 100% - var(--cue-edge)),
+    color-mix(in srgb, var(--color-accent-primary), var(--color-text-muted)) calc(var(--cue-progress) * 100%),
+    var(--color-text-muted) calc(var(--cue-progress) * 100% + var(--cue-edge)),
     var(--color-text-muted) 100%
   );
   background-clip: text;
   -webkit-background-clip: text;
-  transition: background 0.1s linear;
+  will-change: background;
   white-space: pre;
 }
 .np-lyric-agent {
