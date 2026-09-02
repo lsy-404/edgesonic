@@ -6,6 +6,11 @@ export interface NetEaseLyricLine {
   text: string;
 }
 
+/** Credits embedded as timestamped NetEase lines belong to track metadata, not the lyric viewport. */
+export function isNetEaseLyricMetadata(text: string): boolean {
+  return /^(?:作词|填词|作曲|编曲|制作人|监制|演唱|和声|混音|母带|录音|配唱制作人|人声编辑|调教|分轨|吉他|贝斯|鼓|钢琴|键盘|企划|出品|发行|版权|翻译|校对|字幕|原唱)\s*[:：]/i.test(text.trim());
+}
+
 /** Parse one NetEase JSON lyric line for consumers that already have structure. */
 export function parseNetEaseLyricLine(payload: unknown): NetEaseLyricLine | null {
   let value: Record<string, unknown>;
@@ -78,8 +83,9 @@ export function parseNetEaseLyrics(payload: unknown): string {
   if (typeof payload !== "string" || !payload.trim()) return typeof payload === "string" ? payload : "";
   const parsed = parsePayloadLines(payload);
   if (parsed.length === 0) return payload;
-  parsed.sort((a, b) => a.time - b.time || a.index - b.index);
-  return parsed.map(({ time, text }) => `[${formatLrcTime(time)}]${text}`).join("\n");
+  const lyricLines = parsed.filter(({ text }) => !isNetEaseLyricMetadata(text));
+  lyricLines.sort((a, b) => a.time - b.time || a.index - b.index);
+  return lyricLines.map(({ time, text }) => `[${formatLrcTime(time)}]${text}`).join("\n");
 }
 
 function formatLrcTime(milliseconds: number): string {

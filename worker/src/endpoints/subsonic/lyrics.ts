@@ -160,7 +160,7 @@ async function resolveRichLyrics(
 ): Promise<RichLyrics | null> {
   // 1. Already-populated rich column.
   const stored = deserializeRich(existingRich);
-  const cached = stored && stored.tracks.length > 0 ? normalizeRichLyrics(stored) : null;
+  const cached = stored && stored.tracks.length > 0 ? stored : null;
   if (cached && (!enhanced || hasWordCues(cached))) return cached;
 
   // 2. Sibling rich sidecar (only worth the R2/WebDAV round-trip when the
@@ -336,12 +336,13 @@ const getLyricsBySongIdHandler = async (c: Context): Promise<Response> => {
   // Resolve the rich payload (cueLine/agents when available; line-level
   // fallback otherwise). We also resolve the line-level LRC so the v1
   // response shape stays identical for clients that didn't opt in.
-  const rich = await resolveRichLyrics(
+  const resolvedRich = await resolveRichLyrics(
     env, env.DB, master.id, artistName, master.title,
     (master as { lyrics_rich?: string | null }).lyrics_rich,
     master.lyrics,
     enhanced,
   );
+  const rich = resolvedRich ? normalizeRichLyrics(resolvedRich) : null;
 
   // When no rich payload (and no LRC), still try the line-level resolver so
   // a fresh external fetch has a chance to populate `lyrics`.
