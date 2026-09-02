@@ -244,6 +244,25 @@ async function main() {
     assert(fetchCalls.length === 0, "does not fetch when structured output has stored JSON lyric");
   }
 
+  console.log("\ngetLyricsBySongId — historical NetEase JSON array and wrapper are parsed for structured output:");
+  {
+    fetchCalls = [];
+    fetchHandler = () => new Response("UNEXPECTED", { status: 500 });
+    const sqlite = buildDb();
+    sqlite.prepare("UPDATE song_masters SET lyrics = ? WHERE id = 'sg-json'").run(JSON.stringify({
+      lyrics: [
+        { t: "1200", c: [{ tx: "第一" }, { tx: "句" }] },
+        { time: 2450, content: "第二句" },
+      ],
+    }));
+    const { get } = makeApp(sqlite);
+    const r = await get("/rest/getLyricsBySongId?id=sg-json");
+    const xml = await r.text();
+    assert(xml.includes('start="1200"') && xml.includes("第一句"), "wrapped JSON yields its first timestamped line");
+    assert(xml.includes('start="2450"') && xml.includes("第二句"), "wrapped JSON yields its second timestamped line");
+    assert(fetchCalls.length === 0, "does not fetch externally for wrapped stored JSON");
+  }
+
   console.log("\ngetLyrics — D1 miss, external NetEase hit writes back:");
   {
     fetchCalls = [];

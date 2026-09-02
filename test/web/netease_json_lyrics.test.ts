@@ -12,4 +12,10 @@ if (parseNetEaseLyrics("[00:01.00]ordinary LRC") !== "[00:01.00]ordinary LRC") t
 if (parseNetEaseLyrics("plain lyrics") !== "plain lyrics") throw new Error("plain lyric regression");
 if (parseNetEaseLyrics('{"t":"bad","c":[{"tx":"ignored"}]}\n{"t":100,"c":[{},null,{"tx":"ok"}]}') !== "[00:00.100]ok") throw new Error("malformed/empty fragments regression");
 if (parseNetEaseLyrics('{"t":100,"c":[]}') !== '{"t":100,"c":[]}') throw new Error("empty payload should not be rewritten");
+if (parseNetEaseLyrics(JSON.stringify([{ t: "1200", c: [{ tx: "第一" }, { tx: "句" }] }, { time: 2450, content: "第二句" }])) !== "[00:01.200]第一句\n[00:02.450]第二句") {
+  throw new Error("JSON array lyric parser regression");
+}
+if (parseNetEaseLyrics(JSON.stringify({ lyrics: [{ startTime: "3000", text: "包装行" }] })) !== "[00:03.000]包装行") {
+  throw new Error("wrapped JSON lyric parser regression");
+}
 console.log("netease JSON lyric parser: PASS");
