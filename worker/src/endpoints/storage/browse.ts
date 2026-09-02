@@ -93,3 +93,30 @@ browseRoutes.get("/files/list", permissionMiddleware("download"), async (c) => {
     })),
   });
 });
+
+// GET /storage/files/resolve?uri=<storage-uri>
+// Resolve an entry from the file browser to its catalog song without changing
+// the direct file stream used for immediate playback.
+browseRoutes.get("/files/resolve", permissionMiddleware("download"), async (c) => {
+  const uri = c.req.query("uri") || "";
+  if (!/^(r2|webdav):\/\/.+$/i.test(uri) || /[\r\n]/.test(uri)) {
+    return c.json({ ok: false, error: "Invalid storage URI" }, 400);
+  }
+  const env = c.env as Env;
+  const song = await env.DB.prepare(
+    `SELECT sm.id, sm.title, ar.name AS artist, al.name AS album,
+            sm.cover_r2_key AS coverArt, sm.duration
+       FROM song_instances si
+       JOIN song_masters sm ON sm.id = si.master_id
+       LEFT JOIN artists ar ON ar.id = sm.artist_id
+       LEFT JOIN albums al ON al.id = sm.album_id
+      WHERE si.storage_uri = ? AND si.missing = 0
+      ORDER BY CASE WHEN si.source_type = 'original' THEN 0 ELSE 1 END, si.created_at ASC
+      LIMIT 1`,
+  ).bind(uri).first<{
+    id: string; title: string; artist: string | null; album: string | null;
+    coverArt: string | null; duration: number | null;
+  }>();
+  if (!song) return c.json({ ok: false, error: "Song not found" }, 404);
+  return c.json({ ok: true, song });
+});

@@ -20,11 +20,14 @@ assert(files.includes("const isPlayableAudio = (file: FileEntry)"), "recognizes 
 assert(files.includes("async function playFile(f: FileEntry)"), "defines a file playback handler");
 assert(files.includes("function toFileTrack(f: FileEntry): Track"), "builds a direct track for unscanned files");
 assert(files.includes('restUrl("streamFile"'), "uses the authenticated player stream endpoint");
-assert(files.includes("player.setQueue([toFileTrack(f)], 0);"), "starts direct playback without waiting for a library lookup");
+assert(files.includes("player.setQueue([directTrack], 0);"), "starts direct playback without waiting for a library lookup");
+assert(files.includes('storageFetch("files/resolve", { uri: f.uri })'), "resolves the direct file to its catalog song after playback starts");
+assert(files.includes("player.hydrateTrack(directTrack.id, details)"), "attaches catalog metadata without interrupting the direct stream");
 assert(files.includes("v-if=\"isPlayableAudio(f)\"") && files.includes("@click.stop=\"playFile(f)\""), "audio rows expose a direct play button");
 assert(files.includes("v-if=\"isPlayableAudio(ctxFile)\"") && files.includes("playFile(ctxFile!)"), "the context menu also exposes playback");
 assert(!files.includes("streamUrl(f.uri"), "does not expose a raw storage URI to the player");
 assert(player.includes("if (track.streamUrl) {") && player.includes("targetEl.src = track.streamUrl;"), "direct file streams attach before an asynchronous cache lookup");
+assert(player.includes("function hydrateTrack(trackId: string, details: Partial<Track>)"), "player can hydrate a direct track with a catalog identity");
 
 const localeKeys = ["play"];
 for (const locale of ["en", "zh-CN"]) {

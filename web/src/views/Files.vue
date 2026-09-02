@@ -1012,6 +1012,23 @@ function toFileTrack(f: FileEntry): Track {
   };
 }
 
+async function resolveFileTrack(f: FileEntry): Promise<Partial<Track> | null> {
+  const text = await storageFetch("files/resolve", { uri: f.uri });
+  const data = JSON.parse(text) as {
+    ok?: boolean;
+    song?: { id?: string; title?: string; artist?: string | null; album?: string | null; coverArt?: string | null; duration?: number | null };
+  };
+  if (!data.ok || !data.song?.id) return null;
+  return {
+    libraryId: data.song.id,
+    title: data.song.title || f.name.replace(/\.[^.]+$/, ""),
+    artist: data.song.artist || "",
+    album: data.song.album || "",
+    coverArt: data.song.coverArt || undefined,
+    duration: data.song.duration || 0,
+  };
+}
+
 async function lookupSongByFilename(f: FileEntry, songCount = 5): Promise<Record<string, string> | null> {
   const stem = f.name.replace(/\.[^.]+$/, "");
   const searchStem = normalizeForMatch(stem);
@@ -1023,7 +1040,14 @@ async function lookupSongByFilename(f: FileEntry, songCount = 5): Promise<Record
 
 async function playFile(f: FileEntry) {
   if (!isPlayableAudio(f)) return;
-  player.setQueue([toFileTrack(f)], 0);
+  const directTrack = toFileTrack(f);
+  player.setQueue([directTrack], 0);
+  try {
+    const details = await resolveFileTrack(f);
+    if (details) player.hydrateTrack(directTrack.id, details);
+  } catch {
+    // Playback stays available when a file has not been scanned into the library.
+  }
 }
 
 async function openTagEditor(f: FileEntry) {

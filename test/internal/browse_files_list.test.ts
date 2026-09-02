@@ -75,7 +75,7 @@ function makeR2Bucket() {
   };
 }
 
-function makeApp(bucket: ReturnType<typeof makeR2Bucket>, sourceRow?: Record<string, unknown>) {
+function makeApp(bucket: ReturnType<typeof makeR2Bucket>, sourceRow?: Record<string, unknown>, resolvedSong?: Record<string, unknown>) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.use("*", async (c, next) => {
@@ -89,6 +89,7 @@ function makeApp(bucket: ReturnType<typeof makeR2Bucket>, sourceRow?: Record<str
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const env: Record<string, any> = {
     DB: { prepare(sql: string) { return { bind() { return this; }, async first() {
+      if (sql.includes("FROM song_instances")) return resolvedSong || null;
       return sql.includes("FROM storage_sources") ? sourceRow || null : { enabled: 1, max_rph: 0 };
     } }; } },
     MUSIC_BUCKET: bucket,
@@ -140,6 +141,26 @@ async function main() {
 
     const invalid = await app.get("/rest/streamFile?source=r2&path=music/../outside.flac");
     assert(invalid.status === 400, "path traversal is rejected");
+  }
+
+  console.log("\nfiles/resolve → binds a browsed object to its catalog song:");
+  {
+    const resolveApp = makeApp(bucket, undefined, {
+      id: "sg-json",
+      title: "JSON lyric song",
+      artist: "Artist",
+      album: "Album",
+      coverArt: "cover-1",
+      duration: 245,
+    });
+    const r = await resolveApp.get(`/storage/files/resolve?uri=${encodeURIComponent("r2://music/JSON lyric song.flac")}`);
+    const j = await r.json<{ ok: boolean; song?: { id: string; title: string; duration: number } }>();
+    assert(r.status === 200 && j.ok, `matched storage URI returns 200 ok (got ${r.status}: ${JSON.stringify(j)})`);
+    assert(j.song?.id === "sg-json" && j.song.title === "JSON lyric song" && j.song.duration === 245,
+      "returns the catalog identity and display metadata");
+
+    const miss = await makeApp(bucket).get(`/storage/files/resolve?uri=${encodeURIComponent("r2://music/not-scanned.flac")}`);
+    assert(miss.status === 404, "unscanned file returns a non-fatal 404");
   }
 
   console.log("\nfiles/list WebDAV → requests and returns last-modified time:");

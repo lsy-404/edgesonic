@@ -255,7 +255,7 @@ function resetLyricsScroll() {
   lyricsScrollEl.value?.scrollTo({ top: 0, behavior: "auto" });
 }
 
-watch(() => player.current?.id, async (id) => {
+watch(() => [player.current?.id, player.current?.libraryId] as const, async ([id, libraryId]) => {
   const request = ++lyricsRequest;
   const trackAtChange = player.current;
   if (lyricsReturnTimer) {
@@ -272,12 +272,12 @@ watch(() => player.current?.id, async (id) => {
   await nextTick();
   if (request !== lyricsRequest) return;
   resetLyricsScroll();
-  if (!id || !trackAtChange || trackAtChange.id !== id) {
+  if (!id || !trackAtChange || trackAtChange.id !== id || trackAtChange.libraryId !== libraryId) {
     lyricsLoading.value = false;
     return;
   }
   try {
-    const payload = await getTrackLyrics(trackAtChange, { authFetch, scope: username.value });
+    const payload = await getTrackLyrics({ ...trackAtChange, id: libraryId || id }, { authFetch, scope: username.value });
     if (request !== lyricsRequest) return;
     if (payload.structuredEnhanced) {
       const parsed = parseEnhancedStructured(payload.structuredEnhanced);

@@ -184,6 +184,7 @@ async function main() {
     assert(src.includes("userScrolled.value = false;"), "track changes restore automatic lyric following");
     assert(src.includes("function resetLyricsScroll()"), "track changes reset the lyric scroll container");
     assert(src.includes("if (request !== lyricsRequest) return;"), "stale lyric responses cannot overwrite the current track");
+    assert(src.includes("player.current?.libraryId"), "direct file playback reuses the resolved catalog ID for lyrics");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

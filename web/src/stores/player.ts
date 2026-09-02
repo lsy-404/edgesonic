@@ -28,6 +28,7 @@ import { setupMediaSession, syncMediaSession, clearMediaSession } from "../lib/m
 
 export interface Track {
   id: string;
+  libraryId?: string;
   title: string;
   artist: string;
   album: string;
@@ -196,6 +197,16 @@ export const usePlayerStore = defineStore("player", () => {
     return track ? sourceUrlForTrack(track) : useAuth().streamUrl(trackId, streamQualityParams());
   }
 
+  function catalogId(track: Track): string {
+    return track.libraryId || track.id;
+  }
+
+  function hydrateTrack(trackId: string, details: Partial<Track>) {
+    const trackIndex = queue.value.findIndex((track) => track.id === trackId);
+    if (trackIndex < 0) return;
+    queue.value.splice(trackIndex, 1, { ...queue.value[trackIndex], ...details });
+  }
+
   let _resumePlayback = false;
 
   watch(playing, setPlaybackActive, { immediate: true });
@@ -211,9 +222,9 @@ export const usePlayerStore = defineStore("player", () => {
 
   function applyStarred(id: string, value: boolean) {
     for (const track of queue.value) {
-      if (track.id === id) track.starred = value;
+      if (catalogId(track) === id) track.starred = value;
     }
-    if (current.value?.id === id) starred.value = value;
+    if (current.value && catalogId(current.value) === id) starred.value = value;
   }
 
   function setStarred(id: string, value: boolean) {
@@ -226,15 +237,15 @@ export const usePlayerStore = defineStore("player", () => {
     try {
       const { authFetch, username } = useAuth();
       const xml = await getTrackMetadataXml({ id }, { authFetch, scope: username.value });
-      if (request !== starredRequest || current.value?.id !== id) return;
+      if (request !== starredRequest || !current.value || catalogId(current.value) !== id) return;
       applyStarred(id, !!parseXmlAttrs(xml, "song")[0]?.starred);
     } catch {
-      if (request === starredRequest && current.value?.id === id) applyStarred(id, false);
+      if (request === starredRequest && current.value && catalogId(current.value) === id) applyStarred(id, false);
     }
   }
   watch(current, (tr) => {
     if (!tr) { starredRequest++; starred.value = false; return; }
-    void _refreshStarred(tr.id);
+    void _refreshStarred(catalogId(tr));
   }, { immediate: true });
 
   async function toggleStar() {
@@ -242,12 +253,13 @@ export const usePlayerStore = defineStore("player", () => {
     if (!tr) return;
     const next = !starred.value;
     const request = ++starredRequest;
-    applyStarred(tr.id, next); // optimistic
+    const id = catalogId(tr);
+    applyStarred(id, next); // optimistic
     try {
       const { authFetch } = useAuth();
-      await authFetch(next ? "star" : "unstar", { id: tr.id });
+      await authFetch(next ? "star" : "unstar", { id });
     } catch {
-      if (request === starredRequest && current.value?.id === tr.id) applyStarred(tr.id, !next); // revert on failure
+      if (request === starredRequest && current.value && catalogId(current.value) === id) applyStarred(id, !next); // revert on failure
     }
   }
 
@@ -1307,7 +1319,7 @@ export const usePlayerStore = defineStore("player", () => {
   return {
     queue, index, playing, currentTime, duration, volume, bufferedRanges,
     current, hasTrack, playMode, starred, localCoverUrl, playbackQuality,
-    setQueue, playNext, playAt, toggle, next, prev, seek, setVolume,
+    setQueue, hydrateTrack, playNext, playAt, toggle, next, prev, seek, setVolume,
     cyclePlayMode, toggleStar, setStarred, clear, resumePlaybackIfNeeded, reportCoverMissing,
   };
 });
