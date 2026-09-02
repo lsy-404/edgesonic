@@ -448,7 +448,7 @@ async function main() {
         synced: true,
         line: [
           { value: JSON.stringify({ t: 0, c: [{ tx: "作词: " }, { tx: "某人" }] }) },
-          { value: JSON.stringify({ t: 0, c: [{ tx: "烟" }, { tx: "花" }] }) },
+          { value: JSON.stringify({ t: 1000, c: [{ tx: "烟" }, { tx: "花" }] }) },
           { value: JSON.stringify({ t: 2025, c: [{ tx: "2025ver" }] }) },
         ],
         cueLine: [],
@@ -459,10 +459,10 @@ async function main() {
     const { get } = makeApp(sqlite);
     const r = await get("/rest/getLyricsBySongId?id=sg-1&enhanced=true");
     const xml = await r.text();
-    assert(xml.includes('start="0"') && xml.includes("烟花"), "rich JSON line becomes timestamped text");
+    assert(xml.includes('start="0"') && xml.includes("作词: 某人"), "timestamped credit retains its explicit timestamp");
+    assert(xml.includes('start="1000"') && xml.includes("烟花"), "rich JSON line becomes timestamped text");
     assert(xml.includes('start="2025"') && xml.includes("2025ver"), "rich JSON line uses its embedded timestamp");
     assert(!xml.includes("{&quot;t&quot;:0"), "rich response does not expose JSON line payload");
-    assert(!xml.includes("作词:"), "NetEase credit lines are kept out of the lyric response");
     assert(fetchCalls.length === 0, "does not fetch when rich JSON lyrics are stored");
   }
 

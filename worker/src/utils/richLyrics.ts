@@ -35,7 +35,7 @@
 // messy) and never throw — a parse failure yields `null` so callers can
 // fall back to plain LRC.
 
-import { isNetEaseLyricMetadata, parseNetEaseLyricLine } from "../../../shared/neteaseLyrics";
+import { parseNetEaseLyricLine } from "../../../shared/neteaseLyrics";
 
 export interface RichCue {
   start: number; // ms
@@ -93,7 +93,7 @@ export function normalizeRichLyrics(rich: RichLyrics): RichLyrics {
         continue;
       }
       changed = true;
-      if (!isNetEaseLyricMetadata(parsed.text)) line.push({ ...entry, start: parsed.time, value: parsed.text });
+      line.push({ ...entry, start: parsed.time, value: parsed.text });
     }
     return { ...track, line };
   });
