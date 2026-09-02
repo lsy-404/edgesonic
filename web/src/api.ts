@@ -18,6 +18,7 @@ import { useRouter } from "vue-router";
 import { i18n } from "./i18n";
 import { showError } from "./stores/toast";
 import { parseActivation, DEFAULT_ACTIVATION, type ActivationInfo } from "./lib/activation";
+export { parseXmlAttrs } from "./lib/xmlAttrs";
 
 // management-shaped moved to /tag, /storage, /edgesonic.
 const REST_BASE = "/rest";
@@ -748,23 +749,6 @@ export function useAuth() {
     tagFetch, tagPost, storageFetch, storagePost, edgesonicFetch, edgesonicPost,
     readTags, writeTags, batchWriteTags, rescanSongs, submitMetadata, tidyFolder,
     signedParams, restUrl, streamUrl, coverArtUrl, downloadUrl };
-}
-
-/** Parse XML tag attributes into array of objects */
-export function parseXmlAttrs(xml: string, tag: string): Record<string, string>[] {
-  const items: Record<string, string>[] = [];
-  const re = new RegExp(`<${tag}\\s+([^>]+?)\\s*/?>`, "g");
-  let m;
-  while ((m = re.exec(xml))) {
-    const attrs: Record<string, string> = {};
-    const attrRe = /(\w+)="([^"]*)"/g;
-    let am;
-    while ((am = attrRe.exec(m[1]))) {
-      attrs[am[1]] = am[2];
-    }
-    items.push(attrs);
-  }
-  return items;
 }
 
 /** Extract inner XML of a tag */
