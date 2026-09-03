@@ -54,6 +54,25 @@ R2_BUCKET_NAME = "<YOUR_R2_BUCKET_NAME>"
 # "allow_all_file_types" when unset here. Demo mode locks the D1 row.
 # ALLOW_ALL_FILE_TYPES = "0"
 
+# Cloudflare Rate Limiting API bindings. Each namespace_id must be a positive
+# integer string unique within this Cloudflare account. Choose different IDs
+# for each binding so their counters remain independent.
+[[ratelimits]]
+name = "AUTH_RATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[ratelimits]]
+name = "API_RATE_LIMITER"
+namespace_id = "1002"
+
+  [ratelimits.simple]
+  limit = 1200
+  period = 60
+
 # Static Assets (Vue frontend) — 需先 `npm run build:web` 生成 web/dist
 # 资源响应头规则来自 web/public/_headers（构建进 web/dist），wrangler 自动读取，
 # 该文件本身不会作为资源上传。
