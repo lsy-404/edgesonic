@@ -65,7 +65,7 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
   if (!username || !password) {
     return c.json({ ok: false, error: "Missing username or password" }, 400);
   }
-  if (!(await rateLimitAllowed(c.env.AUTH_RATE_LIMITER, authenticationRateLimitKey(c.req.raw, "login", username)))) {
+  if (!(await rateLimitAllowed(c.env.AUTH_RATE_LIMITER, await authenticationRateLimitKey(c.req.raw, "login", username)))) {
     return rateLimitExceededResponse();
   }
   const retryAfter = await loginAllowed(db, c.req.raw, username);
@@ -282,7 +282,7 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
   const password = body.password || "";
   const inviteCode = (body.inviteCode || "").trim();
 
-  if (!(await rateLimitAllowed(c.env.AUTH_RATE_LIMITER, authenticationRateLimitKey(c.req.raw, "register", username)))) {
+  if (!(await rateLimitAllowed(c.env.AUTH_RATE_LIMITER, await authenticationRateLimitKey(c.req.raw, "register", username)))) {
     return rateLimitExceededResponse();
   }
 

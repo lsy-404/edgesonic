@@ -15,6 +15,7 @@
 
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
+import { rateLimitDeviceId } from "./middleware/rate_limit";
 import { md5 } from "./utils/md5";
 import { getServerRelayPolicy, parseChain } from "./utils/features";
 import { hasPermission } from "./utils/permissions";
@@ -62,15 +63,15 @@ export function buildSessionCookieHeader(token: string, maxAgeSec: number): stri
 async function findSessionByCookie(
   db: D1Database,
   cookieToken: string,
-): Promise<{ credential: string; kind: "session"; streamProxyStrategy: string } | null> {
+): Promise<{ credential: string; id: string; kind: "session"; streamProxyStrategy: string } | null> {
   const row = await db
-    .prepare("SELECT token FROM sessions WHERE token = ? AND expires_at > ?")
+    .prepare("SELECT id, token FROM sessions WHERE token = ? AND expires_at > ?")
     .bind(cookieToken, Math.floor(Date.now() / 1000))
-    .first<{ token: string }>();
+    .first<{ id: string; token: string }>();
   if (!row) return null;
   // Renewal happens later in authMiddleware, once the user row (and its
   // activation state) is loaded, so the renewed expiry can be clamped.
-  return { credential: row.token, kind: "session", streamProxyStrategy: "always" };
+  return { credential: row.token, id: row.id, kind: "session", streamProxyStrategy: "always" };
 }
 
 // ============================================================================
@@ -250,14 +251,14 @@ export async function verifyWebPassword(password: string, stored: string): Promi
 async function liveCredentials(
   db: D1Database,
   username: string,
-): Promise<{ results: Array<{ password: string; stream_proxy_strategy: string | null }> }> {
-  const sql = "SELECT password, stream_proxy_strategy FROM subsonic_credentials WHERE username = ? AND (expires_at IS NULL OR expires_at > unixepoch())";
+): Promise<{ results: Array<{ id: string; password: string; stream_proxy_strategy: string | null }> }> {
+  const sql = "SELECT id, password, stream_proxy_strategy FROM subsonic_credentials WHERE username = ? AND (expires_at IS NULL OR expires_at > unixepoch())";
   try {
-    return await db.prepare(sql).bind(username).all<{ password: string; stream_proxy_strategy: string | null }>();
+    return await db.prepare(sql).bind(username).all<{ id: string; password: string; stream_proxy_strategy: string | null }>();
   } catch (e) {
     if (!/no such column/i.test(e instanceof Error ? e.message : String(e))) throw e;
     await ensureActivationSchema({ DB: db });
-    return await db.prepare(sql).bind(username).all<{ password: string; stream_proxy_strategy: string | null }>();
+    return await db.prepare(sql).bind(username).all<{ id: string; password: string; stream_proxy_strategy: string | null }>();
   }
 }
 
@@ -266,7 +267,7 @@ async function findSubsonicCredential(
   username: string,
   token: string,
   salt: string,
-): Promise<{ credential: string; kind: "subsonic_cred"; streamProxyStrategy: string } | null> {
+): Promise<{ credential: string; id: string; kind: "subsonic_cred"; streamProxyStrategy: string } | null> {
   const creds = await liveCredentials(db, username);
 
   for (const cred of creds.results) {
@@ -280,7 +281,7 @@ async function findSubsonicCredential(
       const strategy = (strat === "always" || strat === "never" || strat === "r2_only" || strat === "webdav_only")
         ? strat
         : "always";
-      return { credential: cred.password, kind: "subsonic_cred", streamProxyStrategy: strategy };
+      return { credential: cred.password, id: cred.id, kind: "subsonic_cred", streamProxyStrategy: strategy };
     }
   }
 
@@ -319,7 +320,7 @@ async function findSubsonicCredentialByPassword(
   db: D1Database,
   username: string,
   password: string,
-): Promise<{ credential: string; kind: "subsonic_cred"; streamProxyStrategy: string } | null> {
+): Promise<{ credential: string; id: string; kind: "subsonic_cred"; streamProxyStrategy: string } | null> {
   const creds = await liveCredentials(db, username);
   for (const cred of creds.results) {
     if (cred.password === password) {
@@ -331,7 +332,7 @@ async function findSubsonicCredentialByPassword(
       const strategy = (strat === "always" || strat === "never" || strat === "r2_only" || strat === "webdav_only")
         ? strat
         : "always";
-      return { credential: cred.password, kind: "subsonic_cred", streamProxyStrategy: strategy };
+      return { credential: cred.password, id: cred.id, kind: "subsonic_cred", streamProxyStrategy: strategy };
     }
   }
 
@@ -364,7 +365,7 @@ async function lookupUser(db: D1Database, username: string): Promise<User | null
 // ============================================================================
 export const authMiddleware = createMiddleware<{
   Bindings: Env;
-  Variables: { user: User; authMethod: AuthMethod; authSource?: "cookie" | "query"; streamProxyStrategy?: string };
+  Variables: { user: User; authMethod: AuthMethod; authSource?: "cookie" | "query"; streamProxyStrategy?: string; rateLimitDeviceId?: string };
 }>(async (c, next) => {
   const path = new URL(c.req.url).pathname;
 
@@ -445,7 +446,7 @@ export const authMiddleware = createMiddleware<{
   // D1 round-trip for requests that actually came from the SPA — and it's
   // skipped entirely when an apiKey path is in play.
   const cookieToken = parseSessionCookie(c.req.header("Cookie") || "");
-  let cookieSession: { credential: string; kind: "session"; streamProxyStrategy: string } | null = null;
+  let cookieSession: { credential: string; id: string; kind: "session"; streamProxyStrategy: string } | null = null;
   let cookieUsername: string | null = null;
   if (cookieToken && !apiKey) {
     cookieSession = await findSessionByCookie(db, cookieToken);
@@ -478,11 +479,13 @@ export const authMiddleware = createMiddleware<{
   // --- Authenticate (records which credential type succeeded) ---
   let authMethod: AuthMethod | null = null;
   let authSource: "cookie" | "query" | null = null;
+  let rateLimitDeviceSource: string | null = null;
 
   if (apiKey) {
     if (apiKeyRow?.username === username) {
       authMethod = "apikey";
       authSource = "query";
+      rateLimitDeviceSource = apiKey;
     }
   } else if (token && salt) {
     // Subsonic token auth: subsonic_credentials or web session token
@@ -490,6 +493,7 @@ export const authMiddleware = createMiddleware<{
     if (cred) {
       authMethod = cred.kind;
       authSource = "query";
+      rateLimitDeviceSource = cred.id;
       c.set("streamProxyStrategy", cred.streamProxyStrategy);
     }
   } else if (q.p) {
@@ -509,6 +513,7 @@ export const authMiddleware = createMiddleware<{
     if (cred) {
       authMethod = cred.kind;
       authSource = "query";
+      rateLimitDeviceSource = cred.id;
       c.set("streamProxyStrategy", cred.streamProxyStrategy);
     }
   } else if (cookieSession && cookieUsername === username) {
@@ -518,6 +523,7 @@ export const authMiddleware = createMiddleware<{
     // cookie belongs to, we fall through to auth-fail.
     authMethod = "session";
     authSource = "cookie";
+    rateLimitDeviceSource = cookieSession.id;
     c.set("streamProxyStrategy", cookieSession.streamProxyStrategy);
   }
 
@@ -596,6 +602,9 @@ export const authMiddleware = createMiddleware<{
   c.set("user", user);
   c.set("authMethod", authMethod);
   if (authSource) c.set("authSource", authSource);
+  if (rateLimitDeviceSource) {
+    c.set("rateLimitDeviceId", await rateLimitDeviceId(authMethod, rateLimitDeviceSource));
+  }
 
   // Sliding cookie renewal: every successful cookie-session request refreshes
   // the browser cookie's Max-Age so it stays alive as long as the user is
