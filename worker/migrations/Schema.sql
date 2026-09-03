@@ -967,6 +967,15 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   PRIMARY KEY (username, permission)
 );
 
+-- clone_proxy_rate_limits — fixed one-minute request window for the
+-- authenticated upstream clone relay.
+CREATE TABLE IF NOT EXISTS clone_proxy_rate_limits (
+  username TEXT NOT NULL,
+  window_start INTEGER NOT NULL,
+  count INTEGER NOT NULL,
+  PRIMARY KEY (username, window_start)
+);
+
 -- kv_store — Generic KV (currently: cron:last_scan_ts)
 CREATE TABLE IF NOT EXISTS kv_store (
   key TEXT PRIMARY KEY,

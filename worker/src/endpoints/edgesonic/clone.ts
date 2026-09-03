@@ -29,8 +29,8 @@
 //  * upsertStarred / upsertPlaylist — any authenticated user MAY write to their
 //    OWN account; writing to a different target user requires manage_users
 //    (enforced in-handler via resolveTargetUser).
-//  * proxy — any authenticated user (server-side upstream fetch; SSRF surface
-//    accepted by design so non-admins can read the upstream they clone from).
+//  * proxy — any authenticated user, constrained to a read-only relay with
+//    per-user request budgeting and upstream response limits.
 //
 // Persistence is INSERT OR IGNORE for entity tables (artists/albums/
 // song_masters) so a re-clone is a no-op; annotations / playlists /
@@ -43,6 +43,8 @@ import { hasPermission } from "../../utils/permissions";
 import type { User } from "../../types/entities";
 import type { Context } from "hono";
 import { artistInsertStatements, parseArtistCredits, songArtistStatements } from "../../utils/artistCredits";
+import { PayloadTooLargeError, limitReadableStream } from "../../utils/streamLimit";
+import { isSafeCloneParams, limitedProxyBody, safeCloneTarget, takeCloneProxyRateLimit } from "../../utils/cloneProxySecurity";
 
 export const cloneRoutes = new Hono<{
   Bindings: Env;
@@ -554,26 +556,37 @@ cloneRoutes.post("/clone/proxy", async (c) => {
   }>().catch(() => ({} as {
     upstreamUrl?: string; username?: string; password?: string; path?: string; params?: Record<string, string>; binary?: boolean;
   }));
-  if (!body.upstreamUrl || !body.username || !body.password || !body.path) {
+  if (!body.upstreamUrl || !body.username || !body.password || !body.path || !isSafeCloneParams(body.params || {})) {
     return c.json({ ok: false, error: "Missing upstreamUrl / username / password / path" }, 400);
   }
-  const url = signedUpstreamUrl(body.upstreamUrl, body.username, body.password, body.path, body.params);
-  const resp = await fetch(url);
-  if (body.binary) {
-    const ab = await resp.arrayBuffer();
-    return new Response(ab, {
-      status: resp.status,
-      headers: {
-        "Content-Type": resp.headers.get("Content-Type") || "application/octet-stream",
-      },
-    });
+  const target = safeCloneTarget(body.upstreamUrl, body.path);
+  if (!target) return c.json({ ok: false, error: "Unsafe upstream URL or unsupported API path" }, 400);
+  const user = c.get("user");
+  const rate = await takeCloneProxyRateLimit(c.env.DB, user.username);
+  if (!rate.allowed) return c.json({ ok: false, error: "Clone proxy rate limit exceeded" }, 429, { "Retry-After": String(rate.retryAfter) });
+  const url = signedUpstreamUrl(target.toString(), body.username, body.password, body.path, body.params);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15_000);
+  let resp: Response;
+  try {
+    resp = await fetch(url, { signal: ctrl.signal, redirect: "error" });
+  } catch {
+    clearTimeout(timer);
+    return c.json({ ok: false, error: "Upstream request failed or timed out" }, 502);
   }
-  const text = await resp.text();
-  return new Response(text, {
+  const maxBytes = body.binary ? MAX_INGEST_BYTES : 8 * 1024 * 1024;
+  const length = parseInt(resp.headers.get("Content-Length") || "0", 10);
+  if (length > maxBytes) {
+    clearTimeout(timer);
+    return c.json({ ok: false, error: "Upstream response too large" }, 413);
+  }
+  if (!resp.body) {
+    clearTimeout(timer);
+    return new Response(null, { status: resp.status });
+  }
+  return new Response(limitedProxyBody(resp.body, maxBytes, () => clearTimeout(timer)), {
     status: resp.status,
-    headers: {
-      "Content-Type": resp.headers.get("Content-Type") || "application/json; charset=UTF-8",
-    },
+    headers: { "Content-Type": resp.headers.get("Content-Type") || (body.binary ? "application/octet-stream" : "application/json; charset=UTF-8") },
   });
 });
 
@@ -1036,9 +1049,19 @@ async function registerAudioInstance(
   }
 
   const r2Key = originalPathToR2Key(originalPath) || fallbackR2Key(artistDir, albumDir, filename, masterId);
-  const r2Object = await env.MUSIC_BUCKET.put(r2Key, body, {
-    httpMetadata: { contentType },
-  });
+  let r2Object: R2Object;
+  try {
+    r2Object = await env.MUSIC_BUCKET.put(r2Key, isBuffer ? body : limitReadableStream(body, MAX_INGEST_BYTES), {
+      httpMetadata: { contentType },
+    });
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) return { ok: false, error: "Payload too large", status: 413 };
+    throw error;
+  }
+  if (r2Object.size > MAX_INGEST_BYTES) {
+    await env.MUSIC_BUCKET.delete(r2Key);
+    return { ok: false, error: "Payload too large", status: 413 };
+  }
   const size = r2Object?.size ?? (isBuffer ? body.byteLength : declaredSize);
   if (size === 0) {
     await env.MUSIC_BUCKET.delete(r2Key);
