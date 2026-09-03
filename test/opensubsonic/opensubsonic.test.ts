@@ -30,7 +30,7 @@ import { Hono } from "hono";
 import { openSubsonicRoutes } from "../../worker/src/endpoints/subsonic/opensubsonic";
 import { accountRoutes } from "../../worker/src/endpoints/subsonic/account";
 import { mapAlbum, mapArtist, mapSong } from "../../worker/src/types/subsonic";
-import { sha256 } from "../../worker/src/auth";
+import { sha256, verifyWebPassword } from "../../worker/src/auth";
 
 // ---------------------------------------------------------------------------
 // Harness
@@ -230,7 +230,7 @@ async function main() {
     assert(r1.status === 200 && statusOK(body1), "alice changes own password OK");
     const newAlice = sqlite.prepare("SELECT master_password AS p FROM users WHERE username='alice'").get() as any;
     assert(newAlice.p !== oldAliceHash.p, "alice's password hash changed");
-    assert(newAlice.p === await sha256("new-alice-pw"), "alice's password hash matches expected SHA-256");
+    assert((await verifyWebPassword("new-alice-pw", newAlice.p)).valid, "alice's password uses the web KDF");
 
     // alice → carol (other, non-admin): 403
     const r2 = await hit("POST", "/rest/changePassword", { username: "carol", password: "hijack" });
@@ -243,7 +243,7 @@ async function main() {
     const r3 = await hitBob("POST", "/rest/changePassword", { username: "carol", password: "admin-reset" });
     assert(r3.status === 200 && statusOK(await r3.text()), "admin (bob) changes carol's password OK");
     const carolAfter = sqlite.prepare("SELECT master_password AS p FROM users WHERE username='carol'").get() as any;
-    assert(carolAfter.p === await sha256("admin-reset"), "carol's password reset by admin");
+    assert((await verifyWebPassword("admin-reset", carolAfter.p)).valid, "carol's password reset uses the web KDF");
 
     // Missing param → 400
     const r4 = await hit("GET", "/rest/changePassword");

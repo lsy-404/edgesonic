@@ -188,6 +188,56 @@ export async function sha256(input: string): Promise<string> {
     .join("");
 }
 
+const WEB_PASSWORD_KDF = "pbkdf2-sha256";
+const WEB_PASSWORD_ITERATIONS = 210_000;
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let out = "";
+  for (const byte of bytes) out += String.fromCharCode(byte);
+  return btoa(out);
+}
+
+function base64ToBytes(value: string): Uint8Array | null {
+  try {
+    const raw = atob(value);
+    return Uint8Array.from(raw, (char) => char.charCodeAt(0));
+  } catch {
+    return null;
+  }
+}
+
+function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let different = 0;
+  for (let i = 0; i < a.length; i++) different |= a[i] ^ b[i];
+  return different === 0;
+}
+
+export async function hashWebPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: WEB_PASSWORD_ITERATIONS }, key, 256,
+  );
+  return `${WEB_PASSWORD_KDF}$${WEB_PASSWORD_ITERATIONS}$${bytesToBase64(salt)}$${bytesToBase64(new Uint8Array(bits))}`;
+}
+
+export async function verifyWebPassword(password: string, stored: string): Promise<{ valid: boolean; legacy: boolean }> {
+  const [scheme, iterationsRaw, saltRaw, digestRaw, ...extra] = stored.split("$");
+  if (scheme !== WEB_PASSWORD_KDF || extra.length !== 0) {
+    return { valid: (await sha256(password)) === stored, legacy: true };
+  }
+  const iterations = Number(iterationsRaw);
+  const salt = base64ToBytes(saltRaw || "");
+  const digest = base64ToBytes(digestRaw || "");
+  if (!Number.isInteger(iterations) || iterations < 100_000 || iterations > 1_000_000 || !salt || !digest || digest.length !== 32) {
+    return { valid: false, legacy: false };
+  }
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations }, key, 256);
+  return { valid: equalBytes(new Uint8Array(bits), digest), legacy: false };
+}
+
 // ============================================================================
 // Subsonic Credential Lookup (token/salt auth)
 // ============================================================================
@@ -447,7 +497,7 @@ export const authMiddleware = createMiddleware<{
     const credentialCount = await db.prepare(
       "SELECT COUNT(*) AS count FROM subsonic_credentials WHERE username = ?",
     ).bind(username).first<{ count: number }>();
-    if (path.startsWith("/rest/") && credentialCount?.count === 0 && await sha256(password) === user.password) {
+    if (path.startsWith("/rest/") && credentialCount?.count === 0 && (await verifyWebPassword(password, user.password)).valid) {
       await ensureSubsonicMasterPasswordNoticeColumn(c.env);
       await db.prepare(
         "UPDATE users SET subsonic_master_password_notice_at = ? WHERE username = ?",

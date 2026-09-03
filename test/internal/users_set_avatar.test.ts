@@ -418,6 +418,14 @@ console.log("\nusers/get unknown user → 404 JSON {ok:false,error}:");
   assert(/not found/i.test(body.error), `error mentions 'not found' (got: ${body.error})`);
 }
 
+console.log("\nusers/get denies a regular user reading another account:");
+{
+  const sqlite = buildDb();
+  const { get } = makeApp(sqlite, { username: "alice", level: 1 });
+  const r = await get("/edgesonic/users/get?username=bob");
+  assert(r.status === 403, `403 for another user's record (got ${r.status})`);
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
 process.exit(failures ? 1 : 0);
 }

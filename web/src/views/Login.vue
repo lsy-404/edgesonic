@@ -25,6 +25,8 @@ const backgroundUrl = ref("");
 const registrationEnabled = ref(false);
 const passwordResetEnabled = ref(false);
 const isDemo = ref(false);
+const turnstileSiteKey = ref("");
+const turnstileToken = ref("");
 
 // Demo deployments show a login-hint fallback when the operator hasn't set
 // a custom notice — self-hosters see nothing until they configure one.
@@ -39,7 +41,7 @@ async function submit() {
   error.value = "";
   loading.value = true;
   try {
-    const result = await login(username.value, password.value);
+    const result = await login(username.value, password.value, turnstileToken.value || undefined);
     if (result.ok) router.push("/");
     else error.value = result.error || t("login.failed");
   } catch {
@@ -85,6 +87,7 @@ onMounted(async () => {
   registrationEnabled.value = cfg.registrationEnabled;
   passwordResetEnabled.value = cfg.passwordResetEnabled;
   isDemo.value = cfg.isDemo;
+  turnstileSiteKey.value = cfg.turnstileSiteKey;
 });
 </script>
 
@@ -120,8 +123,12 @@ onMounted(async () => {
           </div>
           <input v-model="password" type="password" maxlength="256" class="form-input" autocomplete="current-password" :disabled="loading" />
         </div>
+        <div v-if="turnstileSiteKey" class="form-group">
+          <label class="form-label">Verification token</label>
+          <input v-model="turnstileToken" class="form-input" autocomplete="off" :disabled="loading" />
+        </div>
 
-        <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !password">
+        <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !password || (turnstileSiteKey && !turnstileToken)">
           {{ loading ? t("login.submitting") : t("login.submit") }}
         </button>
         <button v-if="guestEnabled" type="button" class="btn-secondary login-btn" :disabled="loading" @click="loginAsGuest">

@@ -25,6 +25,8 @@ const registrationEnabled = ref(false);
 const activationEnabled = ref(false);
 const gateMode = ref<"all" | "any">("all");
 const emailVerificationOn = ref(false);
+const turnstileSiteKey = ref("");
+const turnstileToken = ref("");
 // Older backends don't announce the activation gate in loginConfig; when a
 // registration attempt bounces on the invite requirement we reveal the field.
 const inviteForcedVisible = ref(false);
@@ -41,6 +43,7 @@ onMounted(async () => {
   activationEnabled.value = cfg.activationEnabled;
   gateMode.value = cfg.registrationGateMode;
   emailVerificationOn.value = cfg.emailEnabled;
+  turnstileSiteKey.value = cfg.turnstileSiteKey;
   checkingConfig.value = false;
 });
 
@@ -52,8 +55,8 @@ async function submit() {
   }
   loading.value = true;
   try {
-    const result = await register(username.value, email.value, password.value, inviteCode.value.trim() || undefined);
-    if (result.ok) { router.push("/"); return; }
+    const result = await register(username.value, email.value, password.value, inviteCode.value.trim() || undefined, turnstileToken.value || undefined);
+    if (result.ok) { router.push("/login"); return; }
     const key = result.error ? mapActivationError(result.error) : null;
     if (key === "activation.errors.inviteRequired") inviteForcedVisible.value = true;
     error.value = key ? t(key) : (result.error || t("register.failed"));
@@ -121,8 +124,12 @@ async function submit() {
               :disabled="loading"
             />
           </div>
+          <div v-if="turnstileSiteKey" class="form-group">
+            <label class="form-label">Verification token</label>
+            <input v-model="turnstileToken" class="form-input" autocomplete="off" :disabled="loading" />
+          </div>
 
-          <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !email || !password">
+          <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !email || !password || (turnstileSiteKey && !turnstileToken)">
             {{ loading ? t("register.submitting") : t("register.submit") }}
           </button>
           <router-link to="/login" class="login-register-hint">{{ t("register.backToLogin") }}</router-link>

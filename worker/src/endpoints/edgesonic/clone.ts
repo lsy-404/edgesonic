@@ -38,7 +38,7 @@
 
 import { Hono } from "hono";
 import { md5 } from "../../utils/md5";
-import { GUEST_USERNAME, permissionMiddleware, sha256 } from "../../auth";
+import { GUEST_USERNAME, permissionMiddleware, hashWebPassword } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
 import type { User } from "../../types/entities";
 import type { Context } from "hono";
@@ -907,15 +907,13 @@ cloneRoutes.post("/clone/upsertStarred", async (c) => {
 // POST /edgesonic/clone/upsertUser
 // ---------------------------------------------------------------------------
 // Body: { user, credentials? }
-//   user:      { username, masterPassword (already SHA-256 hashed upstream? no — plaintext),
-//                level?, enabled? }
+//   user:      { username, password (plaintext), level?, enabled? }
 //  credentials: Array<{ password, label?, streamProxyStrategy? }> — Subsonic client
 //                passwords to mirror into local subsonic_credentials.
 //
-// EdgeSonic stores master_password as SHA-256(password). The upstream
-// getStarred/getUsers responses expose the password as plaintext (Subsonic
-// spec requires it for token auth), so we hash here before INSERT. If the
-// caller already hashed, set `passwordHashed: true` to skip hashing.
+// The upstream getStarred/getUsers responses expose the password as plaintext
+// (Subsonic spec requires it for token auth), so this route derives the local
+// web-password KDF record before INSERT.
 // Super admin only — the clone-all-users flow provisions local accounts
 // (and their login passwords), a strictly higher-privilege operation than the
 // per-account favourite/playlist clone.
@@ -951,9 +949,10 @@ cloneRoutes.post("/clone/upsertUser", permissionMiddleware("manage_users"), asyn
   const enabledNum = typeof user.enabled === "number"
     ? (user.enabled ? 1 : 0)
     : (user.enabled === false ? 0 : 1);
-  const masterPassword = user.passwordHashed
-    ? user.password
-    : await sha256(user.password);
+  if (user.passwordHashed) {
+    return c.json({ ok: false, error: "Pre-hashed master passwords are not accepted" }, 400);
+  }
+  const masterPassword = await hashWebPassword(user.password);
   const now = Math.floor(Date.now() / 1000);
 
   await db.prepare(

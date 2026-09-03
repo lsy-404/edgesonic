@@ -162,7 +162,7 @@ export function useAuth() {
     return salt.value;
   }
 
-  async function login(u: string, p: string): Promise<LoginResult> {
+  async function login(u: string, p: string, turnstileToken?: string): Promise<LoginResult> {
     // /edgesonic/auth/login sets the `edgesonic_session` HttpOnly cookie
     // (see worker/src/endpoints/edgesonic/auth.ts) AND returns the
     // sessionToken in JSON — the SPA keeps only the non-secret username +
@@ -173,7 +173,7 @@ export function useAuth() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({ username: u, password: p }),
+      body: JSON.stringify({ username: u, password: p, ...(turnstileToken ? { turnstileToken } : {}) }),
     });
     const data = await resp.json();
     if (data.ok) {
@@ -220,6 +220,7 @@ export function useAuth() {
     // is true Register.vue shows the invite-code field and gate-mode hint.
     activationEnabled: boolean;
     registrationGateMode: "all" | "any";
+    turnstileSiteKey: string;
   }
 
   // Public — no session required. Drives Login.vue's notice line, optional
@@ -228,7 +229,7 @@ export function useAuth() {
     const fallback: LoginConfig = {
       noticeText: "", backgroundUrl: "", registrationEnabled: false,
       passwordResetEnabled: false, emailEnabled: false, isDemo: false,
-      activationEnabled: false, registrationGateMode: "all",
+      activationEnabled: false, registrationGateMode: "all", turnstileSiteKey: "",
     };
     try {
       const resp = await fetch(`${EDGESONIC_BASE}/auth/loginConfig`, { credentials: "same-origin" });
@@ -243,22 +244,24 @@ export function useAuth() {
         isDemo: !!data.isDemo,
         activationEnabled: !!data.activationEnabled,
         registrationGateMode: data.registrationGateMode === "any" ? "any" : "all",
+        turnstileSiteKey: typeof data.turnstileSiteKey === "string" ? data.turnstileSiteKey : "",
       };
     } catch { return fallback; }
   }
 
-  async function register(u: string, e: string, p: string, inviteCode?: string): Promise<LoginResult> {
+  async function register(u: string, e: string, p: string, inviteCode?: string, turnstileToken?: string): Promise<LoginResult> {
     const resp = await fetch(`${EDGESONIC_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({ username: u, email: e, password: p, ...(inviteCode ? { inviteCode } : {}) }),
+      body: JSON.stringify({ username: u, email: e, password: p, ...(inviteCode ? { inviteCode } : {}), ...(turnstileToken ? { turnstileToken } : {}) }),
     });
     const data = await resp.json();
     if (!data.ok) return { ok: false, error: data.error || "Registration failed" };
-    // Registration doesn't itself open a session — reuse the normal login
-    // flow so App.vue/router hydrate exactly as they would for any sign-in.
-    return login(u, p);
+    // Registration is deliberately indistinguishable from an already-claimed
+    // account, so it never attempts a follow-up login that would reintroduce
+    // a username-enumeration side channel.
+    return { ok: true, name: u };
   }
 
   async function requestPasswordReset(emailOrUsername: string): Promise<{ ok: boolean; error?: string }> {
