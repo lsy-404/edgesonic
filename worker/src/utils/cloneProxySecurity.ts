@@ -2,7 +2,7 @@ import { limitReadableStream } from "./streamLimit";
 
 const READ_ONLY_METHODS = new Set([
   "getAlbum", "getAlbumList2", "getPlaylists", "getPlaylist", "getStarred2",
-  "getUsers", "search3", "stream",
+  "getUsers", "search3", "star", "stream",
 ]);
 const PROXY_WINDOW_SECONDS = 60;
 export const CLONE_PROXY_RPM = 30;
@@ -11,7 +11,7 @@ export function safeCloneTarget(baseUrl: string, path: string): URL | null {
   if (!READ_ONLY_METHODS.has(path)) return null;
   let base: URL;
   try { base = new URL(baseUrl); } catch { return null; }
-  if ((base.protocol !== "http:" && base.protocol !== "https:") || base.username || base.password) return null;
+  if ((base.protocol !== "http:" && base.protocol !== "https:") || base.username || base.password || base.search || base.hash) return null;
   if (base.port && !((base.protocol === "http:" && base.port === "80") || (base.protocol === "https:" && base.port === "443"))) return null;
   const host = base.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (!host || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||

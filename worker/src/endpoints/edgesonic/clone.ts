@@ -525,7 +525,8 @@ async function resolveExistingSongMaster(
 }
 
 function signedUpstreamUrl(baseUrl: string, username: string, password: string, path: string, params?: Record<string, string>): string {
-  const s = Array.from({ length: 10 }, () => Math.random().toString(36)[2]).join("");
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const s = Array.from(salt, (byte) => byte.toString(36)).join("");
   const q = new URLSearchParams({
     u: username,
     t: md5(password + s),

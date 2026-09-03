@@ -43,10 +43,14 @@ async function main() {
     const base = { upstreamUrl: "https://music.example.test", username: "up", password: "pw", path: "getAlbum", params: {} };
     const blocked = await post({ ...base, upstreamUrl: "http://127.0.0.1" });
     assert(blocked.status === 400 && calls === 0, "route rejects IP-literal targets before fetch");
-    const forbiddenPath = await post({ ...base, path: "star" });
-    assert(forbiddenPath.status === 400 && calls === 0, "route permits only read-only Subsonic paths");
+    const forbiddenPath = await post({ ...base, path: "unstar" });
+    assert(forbiddenPath.status === 400 && calls === 0, "route rejects paths outside the fixed allowlist");
+    const queryTarget = await post({ ...base, upstreamUrl: "https://music.example.test/?target=internal" });
+    assert(queryTarget.status === 400 && calls === 0, "route rejects base URLs carrying a query or fragment");
+    const star = await post({ ...base, path: "star", params: { id: "song-1" } });
+    assert(star.status === 200 && calls === 1, "route permits the Tools fixed star operation");
     const first = await post(base);
-    assert(first.status === 200 && calls === 1, "route proxies an allowed HTTPS read request");
+    assert(first.status === 200 && calls === 2, "route proxies an allowed HTTPS read request");
     let last: Response | undefined;
     for (let i = 0; i < 30; i++) last = await post(base);
     assert(last?.status === 429 && last.headers.has("Retry-After"), "persistent minute counter returns 429 and Retry-After");
