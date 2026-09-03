@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS users (
   email_verified INTEGER NOT NULL DEFAULT 0,          -- informational only, not a login/reset gate
   activation_status TEXT NOT NULL DEFAULT 'permanent', -- 'permanent' | 'active_until' | 'disabled'
   activated_until INTEGER,                           -- unix seconds, meaningful only for 'active_until'
+  subsonic_master_password_notice_at INTEGER,       -- one-time web notice after a rejected primary-password client login
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch())
 );

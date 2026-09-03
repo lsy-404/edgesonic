@@ -108,6 +108,8 @@ const nickname = ref(localStorage.getItem("edgesonic_nickname") || "");
 const avatarKey = ref(localStorage.getItem("edgesonic_avatar_key") || "");
 const email = ref(localStorage.getItem("edgesonic_email") || "");
 const emailVerified = ref(localStorage.getItem("edgesonic_email_verified") === "1");
+export type SubsonicMasterPasswordNotice = "create_client_password" | "clients_not_enabled";
+const subsonicMasterPasswordNotice = ref<SubsonicMasterPasswordNotice | null>(null);
 // Activation state from /auth/me (cached so the router guard can decide
 // synchronously on reload, same pattern as edgesonic_perms).
 function readCachedActivation(): ActivationInfo {
@@ -279,6 +281,7 @@ export function useAuth() {
     token.value = ""; username.value = ""; level.value = 0;
     permissions.value = {}; nickname.value = ""; avatarKey.value = "";
     email.value = ""; emailVerified.value = false;
+    subsonicMasterPasswordNotice.value = null;
     localStorage.removeItem("edgesonic_logged_in");
     localStorage.removeItem("edgesonic_user");
     localStorage.removeItem("edgesonic_level");
@@ -457,6 +460,7 @@ export function useAuth() {
         ok: boolean; level?: number; nickname?: string | null; avatarKey?: string | null;
         email?: string | null; emailVerified?: boolean;
         permissions?: Record<string, boolean>;
+        subsonicMasterPasswordNotice?: SubsonicMasterPasswordNotice | null;
         activation?: unknown;
       };
       if (!data.ok) return;
@@ -472,6 +476,10 @@ export function useAuth() {
       email.value = data.email || "";
       emailVerified.value = !!data.emailVerified;
       permissions.value = data.permissions || {};
+      subsonicMasterPasswordNotice.value = data.subsonicMasterPasswordNotice === "create_client_password"
+        || data.subsonicMasterPasswordNotice === "clients_not_enabled"
+        ? data.subsonicMasterPasswordNotice
+        : null;
       localStorage.setItem("edgesonic_nickname", nickname.value);
       localStorage.setItem("edgesonic_avatar_key", avatarKey.value);
       localStorage.setItem("edgesonic_email", email.value);
@@ -740,8 +748,13 @@ export function useAuth() {
     return data;
   }
 
+  function dismissSubsonicMasterPasswordNotice() {
+    subsonicMasterPasswordNotice.value = null;
+  }
+
   return { token, username, level, salt, isLoggedIn, isAdmin, isSuperAdmin, isGuest, isUser,
     permissions, hasPerm, nickname, avatarKey, email, emailVerified, displayName,
+    subsonicMasterPasswordNotice, dismissSubsonicMasterPasswordNotice,
     activation, fetchActivationStatus, redeemActivationCode, probeGuestEnabled,
     fetchMe, updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
     login, guestLogin, logout, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,

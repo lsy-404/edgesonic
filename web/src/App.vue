@@ -22,7 +22,10 @@ const route = useRoute();
 // no theme background layer. See the /work route in main.ts.
 const isBare = computed(() => route.meta?.bare === true);
 const { t } = useI18n();
-const { isLoggedIn, level, logout, hasPerm, fetchMe, displayName, activation, probeGuestEnabled } = useAuth();
+const {
+  isLoggedIn, level, logout, hasPerm, fetchMe, displayName, activation, probeGuestEnabled,
+  subsonicMasterPasswordNotice, dismissSubsonicMasterPasswordNotice,
+} = useAuth();
 const player = usePlayerStore();
 const demoMode = useDemoMode();
 
@@ -49,6 +52,10 @@ watch(activationExpired, (now) => {
 }, { immediate: true });
 function goRenewActivation() {
   void router.push({ path: "/settings", query: { section: "activation" } });
+}
+function openSubsonicClients() {
+  dismissSubsonicMasterPasswordNotice();
+  void router.push({ path: "/settings", query: { section: "clients" } });
 }
 watch(isLoggedIn, (now) => {
   if (now) {
@@ -259,6 +266,28 @@ onBeforeUnmount(() => {
     <span>{{ t("activation.banner") }}</span>
   </button>
 
+  <div
+    v-if="subsonicMasterPasswordNotice"
+    class="subsonic-password-notice-backdrop"
+    @click.self="dismissSubsonicMasterPasswordNotice"
+  >
+    <section class="card subsonic-password-notice" role="dialog" aria-modal="true" :aria-label="t('subsonicPasswordNotice.title')">
+      <h2>{{ t("subsonicPasswordNotice.title") }}</h2>
+      <p>{{ t(subsonicMasterPasswordNotice === "create_client_password"
+        ? "subsonicPasswordNotice.createClientPassword"
+        : "subsonicPasswordNotice.clientsNotEnabled") }}</p>
+      <div class="subsonic-password-notice-actions">
+        <button
+          v-if="subsonicMasterPasswordNotice === 'create_client_password'"
+          type="button"
+          class="btn-primary"
+          @click="openSubsonicClients"
+        >{{ t("subsonicPasswordNotice.openClients") }}</button>
+        <button type="button" class="btn-secondary" @click="dismissSubsonicMasterPasswordNotice">{{ t("common.close") }}</button>
+      </div>
+    </section>
+  </div>
+
   <Transition name="toast">
     <button
       v-if="activeToast"
@@ -399,6 +428,19 @@ onBeforeUnmount(() => {
   cursor: pointer;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34);
 }
+.subsonic-password-notice-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 70%);
+}
+.subsonic-password-notice { width: min(460px, 100%); padding: 1.25rem; }
+.subsonic-password-notice h2 { margin: 0; font-size: 1.1rem; }
+.subsonic-password-notice p { margin: 0.8rem 0 1.1rem; color: var(--color-text-secondary); line-height: 1.55; }
+.subsonic-password-notice-actions { display: flex; justify-content: flex-end; gap: 0.55rem; }
 .toast-enter-active, .toast-leave-active { transition: opacity 0.2s, transform 0.2s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(0.5rem); }
 .shell.now-playing-shell {

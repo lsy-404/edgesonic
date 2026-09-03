@@ -19,7 +19,7 @@ import { md5 } from "./utils/md5";
 import { getServerRelayPolicy, parseChain } from "./utils/features";
 import { hasPermission } from "./utils/permissions";
 import { resolveActivation, clampExpiryToActivation, clampTtlToActivation, isGuestAccessEnabled, type ActivationState } from "./utils/activation";
-import { ensureActivationSchema } from "./utils/schema_patch";
+import { ensureActivationSchema, ensureSubsonicMasterPasswordNoticeColumn } from "./utils/schema_patch";
 import { SERVER_TYPE, SERVER_VERSION } from "./utils/xml";
 import type { User } from "./types/entities";
 
@@ -250,27 +250,29 @@ async function renewSessionIfNeeded(db: D1Database, token: string, activation?: 
     .run();
 }
 
+function decodeSubsonicPassword(rawPassword: string): string {
+  if (!rawPassword.startsWith("enc:")) return rawPassword;
+
+  const hex = rawPassword.substring(4);
+  if (!/^[0-9a-fA-F]*$/.test(hex) || hex.length % 2 !== 0) return rawPassword;
+
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 // Only check subsonic_credentials table. Session-based authentication must use
 // the HTTP-only session cookie, not Subsonic password parameters.
 async function findSubsonicCredentialByPassword(
   db: D1Database,
   username: string,
-  rawPassword: string,
+  password: string,
 ): Promise<{ credential: string; kind: "subsonic_cred"; streamProxyStrategy: string } | null> {
-  let plain = rawPassword;
-  if (plain.startsWith("enc:")) {
-    const hex = plain.substring(4);
-    if (/^[0-9a-fA-F]*$/.test(hex) && hex.length % 2 === 0) {
-      const bytes = new Uint8Array(hex.length / 2);
-      for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
-      // Subsonic hex-encodes the UTF-8 bytes of the password.
-      plain = new TextDecoder().decode(bytes);
-    }
-  }
-
   const creds = await liveCredentials(db, username);
   for (const cred of creds.results) {
-    if (cred.password === plain) {
+    if (cred.password === password) {
       await db
         .prepare("UPDATE subsonic_credentials SET last_used = ? WHERE username = ? AND password = ?")
         .bind(Math.floor(Date.now() / 1000), username, cred.password)
@@ -441,7 +443,19 @@ export const authMiddleware = createMiddleware<{
       c.set("streamProxyStrategy", cred.streamProxyStrategy);
     }
   } else if (q.p) {
-    const cred = await findSubsonicCredentialByPassword(db, username, q.p);
+    const password = decodeSubsonicPassword(q.p);
+    const credentialCount = await db.prepare(
+      "SELECT COUNT(*) AS count FROM subsonic_credentials WHERE username = ?",
+    ).bind(username).first<{ count: number }>();
+    if (path.startsWith("/rest/") && credentialCount?.count === 0 && await sha256(password) === user.password) {
+      await ensureSubsonicMasterPasswordNoticeColumn(c.env);
+      await db.prepare(
+        "UPDATE users SET subsonic_master_password_notice_at = ? WHERE username = ?",
+      ).bind(Math.floor(Date.now() / 1000), username).run();
+      console.log(`[auth-fail] path=${path} user=${username} reason=subsonic-master-password`);
+      return authFail(40, "Wrong username or password", 401);
+    }
+    const cred = await findSubsonicCredentialByPassword(db, username, password);
     if (cred) {
       authMethod = cred.kind;
       authSource = "query";

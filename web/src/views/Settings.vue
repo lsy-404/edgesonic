@@ -192,6 +192,7 @@ const open = ref<Record<SectionKey, boolean>>({ user: true, activation: false, a
 function toggleSection(key: SectionKey) { open.value[key] = !open.value[key]; }
 // The expired-activation banner deep-links here with ?section=activation.
 if (route.query.section === "activation") { open.value.user = false; open.value.activation = true; }
+if (route.query.section === "clients") { open.value.user = false; open.value.clients = true; }
 // Nothing to redeem or read while the account is unbounded, so the section
 // only appears once activation actually constrains it.
 const showActivationSection = computed(() =>

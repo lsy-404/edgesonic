@@ -20,6 +20,12 @@
     "clear": "Clear",
     "back": "Back"
   },
+  "subsonicPasswordNotice": {
+    "title": "Subsonic sign-in blocked",
+    "createClientPassword": "For your security, this website does not allow its main account password to be used with Subsonic clients. Create a separate client password in Settings → Subsonic Clients.",
+    "clientsNotEnabled": "Subsonic clients are not enabled for your account by the site administrator.",
+    "openClients": "Open Subsonic Clients"
+  },
   "app": {
     "groups": {
       "library": "LIBRARY",

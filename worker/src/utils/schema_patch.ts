@@ -22,6 +22,7 @@
 
 let ensured = false;
 let artistsEnsured = false;
+let subsonicMasterPasswordNoticeEnsured = false;
 
 export async function ensureNicknameColumn(env: { DB: D1Database }): Promise<void> {
   if (ensured) return;
@@ -32,6 +33,18 @@ export async function ensureNicknameColumn(env: { DB: D1Database }): Promise<voi
     // Column already present → done. Any other error leaves the flag unset so
     // a later request retries rather than silently disabling nicknames.
     if (/duplicate column/i.test(e instanceof Error ? e.message : String(e))) ensured = true;
+  }
+}
+
+export async function ensureSubsonicMasterPasswordNoticeColumn(env: { DB: D1Database }): Promise<void> {
+  if (subsonicMasterPasswordNoticeEnsured) return;
+  try {
+    await env.DB.prepare("ALTER TABLE users ADD COLUMN subsonic_master_password_notice_at INTEGER").run();
+    subsonicMasterPasswordNoticeEnsured = true;
+  } catch (e) {
+    if (/duplicate column/i.test(e instanceof Error ? e.message : String(e))) {
+      subsonicMasterPasswordNoticeEnsured = true;
+    }
   }
 }
 

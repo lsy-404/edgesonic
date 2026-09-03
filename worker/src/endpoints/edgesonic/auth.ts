@@ -21,7 +21,7 @@ import { permissionMiddleware, subsonicError, sha256, SESSION_TTL_SEC, buildSess
 import { subsonicOK } from "../../utils/xml";
 import { recoverCronIfStale } from "../../utils/cronRecovery";
 import { getEffectivePermissions, hasPermission } from "../../utils/permissions";
-import { ensureNicknameColumn, ensureEmailColumns, ensureActivationSchema } from "../../utils/schema_patch";
+import { ensureNicknameColumn, ensureEmailColumns, ensureActivationSchema, ensureSubsonicMasterPasswordNoticeColumn } from "../../utils/schema_patch";
 import { getFeature, getFeatureString } from "../../utils/features";
 import {
   resolveActivation, clampTtlToActivation, checkInviteCode, redeemCode,
@@ -489,12 +489,14 @@ edgesonicAuthRoutes.get("/auth/me", async (c) => {
   const user = c.get("user");
   await ensureNicknameColumn(c.env);
   await ensureEmailColumns(c.env);
+  await ensureSubsonicMasterPasswordNoticeColumn(c.env);
   const permissions = await getEffectivePermissions(c.env, user);
 
   let nickname: string | null = null;
   let avatarKey: string | null = null;
   let email: string | null = null;
   let emailVerified = false;
+  let subsonicMasterPasswordNotice = false;
   try {
     const row = await c.env.DB
       .prepare("SELECT nickname, avatar_r2_key, email, email_verified FROM users WHERE username = ?")
@@ -508,6 +510,21 @@ edgesonicAuthRoutes.get("/auth/me", async (c) => {
     // nickname/email columns may be absent on a database not yet back-filled.
   }
 
+  try {
+    const row = await c.env.DB.prepare(
+      "SELECT subsonic_master_password_notice_at FROM users WHERE username = ?",
+    ).bind(user.username).first<{ subsonic_master_password_notice_at: number | null }>();
+    subsonicMasterPasswordNotice = row?.subsonic_master_password_notice_at !== null
+      && row?.subsonic_master_password_notice_at !== undefined;
+    if (subsonicMasterPasswordNotice) {
+      await c.env.DB.prepare(
+        "UPDATE users SET subsonic_master_password_notice_at = NULL WHERE username = ?",
+      ).bind(user.username).run();
+    }
+  } catch {
+    // If a legacy database cannot be upgraded yet, omit the optional notice.
+  }
+
   const activation = await resolveActivation(c.env, user);
   return c.json({
     ok: true,
@@ -518,6 +535,9 @@ edgesonicAuthRoutes.get("/auth/me", async (c) => {
     email,
     emailVerified,
     permissions,
+    subsonicMasterPasswordNotice: subsonicMasterPasswordNotice
+      ? (permissions.manage_credentials ? "create_client_password" : "clients_not_enabled")
+      : null,
     activation: {
       enabled: activation.enabled,
       status: activation.status,
