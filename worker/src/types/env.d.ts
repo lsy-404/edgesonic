@@ -15,6 +15,9 @@
 
 interface Env {
   DB: D1Database;
+  // Optional while deployments transition to the Rate Limiting bindings.
+  AUTH_RATE_LIMITER?: import("../middleware/rate_limit").RateLimiter;
+  API_RATE_LIMITER?: import("../middleware/rate_limit").RateLimiter;
   MUSIC_BUCKET: R2Bucket;
   // Rendezvous point for the push-based work pool: browsers hold a socket
   // here and newly queued rows are handed straight down it. Optional so a

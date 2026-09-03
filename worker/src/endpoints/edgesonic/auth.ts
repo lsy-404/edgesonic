@@ -34,6 +34,7 @@ import {
 } from "../../utils/email";
 import type { User } from "../../types/entities";
 import { clearLoginFailures, loginAllowed, recordLoginFailure, verifyTurnstile } from "../../utils/loginProtection";
+import { authenticationRateLimitKey, rateLimitAllowed, rateLimitExceededResponse } from "../../middleware/rate_limit";
 
 // only request that legitimately arrives without a session) and is exported
 // separately so index.ts can mount it BEFORE the global auth filter at the
@@ -63,6 +64,9 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
   const { username, password } = body;
   if (!username || !password) {
     return c.json({ ok: false, error: "Missing username or password" }, 400);
+  }
+  if (!(await rateLimitAllowed(c.env.AUTH_RATE_LIMITER, authenticationRateLimitKey(c.req.raw, "login", username)))) {
+    return rateLimitExceededResponse();
   }
   const retryAfter = await loginAllowed(db, c.req.raw, username);
   if (retryAfter > 0) {
@@ -282,6 +286,10 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
   const email = normalizeEmail(body.email || "");
   const password = body.password || "";
   const inviteCode = (body.inviteCode || "").trim();
+
+  if (!(await rateLimitAllowed(c.env.AUTH_RATE_LIMITER, authenticationRateLimitKey(c.req.raw, "register", username)))) {
+    return rateLimitExceededResponse();
+  }
 
   if (!USERNAME_RE.test(username) || username === GUEST_USERNAME) {
     return c.json({ ok: false, error: "Username must be 3-32 characters (letters, digits, _ or -)" }, 400);
