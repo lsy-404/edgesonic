@@ -2,18 +2,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { type UserMessage, useAuth } from "../api";
+import { type MessageKind, type MessagePresentation, type UserMessage, useAuth } from "../api";
 import Icon from "./Icon.vue";
 
-const props = defineProps<{ isSuperAdmin: boolean }>();
+const props = defineProps<{ isSuperAdmin: boolean; canManageUsers: boolean }>();
 const { t } = useI18n();
-const { getMessages, markMessageRead, dismissMessage } = useAuth();
+const { getMessages, markMessageRead, dismissMessage, sendUserMessage } = useAuth();
 
 const messages = ref<UserMessage[]>([]);
 const officialMessages = ref<UserMessage[]>([]);
 const panelOpen = ref(false);
 const loading = ref(false);
 const error = ref("");
+const composeOpen = ref(false);
+const composeBusy = ref(false);
+const compose = ref({ username: "", title: "", message: "", kind: "info" as MessageKind, presentation: "inbox" as MessagePresentation });
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 function timestamp(message: UserMessage): number {
@@ -81,6 +84,23 @@ async function acknowledgeModal() {
   if (modalMessage.value) await read(modalMessage.value);
 }
 
+async function send() {
+  if (!compose.value.username.trim() || !compose.value.title.trim() || !compose.value.message.trim()) return;
+  composeBusy.value = true;
+  try {
+    await sendUserMessage({
+      username: compose.value.username.trim(), title: compose.value.title.trim(), message: compose.value.message.trim(),
+      kind: compose.value.kind, presentation: compose.value.presentation,
+    });
+    compose.value = { username: "", title: "", message: "", kind: "info", presentation: "inbox" };
+    composeOpen.value = false;
+  } catch {
+    error.value = t("messages.sendFailed");
+  } finally {
+    composeBusy.value = false;
+  }
+}
+
 function onVisibilityChange() {
   if (document.visibilityState === "visible") void refresh();
 }
@@ -119,11 +139,29 @@ onBeforeUnmount(() => {
             <p v-if="unreadCount">{{ t('messages.unreadCount', { count: unreadCount }) }}</p>
           </div>
           <div class="message-center-header-actions">
+            <button v-if="props.canManageUsers" type="button" class="message-center-refresh" :aria-label="t('messages.send')" :title="t('messages.send')" @click="composeOpen = !composeOpen"><Icon name="edit" /></button>
             <button type="button" class="message-center-refresh" :disabled="loading" :aria-label="t('messages.refresh')" :title="t('messages.refresh')" @click="refresh"><Icon name="refresh" /></button>
             <button type="button" class="message-center-close" :aria-label="t('common.close')" @click="panelOpen = false"><Icon name="cross" /></button>
           </div>
         </header>
         <p v-if="error" class="message-center-error" role="alert">{{ error }}</p>
+        <form v-if="composeOpen" class="message-compose" @submit.prevent="send">
+          <input v-model="compose.username" class="form-input" :placeholder="t('messages.recipient')" required />
+          <input v-model="compose.title" class="form-input" :placeholder="t('messages.subject')" required maxlength="200" />
+          <textarea v-model="compose.message" class="form-input" :placeholder="t('messages.body')" required maxlength="4000" rows="4"></textarea>
+          <div class="message-compose-options">
+            <select v-model="compose.kind" class="form-input" :aria-label="t('messages.kind')">
+              <option value="info">{{ t('messages.kinds.info') }}</option>
+              <option value="notice">{{ t('messages.kinds.notice') }}</option>
+              <option value="warning">{{ t('messages.kinds.warning') }}</option>
+            </select>
+            <select v-model="compose.presentation" class="form-input" :aria-label="t('messages.presentation')">
+              <option value="inbox">{{ t('messages.presentations.inbox') }}</option>
+              <option value="modal">{{ t('messages.presentations.modal') }}</option>
+            </select>
+            <button type="submit" class="btn-primary" :disabled="composeBusy">{{ t('messages.send') }}</button>
+          </div>
+        </form>
         <p v-else-if="loading && !visibleMessages.length" class="message-center-state">{{ t('common.loading') }}</p>
         <p v-else-if="!visibleMessages.length" class="message-center-state">{{ t('messages.empty') }}</p>
         <div v-else class="message-center-list">
@@ -200,6 +238,10 @@ onBeforeUnmount(() => {
 .message-center-state, .message-center-error { margin: 1.5rem 0; color: var(--color-text-secondary); text-align: center; }
 .message-center-error { color: var(--color-danger, #e66); }
 .message-center-list { display: grid; gap: 0.7rem; }
+.message-compose { display: grid; gap: 0.55rem; margin-bottom: 1rem; padding: 0.85rem; border: 1px solid var(--color-border-subtle); border-radius: 0.45rem; }
+.message-compose textarea { resize: vertical; }
+.message-compose-options { display: flex; gap: 0.55rem; justify-content: flex-end; }
+.message-compose-options select { min-width: 8rem; }
 .message-card { padding: 0.95rem; border: 1px solid var(--color-border-subtle); border-left: 3px solid var(--color-accent-primary); border-radius: 0.45rem; background: color-mix(in srgb, var(--color-bg-primary) 42%, transparent); }
 .message-card-unread { border-color: var(--color-accent-primary); }
 .message-card-notice { border-left-color: var(--color-accent-primary); }
@@ -215,5 +257,5 @@ onBeforeUnmount(() => {
 .message-modal { width: min(460px, 100%); padding: 1.25rem; border-left: 4px solid var(--color-accent-primary); }
 .message-modal-kind { display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.75rem; color: var(--color-accent-primary); font-size: var(--fs-xs); }
 .message-modal-actions { display: flex; justify-content: flex-end; margin-top: 1.2rem; }
-@media (max-width: 720px) { .message-center-panel { max-height: calc(100vh - 1.5rem); padding: 1rem; } .message-card-actions { align-items: flex-start; flex-direction: column; } .message-card-buttons { width: 100%; justify-content: flex-end; } }
+@media (max-width: 720px) { .message-center-panel { max-height: calc(100vh - 1.5rem); padding: 1rem; } .message-card-actions, .message-compose-options { align-items: flex-start; flex-direction: column; } .message-card-buttons { width: 100%; justify-content: flex-end; } .message-compose-options select, .message-compose-options button { width: 100%; } }
 </style>

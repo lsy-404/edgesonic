@@ -112,7 +112,7 @@ export type SubsonicMasterPasswordNotice = "create_client_password" | "clients_n
 const subsonicMasterPasswordNotice = ref<SubsonicMasterPasswordNotice | null>(null);
 
 export type MessageKind = "info" | "notice" | "warning" | "error";
-export type MessagePresentation = "center" | "modal";
+export type MessagePresentation = "inbox" | "modal";
 export interface UserMessage {
   id: string;
   title: string;
@@ -531,6 +531,13 @@ export function useAuth() {
     if (!data.ok) throw new Error(data.error || "Unable to dismiss message");
   }
 
+  async function sendUserMessage(input: {
+    username: string; title: string; message: string; kind: MessageKind; presentation: MessagePresentation;
+  }): Promise<void> {
+    const data = JSON.parse(await edgesonicPost("messages/send", input)) as { ok?: boolean; error?: string };
+    if (!data.ok) throw new Error(data.error || "Unable to send message");
+  }
+
   // Self-service profile edits (Settings → account). Nickname goes through the
   // dedicated self endpoint; password reuses Subsonic changePassword (self).
   async function updateNickname(next: string): Promise<void> {
@@ -797,7 +804,7 @@ export function useAuth() {
     permissions, hasPerm, nickname, avatarKey, email, emailVerified, displayName,
     subsonicMasterPasswordNotice, dismissSubsonicMasterPasswordNotice,
     activation, fetchActivationStatus, redeemActivationCode, probeGuestEnabled,
-    fetchMe, getMessages, markMessageRead, dismissMessage,
+    fetchMe, getMessages, markMessageRead, dismissMessage, sendUserMessage,
     updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
     login, guestLogin, logout, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
     getLoginConfig, register, requestPasswordReset, confirmPasswordReset, confirmEmailVerify,

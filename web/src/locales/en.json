@@ -35,6 +35,17 @@
     "unreadCount": "{count} unread",
     "loadFailed": "Messages could not be loaded. Try again shortly.",
     "actionFailed": "Message status could not be updated. Try again.",
+    "send": "Send message",
+    "sendFailed": "Unable to send message",
+    "recipient": "Recipient username",
+    "subject": "Message title",
+    "body": "Message text",
+    "kind": "Message type",
+    "presentation": "Delivery",
+    "presentations": {
+      "inbox": "Message center",
+      "modal": "Show as popup"
+    },
     "markRead": "Mark as read",
     "dismiss": "Dismiss",
     "acknowledge": "Got it",

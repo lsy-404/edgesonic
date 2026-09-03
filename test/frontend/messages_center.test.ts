@@ -22,6 +22,7 @@ console.log("message API:");
 assert(/edgesonicFetch\("messages"\)/.test(api), "loads the current account message feed");
 assert(/edgesonicPost\("messages\/read", \{ id \}\)/.test(api), "marks individual messages read");
 assert(/edgesonicPost\("messages\/dismiss", \{ id \}\)/.test(api), "dismisses individual messages");
+assert(/edgesonicPost\("messages\/send", input\)/.test(api), "sends administrator messages");
 
 console.log("visibility and priority:");
 assert(/props\.isSuperAdmin \? officialMessages\.value : \[\]/.test(component), "official messages are client-filtered to super administrators");
@@ -32,6 +33,7 @@ assert(!/v-html/.test(component), "renders service message content as text rathe
 console.log("app integration:");
 assert(/import MessageCenter from "\.\/components\/MessageCenter\.vue"/.test(app), "loads the message center into the app shell");
 assert(/<MessageCenter :is-super-admin="level >= 3"/.test(app), "passes super-administrator status to the center");
+assert(/:can-manage-users="hasPerm\('manage_users'\)"/.test(app), "passes administrator send permission to the center");
 assert(/"messages"\s*:/.test(english) && /"messages"\s*:/.test(chinese), "includes both localized message-center labels");
 
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

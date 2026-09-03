@@ -357,7 +357,7 @@ onBeforeUnmount(() => {
       <div class="nav-user">
         <span class="nav-username">{{ displayName }}</span>
         <span class="status-badge" :class="level >= 3 ? 'warning' : level >= 2 ? 'info' : 'muted'">{{ levelLabel }}</span>
-        <MessageCenter :is-super-admin="level >= 3" />
+        <MessageCenter :is-super-admin="level >= 3" :can-manage-users="hasPerm('manage_users')" />
         <button class="btn-secondary btn-sm" @click="doLogout">{{ t("app.logout") }}</button>
       </div>
 

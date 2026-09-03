@@ -35,6 +35,17 @@
     "unreadCount": "{count} 条未读消息",
     "loadFailed": "无法加载消息，请稍后重试。",
     "actionFailed": "无法更新消息状态，请重试。",
+    "send": "发送信息",
+    "sendFailed": "信息发送失败",
+    "recipient": "接收者用户名",
+    "subject": "信息标题",
+    "body": "信息内容",
+    "kind": "信息类型",
+    "presentation": "投递方式",
+    "presentations": {
+      "inbox": "信息中心",
+      "modal": "以弹窗显示"
+    },
     "markRead": "标为已读",
     "dismiss": "忽略",
     "acknowledge": "我知道了",
