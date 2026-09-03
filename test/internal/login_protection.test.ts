@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { clearLoginFailures, loginAllowed, recordLoginFailure, verifyTurnstile } from "../../worker/src/utils/loginProtection";
+import { clearLoginFailures, loginAllowed, recordLoginFailure } from "../../worker/src/utils/loginProtection";
 
 function assert(condition: unknown, message: string): void {
   if (!condition) throw new Error(message);
@@ -30,17 +30,6 @@ async function main() {
   await clearLoginFailures(db, request, "alice");
   assert((await loginAllowed(db, request, "alice")) === 0, "successful login clears the matching lock");
 
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = (async () => new Response(JSON.stringify({ success: true, action: "login", hostname: "app.example" }))) as typeof fetch;
-  try {
-    const env = { TURNSTILE_SECRET: "secret", TURNSTILE_SITE_KEY: "site" } as Env;
-    assert(await verifyTurnstile(env, request, "token", "login"), "accepts a matching Siteverify result");
-    assert(!(await verifyTurnstile(env, request, "token", "register")), "rejects a token issued for another action");
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-
-  assert(await verifyTurnstile({} as Env, request, undefined, "login"), "unconfigured Turnstile stays optional");
   console.log("Login protection checks passed");
 }
 

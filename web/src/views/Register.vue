@@ -1,12 +1,11 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
 import { mapActivationError, registerGateHint } from "../lib/activation";
-import { removeTurnstile, renderTurnstile } from "../lib/turnstile";
 
 const { t } = useI18n();
 const { register, isLoggedIn, getLoginConfig } = useAuth();
@@ -26,10 +25,6 @@ const registrationEnabled = ref(false);
 const activationEnabled = ref(false);
 const gateMode = ref<"all" | "any">("all");
 const emailVerificationOn = ref(false);
-const turnstileSiteKey = ref("");
-const turnstileToken = ref("");
-const turnstileContainer = ref<HTMLElement | null>(null);
-let turnstileWidgetId: string | null = null;
 // Older backends don't announce the activation gate in loginConfig; when a
 // registration attempt bounces on the invite requirement we reveal the field.
 const inviteForcedVisible = ref(false);
@@ -46,18 +41,8 @@ onMounted(async () => {
   activationEnabled.value = cfg.activationEnabled;
   gateMode.value = cfg.registrationGateMode;
   emailVerificationOn.value = cfg.emailEnabled;
-  turnstileSiteKey.value = cfg.turnstileSiteKey;
-  if (turnstileSiteKey.value) {
-    await nextTick();
-    if (turnstileContainer.value) {
-      try { turnstileWidgetId = await renderTurnstile(turnstileContainer.value, turnstileSiteKey.value, "register", (token) => { turnstileToken.value = token; }); }
-      catch { error.value = t("register.failed"); }
-    }
-  }
   checkingConfig.value = false;
 });
-
-onBeforeUnmount(() => removeTurnstile(turnstileWidgetId));
 
 async function submit() {
   error.value = "";
@@ -67,7 +52,7 @@ async function submit() {
   }
   loading.value = true;
   try {
-    const result = await register(username.value, email.value, password.value, inviteCode.value.trim() || undefined, turnstileToken.value || undefined);
+    const result = await register(username.value, email.value, password.value, inviteCode.value.trim() || undefined);
     if (result.ok) { router.push("/login"); return; }
     const key = result.error ? mapActivationError(result.error) : null;
     if (key === "activation.errors.inviteRequired") inviteForcedVisible.value = true;
@@ -136,11 +121,7 @@ async function submit() {
               :disabled="loading"
             />
           </div>
-          <div v-if="turnstileSiteKey" class="form-group">
-            <div ref="turnstileContainer" />
-          </div>
-
-          <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !email || !password || (!!turnstileSiteKey && !turnstileToken)">
+          <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !email || !password">
             {{ loading ? t("register.submitting") : t("register.submit") }}
           </button>
           <router-link to="/login" class="login-register-hint">{{ t("register.backToLogin") }}</router-link>
