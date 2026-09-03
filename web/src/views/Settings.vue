@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatSize } from "../api";
@@ -190,9 +190,21 @@ async function saveSelfPassword() {
 type SectionKey = "user" | "activation" | "audioCache" | "system" | "sessions" | "clients" | "permissions";
 const open = ref<Record<SectionKey, boolean>>({ user: true, activation: false, audioCache: false, system: false, sessions: false, clients: false, permissions: false });
 function toggleSection(key: SectionKey) { open.value[key] = !open.value[key]; }
+const clientsSection = ref<HTMLElement | null>(null);
+async function locateClientsSection() {
+  await nextTick();
+  clientsSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+  clientsSection.value?.querySelector<HTMLButtonElement>(".section-header")?.focus({ preventScroll: true });
+}
 // The expired-activation banner deep-links here with ?section=activation.
 if (route.query.section === "activation") { open.value.user = false; open.value.activation = true; }
 if (route.query.section === "clients") { open.value.user = false; open.value.clients = true; }
+watch(() => route.query.section, (section) => {
+  if (section !== "clients") return;
+  open.value.user = false;
+  open.value.clients = true;
+  void locateClientsSection();
+});
 // Nothing to redeem or read while the account is unbounded, so the section
 // only appears once activation actually constrains it.
 const showActivationSection = computed(() =>
@@ -1641,6 +1653,7 @@ async function copyText(text: string) {
 }
 
 onMounted(() => {
+  if (route.query.section === "clients") void locateClientsSection();
   if (canManageSettings.value) loadFeatures();
   loadSessions();
   if (!isGuest.value) loadCredentials();
@@ -3136,7 +3149,7 @@ onMounted(() => {
     </section>
 
     <!-- ============ SUBSONIC CLIENTS ============ -->
-    <section v-if="hasPerm('manage_credentials')" class="settings-section card" :class="{ open: open.clients }">
+    <section v-if="hasPerm('manage_credentials')" id="subsonic-clients" ref="clientsSection" class="settings-section card" :class="{ open: open.clients }">
       <button class="section-header" @click="toggleSection('clients')">
         <span class="section-title">{{ t("settings.clients.title") }}</span>
         <span class="section-caret">{{ open.clients ? "−" : "+" }}</span>

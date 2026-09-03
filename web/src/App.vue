@@ -273,9 +273,11 @@ onBeforeUnmount(() => {
   >
     <section class="card subsonic-password-notice" role="dialog" aria-modal="true" :aria-label="t('subsonicPasswordNotice.title')">
       <h2>{{ t("subsonicPasswordNotice.title") }}</h2>
-      <p>{{ t(subsonicMasterPasswordNotice === "create_client_password"
-        ? "subsonicPasswordNotice.createClientPassword"
-        : "subsonicPasswordNotice.clientsNotEnabled") }}</p>
+      <p v-if="subsonicMasterPasswordNotice === 'create_client_password'">
+        {{ t("subsonicPasswordNotice.createClientPasswordPrefix") }}
+        <button type="button" class="subsonic-password-notice-link" @click="openSubsonicClients">{{ t("subsonicPasswordNotice.clientsLink") }}</button>
+      </p>
+      <p v-else>{{ t("subsonicPasswordNotice.clientsNotEnabled") }}</p>
       <div class="subsonic-password-notice-actions">
         <button
           v-if="subsonicMasterPasswordNotice === 'create_client_password'"
@@ -440,6 +442,17 @@ onBeforeUnmount(() => {
 .subsonic-password-notice { width: min(460px, 100%); padding: 1.25rem; }
 .subsonic-password-notice h2 { margin: 0; font-size: 1.1rem; }
 .subsonic-password-notice p { margin: 0.8rem 0 1.1rem; color: var(--color-text-secondary); line-height: 1.55; }
+.subsonic-password-notice-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  color: var(--color-accent);
+  background: transparent;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
 .subsonic-password-notice-actions { display: flex; justify-content: flex-end; gap: 0.55rem; }
 .toast-enter-active, .toast-leave-active { transition: opacity 0.2s, transform 0.2s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(0.5rem); }

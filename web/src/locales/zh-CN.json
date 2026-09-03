@@ -22,7 +22,8 @@
   },
   "subsonicPasswordNotice": {
     "title": "Subsonic 登录已阻止",
-    "createClientPassword": "出于安全考虑，网站不允许将主账户密码用于 Subsonic 客户端。请在“设置 → Subsonic 客户端”中创建独立的客户端密码。",
+    "createClientPasswordPrefix": "出于安全考虑，网站不允许将主账户密码用于 Subsonic 客户端。请在",
+    "clientsLink": "“设置 → Subsonic 客户端”中创建独立的客户端密码。",
     "clientsNotEnabled": "由于网站管理员策略，SUBSONIC 客户端未在你的账号上启用。",
     "openClients": "打开 Subsonic 客户端"
   },
