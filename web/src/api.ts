@@ -110,6 +110,23 @@ const email = ref(localStorage.getItem("edgesonic_email") || "");
 const emailVerified = ref(localStorage.getItem("edgesonic_email_verified") === "1");
 export type SubsonicMasterPasswordNotice = "create_client_password" | "clients_not_enabled";
 const subsonicMasterPasswordNotice = ref<SubsonicMasterPasswordNotice | null>(null);
+
+export type MessageKind = "info" | "notice" | "warning" | "error";
+export type MessagePresentation = "center" | "modal";
+export interface UserMessage {
+  id: string;
+  title: string;
+  body: string;
+  kind: MessageKind | string;
+  presentation: MessagePresentation | string;
+  createdAt: string;
+  readAt: string | null;
+  source: string;
+}
+export interface MessageFeed {
+  messages: UserMessage[];
+  officialMessages: UserMessage[];
+}
 // Activation state from /auth/me (cached so the router guard can decide
 // synchronously on reload, same pattern as edgesonic_perms).
 function readCachedActivation(): ActivationInfo {
@@ -490,6 +507,30 @@ export function useAuth() {
     }
   }
 
+  async function getMessages(): Promise<MessageFeed> {
+    const data = JSON.parse(await edgesonicFetch("messages")) as {
+      ok?: boolean;
+      error?: string;
+      messages?: UserMessage[];
+      officialMessages?: UserMessage[];
+    };
+    if (!data.ok) throw new Error(data.error || "Unable to load messages");
+    return {
+      messages: Array.isArray(data.messages) ? data.messages : [],
+      officialMessages: Array.isArray(data.officialMessages) ? data.officialMessages : [],
+    };
+  }
+
+  async function markMessageRead(id: string): Promise<void> {
+    const data = JSON.parse(await edgesonicPost("messages/read", { id })) as { ok?: boolean; error?: string };
+    if (!data.ok) throw new Error(data.error || "Unable to mark message read");
+  }
+
+  async function dismissMessage(id: string): Promise<void> {
+    const data = JSON.parse(await edgesonicPost("messages/dismiss", { id })) as { ok?: boolean; error?: string };
+    if (!data.ok) throw new Error(data.error || "Unable to dismiss message");
+  }
+
   // Self-service profile edits (Settings → account). Nickname goes through the
   // dedicated self endpoint; password reuses Subsonic changePassword (self).
   async function updateNickname(next: string): Promise<void> {
@@ -756,7 +797,8 @@ export function useAuth() {
     permissions, hasPerm, nickname, avatarKey, email, emailVerified, displayName,
     subsonicMasterPasswordNotice, dismissSubsonicMasterPasswordNotice,
     activation, fetchActivationStatus, redeemActivationCode, probeGuestEnabled,
-    fetchMe, updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
+    fetchMe, getMessages, markMessageRead, dismissMessage,
+    updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
     login, guestLogin, logout, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
     getLoginConfig, register, requestPasswordReset, confirmPasswordReset, confirmEmailVerify,
     tagFetch, tagPost, storageFetch, storagePost, edgesonicFetch, edgesonicPost,

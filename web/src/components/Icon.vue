@@ -23,6 +23,10 @@ const ICONS: Record<string, () => ReturnType<typeof h>[]> = {
     h("circle", { cx: 8, cy: 8, r: 6.5, stroke: "currentColor", "stroke-width": 1.2, fill: "none" }),
     h("path", { d: "M8 7v4M8 5v0.4", stroke: "currentColor", "stroke-width": 1.2, "stroke-linecap": "round" }),
   ],
+  bell: () => [
+    h("path", { d: "M4 11.5h8l-1-1.5V7a3 3 0 00-6 0v3l-1 1.5z", stroke: "currentColor", "stroke-width": 1.2, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" }),
+    h("path", { d: "M6.5 13a1.7 1.7 0 003 0", stroke: "currentColor", "stroke-width": 1.2, fill: "none", "stroke-linecap": "round" }),
+  ],
   play: () => [h("path", { d: "M5 3v10l8-5-8-5z", fill: "currentColor" })],
   left: () => [h("path", { d: "M10.5 3.5L6 8l4.5 4.5", stroke: "currentColor", "stroke-width": 1.4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" })],
   right: () => [h("path", { d: "M5.5 3.5L10 8l-4.5 4.5", stroke: "currentColor", "stroke-width": 1.4, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" })],
