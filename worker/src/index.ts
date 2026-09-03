@@ -20,6 +20,7 @@ import { registerRoutes } from "./router";
 import { formPostMiddleware } from "./middleware/form_post";
 import { formatMiddleware, xmlToJson } from "./middleware/format";
 import { crossOriginIsolationMiddleware } from "./middleware/cross_origin_isolation";
+import { apiRateLimitMiddleware } from "./middleware/rate_limit";
 import { refreshAllChannels } from "./utils/podcastSync";
 import { maybeRunScheduledScan } from "./utils/scheduledScan";
 import { reclaimStaleWork } from "./utils/workReclaim";
@@ -105,6 +106,10 @@ app.use("/rest/*", authMiddleware);
 app.use("/tag/*", authMiddleware);
 app.use("/storage/*", authMiddleware);
 app.use("/edgesonic/*", authMiddleware);
+app.use("/rest/*", apiRateLimitMiddleware);
+app.use("/tag/*", apiRateLimitMiddleware);
+app.use("/storage/*", apiRateLimitMiddleware);
+app.use("/edgesonic/*", apiRateLimitMiddleware);
 
 registerRoutes(app);
 
