@@ -63,7 +63,7 @@ The implementation uses the existing `manage_cloudflare` permission and keeps th
 
 - `GET /edgesonic/cf/getUpdates` lists release tags and selects the newest stable API-ready tag as `defaultTag`.
 - `GET /edgesonic/cf/getUpdateStatus` reports the persisted operation state.
-- `POST /edgesonic/cf/update` accepts `{ "tag": "v1.2.6", "confirmMajor": false }`. Omitting `tag` selects the newest stable release.
+- `POST /edgesonic/cf/update` accepts `{ "tag": "v1.4.0", "confirmMajor": false }`. Omitting `tag` selects the newest stable release.
 
 The release workflow publishes both the existing Wrangler package and an API-ready `edgesonic-update.tar.gz`. The latter contains a bundled `worker.js`, an assets manifest, static assets, and an optional `db/patch.sql`. The manifest contains the artifact checksum and Major-update declaration.
 

@@ -32,6 +32,7 @@ import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
+const HOST = process.env.HOST || "0.0.0.0";
 const SHARED_KEY = process.env.SHARED_KEY;
 
 if (!SHARED_KEY) {
@@ -100,16 +101,16 @@ function reapJob(jobId, status, error) {
 // ---------------------------------------------------------------------------
 const app = express();
 
-app.get("/health", (_req, res) => {
-  res.type("text/plain").send("ok");
-});
-
 function authGate(req, res, next) {
   if (req.get("X-EdgeSonic-Container-Key") !== SHARED_KEY) {
     return res.status(401).type("text/plain").send("unauthorized");
   }
   next();
 }
+
+app.get("/health", authGate, (_req, res) => {
+  res.type("text/plain").send("ok");
+});
 
 app.post("/transcode", authGate, (req, res) => {
   const profileId = String(req.query.profile || "");
@@ -182,6 +183,6 @@ app.delete("/jobs/:jobId", authGate, (req, res) => {
   res.type("text/plain").send("ok");
 });
 
-app.listen(PORT, () => {
-  console.log(`edgesonic-external-transcoder listening on :${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`edgesonic-external-transcoder listening on ${HOST}:${PORT}`);
 });
