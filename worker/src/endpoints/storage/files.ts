@@ -22,9 +22,11 @@ import { urlAdapter } from "../../adapters/url";
 import { createSubsonicAdapter } from "../../adapters/subsonic";
 import { encodePath } from "./scan";
 import { srcBaseUrl, type SourceRow } from "../../utils/slices";
+import { PayloadTooLargeError, limitReadableStream } from "../../utils/streamLimit";
 import type { User } from "../../types/entities";
 
 export const filesRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
+const MAX_UPLOAD_BYTES = 256 * 1024 * 1024;
 
 // ── Global Files API Security Guard ──────────────────────────────────────
 // All /storage/files/* operations require admin privileges (level 2+).
@@ -62,7 +64,8 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   const path = c.req.query("path") || "";
 
   const rawBody = c.req.raw.body;
-  if (!rawBody || !name) {
+  const cleanPath = normalizeUploadPath(path);
+  if (!rawBody || !name || !isSafeUploadName(name) || cleanPath === null || (source !== "r2" && source !== "webdav")) {
     return c.json({ ok: false, error: "Missing file body or name" }, 400);
   }
 
@@ -73,12 +76,13 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   // audio-only.
   const isAudio = isAudioSuffix(suffix);
   // Build R2 key: music/ is the base; path is a sub-path relative to music/
-  const cleanPath = path.replace(/^music\/?/, "").replace(/\/+$/, "");
   const requestedKey = "music/" + (cleanPath ? cleanPath + "/" : "") + name;
 
   const db = env.DB;
   const now = Math.floor(Date.now() / 1000);
   const sizeHeader = parseInt(c.req.header("Content-Length") || "0", 10);
+  const cap = isDemoMode(env) ? demoMaxUploadBytes(env) : MAX_UPLOAD_BYTES;
+  if (sizeHeader > cap) return c.json({ ok: false, error: "Payload too large" }, 413);
 
   // File-type gate. Audio plus the companion types (lyrics / text / images)
   // are always accepted. Operators can flip allow_all_file_types to "1" to
@@ -91,7 +95,6 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   // Demo mode: per-upload cap. The cumulative R2 storage cap below applies
   // in both normal and demo modes.
   if (isDemoMode(env)) {
-    const cap = demoMaxUploadBytes(env);
     if (sizeHeader && sizeHeader > cap) {
       return c.json({ ok: false, error: `Demo upload cap is ${cap} bytes` }, 413);
     }
@@ -124,23 +127,53 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     const creds = await getSourceCredentials(db, "webdav", env);
     if (!creds) return c.json({ ok: false, error: "No WebDAV source configured" }, 400);
     const fullUrl = `${creds.baseUrl.replace(/\/$/, "")}/${r2Key.split("/").map(encodeURIComponent).join("/")}`;
-    const resp = await fetch(fullUrl, {
-      method: "PUT",
-      headers: {
-        Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}`,
-        "Content-Type": contentType,
-        ...(target.policy === "overwrite" ? {} : { "If-None-Match": "*" }),
-      },
-      body: rawBody,
-    });
+    let overflowed = false;
+    let resp: Response;
+    try {
+      resp = await fetch(fullUrl, {
+        method: "PUT",
+        headers: {
+          Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}`,
+          "Content-Type": contentType,
+          ...(target.policy === "overwrite" ? {} : { "If-None-Match": "*" }),
+        },
+        body: limitReadableStream(rawBody, cap, undefined, () => { overflowed = true; }),
+      });
+    } catch (error) {
+      if (overflowed || error instanceof PayloadTooLargeError) {
+        try { await fetch(fullUrl, { method: "DELETE", headers: { Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}` } }); } catch { /* remote cleanup best effort */ }
+        return c.json({ ok: false, error: "Payload too large" }, 413);
+      }
+      throw error;
+    }
+    if (overflowed) {
+      try { await fetch(fullUrl, { method: "DELETE", headers: { Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}` } }); } catch { /* remote cleanup best effort */ }
+      return c.json({ ok: false, error: "Payload too large" }, 413);
+    }
     if (resp.status === 412) return c.json(uploadConflict(source, r2Key), 409);
     if (!resp.ok) return c.json({ ok: false, error: `WebDAV upload failed: ${resp.status}` }, 500);
+    const verified = await verifyWebDavUpload(fullUrl, creds, cap);
+    if (!verified.ok) return c.json({ ok: false, error: verified.error }, verified.status);
   } else {
-    const written = await env.MUSIC_BUCKET.put(r2Key, rawBody, {
+    let overflowed = false;
+    let written;
+    try {
+      written = await env.MUSIC_BUCKET.put(r2Key, limitReadableStream(rawBody, cap, undefined, () => { overflowed = true; }), {
       httpMetadata: { contentType },
       ...(target.policy === "overwrite" ? {} : { onlyIf: new Headers({ "If-None-Match": "*" }) }),
-    });
+      });
+    } catch (error) {
+      if (overflowed || error instanceof PayloadTooLargeError) {
+        await env.MUSIC_BUCKET.delete(r2Key);
+        return c.json({ ok: false, error: "Payload too large" }, 413);
+      }
+      throw error;
+    }
     if (written === null) return c.json(uploadConflict(source, r2Key), 409);
+    if (overflowed || (written?.size ?? 0) > cap) {
+      await env.MUSIC_BUCKET.delete(r2Key);
+      return c.json({ ok: false, error: "Payload too large" }, 413);
+    }
   }
 
   // A companion file is just bytes sitting next to the track — no song row,
@@ -203,7 +236,8 @@ filesRoutes.post("/files/upload-conflicts", permissionMiddleware("upload"), asyn
   }
   try {
     const items = await Promise.all(body.files.map(async (file) => {
-      const path = (file.path || "").replace(/^music\/?/, "").replace(/\/+$/, "");
+      const path = normalizeUploadPath(file.path || "");
+      if (path === null || !isSafeUploadName(file.name!)) throw new Error("Invalid upload path or name");
       const key = `music/${path ? `${path}/` : ""}${file.name}`;
       const exists = await doesUploadTargetExist(env, source, key);
       return {
@@ -274,6 +308,30 @@ async function finishAudioUpload(
   }
 
   return c.json(uploadSuccess({ key: r2Key, id: instanceId, storageUri, source, target }));
+}
+
+function isSafeUploadName(name: string): boolean {
+  return !!name && !/[\\/\x00-\x1F\x7F]/.test(name) && name !== "." && name !== "..";
+}
+
+function normalizeUploadPath(raw: string): string | null {
+  const path = raw.replace(/^music\/?/, "");
+  if (!path) return "";
+  if (/[\\\x00-\x1F\x7F]/.test(path)) return null;
+  const segments = path.split("/");
+  if (segments.some((segment) => !segment || segment === "." || segment === "..")) return null;
+  return path;
+}
+
+async function verifyWebDavUpload(url: string, creds: { username: string; password: string }, cap: number): Promise<{ ok: true } | { ok: false; status: 413 | 502; error: string }> {
+  const auth = { Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}` };
+  const head = await fetch(url, { method: "HEAD", headers: auth });
+  const size = parseInt(head.headers.get("Content-Length") || "", 10);
+  if (head.ok && Number.isFinite(size) && size <= cap) return { ok: true };
+  try { await fetch(url, { method: "DELETE", headers: auth }); } catch { /* best-effort cleanup follows failed verification */ }
+  return head.ok && Number.isFinite(size)
+    ? { ok: false, status: 413, error: "Payload too large" }
+    : { ok: false, status: 502, error: "WebDAV upload size could not be verified; uploaded object was removed" };
 }
 
 type UploadTarget = { key: string; policy: "error" | "overwrite" | "rename"; existed: boolean; requestedKey: string };

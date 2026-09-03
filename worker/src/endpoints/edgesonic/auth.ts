@@ -17,7 +17,7 @@
 // runs *before* the global authMiddleware (it issues the session token used by
 // every other endpoint in /tag /storage /edgesonic).
 import { Hono } from "hono";
-import { permissionMiddleware, subsonicError, sha256, SESSION_TTL_SEC, buildSessionCookieHeader, GUEST_USERNAME } from "../../auth";
+import { permissionMiddleware, subsonicError, hashWebPassword, verifyWebPassword, SESSION_TTL_SEC, buildSessionCookieHeader, GUEST_USERNAME } from "../../auth";
 import { subsonicOK } from "../../utils/xml";
 import { recoverCronIfStale } from "../../utils/cronRecovery";
 import { getEffectivePermissions, hasPermission } from "../../utils/permissions";
@@ -33,6 +33,7 @@ import {
   verifyEmailTemplate, resetPasswordEmailTemplate, changeEmailTemplate, normalizeEmail,
 } from "../../utils/email";
 import type { User } from "../../types/entities";
+import { clearLoginFailures, loginAllowed, recordLoginFailure, verifyTurnstile } from "../../utils/loginProtection";
 
 // only request that legitimately arrives without a session) and is exported
 // separately so index.ts can mount it BEFORE the global auth filter at the
@@ -52,7 +53,7 @@ const SESSION_COOKIE = "edgesonic_session";
 webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
   const db = c.env.DB;
 
-  let body: { username?: string; password?: string };
+  let body: { username?: string; password?: string; turnstileToken?: string };
   try {
     body = await c.req.json();
   } catch {
@@ -63,6 +64,14 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
   if (!username || !password) {
     return c.json({ ok: false, error: "Missing username or password" }, 400);
   }
+  const retryAfter = await loginAllowed(db, c.req.raw, username);
+  if (retryAfter > 0) {
+    c.header("Retry-After", String(retryAfter));
+    return c.json({ ok: false, error: "Too many login attempts" }, 429);
+  }
+  if (!(await verifyTurnstile(c.env, c.req.raw, body.turnstileToken, "login"))) {
+    return c.json({ ok: false, error: "Verification failed" }, 403);
+  }
 
   // SELECT * so activation columns come along when present (undefined on a
   // not-yet-migrated database → treated as permanent).
@@ -71,16 +80,23 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
     .bind(username)
     .first<{ username: string; master_password: string; level: number; enabled: number; activation_status?: string | null; activated_until?: number | null }>();
   if (!user || !user.enabled) {
+    await recordLoginFailure(db, c.req.raw, username);
     return c.json({ ok: false, error: "Invalid credentials" }, 401);
   }
   if (user.level === 0 && user.username !== GUEST_USERNAME) {
     return c.json({ ok: false, error: "Invalid credentials" }, 401);
   }
 
-  const hash = await sha256(password);
-  if (hash !== user.master_password) {
+  const verifiedPassword = await verifyWebPassword(password, user.master_password);
+  if (!verifiedPassword.valid) {
+    await recordLoginFailure(db, c.req.raw, username);
     return c.json({ ok: false, error: "Invalid credentials" }, 401);
   }
+  if (verifiedPassword.legacy) {
+    await db.prepare("UPDATE users SET master_password = ? WHERE username = ?")
+      .bind(await hashWebPassword(password), username).run();
+  }
+  await clearLoginFailures(db, c.req.raw, username);
 
   // Session TTL is clamped to the activation window; an inactive user still
   // gets a (restricted) session so they can redeem an invite code.
@@ -238,6 +254,7 @@ webLoginRoutes.get("/edgesonic/auth/loginConfig", async (c) => {
     // self-service reset, or vice versa.
     passwordResetEnabled: allowPasswordReset && emailEnabled,
     emailEnabled,
+    turnstileSiteKey: c.env.TURNSTILE_SECRET && c.env.TURNSTILE_SITE_KEY ? c.env.TURNSTILE_SITE_KEY : "",
     isDemo: isDemoMode(c.env),
   });
 });
@@ -255,7 +272,7 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
     return c.json({ ok: false, error: "Registration requires email to be configured" }, 403);
   }
 
-  let body: { username?: string; email?: string; password?: string; inviteCode?: string };
+  let body: { username?: string; email?: string; password?: string; inviteCode?: string; turnstileToken?: string };
   try {
     body = await c.req.json();
   } catch {
@@ -274,6 +291,9 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
   }
   if (password.length < 8 || password.length > 256) {
     return c.json({ ok: false, error: "Password must be 8-256 characters" }, 400);
+  }
+  if (!(await verifyTurnstile(c.env, c.req.raw, body.turnstileToken, "register"))) {
+    return c.json({ ok: false, error: "Verification failed" }, 403);
   }
 
   // Signup gate: which of the enabled options (email verification, invite
@@ -303,12 +323,12 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
 
   const existingUser = await db.prepare("SELECT username FROM users WHERE username = ?").bind(username).first();
   if (existingUser) {
-    return c.json({ ok: false, error: "Username already taken" }, 409);
+    return c.json({ ok: true, username });
   }
   if (email) {
     const existingEmail = await db.prepare("SELECT username FROM users WHERE email = ?").bind(email).first();
     if (existingEmail) {
-      return c.json({ ok: false, error: "Email already registered" }, 409);
+      return c.json({ ok: true, username });
     }
   }
 
@@ -318,7 +338,7 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
   const now = Math.floor(Date.now() / 1000);
   await db.prepare(
     "INSERT INTO users (username, master_password, level, enabled, email, email_verified, activation_status, created_at, updated_at) VALUES (?, ?, 1, 1, ?, 0, ?, ?, ?)"
-  ).bind(username, await sha256(password), email || null, initialStatus, now, now).run();
+  ).bind(username, await hashWebPassword(password), email || null, initialStatus, now, now).run();
 
   if (activationEnabled && inviteCode) {
     const redeemed = await redeemCode(c.env, username, inviteCode);
@@ -402,7 +422,7 @@ webLoginRoutes.post("/edgesonic/auth/passwordReset/confirm", async (c) => {
   }
   const now = Math.floor(Date.now() / 1000);
   await db.prepare("UPDATE users SET master_password = ?, updated_at = ? WHERE username = ?")
-    .bind(await sha256(newPassword), now, username).run();
+    .bind(await hashWebPassword(newPassword), now, username).run();
   // Invalidate every existing session so a leaked/compromised session can't
   // outlive the password reset that was meant to shut it out.
   await db.prepare("DELETE FROM sessions WHERE username = ?").bind(username).run();
@@ -584,7 +604,7 @@ edgesonicAuthRoutes.post("/auth/emailChange/request", async (c) => {
   await ensureEmailColumns(c.env);
   const row = await db.prepare("SELECT master_password FROM users WHERE username = ?")
     .bind(caller.username).first<{ master_password: string }>();
-  if (!row || (await sha256(body.currentPassword || "")) !== row.master_password) {
+  if (!row || !(await verifyWebPassword(body.currentPassword || "", row.master_password)).valid) {
     return c.json({ ok: false, error: "Current password is incorrect" }, 401);
   }
 

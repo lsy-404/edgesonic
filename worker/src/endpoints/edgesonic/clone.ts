@@ -29,8 +29,8 @@
 //  * upsertStarred / upsertPlaylist — any authenticated user MAY write to their
 //    OWN account; writing to a different target user requires manage_users
 //    (enforced in-handler via resolveTargetUser).
-//  * proxy — any authenticated user (server-side upstream fetch; SSRF surface
-//    accepted by design so non-admins can read the upstream they clone from).
+//  * proxy — any authenticated user, constrained to a read-only relay with
+//    per-user request budgeting and upstream response limits.
 //
 // Persistence is INSERT OR IGNORE for entity tables (artists/albums/
 // song_masters) so a re-clone is a no-op; annotations / playlists /
@@ -38,11 +38,13 @@
 
 import { Hono } from "hono";
 import { md5 } from "../../utils/md5";
-import { GUEST_USERNAME, permissionMiddleware, sha256 } from "../../auth";
+import { GUEST_USERNAME, permissionMiddleware, hashWebPassword } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
 import type { User } from "../../types/entities";
 import type { Context } from "hono";
 import { artistInsertStatements, parseArtistCredits, songArtistStatements } from "../../utils/artistCredits";
+import { PayloadTooLargeError, limitReadableStream } from "../../utils/streamLimit";
+import { isSafeCloneParams, limitedProxyBody, safeCloneTarget, takeCloneProxyRateLimit } from "../../utils/cloneProxySecurity";
 
 export const cloneRoutes = new Hono<{
   Bindings: Env;
@@ -523,7 +525,8 @@ async function resolveExistingSongMaster(
 }
 
 function signedUpstreamUrl(baseUrl: string, username: string, password: string, path: string, params?: Record<string, string>): string {
-  const s = Array.from({ length: 10 }, () => Math.random().toString(36)[2]).join("");
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const s = Array.from(salt, (byte) => byte.toString(36)).join("");
   const q = new URLSearchParams({
     u: username,
     t: md5(password + s),
@@ -554,26 +557,37 @@ cloneRoutes.post("/clone/proxy", async (c) => {
   }>().catch(() => ({} as {
     upstreamUrl?: string; username?: string; password?: string; path?: string; params?: Record<string, string>; binary?: boolean;
   }));
-  if (!body.upstreamUrl || !body.username || !body.password || !body.path) {
+  if (!body.upstreamUrl || !body.username || !body.password || !body.path || !isSafeCloneParams(body.params || {})) {
     return c.json({ ok: false, error: "Missing upstreamUrl / username / password / path" }, 400);
   }
-  const url = signedUpstreamUrl(body.upstreamUrl, body.username, body.password, body.path, body.params);
-  const resp = await fetch(url);
-  if (body.binary) {
-    const ab = await resp.arrayBuffer();
-    return new Response(ab, {
-      status: resp.status,
-      headers: {
-        "Content-Type": resp.headers.get("Content-Type") || "application/octet-stream",
-      },
-    });
+  const target = safeCloneTarget(body.upstreamUrl, body.path);
+  if (!target) return c.json({ ok: false, error: "Unsafe upstream URL or unsupported API path" }, 400);
+  const user = c.get("user");
+  const rate = await takeCloneProxyRateLimit(c.env.DB, user.username);
+  if (!rate.allowed) return c.json({ ok: false, error: "Clone proxy rate limit exceeded" }, 429, { "Retry-After": String(rate.retryAfter) });
+  const url = signedUpstreamUrl(target.toString(), body.username, body.password, body.path, body.params);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15_000);
+  let resp: Response;
+  try {
+    resp = await fetch(url, { signal: ctrl.signal, redirect: "error" });
+  } catch {
+    clearTimeout(timer);
+    return c.json({ ok: false, error: "Upstream request failed or timed out" }, 502);
   }
-  const text = await resp.text();
-  return new Response(text, {
+  const maxBytes = body.binary ? MAX_INGEST_BYTES : 8 * 1024 * 1024;
+  const length = parseInt(resp.headers.get("Content-Length") || "0", 10);
+  if (length > maxBytes) {
+    clearTimeout(timer);
+    return c.json({ ok: false, error: "Upstream response too large" }, 413);
+  }
+  if (!resp.body) {
+    clearTimeout(timer);
+    return new Response(null, { status: resp.status });
+  }
+  return new Response(limitedProxyBody(resp.body, maxBytes, () => clearTimeout(timer)), {
     status: resp.status,
-    headers: {
-      "Content-Type": resp.headers.get("Content-Type") || "application/json; charset=UTF-8",
-    },
+    headers: { "Content-Type": resp.headers.get("Content-Type") || (body.binary ? "application/octet-stream" : "application/json; charset=UTF-8") },
   });
 });
 
@@ -907,15 +921,13 @@ cloneRoutes.post("/clone/upsertStarred", async (c) => {
 // POST /edgesonic/clone/upsertUser
 // ---------------------------------------------------------------------------
 // Body: { user, credentials? }
-//   user:      { username, masterPassword (already SHA-256 hashed upstream? no — plaintext),
-//                level?, enabled? }
+//   user:      { username, password (plaintext), level?, enabled? }
 //  credentials: Array<{ password, label?, streamProxyStrategy? }> — Subsonic client
 //                passwords to mirror into local subsonic_credentials.
 //
-// EdgeSonic stores master_password as SHA-256(password). The upstream
-// getStarred/getUsers responses expose the password as plaintext (Subsonic
-// spec requires it for token auth), so we hash here before INSERT. If the
-// caller already hashed, set `passwordHashed: true` to skip hashing.
+// The upstream getStarred/getUsers responses expose the password as plaintext
+// (Subsonic spec requires it for token auth), so this route derives the local
+// web-password KDF record before INSERT.
 // Super admin only — the clone-all-users flow provisions local accounts
 // (and their login passwords), a strictly higher-privilege operation than the
 // per-account favourite/playlist clone.
@@ -951,9 +963,10 @@ cloneRoutes.post("/clone/upsertUser", permissionMiddleware("manage_users"), asyn
   const enabledNum = typeof user.enabled === "number"
     ? (user.enabled ? 1 : 0)
     : (user.enabled === false ? 0 : 1);
-  const masterPassword = user.passwordHashed
-    ? user.password
-    : await sha256(user.password);
+  if (user.passwordHashed) {
+    return c.json({ ok: false, error: "Pre-hashed master passwords are not accepted" }, 400);
+  }
+  const masterPassword = await hashWebPassword(user.password);
   const now = Math.floor(Date.now() / 1000);
 
   await db.prepare(
@@ -1037,9 +1050,23 @@ async function registerAudioInstance(
   }
 
   const r2Key = originalPathToR2Key(originalPath) || fallbackR2Key(artistDir, albumDir, filename, masterId);
-  const r2Object = await env.MUSIC_BUCKET.put(r2Key, body, {
-    httpMetadata: { contentType },
-  });
+  let overflowed = false;
+  let r2Object: R2Object;
+  try {
+    r2Object = await env.MUSIC_BUCKET.put(r2Key, isBuffer ? body : limitReadableStream(body, MAX_INGEST_BYTES, undefined, () => { overflowed = true; }), {
+      httpMetadata: { contentType },
+    });
+  } catch (error) {
+    if (overflowed || error instanceof PayloadTooLargeError) {
+      await env.MUSIC_BUCKET.delete(r2Key);
+      return { ok: false, error: "Payload too large", status: 413 };
+    }
+    throw error;
+  }
+  if (overflowed || r2Object.size > MAX_INGEST_BYTES) {
+    await env.MUSIC_BUCKET.delete(r2Key);
+    return { ok: false, error: "Payload too large", status: 413 };
+  }
   const size = r2Object?.size ?? (isBuffer ? body.byteLength : declaredSize);
   if (size === 0) {
     await env.MUSIC_BUCKET.delete(r2Key);
@@ -1147,14 +1174,22 @@ cloneRoutes.post("/clone/fetchAudioToR2", permissionMiddleware("manage_users"), 
   const suffix = (body.suffix || extToSuffix(cleanFilename)).toLowerCase();
   const contentType = body.contentType || "application/octet-stream";
 
-  const url = signedUpstreamUrl(upstreamUrl, username, password, "stream", { id: songId });
+  const target = safeCloneTarget(upstreamUrl, "stream");
+  if (!target) {
+    return c.json({ ok: false, error: "Unsafe upstream URL" }, 400);
+  }
+  const url = signedUpstreamUrl(target.toString(), username, password, "stream", { id: songId });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15_000);
   let resp: Response;
   try {
-    resp = await fetch(url);
-  } catch (e) {
-    return c.json({ ok: false, error: `upstream fetch failed: ${e instanceof Error ? e.message : String(e)}` }, 502);
+    resp = await fetch(url, { signal: ctrl.signal, redirect: "error" });
+  } catch {
+    clearTimeout(timer);
+    return c.json({ ok: false, error: "Upstream request failed or timed out" }, 502);
   }
   if (!resp.ok) {
+    clearTimeout(timer);
     return c.json({ ok: false, error: `upstream stream returned HTTP ${resp.status}` }, 502);
   }
   // Was `await resp.arrayBuffer()` — buffering the whole file into
@@ -1165,19 +1200,25 @@ cloneRoutes.post("/clone/fetchAudioToR2", permissionMiddleware("manage_users"), 
   // Stream resp.body straight into R2.put() instead — this is R2's
   // documented pattern for proxying a fetch response without buffering.
   if (!resp.body) {
+    clearTimeout(timer);
     return c.json({ ok: false, error: "upstream stream had no body" }, 502);
   }
   const upstreamLength = parseInt(resp.headers.get("Content-Length") || "0", 10);
   if (upstreamLength && upstreamLength > MAX_INGEST_BYTES) {
+    clearTimeout(timer);
     return c.json({ ok: false, error: "Payload too large" }, 413);
   }
 
-  const result = await registerAudioInstance(env, db, {
-    masterId, sourceKey: body.sourceKey || DEFAULT_CLONE_SOURCE_KEY, suffix, contentType, artistDir, albumDir, filename: cleanFilename, originalPath: body.originalPath,
-    declaredSize: body.size || upstreamLength || 0, body: resp.body,
-  });
-  if (!result.ok) return c.json({ ok: false, error: result.error }, result.status);
-  return c.json(result);
+  try {
+    const result = await registerAudioInstance(env, db, {
+      masterId, sourceKey: body.sourceKey || DEFAULT_CLONE_SOURCE_KEY, suffix, contentType, artistDir, albumDir, filename: cleanFilename, originalPath: body.originalPath,
+      declaredSize: body.size || upstreamLength || 0, body: resp.body,
+    });
+    if (!result.ok) return c.json({ ok: false, error: result.error }, result.status);
+    return c.json(result);
+  } finally {
+    clearTimeout(timer);
+  }
 });
 
 function extToSuffix(filename: string): string {

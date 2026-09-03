@@ -46,6 +46,7 @@ import {
   downloadEpisodeToR2,
 } from "../../utils/podcastSync";
 import type { User, PodcastChannel, PodcastEpisode } from "../../types/entities";
+import { parsePageSize } from "./pagination";
 
 export const podcastsRoutes = new Hono<{
   Bindings: Env;
@@ -98,12 +99,6 @@ function getFirst(p: ParamMap, name: string): string | undefined {
 function parseBool(s: string | undefined, defaultValue: boolean): boolean {
   if (s === undefined) return defaultValue;
   return s === "true" || s === "1" || s === "yes";
-}
-
-function parseIntDefault(s: string | undefined, defaultValue: number): number {
-  if (s === undefined || s === "") return defaultValue;
-  const n = parseInt(s, 10);
-  return Number.isFinite(n) ? n : defaultValue;
 }
 
 // ============================================================================
@@ -187,9 +182,7 @@ const getNewestPodcastsHandler = async (
   c: Context<{ Bindings: Env; Variables: { user: User } }>,
 ) => {
   const params = await readParams(c);
-  // This was capped at 500 for no documented reason — dropped, keeping only
-  // the floor of 1.
-  const count = Math.max(1, parseIntDefault(getFirst(params, "count"), 20));
+  const count = parsePageSize(getFirst(params, "count"), 20);
   const queries = createQueries(c.env.DB);
 
   const episodes = await queries.listNewestEpisodes(count);

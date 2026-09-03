@@ -35,6 +35,8 @@ interface Env {
   // (≥32 random bytes, e.g. `openssl rand -base64 48`). Unset → falls back
   // to INSTANCE_ID + static salt; see worker/src/utils/workUploadToken.ts.
   WORK_UPLOAD_HMAC_KEY?: string;
+  TURNSTILE_SECRET?: string;
+  TURNSTILE_SITE_KEY?: string;
   // Optional GitHub token for the self-update release lookup:
   //  wrangler secret put GITHUB_TOKEN
   // Unset → unauthenticated calls, capped at 60/hour per source IP and shared

@@ -39,7 +39,7 @@ import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { authMiddleware } from "../../worker/src/auth";
 import { webLoginRoutes } from "../../worker/src/endpoints/edgesonic/auth";
-import { sha256 } from "../../worker/src/auth";
+import { sha256, verifyWebPassword } from "../../worker/src/auth";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -227,6 +227,21 @@ async function main() {
     assert(sc.includes("SameSite=Lax"), `SameSite=Lax flag present (got ${sc})`);
     assert(sc.includes("Max-Age=604800"), `Max-Age=604800 (7d) present (got ${sc})`);
     assert(sc.includes("Path=/"), `Path=/ present (got ${sc})`);
+    const migrated = sqlite.prepare("SELECT master_password FROM users WHERE username = 'alice'").get() as { master_password: string };
+    assert((await verifyWebPassword("pw", migrated.master_password)).valid && migrated.master_password.startsWith("pbkdf2-sha256$"), "successful legacy login migrates to the web KDF");
+  }
+
+  console.log("\nlogin rate limit persists failures in D1:");
+  {
+    const sqlite = buildDb();
+    sqlite.prepare("UPDATE users SET master_password = ? WHERE username = 'alice'").run(await sha256("pw"));
+    const { postLogin } = makeApp(sqlite);
+    for (let i = 0; i < 5; i++) {
+      const r = await postLogin({ username: "alice", password: "wrong" });
+      assert(r.status === 401 || r.status === 429, `failed attempt ${i + 1} is rejected (got ${r.status})`);
+    }
+    const limited = await postLogin({ username: "alice", password: "pw" });
+    assert(limited.status === 429 && !!limited.headers.get("Retry-After"), `locked login returns 429 and Retry-After (got ${limited.status})`);
   }
 
   console.log("\nguest endpoint only enables guest login when browsing is allowed:");

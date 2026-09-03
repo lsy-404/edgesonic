@@ -25,7 +25,7 @@ function makeBucket(entries: Array<string | [string, number]> = []) {
     puts,
     async head(key: string) { return objects.has(key) ? { key, size: sizes.get(key) || 0 } : null; },
     async get(key: string) { return objects.has(key) ? { key } : null; },
-    async put(key: string) { objects.add(key); sizes.set(key, 4); puts.push(key); },
+    async put(key: string) { objects.add(key); sizes.set(key, 4); puts.push(key); return { key, size: 4 }; },
     async delete(key: string) { objects.delete(key); sizes.delete(key); },
     async list() { return { objects: [...objects].map((key) => ({ key, size: sizes.get(key) || 0 })), truncated: false }; },
   };
@@ -80,9 +80,10 @@ function makeUpload(bucket: ReturnType<typeof makeBucket>, db: ReturnType<typeof
     return next();
   });
   app.route("/storage", filesRoutes);
-  return async (source: "r2" | "webdav", conflict?: string) => {
-    const query = new URLSearchParams({ name: "song.mp3", source });
+  return async (source: "r2" | "webdav", conflict?: string, path?: string, name = "song.mp3") => {
+    const query = new URLSearchParams({ name, source });
     if (conflict) query.set("conflict", conflict);
+    if (path !== undefined) query.set("path", path);
     const response = await app.fetch(new Request(`http://test/storage/files/upload?${query}`, {
       method: "POST", headers: { "Content-Length": "4", "Content-Type": "audio/mpeg" }, body: new Uint8Array([1, 2, 3, 4]),
     }), { DB: db, MUSIC_BUCKET: bucket, ...extraEnv });
@@ -146,11 +147,16 @@ async function main() {
   {
     const originalFetch = globalThis.fetch;
     const methods: Array<{ method: string; url: string }> = [];
+    const uploaded = new Set<string>();
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const method = init?.method || "GET";
       const url = String(input);
       methods.push({ method, url });
-      if (method === "HEAD") return new Response(null, { status: url.includes("song%20(1).mp3") ? 404 : 200 });
+      if (method === "HEAD") {
+        const exists = uploaded.has(url) || !url.includes("song%20(1).mp3");
+        return new Response(null, { status: exists ? 200 : 404, headers: exists ? { "Content-Length": "4" } : {} });
+      }
+      if (method === "PUT") uploaded.add(url);
       return new Response(null, { status: 201 });
     }) as typeof fetch;
     try {
@@ -166,6 +172,15 @@ async function main() {
       assert(methods.some((call) => call.method === "PUT" && call.url.endsWith("music/song%20(1).mp3")), "WebDAV PUT uses the resolved final path");
     } finally {
       globalThis.fetch = originalFetch;
+    }
+  }
+
+  console.log("upload path boundary:");
+  {
+    const upload = makeUpload(makeBucket(), makeDb());
+    for (const [path, name] of [["../private", "song.mp3"], ["album//disc", "song.mp3"], ["album", "../song.mp3"], ["album", "song\\name.mp3"]] as const) {
+      const result = await upload("r2", undefined, path, name);
+      assert(result.status === 400, `route rejects unsafe upload path/name ${path}/${name}`);
     }
   }
 

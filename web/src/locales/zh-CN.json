@@ -27,6 +27,37 @@
     "clientsNotEnabled": "由于网站管理员策略，SUBSONIC 客户端未在你的账号上启用。",
     "openClients": "打开 Subsonic 客户端"
   },
+  "messages": {
+    "title": "消息中心",
+    "open": "打开消息中心",
+    "refresh": "刷新消息",
+    "empty": "暂无消息。",
+    "unreadCount": "{count} 条未读消息",
+    "loadFailed": "无法加载消息，请稍后重试。",
+    "actionFailed": "无法更新消息状态，请重试。",
+    "send": "发送信息",
+    "sendFailed": "信息发送失败",
+    "recipient": "接收者用户名",
+    "subject": "信息标题",
+    "body": "信息内容",
+    "kind": "信息类型",
+    "presentation": "投递方式",
+    "presentations": {
+      "inbox": "信息中心",
+      "modal": "以弹窗显示"
+    },
+    "markRead": "标为已读",
+    "dismiss": "忽略",
+    "acknowledge": "我知道了",
+    "official": "官方",
+    "service": "服务",
+    "kinds": {
+      "info": "信息",
+      "notice": "通知",
+      "warning": "警告",
+      "error": "重要"
+    }
+  },
   "app": {
     "groups": {
       "library": "媒体库",

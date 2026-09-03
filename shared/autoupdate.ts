@@ -44,6 +44,7 @@ export interface GithubAsset {
 export interface GithubRelease {
   tag_name?: string;
   name?: string;
+  body?: string | null;
   published_at?: string | null;
   prerelease?: boolean;
   draft?: boolean;

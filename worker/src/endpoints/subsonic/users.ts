@@ -30,7 +30,7 @@
 
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { GUEST_USERNAME, permissionMiddleware, sha256, subsonicError } from "../../auth";
+import { GUEST_USERNAME, permissionMiddleware, hashWebPassword, subsonicError } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
 import { subsonicOK } from "../../utils/xml";
 import type { User } from "../../types/entities";
@@ -196,7 +196,7 @@ const createUserHandler = async (c: C): Promise<Response> => {
     .prepare(
       "INSERT OR REPLACE INTO users (username, master_password, level, enabled, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)"
     )
-    .bind(username, await sha256(password), level, now, now)
+    .bind(username, await hashWebPassword(password), level, now, now)
     .run();
 
   return c.text(subsonicOK({}), 200, XML);
@@ -243,7 +243,7 @@ const updateUserHandler = async (c: C): Promise<Response> => {
   if (password) {
     await db
       .prepare("UPDATE users SET master_password = ?, updated_at = ? WHERE username = ?")
-      .bind(await sha256(password), now, username)
+      .bind(await hashWebPassword(password), now, username)
       .run();
   }
   if (levelParam !== null) {

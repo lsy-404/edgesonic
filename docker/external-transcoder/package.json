@@ -1,6 +1,6 @@
 {
   "name": "edgesonic-external-transcoder",
-  "version": "0.1.0",
+  "version": "1.4.0",
   "private": true,
   "description": "Self-hosted ffmpeg transcoder reachable by EdgeSonic Workers via X-EdgeSonic-Container-Key.",
   "type": "module",

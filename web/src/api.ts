@@ -110,6 +110,23 @@ const email = ref(localStorage.getItem("edgesonic_email") || "");
 const emailVerified = ref(localStorage.getItem("edgesonic_email_verified") === "1");
 export type SubsonicMasterPasswordNotice = "create_client_password" | "clients_not_enabled";
 const subsonicMasterPasswordNotice = ref<SubsonicMasterPasswordNotice | null>(null);
+
+export type MessageKind = "info" | "notice" | "warning" | "error";
+export type MessagePresentation = "inbox" | "modal";
+export interface UserMessage {
+  id: string;
+  title: string;
+  body: string;
+  kind: MessageKind | string;
+  presentation: MessagePresentation | string;
+  createdAt: string;
+  readAt: string | null;
+  source: string;
+}
+export interface MessageFeed {
+  messages: UserMessage[];
+  officialMessages: UserMessage[];
+}
 // Activation state from /auth/me (cached so the router guard can decide
 // synchronously on reload, same pattern as edgesonic_perms).
 function readCachedActivation(): ActivationInfo {
@@ -145,7 +162,7 @@ export function useAuth() {
     return salt.value;
   }
 
-  async function login(u: string, p: string): Promise<LoginResult> {
+  async function login(u: string, p: string, turnstileToken?: string): Promise<LoginResult> {
     // /edgesonic/auth/login sets the `edgesonic_session` HttpOnly cookie
     // (see worker/src/endpoints/edgesonic/auth.ts) AND returns the
     // sessionToken in JSON — the SPA keeps only the non-secret username +
@@ -156,7 +173,7 @@ export function useAuth() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({ username: u, password: p }),
+      body: JSON.stringify({ username: u, password: p, ...(turnstileToken ? { turnstileToken } : {}) }),
     });
     const data = await resp.json();
     if (data.ok) {
@@ -203,6 +220,7 @@ export function useAuth() {
     // is true Register.vue shows the invite-code field and gate-mode hint.
     activationEnabled: boolean;
     registrationGateMode: "all" | "any";
+    turnstileSiteKey: string;
   }
 
   // Public — no session required. Drives Login.vue's notice line, optional
@@ -211,7 +229,7 @@ export function useAuth() {
     const fallback: LoginConfig = {
       noticeText: "", backgroundUrl: "", registrationEnabled: false,
       passwordResetEnabled: false, emailEnabled: false, isDemo: false,
-      activationEnabled: false, registrationGateMode: "all",
+      activationEnabled: false, registrationGateMode: "all", turnstileSiteKey: "",
     };
     try {
       const resp = await fetch(`${EDGESONIC_BASE}/auth/loginConfig`, { credentials: "same-origin" });
@@ -226,22 +244,24 @@ export function useAuth() {
         isDemo: !!data.isDemo,
         activationEnabled: !!data.activationEnabled,
         registrationGateMode: data.registrationGateMode === "any" ? "any" : "all",
+        turnstileSiteKey: typeof data.turnstileSiteKey === "string" ? data.turnstileSiteKey : "",
       };
     } catch { return fallback; }
   }
 
-  async function register(u: string, e: string, p: string, inviteCode?: string): Promise<LoginResult> {
+  async function register(u: string, e: string, p: string, inviteCode?: string, turnstileToken?: string): Promise<LoginResult> {
     const resp = await fetch(`${EDGESONIC_BASE}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({ username: u, email: e, password: p, ...(inviteCode ? { inviteCode } : {}) }),
+      body: JSON.stringify({ username: u, email: e, password: p, ...(inviteCode ? { inviteCode } : {}), ...(turnstileToken ? { turnstileToken } : {}) }),
     });
     const data = await resp.json();
     if (!data.ok) return { ok: false, error: data.error || "Registration failed" };
-    // Registration doesn't itself open a session — reuse the normal login
-    // flow so App.vue/router hydrate exactly as they would for any sign-in.
-    return login(u, p);
+    // Registration is deliberately indistinguishable from an already-claimed
+    // account, so it never attempts a follow-up login that would reintroduce
+    // a username-enumeration side channel.
+    return { ok: true, name: u };
   }
 
   async function requestPasswordReset(emailOrUsername: string): Promise<{ ok: boolean; error?: string }> {
@@ -488,6 +508,37 @@ export function useAuth() {
     } catch (e) {
       handleAuthError(e);
     }
+  }
+
+  async function getMessages(): Promise<MessageFeed> {
+    const data = JSON.parse(await edgesonicFetch("messages")) as {
+      ok?: boolean;
+      error?: string;
+      messages?: UserMessage[];
+      officialMessages?: UserMessage[];
+    };
+    if (!data.ok) throw new Error(data.error || "Unable to load messages");
+    return {
+      messages: Array.isArray(data.messages) ? data.messages : [],
+      officialMessages: Array.isArray(data.officialMessages) ? data.officialMessages : [],
+    };
+  }
+
+  async function markMessageRead(id: string): Promise<void> {
+    const data = JSON.parse(await edgesonicPost("messages/read", { id })) as { ok?: boolean; error?: string };
+    if (!data.ok) throw new Error(data.error || "Unable to mark message read");
+  }
+
+  async function dismissMessage(id: string): Promise<void> {
+    const data = JSON.parse(await edgesonicPost("messages/dismiss", { id })) as { ok?: boolean; error?: string };
+    if (!data.ok) throw new Error(data.error || "Unable to dismiss message");
+  }
+
+  async function sendUserMessage(input: {
+    username: string; title: string; message: string; kind: MessageKind; presentation: MessagePresentation;
+  }): Promise<void> {
+    const data = JSON.parse(await edgesonicPost("messages/send", input)) as { ok?: boolean; error?: string };
+    if (!data.ok) throw new Error(data.error || "Unable to send message");
   }
 
   // Self-service profile edits (Settings → account). Nickname goes through the
@@ -756,7 +807,8 @@ export function useAuth() {
     permissions, hasPerm, nickname, avatarKey, email, emailVerified, displayName,
     subsonicMasterPasswordNotice, dismissSubsonicMasterPasswordNotice,
     activation, fetchActivationStatus, redeemActivationCode, probeGuestEnabled,
-    fetchMe, updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
+    fetchMe, getMessages, markMessageRead, dismissMessage, sendUserMessage,
+    updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
     login, guestLogin, logout, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
     getLoginConfig, register, requestPasswordReset, confirmPasswordReset, confirmEmailVerify,
     tagFetch, tagPost, storageFetch, storagePost, edgesonicFetch, edgesonicPost,

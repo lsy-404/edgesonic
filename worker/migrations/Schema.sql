@@ -124,6 +124,14 @@ CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_username ON sessions(username);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 
+CREATE TABLE IF NOT EXISTS login_rate_limits (
+  key TEXT PRIMARY KEY,
+  window_started INTEGER NOT NULL,
+  failures INTEGER NOT NULL,
+  blocked_until INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+);
+
 -- ============================================================================
 -- 4. Subsonic Credentials (per-user client passwords, max 64)
 -- ============================================================================
@@ -142,6 +150,26 @@ CREATE TABLE IF NOT EXISTS subsonic_credentials (
   FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_subsonic_cred_user ON subsonic_credentials(username);
+
+-- ==========================================================================
+-- 4a. Online User Messages
+-- ==========================================================================
+CREATE TABLE IF NOT EXISTS user_messages (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('admin', 'system', 'official')),
+  kind TEXT NOT NULL CHECK (kind IN ('info', 'notice', 'warning')),
+  presentation TEXT NOT NULL CHECK (presentation IN ('inbox', 'modal')),
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  dedupe_key TEXT,
+  read_at INTEGER,
+  dismissed_at INTEGER,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_user_messages_user_created ON user_messages(username, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_messages_dedupe ON user_messages(username, dedupe_key) WHERE dedupe_key IS NOT NULL;
 
 -- ============================================================================
 -- 5. User Permissions (granular per-level control)
@@ -937,6 +965,15 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   window_start INTEGER NOT NULL DEFAULT 0,
   count INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (username, permission)
+);
+
+-- clone_proxy_rate_limits — fixed one-minute request window for the
+-- authenticated upstream clone relay.
+CREATE TABLE IF NOT EXISTS clone_proxy_rate_limits (
+  username TEXT NOT NULL,
+  window_start INTEGER NOT NULL,
+  count INTEGER NOT NULL,
+  PRIMARY KEY (username, window_start)
 );
 
 -- kv_store — Generic KV (currently: cron:last_scan_ts)

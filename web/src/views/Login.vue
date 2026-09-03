@@ -1,10 +1,11 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
+import { removeTurnstile, renderTurnstile } from "../lib/turnstile";
 
 const { t } = useI18n();
 const { login, guestLogin, isLoggedIn, getLoginConfig } = useAuth();
@@ -25,6 +26,10 @@ const backgroundUrl = ref("");
 const registrationEnabled = ref(false);
 const passwordResetEnabled = ref(false);
 const isDemo = ref(false);
+const turnstileSiteKey = ref("");
+const turnstileToken = ref("");
+const turnstileContainer = ref<HTMLElement | null>(null);
+let turnstileWidgetId: string | null = null;
 
 // Demo deployments show a login-hint fallback when the operator hasn't set
 // a custom notice — self-hosters see nothing until they configure one.
@@ -39,7 +44,7 @@ async function submit() {
   error.value = "";
   loading.value = true;
   try {
-    const result = await login(username.value, password.value);
+    const result = await login(username.value, password.value, turnstileToken.value || undefined);
     if (result.ok) router.push("/");
     else error.value = result.error || t("login.failed");
   } catch {
@@ -85,7 +90,17 @@ onMounted(async () => {
   registrationEnabled.value = cfg.registrationEnabled;
   passwordResetEnabled.value = cfg.passwordResetEnabled;
   isDemo.value = cfg.isDemo;
+  turnstileSiteKey.value = cfg.turnstileSiteKey;
+  if (turnstileSiteKey.value) {
+    await nextTick();
+    if (turnstileContainer.value) {
+      try { turnstileWidgetId = await renderTurnstile(turnstileContainer.value, turnstileSiteKey.value, "login", (token) => { turnstileToken.value = token; }); }
+      catch { error.value = t("login.failed"); }
+    }
+  }
 });
+
+onBeforeUnmount(() => removeTurnstile(turnstileWidgetId));
 </script>
 
 <template>
@@ -120,8 +135,11 @@ onMounted(async () => {
           </div>
           <input v-model="password" type="password" maxlength="256" class="form-input" autocomplete="current-password" :disabled="loading" />
         </div>
+        <div v-if="turnstileSiteKey" class="form-group">
+          <div ref="turnstileContainer" />
+        </div>
 
-        <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !password">
+        <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !password || (!!turnstileSiteKey && !turnstileToken)">
           {{ loading ? t("login.submitting") : t("login.submit") }}
         </button>
         <button v-if="guestEnabled" type="button" class="btn-secondary login-btn" :disabled="loading" @click="loginAsGuest">

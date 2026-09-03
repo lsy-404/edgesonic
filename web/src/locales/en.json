@@ -27,6 +27,37 @@
     "clientsNotEnabled": "Subsonic clients are not enabled for your account by the site administrator.",
     "openClients": "Open Subsonic Clients"
   },
+  "messages": {
+    "title": "Messages",
+    "open": "Open messages",
+    "refresh": "Refresh messages",
+    "empty": "You have no messages.",
+    "unreadCount": "{count} unread",
+    "loadFailed": "Messages could not be loaded. Try again shortly.",
+    "actionFailed": "Message status could not be updated. Try again.",
+    "send": "Send message",
+    "sendFailed": "Unable to send message",
+    "recipient": "Recipient username",
+    "subject": "Message title",
+    "body": "Message text",
+    "kind": "Message type",
+    "presentation": "Delivery",
+    "presentations": {
+      "inbox": "Message center",
+      "modal": "Show as popup"
+    },
+    "markRead": "Mark as read",
+    "dismiss": "Dismiss",
+    "acknowledge": "Got it",
+    "official": "Official",
+    "service": "Service",
+    "kinds": {
+      "info": "Info",
+      "notice": "Notice",
+      "warning": "Warning",
+      "error": "Important"
+    }
+  },
   "app": {
     "groups": {
       "library": "LIBRARY",

@@ -29,7 +29,7 @@ import { Hono } from "hono";
 import { webLoginRoutes, edgesonicAuthRoutes } from "../../worker/src/endpoints/edgesonic/auth";
 import { featuresRoutes } from "../../worker/src/endpoints/edgesonic/features";
 import { createEmailToken, consumeEmailToken, consumeEmailChangeToken } from "../../worker/src/utils/email";
-import { sha256 } from "../../worker/src/auth";
+import { sha256, verifyWebPassword } from "../../worker/src/auth";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -264,13 +264,13 @@ async function main() {
     assert(row?.email === "new@example.com", `email stored lower-cased (got ${row?.email})`);
     assert(row?.email_verified === 0, "email_verified starts false");
     assert(row?.level === 1 && row?.enabled === 1, "new account is a normal enabled level-1 user");
-    assert(row?.master_password === await sha256("longpassword1"), "password hash matches sha256(password)");
+    assert(!!row && (await verifyWebPassword("longpassword1", row.master_password)).valid, "password hash uses the web KDF");
 
     const dupeUsername = await post("/edgesonic/auth/register", { username: "newuser", email: "other@example.com", password: "longpassword1" });
-    assert(dupeUsername.status === 409, `409 on duplicate username (got ${dupeUsername.status})`);
+    assert(dupeUsername.status === 200, `duplicate username gets generic success (got ${dupeUsername.status})`);
 
     const dupeEmail = await post("/edgesonic/auth/register", { username: "another", email: "new@example.com", password: "longpassword1" });
-    assert(dupeEmail.status === 409, `409 on duplicate email (got ${dupeEmail.status})`);
+    assert(dupeEmail.status === 200, `duplicate email gets generic success (got ${dupeEmail.status})`);
 
     // Login now works with the self-chosen password (registration doesn't
     // open a session itself — the SPA calls login() right after).
@@ -330,7 +330,7 @@ async function main() {
     assert(confirm.status === 200 && confirmBody.ok, "confirm with a valid token succeeds");
 
     const updated = sqlite.prepare("SELECT master_password FROM users WHERE username = 'alice'").get() as { master_password: string };
-    assert(updated.master_password === await sha256("newpassword1"), "password hash updated to the new password");
+    assert((await verifyWebPassword("newpassword1", updated.master_password)).valid, "password reset uses the web KDF");
     const sessionsLeft = sqlite.prepare("SELECT COUNT(*) AS n FROM sessions WHERE username = 'alice'").get() as { n: number };
     assert(sessionsLeft.n === 0, "all prior sessions invalidated by the reset");
 

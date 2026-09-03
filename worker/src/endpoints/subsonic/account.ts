@@ -20,7 +20,7 @@
 // leaked subsonic_credentials / apiKey can't rotate the master password.
 // getAvatar is open to any authenticated user (it just streams the binary).
 import { Hono } from "hono";
-import { subsonicError, sha256 } from "../../auth";
+import { subsonicError, hashWebPassword } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
 import { isDemoMode } from "../../utils/demoMode";
 import { subsonicOK } from "../../utils/xml";
@@ -90,7 +90,7 @@ const changePasswordHandler = async (c: import("hono").Context<{ Bindings: Env; 
 
   await db
     .prepare("UPDATE users SET master_password = ?, updated_at = ? WHERE username = ?")
-    .bind(await sha256(password), Math.floor(Date.now() / 1000), username)
+    .bind(await hashWebPassword(password), Math.floor(Date.now() / 1000), username)
     .run();
   return c.text(subsonicOK({}), 200, { "Content-Type": "application/xml; charset=UTF-8" });
 };

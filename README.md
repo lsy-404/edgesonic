@@ -115,6 +115,15 @@ After pushing `CF_API_TOKEN`, also enable Images Transformations on your zone
 (`dash.cloudflare.com/<account-id>/images/transformations` → select zone → Enable) so the
 `IMAGES` binding actually resizes covers instead of falling back to the original bytes.
 
+Optional — protect login and registration with Cloudflare Turnstile. Create a widget for this
+instance's hostname, then set both values; when either is absent, the existing login flow remains
+unchanged.
+
+```bash
+npx wrangler secret put TURNSTILE_SECRET
+npx wrangler secret put TURNSTILE_SITE_KEY
+```
+
 ### 4. Deploy
 
 ```bash

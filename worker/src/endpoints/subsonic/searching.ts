@@ -19,6 +19,7 @@ import { createQueries } from "../../db/queries";
 import { subsonicOK } from "../../utils/xml";
 import { mapArtist, mapAlbum, mapSong, type AnnotationLite } from "../../types/subsonic";
 import type { User, Annotation } from "../../types/entities";
+import { parsePageOffset, parsePageSize } from "./pagination";
 
 export const searchRoutes = new Hono<{
   Bindings: Env;
@@ -58,12 +59,12 @@ const search23Handler = (tag: "searchResult2" | "searchResult3") =>
     // Empty query = full listing (Navidrome-compatible) — the web Songs view relies on it
     const query = normalizeQuery(c.req.query("query") || "");
 
-    const artistCount = parseInt(c.req.query("artistCount") || "20", 10);
-    const artistOffset = parseInt(c.req.query("artistOffset") || "0", 10);
-    const albumCount = parseInt(c.req.query("albumCount") || "20", 10);
-    const albumOffset = parseInt(c.req.query("albumOffset") || "0", 10);
-    const songCount = parseInt(c.req.query("songCount") || "20", 10);
-    const songOffset = parseInt(c.req.query("songOffset") || "0", 10);
+    const artistCount = parsePageSize(c.req.query("artistCount"), 20);
+    const artistOffset = parsePageOffset(c.req.query("artistOffset"));
+    const albumCount = parsePageSize(c.req.query("albumCount"), 20);
+    const albumOffset = parsePageOffset(c.req.query("albumOffset"));
+    const songCount = parsePageSize(c.req.query("songCount"), 20);
+    const songOffset = parsePageOffset(c.req.query("songOffset"));
     const songSort = c.req.query("songSort");
 
     const queries = createQueries((c.env as Env).DB);
@@ -111,10 +112,8 @@ const search1Handler = async (c: Context): Promise<Response> => {
   const albumQ = c.req.query("album") || "";
   const titleQ = c.req.query("title") || "";
   const anyQ = c.req.query("any") || "";
-  // This was capped at 500 for no documented reason, unlike search2/3 (this
-  // handler's direct siblings below) which have never had a ceiling.
-  const count = parseInt(c.req.query("count") || "20", 10) || 20;
-  const offset = parseInt(c.req.query("offset") || "0", 10) || 0;
+  const count = parsePageSize(c.req.query("count"), 20);
+  const offset = parsePageOffset(c.req.query("offset"));
 
   // `any` falls back to a generic LIKE; the specific fields take precedence.
   const any = anyQ || artistQ || albumQ || titleQ || anyQ;

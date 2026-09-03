@@ -21,6 +21,7 @@ import { subsonicError } from "../../auth";
 import { mapArtist, mapAlbum, mapSong, type AnnotationLite } from "../../types/subsonic";
 import type { User, Annotation } from "../../types/entities";
 import { mapSongSources, selectSongSource } from "./sources";
+import { parsePageOffset, parsePageSize } from "./pagination";
 
 export const browsingRoutes = new Hono<{
   Bindings: Env;
@@ -210,13 +211,8 @@ const getMusicFoldersHandler = async (c: Context) => {
 
 const albumList2Handler = async (c: Context, tag: "albumList" | "albumList2") => {
   const type = c.req.query("type") || "newest";
-  // This was capped at 500 for no documented reason — inconsistent with
-  // search2/3 (never capped) and low enough that a real library's alphabetical
-  // album grid legitimately needs 3+ requests just to page through once.
-  // D1's LIMIT itself has no such ceiling; only IN(?,?,...) bind-parameter
-  // counts do (batched separately, see queries.ts BATCH=80). No cap here.
-  const size = parseInt(c.req.query("size") || "10", 10) || 10;
-  const offset = parseInt(c.req.query("offset") || "0", 10) || 0;
+  const size = parsePageSize(c.req.query("size"), 10);
+  const offset = parsePageOffset(c.req.query("offset"));
   const fromYearRaw = c.req.query("fromYear");
   const toYearRaw = c.req.query("toYear");
   const fromYear = fromYearRaw !== undefined ? (parseInt(fromYearRaw, 10) || undefined) : undefined;
@@ -268,9 +264,8 @@ const getGenresHandler = async (c: Context) => {
 const getSongsByGenreHandler = async (c: Context) => {
   const genre = c.req.query("genre");
   if (!genre) return c.text(subsonicOK({ songsByGenre: {} }), 200, XML);
-  // Same arbitrary-500-cap removal as getAlbumList2 above.
-  const count = parseInt(c.req.query("count") || "10", 10) || 10;
-  const offset = parseInt(c.req.query("offset") || "0", 10) || 0;
+  const count = parsePageSize(c.req.query("count"), 10);
+  const offset = parsePageOffset(c.req.query("offset"));
 
   const queries = createQueries((c.env as Env).DB);
   const songs = await queries.getSongsByGenre(genre, count, offset);

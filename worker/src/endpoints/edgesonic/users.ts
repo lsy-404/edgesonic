@@ -26,7 +26,7 @@
 // Errors: `{ ok: false, error }` with the appropriate HTTP status (400 / 403 /
 // 404), matching setAvatar's convention.
 import { Hono } from "hono";
-import { GUEST_USERNAME, permissionMiddleware, sha256 } from "../../auth";
+import { GUEST_USERNAME, permissionMiddleware, hashWebPassword } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
 import { ensureNicknameColumn, ensureEmailColumns, ensureActivationSchema } from "../../utils/schema_patch";
 import { isDemoMode } from "../../utils/demoMode";
@@ -144,7 +144,7 @@ usersRoutes.post("/users/create", permissionMiddleware("manage_users"), async (c
   const now = Math.floor(Date.now() / 1000);
   await db.prepare(
     "INSERT OR REPLACE INTO users (username, master_password, level, enabled, email, email_verified, created_at, updated_at) VALUES (?, ?, ?, 1, ?, 0, ?, ?)"
-  ).bind(body.username, await sha256(body.password), level, email, now, now).run();
+  ).bind(body.username, await hashWebPassword(body.password), level, email, now, now).run();
   return c.json({ ok: true });
 });
 
@@ -152,6 +152,10 @@ usersRoutes.get("/users/get", async (c) => {
   const username = c.req.query("username");
   if (!username) {
     return c.json({ ok: false, error: "Missing username" }, 400);
+  }
+  const caller = c.get("user");
+  if (username !== caller.username && !(await hasPermission(c.env, caller, "manage_users"))) {
+    return c.json({ ok: false, error: "manage_users permission required" }, 403);
   }
   await ensureEmailColumns(c.env);
   await ensureActivationSchema(c.env);
@@ -222,7 +226,7 @@ usersRoutes.post("/users/update", permissionMiddleware("manage_users"), async (c
   if (body.password) {
     await db.prepare(
       "UPDATE users SET master_password = ?, updated_at = ? WHERE username = ?"
-    ).bind(await sha256(body.password), now, body.username).run();
+    ).bind(await hashWebPassword(body.password), now, body.username).run();
   }
   if (body.level !== undefined) {
     if (body.level < 0 || body.level > 3) {
