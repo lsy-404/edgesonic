@@ -36,6 +36,7 @@ import { statsRoutes } from "./stats";
 import { syncRoutes } from "./sync";
 import { lastfmRoutes } from "./lastfm";
 import { artistScrapeRoutes } from "./artistScrape";
+import { messagesRoutes } from "./messages";
 
 export const edgesonicRoutes = new Hono();
 
@@ -56,3 +57,4 @@ edgesonicRoutes.route("/", statsRoutes);
 edgesonicRoutes.route("/", syncRoutes);
 edgesonicRoutes.route("/", lastfmRoutes);
 edgesonicRoutes.route("/", artistScrapeRoutes);
+edgesonicRoutes.route("/", messagesRoutes);
