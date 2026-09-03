@@ -3,9 +3,7 @@
 import { createMiddleware } from "hono/factory";
 import type { User } from "../types/entities";
 
-export interface RateLimiter {
-  limit(options: { key: string }): Promise<{ success: boolean }>;
-}
+export type RateLimiter = Pick<RateLimit, "limit">;
 
 const RETRY_AFTER_SECONDS = 60;
 

@@ -27,8 +27,8 @@ test("the public Wrangler template declares independent auth and API limits", ()
   }));
 
   assert.deepEqual(limits, [
-    { name: "AUTH_RATE_LIMITER", namespaceId: "1001", limit: 20, period: 60 },
-    { name: "API_RATE_LIMITER", namespaceId: "1002", limit: 1200, period: 60 },
+    { name: "AUTH_RATE_LIMITER", namespaceId: "140001", limit: 20, period: 60 },
+    { name: "API_RATE_LIMITER", namespaceId: "140002", limit: 1200, period: 60 },
   ]);
   assert.ok(limits.every(({ namespaceId }) => /^[1-9][0-9]*$/.test(namespaceId)));
   assert.equal(new Set(limits.map(({ namespaceId }) => namespaceId)).size, limits.length);

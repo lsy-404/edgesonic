@@ -6,7 +6,7 @@ bindings:
 - `AUTH_RATE_LIMITER`: 20 calls per 60 seconds for login and registration.
 - `API_RATE_LIMITER`: 1200 calls per 60 seconds for the authenticated API.
 
-The example uses `1001` and `1002` as positive-integer namespace IDs. Before a
+The example uses `140001` and `140002` as positive-integer namespace IDs. Before a
 real deployment, replace them in the ignored `worker/wrangler.toml` with two
 IDs that are unique in your Cloudflare account. Keeping the IDs different keeps
 the counters independent. The binding only becomes effective when Worker code

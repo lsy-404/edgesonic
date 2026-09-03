@@ -59,7 +59,7 @@ R2_BUCKET_NAME = "<YOUR_R2_BUCKET_NAME>"
 # for each binding so their counters remain independent.
 [[ratelimits]]
 name = "AUTH_RATE_LIMITER"
-namespace_id = "1001"
+namespace_id = "140001"
 
   [ratelimits.simple]
   limit = 20
@@ -67,7 +67,7 @@ namespace_id = "1001"
 
 [[ratelimits]]
 name = "API_RATE_LIMITER"
-namespace_id = "1002"
+namespace_id = "140002"
 
   [ratelimits.simple]
   limit = 1200
