@@ -26,14 +26,21 @@ export async function recordLoginFailure(db: D1Database, req: Request, username:
   await ensureTable(db);
   const now = Math.floor(Date.now() / 1000);
   const key = keyFor(req, username);
-  const row = await db.prepare("SELECT window_started, failures FROM login_rate_limits WHERE key = ?").bind(key).first<{ window_started: number; failures: number }>();
-  const failures = !row || row.window_started <= now - WINDOW_SECONDS ? 1 : row.failures + 1;
-  const windowStarted = !row || row.window_started <= now - WINDOW_SECONDS ? now : row.window_started;
-  const blockedUntil = failures >= MAX_FAILURES ? now + WINDOW_SECONDS : 0;
-  await db.prepare(`INSERT INTO login_rate_limits (key, window_started, failures, blocked_until, updated_at) VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(key) DO UPDATE SET window_started=excluded.window_started, failures=excluded.failures, blocked_until=excluded.blocked_until, updated_at=excluded.updated_at`)
-    .bind(key, windowStarted, failures, blockedUntil, now).run();
-  return blockedUntil > now ? blockedUntil - now : 0;
+  const row = await db.prepare(`INSERT INTO login_rate_limits (key, window_started, failures, blocked_until, updated_at)
+    VALUES (?, ?, 1, 0, ?)
+    ON CONFLICT(key) DO UPDATE SET
+      window_started = CASE WHEN login_rate_limits.window_started <= excluded.updated_at - ? THEN excluded.window_started ELSE login_rate_limits.window_started END,
+      failures = CASE WHEN login_rate_limits.window_started <= excluded.updated_at - ? THEN 1 ELSE login_rate_limits.failures + 1 END,
+      blocked_until = CASE
+        WHEN login_rate_limits.window_started <= excluded.updated_at - ? THEN 0
+        WHEN login_rate_limits.failures + 1 >= ? THEN excluded.updated_at + ?
+        ELSE 0
+      END,
+      updated_at = excluded.updated_at
+    RETURNING blocked_until`)
+    .bind(key, now, now, WINDOW_SECONDS, WINDOW_SECONDS, WINDOW_SECONDS, MAX_FAILURES, WINDOW_SECONDS)
+    .first<{ blocked_until: number }>();
+  return (row?.blocked_until ?? 0) > now ? (row!.blocked_until - now) : 0;
 }
 
 export async function clearLoginFailures(db: D1Database, req: Request, username: string): Promise<void> {

@@ -127,6 +127,7 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     const creds = await getSourceCredentials(db, "webdav", env);
     if (!creds) return c.json({ ok: false, error: "No WebDAV source configured" }, 400);
     const fullUrl = `${creds.baseUrl.replace(/\/$/, "")}/${r2Key.split("/").map(encodeURIComponent).join("/")}`;
+    let overflowed = false;
     let resp: Response;
     try {
       resp = await fetch(fullUrl, {
@@ -136,32 +137,40 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
           "Content-Type": contentType,
           ...(target.policy === "overwrite" ? {} : { "If-None-Match": "*" }),
         },
-        body: limitReadableStream(rawBody, cap),
+        body: limitReadableStream(rawBody, cap, undefined, () => { overflowed = true; }),
       });
     } catch (error) {
-      if (error instanceof PayloadTooLargeError) {
+      if (overflowed || error instanceof PayloadTooLargeError) {
         try { await fetch(fullUrl, { method: "DELETE", headers: { Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}` } }); } catch { /* remote cleanup best effort */ }
         return c.json({ ok: false, error: "Payload too large" }, 413);
       }
       throw error;
+    }
+    if (overflowed) {
+      try { await fetch(fullUrl, { method: "DELETE", headers: { Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}` } }); } catch { /* remote cleanup best effort */ }
+      return c.json({ ok: false, error: "Payload too large" }, 413);
     }
     if (resp.status === 412) return c.json(uploadConflict(source, r2Key), 409);
     if (!resp.ok) return c.json({ ok: false, error: `WebDAV upload failed: ${resp.status}` }, 500);
     const verified = await verifyWebDavUpload(fullUrl, creds, cap);
     if (!verified.ok) return c.json({ ok: false, error: verified.error }, verified.status);
   } else {
+    let overflowed = false;
     let written;
     try {
-      written = await env.MUSIC_BUCKET.put(r2Key, limitReadableStream(rawBody, cap), {
+      written = await env.MUSIC_BUCKET.put(r2Key, limitReadableStream(rawBody, cap, undefined, () => { overflowed = true; }), {
       httpMetadata: { contentType },
       ...(target.policy === "overwrite" ? {} : { onlyIf: new Headers({ "If-None-Match": "*" }) }),
       });
     } catch (error) {
-      if (error instanceof PayloadTooLargeError) return c.json({ ok: false, error: "Payload too large" }, 413);
+      if (overflowed || error instanceof PayloadTooLargeError) {
+        await env.MUSIC_BUCKET.delete(r2Key);
+        return c.json({ ok: false, error: "Payload too large" }, 413);
+      }
       throw error;
     }
     if (written === null) return c.json(uploadConflict(source, r2Key), 409);
-    if (written.size > cap) {
+    if (overflowed || (written?.size ?? 0) > cap) {
       await env.MUSIC_BUCKET.delete(r2Key);
       return c.json({ ok: false, error: "Payload too large" }, 413);
     }

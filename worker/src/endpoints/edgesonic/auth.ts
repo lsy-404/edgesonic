@@ -93,8 +93,8 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
     return c.json({ ok: false, error: "Invalid credentials" }, 401);
   }
   if (verifiedPassword.legacy) {
-    await db.prepare("UPDATE users SET master_password = ?, updated_at = ? WHERE username = ?")
-      .bind(await hashWebPassword(password), Math.floor(Date.now() / 1000), username).run();
+    await db.prepare("UPDATE users SET master_password = ? WHERE username = ?")
+      .bind(await hashWebPassword(password), username).run();
   }
   await clearLoginFailures(db, c.req.raw, username);
 

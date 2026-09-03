@@ -48,5 +48,5 @@ export async function takeCloneProxyRateLimit(db: D1Database, username: string, 
 }
 
 export function limitedProxyBody(body: ReadableStream<Uint8Array>, maxBytes: number, onComplete: () => void): ReadableStream<Uint8Array> {
-  return limitReadableStream(body, maxBytes, onComplete);
+  return limitReadableStream(body, maxBytes, onComplete, onComplete);
 }

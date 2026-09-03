@@ -407,15 +407,15 @@ console.log("\nusers/get returns JSON {ok, user}:");
   assert(body.user?.enabled === true, `user.enabled=true (got ${body.user?.enabled})`);
 }
 
-console.log("\nusers/get unknown user → 404 JSON {ok:false,error}:");
+console.log("\nusers/get does not reveal whether another username exists:");
 {
   const sqlite = buildDb();
   const { get } = makeApp(sqlite, { username: "alice", level: 1 });
   const r = await get("/edgesonic/users/get?username=ghost");
-  assert(r.status === 404, `404 (got ${r.status})`);
+  assert(r.status === 403, `403 (got ${r.status})`);
   const body = await r.json() as { ok: boolean; error: string };
   assert(body.ok === false, "ok=false");
-  assert(/not found/i.test(body.error), `error mentions 'not found' (got: ${body.error})`);
+  assert(/manage_users/i.test(body.error), `error does not reveal existence (got: ${body.error})`);
 }
 
 console.log("\nusers/get denies a regular user reading another account:");

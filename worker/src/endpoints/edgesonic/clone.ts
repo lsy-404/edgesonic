@@ -1050,16 +1050,20 @@ async function registerAudioInstance(
   }
 
   const r2Key = originalPathToR2Key(originalPath) || fallbackR2Key(artistDir, albumDir, filename, masterId);
+  let overflowed = false;
   let r2Object: R2Object;
   try {
-    r2Object = await env.MUSIC_BUCKET.put(r2Key, isBuffer ? body : limitReadableStream(body, MAX_INGEST_BYTES), {
+    r2Object = await env.MUSIC_BUCKET.put(r2Key, isBuffer ? body : limitReadableStream(body, MAX_INGEST_BYTES, undefined, () => { overflowed = true; }), {
       httpMetadata: { contentType },
     });
   } catch (error) {
-    if (error instanceof PayloadTooLargeError) return { ok: false, error: "Payload too large", status: 413 };
+    if (overflowed || error instanceof PayloadTooLargeError) {
+      await env.MUSIC_BUCKET.delete(r2Key);
+      return { ok: false, error: "Payload too large", status: 413 };
+    }
     throw error;
   }
-  if (r2Object.size > MAX_INGEST_BYTES) {
+  if (overflowed || r2Object.size > MAX_INGEST_BYTES) {
     await env.MUSIC_BUCKET.delete(r2Key);
     return { ok: false, error: "Payload too large", status: 413 };
   }
@@ -1170,14 +1174,22 @@ cloneRoutes.post("/clone/fetchAudioToR2", permissionMiddleware("manage_users"), 
   const suffix = (body.suffix || extToSuffix(cleanFilename)).toLowerCase();
   const contentType = body.contentType || "application/octet-stream";
 
-  const url = signedUpstreamUrl(upstreamUrl, username, password, "stream", { id: songId });
+  const target = safeCloneTarget(upstreamUrl, "stream");
+  if (!target) {
+    return c.json({ ok: false, error: "Unsafe upstream URL" }, 400);
+  }
+  const url = signedUpstreamUrl(target.toString(), username, password, "stream", { id: songId });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15_000);
   let resp: Response;
   try {
-    resp = await fetch(url);
-  } catch (e) {
-    return c.json({ ok: false, error: `upstream fetch failed: ${e instanceof Error ? e.message : String(e)}` }, 502);
+    resp = await fetch(url, { signal: ctrl.signal, redirect: "error" });
+  } catch {
+    clearTimeout(timer);
+    return c.json({ ok: false, error: "Upstream request failed or timed out" }, 502);
   }
   if (!resp.ok) {
+    clearTimeout(timer);
     return c.json({ ok: false, error: `upstream stream returned HTTP ${resp.status}` }, 502);
   }
   // Was `await resp.arrayBuffer()` — buffering the whole file into
@@ -1188,19 +1200,25 @@ cloneRoutes.post("/clone/fetchAudioToR2", permissionMiddleware("manage_users"), 
   // Stream resp.body straight into R2.put() instead — this is R2's
   // documented pattern for proxying a fetch response without buffering.
   if (!resp.body) {
+    clearTimeout(timer);
     return c.json({ ok: false, error: "upstream stream had no body" }, 502);
   }
   const upstreamLength = parseInt(resp.headers.get("Content-Length") || "0", 10);
   if (upstreamLength && upstreamLength > MAX_INGEST_BYTES) {
+    clearTimeout(timer);
     return c.json({ ok: false, error: "Payload too large" }, 413);
   }
 
-  const result = await registerAudioInstance(env, db, {
-    masterId, sourceKey: body.sourceKey || DEFAULT_CLONE_SOURCE_KEY, suffix, contentType, artistDir, albumDir, filename: cleanFilename, originalPath: body.originalPath,
-    declaredSize: body.size || upstreamLength || 0, body: resp.body,
-  });
-  if (!result.ok) return c.json({ ok: false, error: result.error }, result.status);
-  return c.json(result);
+  try {
+    const result = await registerAudioInstance(env, db, {
+      masterId, sourceKey: body.sourceKey || DEFAULT_CLONE_SOURCE_KEY, suffix, contentType, artistDir, albumDir, filename: cleanFilename, originalPath: body.originalPath,
+      declaredSize: body.size || upstreamLength || 0, body: resp.body,
+    });
+    if (!result.ok) return c.json({ ok: false, error: result.error }, result.status);
+    return c.json(result);
+  } finally {
+    clearTimeout(timer);
+  }
 });
 
 function extToSuffix(filename: string): string {

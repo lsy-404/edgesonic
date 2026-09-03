@@ -140,7 +140,7 @@ async function submit() {
             <div ref="turnstileContainer" />
           </div>
 
-          <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !email || !password || (turnstileSiteKey && !turnstileToken)">
+          <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !email || !password || (!!turnstileSiteKey && !turnstileToken)">
             {{ loading ? t("register.submitting") : t("register.submit") }}
           </button>
           <router-link to="/login" class="login-register-hint">{{ t("register.backToLogin") }}</router-link>

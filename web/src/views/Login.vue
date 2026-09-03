@@ -139,7 +139,7 @@ onBeforeUnmount(() => removeTurnstile(turnstileWidgetId));
           <div ref="turnstileContainer" />
         </div>
 
-        <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !password || (turnstileSiteKey && !turnstileToken)">
+        <button type="submit" class="btn-primary login-btn" :disabled="loading || !username || !password || (!!turnstileSiteKey && !turnstileToken)">
           {{ loading ? t("login.submitting") : t("login.submit") }}
         </button>
         <button v-if="guestEnabled" type="button" class="btn-secondary login-btn" :disabled="loading" @click="loginAsGuest">
