@@ -47,22 +47,3 @@ export async function clearLoginFailures(db: D1Database, req: Request, username:
   await ensureTable(db);
   await db.prepare("DELETE FROM login_rate_limits WHERE key = ?").bind(keyFor(req, username)).run();
 }
-
-export async function verifyTurnstile(env: Env, req: Request, token: unknown, action: string): Promise<boolean> {
-  if (!env.TURNSTILE_SECRET || !env.TURNSTILE_SITE_KEY) return true;
-  if (typeof token !== "string" || !token) return false;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-  try {
-    const body = new URLSearchParams({ secret: env.TURNSTILE_SECRET, response: token, remoteip: clientIp(req) });
-    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body, signal: controller.signal });
-    const result = await response.json() as { success?: boolean; action?: string; hostname?: string };
-    if (!result.success || (result.action !== undefined && result.action !== action)) return false;
-    if (result.hostname !== undefined && result.hostname !== new URL(req.url).hostname) return false;
-    return true;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timeout);
-  }
-}

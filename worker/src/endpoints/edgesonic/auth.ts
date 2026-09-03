@@ -33,7 +33,7 @@ import {
   verifyEmailTemplate, resetPasswordEmailTemplate, changeEmailTemplate, normalizeEmail,
 } from "../../utils/email";
 import type { User } from "../../types/entities";
-import { clearLoginFailures, loginAllowed, recordLoginFailure, verifyTurnstile } from "../../utils/loginProtection";
+import { clearLoginFailures, loginAllowed, recordLoginFailure } from "../../utils/loginProtection";
 
 // only request that legitimately arrives without a session) and is exported
 // separately so index.ts can mount it BEFORE the global auth filter at the
@@ -53,7 +53,7 @@ const SESSION_COOKIE = "edgesonic_session";
 webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
   const db = c.env.DB;
 
-  let body: { username?: string; password?: string; turnstileToken?: string };
+  let body: { username?: string; password?: string };
   try {
     body = await c.req.json();
   } catch {
@@ -69,10 +69,6 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
     c.header("Retry-After", String(retryAfter));
     return c.json({ ok: false, error: "Too many login attempts" }, 429);
   }
-  if (!(await verifyTurnstile(c.env, c.req.raw, body.turnstileToken, "login"))) {
-    return c.json({ ok: false, error: "Verification failed" }, 403);
-  }
-
   // SELECT * so activation columns come along when present (undefined on a
   // not-yet-migrated database → treated as permanent).
   const user = await db
@@ -254,7 +250,6 @@ webLoginRoutes.get("/edgesonic/auth/loginConfig", async (c) => {
     // self-service reset, or vice versa.
     passwordResetEnabled: allowPasswordReset && emailEnabled,
     emailEnabled,
-    turnstileSiteKey: c.env.TURNSTILE_SECRET && c.env.TURNSTILE_SITE_KEY ? c.env.TURNSTILE_SITE_KEY : "",
     isDemo: isDemoMode(c.env),
   });
 });
@@ -272,7 +267,7 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
     return c.json({ ok: false, error: "Registration requires email to be configured" }, 403);
   }
 
-  let body: { username?: string; email?: string; password?: string; inviteCode?: string; turnstileToken?: string };
+  let body: { username?: string; email?: string; password?: string; inviteCode?: string };
   try {
     body = await c.req.json();
   } catch {
@@ -292,10 +287,6 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
   if (password.length < 8 || password.length > 256) {
     return c.json({ ok: false, error: "Password must be 8-256 characters" }, 400);
   }
-  if (!(await verifyTurnstile(c.env, c.req.raw, body.turnstileToken, "register"))) {
-    return c.json({ ok: false, error: "Verification failed" }, 403);
-  }
-
   // Signup gate: which of the enabled options (email verification, invite
   // code) must be satisfied depends on registration_gate_mode.
   const gate = evaluateRegistrationGate({
