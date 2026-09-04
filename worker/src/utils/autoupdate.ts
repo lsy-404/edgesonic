@@ -141,7 +141,7 @@ async function githubReleaseByTag(env: Env, tag: string, known?: GithubRelease[]
   return githubJson<GithubRelease>(env, `${GITHUB_API}/releases/tags/${encodeURIComponent(tag)}`);
 }
 
-async function currentVersion(env: Env, requestUrl: string): Promise<Semver> {
+export async function currentVersion(env: Env, requestUrl: string): Promise<Semver> {
   const direct = env.EDGESONIC_VERSION ? parseSemver(env.EDGESONIC_VERSION) : null;
   if (direct) return direct;
   try {
