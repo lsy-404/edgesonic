@@ -164,8 +164,10 @@ function pollScanStatus(): Promise<void> {
       }
     }
   })().finally(() => {
-    if (pollController === controller) pollController = null;
-    pollInFlight = null;
+    if (pollController === controller) {
+      pollController = null;
+      pollInFlight = null;
+    }
   });
   return pollInFlight;
 }
@@ -189,7 +191,11 @@ function stopPolling() {
     clearTimeout(pollHandle.value);
     pollHandle.value = null;
   }
-  pollController?.abort();
+  if (pollController) {
+    pollController.abort();
+    pollController = null;
+    pollInFlight = null;
+  }
 }
 
 function handleVisibilityChange() {

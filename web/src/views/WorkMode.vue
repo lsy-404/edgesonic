@@ -105,7 +105,19 @@ function exit(): void {
 // The lock dies whenever the page is hidden; take it back on return so a tab
 // that was briefly switched away from doesn't quietly stop holding the screen.
 function onVisibility(): void {
-  if (!document.hidden && active.value && !wakeLock.value) void requestWakeLock();
+  if (document.hidden) {
+    if (progressPoll !== null) {
+      window.clearTimeout(progressPoll);
+      progressPoll = null;
+    }
+    if (progressController) {
+      progressController.abort();
+      progressController = null;
+      progressInFlight = null;
+    }
+    return;
+  }
+  if (active.value && !wakeLock.value) void requestWakeLock();
   if (!document.hidden && mounted && progressPoll === null) scheduleProgressPoll();
 }
 
@@ -128,8 +140,10 @@ function loadProgress(): Promise<void> {
     if (data.ok) progress.value = { queued: data.counts?.queued ?? 0, claimed: data.counts?.claimed ?? 0, completed: data.counts?.completed ?? 0, failed: data.counts?.failed ?? 0 };
     } catch { /* Retain the last known progress while offline. */ }
   })().finally(() => {
-    if (progressController === controller) progressController = null;
-    progressInFlight = null;
+    if (progressController === controller) {
+      progressController = null;
+      progressInFlight = null;
+    }
   });
   return progressInFlight;
 }

@@ -17,7 +17,7 @@ function assert(condition: unknown, message: string) {
 }
 
 assert(sources.includes("let pollInFlight: Promise<void> | null = null"), "Sources status polling has a single-flight guard");
-assert(sources.includes("pollController?.abort()"), "Sources aborts an active status request when polling stops");
+assert(sources.includes("pollController.abort()"), "Sources aborts an active status request when polling stops");
 assert(sources.includes("window.setTimeout") && sources.includes("pollScanStatus().finally"), "Sources schedules the next poll after the previous request settles");
 assert(sources.includes("loadController?.abort()"), "Sources aborts the source list request on unmount");
 

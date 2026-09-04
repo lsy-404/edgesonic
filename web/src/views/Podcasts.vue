@@ -151,8 +151,10 @@ function loadAll(): Promise<void> {
     loading.value = false;
   }
   })().finally(() => {
-    if (loadController === controller) loadController = null;
-    loadInFlight = null;
+    if (loadController === controller) {
+      loadController = null;
+      loadInFlight = null;
+    }
   });
   return loadInFlight;
 }
@@ -301,9 +303,17 @@ function stopPolling(): void {
   }
 }
 
+function cancelLoad(): void {
+  if (!loadController) return;
+  loadController.abort();
+  loadController = null;
+  loadInFlight = null;
+}
+
 function onVisibilityChange(): void {
   if (document.hidden) {
     stopPolling();
+    cancelLoad();
   } else {
     void loadAll().finally(startPolling);
   }
