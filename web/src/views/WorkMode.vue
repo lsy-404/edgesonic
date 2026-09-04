@@ -37,6 +37,9 @@ const progress = ref({ queued: 0, claimed: 0, completed: 0, failed: 0 });
 const retryingFailed = ref(false);
 const retryFailedError = ref<string | null>(null);
 let progressPoll: number | null = null;
+let mounted = false;
+let progressController: AbortController | null = null;
+let progressInFlight: Promise<void> | null = null;
 const totalTasks = computed(() => progress.value.queued + progress.value.claimed + progress.value.completed + progress.value.failed);
 const progressPct = computed(() => totalTasks.value ? Math.round(progress.value.completed / totalTasks.value * 100) : 0);
 
@@ -103,13 +106,32 @@ function exit(): void {
 // that was briefly switched away from doesn't quietly stop holding the screen.
 function onVisibility(): void {
   if (!document.hidden && active.value && !wakeLock.value) void requestWakeLock();
+  if (!document.hidden && mounted && progressPoll === null) scheduleProgressPoll();
 }
 
-async function loadProgress(): Promise<void> {
-  try {
-    const data = JSON.parse(await edgesonicFetch("work/status")) as { ok?: boolean; counts?: Partial<typeof progress.value> };
+function scheduleProgressPoll(): void {
+  if (!mounted || document.hidden || progressPoll !== null) return;
+  progressPoll = window.setTimeout(() => {
+    progressPoll = null;
+    void loadProgress().finally(scheduleProgressPoll);
+  }, 10_000);
+}
+
+function loadProgress(): Promise<void> {
+  if (progressInFlight) return progressInFlight;
+  const controller = new AbortController();
+  progressController = controller;
+  progressInFlight = (async () => {
+    try {
+    const data = JSON.parse(await edgesonicFetch("work/status", undefined, controller.signal)) as { ok?: boolean; counts?: Partial<typeof progress.value> };
+    if (controller.signal.aborted || !mounted) return;
     if (data.ok) progress.value = { queued: data.counts?.queued ?? 0, claimed: data.counts?.claimed ?? 0, completed: data.counts?.completed ?? 0, failed: data.counts?.failed ?? 0 };
-  } catch { /* Retain the last known progress while offline. */ }
+    } catch { /* Retain the last known progress while offline. */ }
+  })().finally(() => {
+    if (progressController === controller) progressController = null;
+    progressInFlight = null;
+  });
+  return progressInFlight;
 }
 
 async function retryFailed(): Promise<void> {
@@ -128,11 +150,12 @@ async function retryFailed(): Promise<void> {
 }
 
 onMounted(async () => {
+  mounted = true;
   tick = window.setInterval(() => { now.value = Date.now(); }, 1000);
   document.addEventListener("visibilitychange", onVisibility);
   await pool.hydrateConfig();
   await loadProgress();
-  progressPoll = window.setInterval(() => { if (!document.hidden) void loadProgress(); }, 10_000);
+  scheduleProgressPoll();
   // Resume a machine that was already opted in before this page loaded.
   if (pool.enabled) {
     pool.start();
@@ -141,8 +164,10 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  mounted = false;
   if (tick !== null) window.clearInterval(tick);
-  if (progressPoll !== null) window.clearInterval(progressPoll);
+  if (progressPoll !== null) window.clearTimeout(progressPoll);
+  progressController?.abort();
   document.removeEventListener("visibilitychange", onVisibility);
   // Deliberately does NOT stop the pool. The store is a singleton shared with
   // the rest of the app, and the opt-in is persisted — navigating away from

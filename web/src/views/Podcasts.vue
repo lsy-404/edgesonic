@@ -58,6 +58,24 @@ function showToast(msg: string, type: "success" | "error" = "success") {
   setTimeout(() => { toast.value.show = false; }, 3000);
 }
 
+let mounted = false;
+let loadController: AbortController | null = null;
+let loadInFlight: Promise<void> | null = null;
+const delayedReloads = new Set<number>();
+
+function scheduleReload(): void {
+  if (!mounted) return;
+  const handle = window.setTimeout(() => {
+    delayedReloads.delete(handle);
+    if (mounted) void loadAll();
+  }, 4000);
+  delayedReloads.add(handle);
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
 function isOk(xml: string): boolean {
   return /status="ok"/.test(xml);
 }
@@ -66,10 +84,15 @@ function errorMessage(xml: string): string {
   return e?.message || t("podcasts.errorGeneric");
 }
 
-async function loadAll() {
+function loadAll(): Promise<void> {
+  if (loadInFlight) return loadInFlight;
+  const controller = new AbortController();
+  loadController = controller;
+  loadInFlight = (async () => {
   loading.value = true;
   try {
-    const xml = await authFetch("getPodcasts", { includeEpisodes: "true" });
+    const xml = await authFetch("getPodcasts", { includeEpisodes: "true" }, controller.signal);
+    if (controller.signal.aborted || !mounted) return;
     if (!isOk(xml)) {
       showToast(errorMessage(xml), "error");
       channels.value = [];
@@ -120,11 +143,18 @@ async function loadAll() {
       };
     });
   } catch (e) {
-    channels.value = [];
-    showToast(e instanceof Error ? e.message : String(e), "error");
+    if (!isAbortError(e) && mounted) {
+      channels.value = [];
+      showToast(e instanceof Error ? e.message : String(e), "error");
+    }
   } finally {
     loading.value = false;
   }
+  })().finally(() => {
+    if (loadController === controller) loadController = null;
+    loadInFlight = null;
+  });
+  return loadInFlight;
 }
 
 async function addChannel() {
@@ -145,7 +175,7 @@ async function addChannel() {
     // with status="new", episodes populate on next poll.
     await loadAll();
     // Reload again shortly so the RSS fetch result shows up without manual click.
-    setTimeout(() => { void loadAll(); }, 4000);
+    scheduleReload();
   } catch (e) {
     showToast(e instanceof Error ? e.message : String(e), "error");
   } finally {
@@ -161,7 +191,7 @@ async function refreshAll() {
     if (!isOk(xml)) throw new Error(errorMessage(xml));
     showToast(t("podcasts.refreshTriggered"));
     // Backend runs the refresh in ctx.waitUntil — wait a bit then reload.
-    setTimeout(() => { void loadAll(); }, 4000);
+    scheduleReload();
   } catch (e) {
     showToast(e instanceof Error ? e.message : String(e), "error");
   } finally {
@@ -196,7 +226,7 @@ async function downloadEpisode(c: Channel, ep: Episode) {
     showToast(t("podcasts.downloadTriggered"));
     // R2 write runs in ctx.waitUntil; reload after a few seconds so the
     // status flips to completed/error.
-    setTimeout(() => { void loadAll(); }, 4000);
+    scheduleReload();
   } catch (e) {
     showToast(e instanceof Error ? e.message : String(e), "error");
     ep.status = "error";
@@ -255,12 +285,18 @@ const POLL_MS = 30_000;
 
 function startPolling(): void {
   if (pollHandle !== null) return;
-  pollHandle = window.setInterval(() => { void loadAll(); }, POLL_MS);
+  if (!mounted || document.hidden) return;
+  pollHandle = window.setTimeout(() => {
+    pollHandle = null;
+    void loadAll().finally(() => {
+      if (mounted && !document.hidden) startPolling();
+    });
+  }, POLL_MS);
 }
 
 function stopPolling(): void {
   if (pollHandle !== null) {
-    clearInterval(pollHandle);
+    clearTimeout(pollHandle);
     pollHandle = null;
   }
 }
@@ -269,12 +305,12 @@ function onVisibilityChange(): void {
   if (document.hidden) {
     stopPolling();
   } else {
-    void loadAll();
-    startPolling();
+    void loadAll().finally(startPolling);
   }
 }
 
 onMounted(async () => {
+  mounted = true;
   await loadAll();
   // Light background polling so a download/refresh kicked off elsewhere
   // eventually reflects in the UI. 30s keeps cost negligible.
@@ -283,7 +319,11 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  mounted = false;
   stopPolling();
+  loadController?.abort();
+  for (const handle of delayedReloads) clearTimeout(handle);
+  delayedReloads.clear();
   document.removeEventListener("visibilitychange", onVisibilityChange);
 });
 </script>

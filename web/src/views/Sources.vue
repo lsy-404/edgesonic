@@ -71,6 +71,11 @@ const scanHistory = ref<Record<string, ScanJobSnapshot[]>>({});
 const expandedSources = ref<Set<string>>(new Set());
 const pollHandle = ref<number | null>(null);
 const POLL_INTERVAL_MS = 8000;
+let mounted = false;
+let pollController: AbortController | null = null;
+let pollInFlight: Promise<void> | null = null;
+let loadController: AbortController | null = null;
+let loadInFlight: Promise<void> | null = null;
 const STATUS_LAUNCHING = "__launching__"; // placeholder while scan/start hasn't yet returned
 const launching = ref<Set<string>>(new Set());
 
@@ -102,9 +107,18 @@ function parseScanState(raw: string): ScanState {
   return "idle";
 }
 
-async function pollScanStatus() {
-  try {
-    const xml = await storageFetch("scan/status");
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function pollScanStatus(): Promise<void> {
+  if (pollInFlight) return pollInFlight;
+  const controller = new AbortController();
+  pollController = controller;
+  pollInFlight = (async () => {
+    try {
+    const xml = await storageFetch("scan/status", undefined, controller.signal);
+    if (controller.signal.aborted || !mounted) return;
     const rows = parseXmlAttrs(xml, "source");
     if (!rows.length) return;
     // Map source.id → latest job row
@@ -129,7 +143,7 @@ async function pollScanStatus() {
       const flippedDone = s.scanStatus === "running" && status === "completed";
       if (flippedDone) {
         // Best-effort: re-pull /sources/list in background to refresh lastSync.
-        load();
+        void load();
       }
       // Clear the launching marker once the server confirms a job exists.
       if (snap.jobId) launching.value.delete(s.id);
@@ -144,24 +158,38 @@ async function pollScanStatus() {
         scanError: snap.error,
       };
     });
-  } catch {
-    // Network blip: keep current state, wait for next tick.
-  }
+    } catch (error) {
+      if (!isAbortError(error)) {
+        // Network blip: keep current state, wait for next tick.
+      }
+    }
+  })().finally(() => {
+    if (pollController === controller) pollController = null;
+    pollInFlight = null;
+  });
+  return pollInFlight;
 }
 
 function startPolling() {
   if (pollHandle.value !== null) return;
-  pollHandle.value = window.setInterval(async () => {
-    await pollScanStatus();
-    if (!anyRunning.value) stopPolling();
-  }, POLL_INTERVAL_MS);
+  const schedule = () => {
+    if (!mounted || document.hidden || !anyRunning.value) return;
+    pollHandle.value = window.setTimeout(() => {
+      pollHandle.value = null;
+      void pollScanStatus().finally(() => {
+        if (anyRunning.value) schedule();
+      });
+    }, POLL_INTERVAL_MS);
+  };
+  schedule();
 }
 
 function stopPolling() {
   if (pollHandle.value !== null) {
-    clearInterval(pollHandle.value);
+    clearTimeout(pollHandle.value);
     pollHandle.value = null;
   }
+  pollController?.abort();
 }
 
 function handleVisibilityChange() {
@@ -169,7 +197,7 @@ function handleVisibilityChange() {
     stopPolling();
   } else {
     if (anyRunning.value) {
-      pollScanStatus();
+      void pollScanStatus();
       startPolling();
     }
   }
@@ -209,11 +237,16 @@ async function saveEdit() {
   } catch { showToast(t("sources.updateFailed"), "error"); }
 }
 
-async function load() {
+function load(): Promise<void> {
+  if (loadInFlight) return loadInFlight;
   // P3: show loading spinner on initial fetch (skip if sources already loaded)
   if (!sources.value.length) loading.value = true;
-  try {
-    const xml = await storageFetch("sources/list");
+  const controller = new AbortController();
+  loadController = controller;
+  loadInFlight = (async () => {
+    try {
+    const xml = await storageFetch("sources/list", undefined, controller.signal);
+    if (controller.signal.aborted || !mounted) return;
     const prevById = new Map(sources.value.map((s) => [s.id, s]));
     sources.value = parseXmlAttrs(xml, "source").map((s) => {
       const id = s.id || "";
@@ -250,9 +283,16 @@ async function load() {
         scanError: prev?.scanError ?? null,
       };
     });
-  } catch { sources.value = []; } finally {
-    loading.value = false;
-  }
+    } catch (error) {
+      if (!isAbortError(error) && mounted) sources.value = [];
+    } finally {
+      loading.value = false;
+    }
+  })().finally(() => {
+    if (loadController === controller) loadController = null;
+    loadInFlight = null;
+  });
+  return loadInFlight;
 }
 
 async function addSource() {
@@ -497,6 +537,7 @@ async function migratePasswords() {
 }
 
 onMounted(async () => {
+  mounted = true;
   await load();
   await pollScanStatus();
   if (anyRunning.value) startPolling();
@@ -505,7 +546,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  mounted = false;
   stopPolling();
+  loadController?.abort();
   document.removeEventListener("visibilitychange", handleVisibilityChange);
 });
 </script>
