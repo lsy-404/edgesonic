@@ -191,7 +191,6 @@ onBeforeUnmount(() => {
           <label>
             <span>{{ t('messages.body') }}</span>
             <textarea v-model="compose.message" class="form-input" required maxlength="4000" rows="7"></textarea>
-            <small>{{ t('messages.markdownSupported') }}</small>
           </label>
           <div class="message-compose-options">
             <label>

@@ -43,7 +43,6 @@
     "recipient": "Recipient username",
     "subject": "Message title",
     "body": "Message text",
-    "markdownSupported": "Markdown is supported and safely formatted when delivered.",
     "kind": "Message type",
     "presentation": "Delivery",
     "presentations": {

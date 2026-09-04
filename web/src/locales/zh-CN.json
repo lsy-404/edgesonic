@@ -43,7 +43,6 @@
     "recipient": "接收者用户名",
     "subject": "信息标题",
     "body": "信息内容",
-    "markdownSupported": "支持 Markdown，投递时会安全地格式化显示。",
     "kind": "信息类型",
     "presentation": "投递方式",
     "presentations": {
