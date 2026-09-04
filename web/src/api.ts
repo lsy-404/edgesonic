@@ -26,13 +26,19 @@ const TAG_BASE = "/tag";
 const STORAGE_BASE = "/storage";
 const EDGESONIC_BASE = "/edgesonic";
 const DEVICE_ID_STORAGE_KEY = "edgesonic_device_id";
+let transientDeviceId = "";
 
 function firstPartyDeviceId(): string {
-  const current = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
-  if (current && /^[A-Za-z0-9_-]{16,128}$/.test(current)) return current;
-  const next = crypto.randomUUID();
-  localStorage.setItem(DEVICE_ID_STORAGE_KEY, next);
-  return next;
+  try {
+    const current = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+    if (current && /^[A-Za-z0-9_-]{16,128}$/.test(current)) return current;
+    const next = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_STORAGE_KEY, next);
+    return next;
+  } catch {
+    transientDeviceId ||= crypto.randomUUID();
+    return transientDeviceId;
+  }
 }
 
 function deviceHeaders(headers?: HeadersInit): Headers {
