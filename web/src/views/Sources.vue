@@ -245,7 +245,7 @@ async function saveEdit() {
 
 function load(): Promise<void> {
   if (loadInFlight) return loadInFlight;
-  // P3: show loading spinner on initial fetch (skip if sources already loaded)
+  // Existing sources remain visible during refresh.
   if (!sources.value.length) loading.value = true;
   const controller = new AbortController();
   loadController = controller;

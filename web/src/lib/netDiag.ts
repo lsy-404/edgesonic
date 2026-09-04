@@ -40,6 +40,7 @@ export function isVerbose(): boolean {
 }
 
 export interface InflightHandle {
+  headers(status: number): void;
   progress(receivedBytes: number): void;
   end(detail?: Record<string, unknown>): void;
   fail(reason: unknown): void;
@@ -58,6 +59,9 @@ interface InflightEntry {
   bytes: number;
   lastProgressAt: number;
   warned: boolean;
+  phase: "headers" | "body" | "media";
+  status?: number;
+  headersAfterMs?: number;
   audio?: { bufferedSeconds: number; networkState: number; readyState: number; paused: boolean };
 }
 
@@ -97,13 +101,23 @@ export function beginRequest(label: string, url: string): InflightHandle {
     bytes: 0,
     lastProgressAt: performance.now(),
     warned: false,
+    phase: "headers",
   };
   inflight.set(entry.id, entry);
   console.info(`${TAG} start #${entry.id} ${label}`, shortUrl(url));
   let finished = false;
   return {
+    headers(status: number) {
+      if (finished) return;
+      entry.phase = "body";
+      entry.status = status;
+      entry.lastProgressAt = performance.now();
+      entry.headersAfterMs = Math.round(entry.lastProgressAt - entry.startedAt);
+      console.info(`${TAG} headers request ${entry.id}`, { status, elapsedMs: entry.headersAfterMs, url: shortUrl(entry.url) });
+    },
     progress(receivedBytes: number) {
       if (finished) return;
+      entry.phase = "body";
       entry.bytes = receivedBytes;
       entry.lastProgressAt = performance.now();
       if (isVerbose()) {
@@ -145,6 +159,7 @@ export function beginAudioRequest(el: HTMLAudioElement, label: string, url: stri
     if (finished || request) return;
     request = beginRequest(label, url);
     entry = inflight.get(nextId - 1);
+    if (entry) entry.phase = "media";
     update();
   };
   const update = () => {
@@ -302,6 +317,10 @@ function snapshotInflight(): Array<Record<string, unknown>> {
     label: entry.label,
     url: shortUrl(entry.url),
     elapsedMs: Math.round(performance.now() - entry.startedAt),
+    phase: entry.phase,
+    status: entry.status,
+    headersAfterMs: entry.headersAfterMs,
+    lastProgressAgoMs: Math.round(performance.now() - entry.lastProgressAt),
     bytes: entry.bytes,
     throughput: throughput(entry),
     audio: entry.audio,

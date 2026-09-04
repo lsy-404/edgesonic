@@ -1,3 +1,5 @@
+import { beginRequest } from "./netDiag";
+
 export const READ_REQUEST_TIMEOUT_MS = 20_000;
 export const WRITE_REQUEST_TIMEOUT_MS = 60_000;
 
@@ -41,7 +43,7 @@ export async function fetchTextWithTimeout(
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   try {
     const response = await fetch(input, { ...init, signal: controller.signal });
-    diagnostic.progress(0);
+    diagnostic.headers(response.status);
     if (!response.body) {
       const text = await response.text();
       diagnostic.progress(new TextEncoder().encode(text).byteLength);
@@ -73,4 +75,3 @@ export async function fetchTextWithTimeout(
     for (const [signal, listener] of abortListeners) signal.removeEventListener("abort", listener);
   }
 }
-import { beginRequest } from "./netDiag";

@@ -7,7 +7,7 @@ import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
 
 const { t } = useI18n();
-const { login, guestLogin, isLoggedIn, getLoginConfig } = useAuth();
+const { login, guestLogin, isLoggedIn, getLoginConfig, probeGuestEnabled } = useAuth();
 const router = useRouter();
 const route = useRoute();
 
@@ -71,20 +71,16 @@ onMounted(async () => {
   const queryPassword = route.query.p ?? route.query.password;
   if (typeof queryUsername === "string") username.value = queryUsername;
   if (typeof queryPassword === "string") password.value = queryPassword;
-  try {
-    const response = await fetch("/edgesonic/auth/guest", { credentials: "same-origin" });
-    const data = await response.json();
-    guestEnabled.value = data.ok && data.enabled === true;
-  } catch {
-    guestEnabled.value = false;
-  }
-
-  const cfg = await getLoginConfig();
-  noticeText.value = cfg.noticeText;
-  backgroundUrl.value = cfg.backgroundUrl;
-  registrationEnabled.value = cfg.registrationEnabled;
-  passwordResetEnabled.value = cfg.passwordResetEnabled;
-  isDemo.value = cfg.isDemo;
+  await Promise.all([
+    probeGuestEnabled().then((enabled) => { guestEnabled.value = enabled; }),
+    getLoginConfig().then((cfg) => {
+      noticeText.value = cfg.noticeText;
+      backgroundUrl.value = cfg.backgroundUrl;
+      registrationEnabled.value = cfg.registrationEnabled;
+      passwordResetEnabled.value = cfg.passwordResetEnabled;
+      isDemo.value = cfg.isDemo;
+    }),
+  ]);
 });
 </script>
 

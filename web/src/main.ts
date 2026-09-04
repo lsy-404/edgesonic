@@ -30,6 +30,7 @@ import Settings from "./views/Settings.vue";
 import { useUpdateBanner } from "./stores/updateBanner";
 import { useDemoMode } from "./stores/demoMode";
 import { initNetDiag } from "./lib/netDiag";
+import { fetchTextWithTimeout } from "./lib/requestLifecycle";
 
 initNetDiag();
 const routes = [
@@ -150,9 +151,9 @@ const VERSION_FIRST_PROBE_DELAY_MS = 5_000;
 
 async function checkVersion() {
   try {
-    const r = await fetch("/edgesonic/version", { cache: "no-store" });
+    const { response: r, text } = await fetchTextWithTimeout("/edgesonic/version", { cache: "no-store" });
     if (!r.ok) return;
-    const j = (await r.json()) as { ok?: boolean; version?: string; demoMode?: boolean; defaultTheme?: string | null; allowAllFileTypes?: boolean };
+    const j = JSON.parse(text) as { ok?: boolean; version?: string; demoMode?: boolean; defaultTheme?: string | null; allowAllFileTypes?: boolean };
     if (!j.ok || typeof j.version !== "string") return;
     updateBanner.notify({ version: j.version });
     demoMode.setEnabled(!!j.demoMode);

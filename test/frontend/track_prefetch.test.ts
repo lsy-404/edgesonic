@@ -134,6 +134,38 @@ async function run() {
   const recovered = await getTrackLyrics(track, recoveryAuth);
   assert(recoveryCalls === 2 && recovered.structured?.includes("Recovered"), "aborted lyrics prefetch is removed from the cache");
 
+  let immediateCalls = 0;
+  const owner = new AbortController();
+  const immediateAuth: TrackPrefetchAuth = {
+    ...auth,
+    scope: "immediate-cancellation-test",
+    authFetch: (_path, _params, signal) => {
+      if (++immediateCalls > 1) return Promise.resolve('<structuredLyrics><line start="0">Fresh</line></structuredLyrics>');
+      return new Promise((_, reject) => signal?.addEventListener("abort", () => reject(signal.reason), { once: true }));
+    },
+  };
+  const oldRequest = getTrackLyrics(track, immediateAuth, owner.signal).catch(() => {});
+  owner.abort();
+  const freshRequest = getTrackLyrics(track, immediateAuth);
+  assert(immediateCalls === 2, "same-turn reopen cannot reuse an already-aborted cache entry");
+  assert((await freshRequest).structured?.includes("Fresh"), "a stale rejection cannot remove the replacement cache entry");
+  await oldRequest;
+
+  let completeShared!: (xml: string) => void;
+  let sharedCalls = 0;
+  const sharedAuth: TrackPrefetchAuth = {
+    ...auth,
+    scope: "shared-cancellation-test",
+    authFetch: () => { sharedCalls++; return new Promise((resolve) => { completeShared = resolve; }); },
+  };
+  const shared = getTrackLyrics(track, sharedAuth);
+  const waiter = new AbortController();
+  const joined = getTrackLyrics(track, sharedAuth, waiter.signal).then(() => false, () => true);
+  waiter.abort();
+  assert(await joined, "a canceled cache waiter stops waiting immediately");
+  completeShared('<structuredLyrics><line start="0">Shared</line></structuredLyrics>');
+  assert(sharedCalls === 1 && (await shared).structured?.includes("Shared"), "canceling a waiter preserves the shared request for its owner");
+
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
   process.exit(failures ? 1 : 0);
 }

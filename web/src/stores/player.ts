@@ -423,7 +423,7 @@ export const usePlayerStore = defineStore("player", () => {
 
   function resumeFallbackWork(el: HTMLAudioElement) {
     const state = fallbackStateByElement.get(el);
-    if (!state || state.phase !== "range" || !state.controller.signal.aborted) return;
+    if (!state || !state.controller.signal.aborted) return;
     state.controller = new AbortController();
     state.shouldPlay = true;
     void continueIncrementalFallback(el, state, currentTime.value, true);
@@ -534,6 +534,7 @@ export const usePlayerStore = defineStore("player", () => {
         };
         if (priority) requestInit.priority = priority;
         const resp = await fetch(url, requestInit);
+        diag.headers(resp.status);
         const ttfbMs = Math.round(performance.now() - started);
         // resp.url is the post-redirect URL — it exposes whether the transfer
         // went direct to object storage (presign 302) or through the Worker.
@@ -589,6 +590,7 @@ export const usePlayerStore = defineStore("player", () => {
     completeOrigin: "background" | "fallback" | null,
     cacheKey?: string,
   ) {
+    pauseInternally(el);
     revokeBlobSrc(el);
     if (cacheKey) cachedBlobKeyByElement.set(el, cacheKey);
     else cachedBlobKeyByElement.delete(el);
@@ -624,8 +626,11 @@ export const usePlayerStore = defineStore("player", () => {
     resumeAt: number,
     shouldPlay: boolean,
     completeOrigin: "background" | "fallback" | null = null,
+    signal?: AbortSignal,
   ) {
+    const trackId = current.value?.id;
     const playableBlob = await normalizePlayableBlob(blob);
+    if (signal?.aborted || el !== active || current.value?.id !== trackId) return;
     playPreparedBlob(el, playableBlob, resumeAt, shouldPlay, completeOrigin);
   }
 
@@ -652,13 +657,14 @@ export const usePlayerStore = defineStore("player", () => {
     shouldPlay: boolean,
   ) {
     state.phase = "full";
+    const controller = state.controller;
     try {
-      const blob = await fetchFullBlob(state.trackId, state.controller.signal);
-      if (el !== active || current.value?.id !== state.trackId) return;
-      await playFallbackBlob(el, blob, resumeAt, state.shouldPlay || shouldPlay, "fallback");
-      fallbackStateByElement.delete(el);
+      const blob = await fetchFullBlob(state.trackId, controller.signal);
+      if (controller.signal.aborted || state.controller !== controller || el !== active || current.value?.id !== state.trackId) return;
+      await playFallbackBlob(el, blob, resumeAt, state.shouldPlay || shouldPlay, "fallback", controller.signal);
+      if (!controller.signal.aborted && fallbackStateByElement.get(el) === state) fallbackStateByElement.delete(el);
     } catch (e) {
-      if (state.controller.signal.aborted) return;
+      if (controller.signal.aborted || state.controller !== controller) return;
       console.error("[Player] full-file fallback failed:", e);
       advanceAfterFallbackFailure(el, state.trackId, e);
     }
@@ -702,6 +708,7 @@ export const usePlayerStore = defineStore("player", () => {
             headers: { Range: `bytes=${state.downloaded}-${target - 1}` },
             signal: attemptController.signal,
           });
+          diag.headers(resp.status);
           if (!resp.ok) {
             attemptController.abort();
             throw new Error(`range fallback fetch failed: ${resp.status}`);
@@ -735,6 +742,7 @@ export const usePlayerStore = defineStore("player", () => {
           controller.signal.removeEventListener("abort", abortAttempt);
         }
         await logFallbackBlob(`stream-range-${state.downloaded}-${target - 1}`, resp, chunk);
+        if (controller.signal.aborted || state.controller !== controller || fallbackStateByElement.get(el) !== state) return;
         if (resp.status === 206) {
           state.chunks.push(chunk);
           state.downloaded += chunk.size;
@@ -750,7 +758,7 @@ export const usePlayerStore = defineStore("player", () => {
 
         if (el !== active || current.value?.id !== state.trackId) return;
         const blob = new Blob(state.chunks, { type: state.contentType || undefined });
-        await playFallbackBlob(el, blob, resumeAt, state.shouldPlay || shouldPlay);
+        await playFallbackBlob(el, blob, resumeAt, state.shouldPlay || shouldPlay, null, controller.signal);
         return;
       }
     } catch (e) {
@@ -918,14 +926,15 @@ export const usePlayerStore = defineStore("player", () => {
       }
     });
     el.addEventListener("play", () => {
-      console.log("[Player] play event, src =", el.src);
+      console.log("[Player] play event", describeAudio(el));
       if (el === active) playing.value = true;
     });
     el.addEventListener("pause", () => {
       console.log("[Player] pause event");
+      if (consumeInternalPause(el)) return;
       if (el === active) {
         playing.value = false;
-        if (!consumeInternalPause(el)) abortFallbackWork(el);
+        abortFallbackWork(el);
         invalidatePreload();
       }
     });
@@ -939,7 +948,7 @@ export const usePlayerStore = defineStore("player", () => {
       console.error("[Player] audio error event:", el.error ? {
         code: el.error.code,
         message: el.error.message
-      } : e, "src =", el.src);
+      } : e, describeAudio(el));
       if (el === active) {
         playing.value = false;
         const code = el.error?.code;

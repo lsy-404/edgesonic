@@ -67,9 +67,12 @@ generic.fail(new Error("second terminal call"));
 assert(inflight().length === 0, "generic terminal methods are idempotent");
 
 const pending = beginRequest("api", "/rest/ping?token=secret");
+pending.headers(200);
 fakeWindow.dispatchEvent(new Event("pagehide"));
 const snapshot = storage.getItem("edgesonic:netdiag:last-pagehide") || "";
 assert(snapshot.includes("/rest/ping") && !snapshot.includes("secret"), "pagehide stores a sanitized bounded snapshot");
+assert(JSON.parse(snapshot)[0]?.phase === "body" && JSON.parse(snapshot)[0]?.status === 200,
+  "a stalled response body is distinguishable from waiting for headers");
 pending.end();
 fakeWindow.dispatchEvent(new Event("pagehide"));
 assert(storage.getItem("edgesonic:netdiag:last-pagehide") === null, "empty pagehide clears an obsolete snapshot");

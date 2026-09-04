@@ -132,6 +132,7 @@ function remember<T>(
   key: string,
   load: () => Promise<T>,
   ttl: number,
+  signal?: AbortSignal,
 ): Promise<T> {
   const existing = cache.get(key);
   if (existing && !isExpired(existing)) {
@@ -140,16 +141,21 @@ function remember<T>(
   }
 
   let promise: Promise<T>;
-  promise = load().catch((error) => {
+  const evict = () => {
     if (cache.get(key)?.data === promise) cache.delete(key);
+  };
+  promise = load().catch((error) => {
+    evict();
     throw error;
-  });
+  }).finally(() => signal?.removeEventListener("abort", evict));
   const entry: CacheEntry<Promise<T>> = {
     data: promise,
     timestamp: Date.now(),
     ttl,
   };
   cache.set(key, entry);
+  if (signal?.aborted) evict();
+  else signal?.addEventListener("abort", evict, { once: true });
   while (cache.size > MAX_CACHE_ENTRIES) {
     const oldest = cache.keys().next().value;
     if (oldest === undefined) break;
@@ -167,7 +173,7 @@ export function getTrackMetadataXml(track: Pick<PrefetchTrack, "id">, auth: Pick
     return awaitWithSignal(entry.data, signal);
   }
   cacheStats.metadataMisses++;
-  return awaitWithSignal(remember(metadataCache, key, () => auth.authFetch("getSong", { id: track.id }, signal), TTL_METADATA_MS), signal);
+  return awaitWithSignal(remember(metadataCache, key, () => auth.authFetch("getSong", { id: track.id }, signal), TTL_METADATA_MS, signal), signal);
 }
 
 export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAuth, "authFetch" | "scope">, signal?: AbortSignal): Promise<TrackLyricsPayload> {
@@ -208,7 +214,7 @@ export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAut
     const fallback = await auth.authFetch("getLyrics", { artist: track.artist, title: track.title }, signal);
     const lrc = extractXmlInner(fallback, "lyrics");
     return lrc ? { lrc } : {};
-  }, TTL_LYRICS_MS), signal);
+  }, TTL_LYRICS_MS, signal), signal);
 }
 
 const COVER_TIMEOUT_MS = 15 * 1000;
@@ -249,10 +255,10 @@ function preloadCover(track: PrefetchTrack, auth: TrackPrefetchAuth, size: numbe
   const entry = coverCache.get(key);
   if (entry && !isExpired(entry)) {
     cacheStats.coverHits++;
-    return entry.data;
+    return awaitWithSignal(entry.data, signal);
   }
   cacheStats.coverMisses++;
-  return remember(coverCache, key, () => preloadImage(url, signal), TTL_COVER_MS);
+  return awaitWithSignal(remember(coverCache, key, () => preloadImage(url, signal), TTL_COVER_MS, signal), signal);
 }
 
 export function preloadTrack(track: PrefetchTrack, auth: TrackPrefetchAuth): void {

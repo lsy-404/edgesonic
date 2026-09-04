@@ -258,7 +258,7 @@ export function useAuth() {
       activationEnabled: false, registrationGateMode: "all",
     };
     try {
-      const data = await requestJson<any>(`${EDGESONIC_BASE}/auth/loginConfig`, { credentials: "same-origin" });
+      const data = await requestJson<Partial<LoginConfig> & { ok?: boolean }>(`${EDGESONIC_BASE}/auth/loginConfig`, { credentials: "same-origin" });
       if (!data.ok) return fallback;
       return {
         noticeText: data.noticeText || "",
