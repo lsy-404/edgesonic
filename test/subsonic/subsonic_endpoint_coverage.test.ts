@@ -136,7 +136,7 @@ function buildDb() {
       mode TEXT DEFAULT 'library', region TEXT, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
     );
     CREATE TABLE subsonic_credentials (
-      username TEXT NOT NULL, password TEXT NOT NULL, stream_proxy_strategy TEXT,
+      id TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL, stream_proxy_strategy TEXT,
       last_used INTEGER, created_at INTEGER DEFAULT 0, expires_at INTEGER
     );
     CREATE TABLE api_keys (api_key TEXT PRIMARY KEY, username TEXT NOT NULL, created_at INTEGER DEFAULT 0);

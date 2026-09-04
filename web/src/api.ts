@@ -25,6 +25,21 @@ const REST_BASE = "/rest";
 const TAG_BASE = "/tag";
 const STORAGE_BASE = "/storage";
 const EDGESONIC_BASE = "/edgesonic";
+const DEVICE_ID_STORAGE_KEY = "edgesonic_device_id";
+
+function firstPartyDeviceId(): string {
+  const current = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+  if (current && /^[A-Za-z0-9_-]{16,128}$/.test(current)) return current;
+  const next = crypto.randomUUID();
+  localStorage.setItem(DEVICE_ID_STORAGE_KEY, next);
+  return next;
+}
+
+function deviceHeaders(headers?: HeadersInit): Headers {
+  const next = new Headers(headers);
+  next.set("X-EdgeSonic-Device", firstPartyDeviceId());
+  return next;
+}
 
 function audioMimeFromName(name: string): string | null {
   const suffix = name.split(".").pop()?.toLowerCase() || "";
@@ -171,7 +186,7 @@ export function useAuth() {
     // credential the way it could when it was sitting in localStorage.
     const resp = await fetch(`${EDGESONIC_BASE}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: deviceHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify({ username: u, password: p }),
     });
@@ -250,7 +265,7 @@ export function useAuth() {
   async function register(u: string, e: string, p: string, inviteCode?: string): Promise<LoginResult> {
     const resp = await fetch(`${EDGESONIC_BASE}/auth/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: deviceHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify({ username: u, email: e, password: p, ...(inviteCode ? { inviteCode } : {}) }),
     });
@@ -265,7 +280,7 @@ export function useAuth() {
   async function requestPasswordReset(emailOrUsername: string): Promise<{ ok: boolean; error?: string }> {
     const resp = await fetch(`${EDGESONIC_BASE}/auth/passwordReset/request`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: deviceHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify({ emailOrUsername }),
     });
@@ -276,7 +291,7 @@ export function useAuth() {
   async function confirmPasswordReset(token: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
     const resp = await fetch(`${EDGESONIC_BASE}/auth/passwordReset/confirm`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: deviceHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify({ token, newPassword }),
     });
@@ -287,7 +302,7 @@ export function useAuth() {
   async function confirmEmailVerify(token: string): Promise<{ ok: boolean; error?: string }> {
     const resp = await fetch(`${EDGESONIC_BASE}/auth/emailVerify/confirm`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: deviceHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify({ token }),
     });
@@ -387,7 +402,7 @@ export function useAuth() {
   async function authPost(path: string, body: unknown): Promise<string> {
     const resp = await fetch(`${REST_BASE}/${path}?${signedParams().toString()}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: deviceHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
       credentials: "same-origin",
     });

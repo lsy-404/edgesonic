@@ -85,7 +85,7 @@ function buildDb(): DatabaseSync {
     );
     CREATE TABLE api_keys (api_key TEXT PRIMARY KEY, username TEXT NOT NULL, created_at INTEGER DEFAULT 0);
     CREATE TABLE subsonic_credentials (
-      username TEXT NOT NULL, password TEXT NOT NULL, stream_proxy_strategy TEXT, last_used INTEGER, expires_at INTEGER
+      id TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL, stream_proxy_strategy TEXT, last_used INTEGER, expires_at INTEGER
     );
     CREATE TABLE sessions (
       id TEXT PRIMARY KEY, username TEXT NOT NULL, token TEXT NOT NULL,
@@ -98,7 +98,7 @@ function buildDb(): DatabaseSync {
     CREATE TABLE guest_tokens (token TEXT PRIMARY KEY, expires_at INTEGER);
     INSERT INTO users (username, master_password, level, enabled) VALUES ('alice', 'hash', 1, 1);
     INSERT INTO api_keys (api_key, username) VALUES ('key-alice', 'alice');
-    INSERT INTO subsonic_credentials (username, password, stream_proxy_strategy) VALUES ('alice', 'clientpw', 'always');
+    INSERT INTO subsonic_credentials (id, username, password, stream_proxy_strategy) VALUES ('client-alice', 'alice', 'clientpw', 'always');
   `);
   return sqlite;
 }

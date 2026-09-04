@@ -3,7 +3,9 @@
 import { Hono } from "hono";
 import {
   apiRateLimitMiddleware,
+  authenticatedRateLimitKey,
   authenticationRateLimitKey,
+  rateLimitDeviceId,
   rateLimitAllowed,
   type RateLimiter,
 } from "../../worker/src/middleware/rate_limit";
@@ -28,23 +30,49 @@ async function main() {
   console.log("rate limit middleware:");
 
   const request = new Request("https://example.test/edgesonic/auth/login", {
-    headers: { "CF-Connecting-IP": "203.0.113.8" },
+    headers: { "User-Agent": "EdgeSonic Test Browser" },
   });
+  const secondDeviceRequest = new Request("https://example.test/edgesonic/auth/login", {
+    headers: { "User-Agent": "EdgeSonic Other Browser" },
+  });
+  const firstPartyDeviceRequest = new Request("https://example.test/edgesonic/auth/login", {
+    headers: { "X-EdgeSonic-Device": "first-party-device-0001", "User-Agent": "EdgeSonic Test Browser" },
+  });
+  const secondFirstPartyDeviceRequest = new Request("https://example.test/edgesonic/auth/login", {
+    headers: { "X-EdgeSonic-Device": "first-party-device-0002", "User-Agent": "EdgeSonic Test Browser" },
+  });
+  const loginKey = await authenticationRateLimitKey(request, "login", "  Alice ");
+  const registerKey = await authenticationRateLimitKey(request, "register", "Alice");
   assert(
-    authenticationRateLimitKey(request, "login", "  Alice ") === "login:alice:203.0.113.8",
-    "login key combines route, normalized username, and client IP",
+    /^auth:login:alice:[a-f0-9]{24}$/.test(loginKey),
+    "login key combines its route and normalized username with a short device digest",
   );
   assert(
-    authenticationRateLimitKey(request, "register", "Alice") === "register:alice:203.0.113.8",
+    registerKey !== loginKey,
     "register has an independent route key",
   );
+  assert(
+    await authenticationRateLimitKey(secondDeviceRequest, "login", "Alice") !== loginKey,
+    "third-party authentication fallback includes client IP and user agent",
+  );
+  const firstPartyKey = await authenticationRateLimitKey(firstPartyDeviceRequest, "login", "Alice");
+  assert(firstPartyKey !== await authenticationRateLimitKey(secondFirstPartyDeviceRequest, "login", "Alice"), "first-party device IDs isolate login budgets");
+  assert(!firstPartyKey.includes("first-party-device-0001"), "first-party device ID is hashed before reaching RLB");
+  assert(!loginKey.includes("EdgeSonic Test Browser"), "anonymous authentication key does not expose client signals");
+
+  const sessionDeviceId = await rateLimitDeviceId("session", "session-id-a");
+  const apiKeyDeviceId = await rateLimitDeviceId("apikey", "api-key-secret-a");
+  const firstApiKey = authenticatedRateLimitKey("Alice", sessionDeviceId);
+  const secondApiKey = authenticatedRateLimitKey("Alice", apiKeyDeviceId);
+  assert(firstApiKey !== secondApiKey, "authenticated user keys isolate distinct devices");
+  assert(!secondApiKey.includes("api-key-secret-a"), "authenticated key does not expose API credentials");
 
   const missingBindingAllowed = await rateLimitAllowed(undefined, "anything");
   assert(missingBindingAllowed, "missing optional binding keeps local and legacy deployments running");
 
   const denied = new Limiter(false);
-  assert(!(await rateLimitAllowed(denied, "login:alice:203.0.113.8")), "RateLimit success=false denies requests");
-  assert(denied.keys[0] === "login:alice:203.0.113.8", "RateLimit receives the supplied key");
+  assert(!(await rateLimitAllowed(denied, loginKey)), "RateLimit success=false denies requests");
+  assert(denied.keys[0] === loginKey, "RateLimit receives the supplied key");
 
   const publicDb = {
     prepare(query: string) {
@@ -65,22 +93,23 @@ async function main() {
   const blockedAuth = new Limiter(false);
   const loginResponse = await publicAuthApp.request("https://example.test/edgesonic/auth/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.8" },
+    headers: { "Content-Type": "application/json", "User-Agent": "EdgeSonic Test Browser" },
     body: JSON.stringify({ username: "Alice", password: "password123" }),
   }, { DB: publicDb, AUTH_RATE_LIMITER: blockedAuth });
   assert(loginResponse.status === 429, "login is protected by the authentication limiter");
   const registerResponse = await publicAuthApp.request("https://example.test/edgesonic/auth/register", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.8" },
+    headers: { "Content-Type": "application/json", "User-Agent": "EdgeSonic Test Browser" },
     body: JSON.stringify({ username: "Alice", email: "alice@example.test", password: "password123" }),
   }, { DB: publicDb, AUTH_RATE_LIMITER: blockedAuth });
   assert(registerResponse.status === 429, "registration is protected by the authentication limiter");
-  assert(blockedAuth.keys[0] === "login:alice:203.0.113.8", "login uses its route-specific authentication key");
-  assert(blockedAuth.keys[1] === "register:alice:203.0.113.8", "registration uses its route-specific authentication key");
+  assert(blockedAuth.keys[0] === loginKey, "login uses its route-specific authentication key");
+  assert(blockedAuth.keys[1] === registerKey, "registration uses its route-specific authentication key");
 
-  const app = new Hono<{ Bindings: { API_RATE_LIMITER?: RateLimiter }; Variables: { user: { username: string } } }>();
+  const app = new Hono<{ Bindings: { API_RATE_LIMITER?: RateLimiter }; Variables: { user: { username: string }; rateLimitDeviceId?: string } }>();
   app.use("/rest/*", async (c, next) => {
     c.set("user", { username: "alice" });
+    c.set("rateLimitDeviceId", sessionDeviceId);
     await next();
   });
   app.use("/rest/*", apiRateLimitMiddleware);
@@ -90,12 +119,22 @@ async function main() {
   const limited = await app.request("https://example.test/rest/ping", undefined, { API_RATE_LIMITER: apiDenied });
   assert(limited.status === 429, "authenticated API request is rejected when its limiter is exhausted");
   assert(limited.headers.get("Retry-After") === "60", "API rejection includes Retry-After");
-  assert(apiDenied.keys[0] === "alice", "authenticated API limiter uses the stable authenticated username");
+  assert(apiDenied.keys[0] === firstApiKey, "authenticated API limiter uses the stable user and device key");
 
   const allowed = await app.request("https://example.test/rest/ping", undefined, {});
   assert(allowed.status === 200, "authenticated API request remains available without the optional binding");
 
-  const publicApp = new Hono<{ Bindings: { API_RATE_LIMITER?: RateLimiter }; Variables: { user?: { username: string } } }>();
+  const noPrincipalApp = new Hono<{ Bindings: { API_RATE_LIMITER?: RateLimiter }; Variables: { user: { username: string }; rateLimitDeviceId?: string } }>();
+  noPrincipalApp.use("/rest/*", async (c, next) => {
+    c.set("user", { username: "alice" });
+    await next();
+  });
+  noPrincipalApp.use("/rest/*", apiRateLimitMiddleware);
+  noPrincipalApp.get("/rest/ping", (c) => c.json({ ok: true }));
+  const noPrincipalResponse = await noPrincipalApp.request("https://example.test/rest/ping", undefined, { API_RATE_LIMITER: apiDenied });
+  assert(noPrincipalResponse.status === 500, "API requests fail closed when the authentication device principal is unavailable");
+
+  const publicApp = new Hono<{ Bindings: { API_RATE_LIMITER?: RateLimiter }; Variables: { user?: { username: string }; rateLimitDeviceId?: string } }>();
   publicApp.use("/edgesonic/*", apiRateLimitMiddleware);
   publicApp.get("/edgesonic/auth/loginConfig", (c) => c.json({ ok: true }));
   const publicResponse = await publicApp.request("https://example.test/edgesonic/auth/loginConfig", undefined, { API_RATE_LIMITER: apiDenied });

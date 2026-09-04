@@ -53,7 +53,7 @@ function buildDb() {
     CREATE TABLE sessions (id TEXT PRIMARY KEY, username TEXT NOT NULL, token TEXT NOT NULL, user_agent TEXT, expires_at INTEGER NOT NULL, created_at INTEGER DEFAULT 0);
     CREATE TABLE guest_tokens (token TEXT PRIMARY KEY, created_by TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER DEFAULT 0);
     CREATE TABLE user_permissions (level INTEGER NOT NULL, permission TEXT NOT NULL, enabled INTEGER DEFAULT 0, max_rph INTEGER DEFAULT 0, PRIMARY KEY (level, permission));
-    CREATE TABLE subsonic_credentials (username TEXT NOT NULL, password TEXT NOT NULL, stream_proxy_strategy TEXT, last_used INTEGER, expires_at INTEGER);
+    CREATE TABLE subsonic_credentials (id TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL, stream_proxy_strategy TEXT, last_used INTEGER, expires_at INTEGER);
     CREATE TABLE api_keys (api_key TEXT PRIMARY KEY, username TEXT NOT NULL, created_at INTEGER DEFAULT 0);
     INSERT INTO users (username, master_password, level, enabled) VALUES ('admin','h',3,1),('alice','h',1,1),('guest','',0,1);
     INSERT INTO user_permissions (level, permission, enabled) VALUES
