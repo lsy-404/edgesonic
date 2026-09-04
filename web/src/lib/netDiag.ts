@@ -21,6 +21,8 @@
 const TAG = "[NetDiag]";
 const WATCHDOG_INTERVAL_MS = 10_000;
 const SLOW_REQUEST_MS = 15_000;
+const SNAPSHOT_KEY = "edgesonic:netdiag:last-pagehide";
+const SNAPSHOT_LIMIT = 20;
 
 const MEDIA_URL_PATTERNS = [
   "/rest/stream",
@@ -43,6 +45,11 @@ export interface InflightHandle {
   fail(reason: unknown): void;
 }
 
+export interface AudioRequestHandle {
+  end(detail?: Record<string, unknown>): void;
+  fail(reason: unknown): void;
+}
+
 interface InflightEntry {
   id: number;
   label: string;
@@ -51,19 +58,27 @@ interface InflightEntry {
   bytes: number;
   lastProgressAt: number;
   warned: boolean;
+  audio?: { bufferedSeconds: number; networkState: number; readyState: number; paused: boolean };
 }
 
 let nextId = 1;
 const inflight = new Map<number, InflightEntry>();
+const audioRequests = new WeakMap<HTMLAudioElement, AudioRequestHandle>();
+let initialized = false;
 
 function shortUrl(url: string): string {
   try {
-    const u = new URL(url, location.href);
+    const u = new URL(url, globalThis.location?.href);
     const id = u.searchParams.get("id");
     return `${u.host}${u.pathname}${id ? `?id=${id}` : ""}`;
   } catch {
-    return url;
+    return "(invalid URL)";
   }
+}
+
+function safeReason(reason: unknown): string {
+  if (reason instanceof DOMException || reason instanceof Error) return reason.name;
+  return typeof reason === "string" ? reason.slice(0, 80).replace(/https?:\/\/\S+/g, "(URL)") : "request failed";
 }
 
 function throughput(entry: InflightEntry): string {
@@ -101,9 +116,74 @@ export function beginRequest(label: string, url: string): InflightHandle {
     fail(reason: unknown) {
       inflight.delete(entry.id);
       const ms = Math.round(performance.now() - entry.startedAt);
-      console.warn(`${TAG} fail #${entry.id} ${label} after ${ms} ms, ${entry.bytes} B received:`, reason);
+      console.warn(`${TAG} fail #${entry.id} ${label} after ${ms} ms, ${entry.bytes} B received:`, safeReason(reason));
     },
   };
+}
+
+function bufferedSeconds(el: HTMLAudioElement): number {
+  let total = 0;
+  try {
+    for (let i = 0; i < el.buffered.length; i++) total += el.buffered.end(i) - el.buffered.start(i);
+  } catch { /* media is not ready */ }
+  return Math.round(total * 10) / 10;
+}
+
+/** Register a browser-owned audio request without inventing byte counts. */
+export function beginAudioRequest(el: HTMLAudioElement, label: string, url: string): AudioRequestHandle {
+  endAudioRequest(el, "source replaced");
+  const request = beginRequest(label, url);
+  const entry = inflight.get(nextId - 1);
+  let finished = false;
+  const update = () => {
+    if (!entry || finished) return;
+    const buffered = bufferedSeconds(el);
+    if (!entry.audio || buffered > entry.audio.bufferedSeconds) entry.lastProgressAt = performance.now();
+    entry.audio = {
+      bufferedSeconds: buffered,
+      networkState: el.networkState,
+      readyState: el.readyState,
+      paused: el.paused,
+    };
+  };
+  const cleanup = () => {
+    el.removeEventListener("progress", update);
+    el.removeEventListener("loadedmetadata", update);
+    el.removeEventListener("canplay", update);
+    el.removeEventListener("error", onError);
+    el.removeEventListener("emptied", onEmptied);
+    el.removeEventListener("suspend", onSuspend);
+  };
+  const finish = (kind: "end" | "fail", detail?: Record<string, unknown> | unknown) => {
+    if (finished) return;
+    finished = true;
+    cleanup();
+    if (kind === "end") request.end({ audio: entry?.audio, ...(detail as Record<string, unknown> | undefined) });
+    else request.fail(detail);
+  };
+  const onError = () => finish("fail", el.error?.message || "audio error");
+  const onEmptied = () => finish("end", { reason: "source cleared" });
+  const onSuspend = () => finish("end", { reason: "native transfer suspended" });
+  el.addEventListener("progress", update);
+  el.addEventListener("loadedmetadata", update);
+  el.addEventListener("canplay", update);
+  el.addEventListener("error", onError);
+  el.addEventListener("emptied", onEmptied);
+  el.addEventListener("suspend", onSuspend);
+  const handle: AudioRequestHandle = {
+    end(detail) { finish("end", detail); },
+    fail(reason) { finish("fail", reason); },
+  };
+  audioRequests.set(el, handle);
+  return handle;
+}
+
+/** End the recorded native request when the player unloads its source. */
+export function endAudioRequest(el: HTMLAudioElement, reason = "source cleared"): void {
+  const request = audioRequests.get(el);
+  if (!request) return;
+  request.end({ reason });
+  audioRequests.delete(el);
 }
 
 function watchdogTick(): void {
@@ -118,7 +198,7 @@ function watchdogTick(): void {
     console.warn(
       `${TAG} in-flight #${entry.id} ${entry.label}: ${Math.round(age / 1000)}s elapsed, ` +
       `${entry.bytes} B (${throughput(entry)}), ${Math.round(sinceProgress / 1000)}s since last data`,
-      shortUrl(entry.url),
+      shortUrl(entry.url), entry.audio ? { audio: entry.audio } : "",
     );
   }
 }
@@ -137,7 +217,7 @@ export function describeAudio(el: HTMLAudioElement): Record<string, unknown> {
   const src = el.currentSrc || el.src || "";
   return {
     srcKind: src.startsWith("blob:") ? "blob" : src ? "network" : "none",
-    src: src.startsWith("blob:") ? src : shortUrl(src),
+    src: src.startsWith("blob:") ? "blob" : shortUrl(src),
     // 0 EMPTY / 1 IDLE / 2 LOADING / 3 NO_SOURCE
     networkState: el.networkState,
     // 0 NOTHING .. 4 ENOUGH_DATA
@@ -149,8 +229,10 @@ export function describeAudio(el: HTMLAudioElement): Record<string, unknown> {
   };
 }
 
-function isMediaResource(name: string): boolean {
-  return MEDIA_URL_PATTERNS.some((p) => name.includes(p));
+function resourceKind(name: string): "media" | "api" | "resource" {
+  if (MEDIA_URL_PATTERNS.some((p) => name.includes(p))) return "media";
+  if (name.includes("/rest/") || name.includes("/edgesonic/")) return "api";
+  return "resource";
 }
 
 function observeResourceTimings(): void {
@@ -158,10 +240,11 @@ function observeResourceTimings(): void {
   try {
     const observer = new PerformanceObserver((list) => {
       for (const e of list.getEntries() as PerformanceResourceTiming[]) {
-        if (!isMediaResource(e.name)) continue;
+        const kind = resourceKind(e.name);
+        if (kind === "resource") continue;
         // Cross-origin entries without Timing-Allow-Origin zero out most
         // fields; duration and nextHopProtocol (when present) still help.
-        console.info(`${TAG} timing ${shortUrl(e.name)}:`, {
+        console.info(`${TAG} ${kind} timing ${shortUrl(e.name)}:`, {
           protocol: e.nextHopProtocol || "(hidden)",
           durationMs: Math.round(e.duration),
           ttfbMs: e.responseStart > 0 ? Math.round(e.responseStart - e.startTime) : null,
@@ -177,7 +260,48 @@ function observeResourceTimings(): void {
   }
 }
 
+function observeNavigationTimings(): void {
+  const report = (entry: PerformanceNavigationTiming) => {
+    console.info(`${TAG} navigation timing:`, {
+      durationMs: Math.round(entry.duration),
+      ttfbMs: entry.responseStart > 0 ? Math.round(entry.responseStart - entry.startTime) : null,
+      domContentLoadedMs: Math.round(entry.domContentLoadedEventEnd - entry.startTime),
+      loadMs: Math.round(entry.loadEventEnd - entry.startTime),
+      transferSize: entry.transferSize || null,
+      type: entry.type,
+    });
+  };
+  for (const entry of performance.getEntriesByType("navigation") as PerformanceNavigationTiming[]) report(entry);
+  if (typeof PerformanceObserver === "undefined") return;
+  try {
+    const observer = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as PerformanceNavigationTiming[]) report(entry);
+    });
+    observer.observe({ type: "navigation", buffered: true });
+  } catch { /* navigation observer is optional */ }
+}
+
+function snapshotInflight(): Array<Record<string, unknown>> {
+  return Array.from(inflight.values()).slice(0, SNAPSHOT_LIMIT).map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    url: shortUrl(entry.url),
+    elapsedMs: Math.round(performance.now() - entry.startedAt),
+    bytes: entry.bytes,
+    audio: entry.audio,
+  }));
+}
+
+function savePagehideSnapshot(): void {
+  const snapshot = snapshotInflight();
+  if (!snapshot.length) return;
+  console.warn(`${TAG} pagehide with in-flight requests:`, snapshot);
+  try { sessionStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot)); } catch { /* storage unavailable */ }
+}
+
 export function initNetDiag(): void {
+  if (initialized) return;
+  initialized = true;
   const nav = navigator as Navigator & {
     connection?: { effectiveType?: string; saveData?: boolean; downlink?: number };
   };
@@ -196,16 +320,11 @@ export function initNetDiag(): void {
     console.info(`${TAG} SW controller changed:`, navigator.serviceWorker.controller?.scriptURL || "(none)");
   });
   observeResourceTimings();
+  observeNavigationTimings();
+  window.addEventListener("pagehide", savePagehideSnapshot, { once: false });
   setInterval(watchdogTick, WATCHDOG_INTERVAL_MS);
   (window as unknown as Record<string, unknown>).__esNetDiag = {
     inflight: () =>
-      Array.from(inflight.values()).map((e) => ({
-        id: e.id,
-        label: e.label,
-        url: shortUrl(e.url),
-        elapsedMs: Math.round(performance.now() - e.startedAt),
-        bytes: e.bytes,
-        throughput: throughput(e),
-      })),
+      snapshotInflight().map((e) => ({ ...e, throughput: typeof e.bytes === "number" ? `${Math.round(e.bytes / 1024)} KB` : "0 KB" })),
   };
 }

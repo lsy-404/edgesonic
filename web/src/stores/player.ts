@@ -19,7 +19,7 @@ import { useAuth, parseXmlAttrs } from "../api";
 import { getTrackMetadataXml, preloadTrack } from "../lib/trackPrefetch";
 import { getCachedTrack, putCachedTrack, deleteCachedTrack } from "../lib/audioCache";
 import { setPlaybackActive } from "../lib/requestBudget";
-import { beginRequest, describeAudio } from "../lib/netDiag";
+import { beginAudioRequest, beginRequest, describeAudio, endAudioRequest } from "../lib/netDiag";
 import { repairFlacPictureMime } from "../lib/flacRepair";
 import { extractEmbeddedCover } from "../lib/embeddedCover";
 import { i18n } from "../i18n";
@@ -51,6 +51,7 @@ interface IncrementalFallbackState {
   contentType: string;
   shouldPlay: boolean;
   phase: "range" | "full";
+  controller: AbortController;
 }
 
 interface FullDownloadState {
@@ -384,6 +385,7 @@ export const usePlayerStore = defineStore("player", () => {
   }, PLAYBACK_WATCHDOG_MS);
 
   function revokeBlobSrc(el: HTMLAudioElement) {
+    endAudioRequest(el, "replaced by Blob");
     const blobSrc = blobSrcByElement.get(el);
     if (blobSrc) {
       URL.revokeObjectURL(blobSrc);
@@ -399,7 +401,14 @@ export const usePlayerStore = defineStore("player", () => {
     fullDownloadByElement.delete(el);
   }
 
+  function abortFallbackWork(el: HTMLAudioElement) {
+    fallbackStateByElement.get(el)?.controller.abort();
+    fallbackInFlight.delete(el);
+  }
+
   function resetFallbackState(el: HTMLAudioElement) {
+    abortFallbackWork(el);
+    endAudioRequest(el);
     abortFullDownload(el);
     revokeBlobSrc(el);
     fallbackAttemptByElement.delete(el);
@@ -621,18 +630,19 @@ export const usePlayerStore = defineStore("player", () => {
   ) {
     state.phase = "full";
     try {
-      const blob = await fetchFullBlob(state.trackId);
+      const blob = await fetchFullBlob(state.trackId, state.controller.signal);
       if (el !== active || current.value?.id !== state.trackId) return;
       await playFallbackBlob(el, blob, resumeAt, state.shouldPlay || shouldPlay, "fallback");
       fallbackStateByElement.delete(el);
     } catch (e) {
+      if (state.controller.signal.aborted) return;
       console.error("[Player] full-file fallback failed:", e);
       advanceAfterFallbackFailure(el, state.trackId, e);
     }
   }
 
   async function continueIncrementalFallback(el: HTMLAudioElement, state: IncrementalFallbackState, resumeAt: number, shouldPlay: boolean) {
-    if (el !== active || fallbackInFlight.has(el)) return;
+    if (el !== active || fallbackInFlight.has(el) || state.controller.signal.aborted) return;
     const track = current.value;
     if (!track || track.id !== state.trackId) return;
 
@@ -645,6 +655,16 @@ export const usePlayerStore = defineStore("player", () => {
         // keeps no-store: recovery must never be served a cached copy of
         // whatever the browser could not play.
         const diag = beginRequest(`stream-range-${state.downloaded}-${target - 1}`, state.sourceUrl);
+        const attemptController = new AbortController();
+        const RANGE_STALL_TIMEOUT_MS = 20_000;
+        let stallTimer: ReturnType<typeof setTimeout> | null = null;
+        const resetStallTimer = () => {
+          if (stallTimer) clearTimeout(stallTimer);
+          stallTimer = setTimeout(() => attemptController.abort(), RANGE_STALL_TIMEOUT_MS);
+        };
+        const abortAttempt = () => attemptController.abort();
+        state.controller.signal.addEventListener("abort", abortAttempt, { once: true });
+        resetStallTimer();
         let resp!: Response;
         let chunk!: Blob;
         try {
@@ -652,14 +672,35 @@ export const usePlayerStore = defineStore("player", () => {
             credentials: "same-origin",
             cache: "no-store",
             headers: { Range: `bytes=${state.downloaded}-${target - 1}` },
+            signal: attemptController.signal,
           });
           if (!resp.ok) throw new Error(`range fallback fetch failed: ${resp.status}`);
-          chunk = await resp.blob();
-          diag.progress(chunk.size);
+          const reader = resp.body?.getReader();
+          if (reader) {
+            const parts: BlobPart[] = [];
+            let received = 0;
+            for (;;) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              parts.push(value);
+              received += value.byteLength;
+              diag.progress(received);
+              resetStallTimer();
+            }
+            chunk = new Blob(parts, { type: resp.headers.get("Content-Type") || "" });
+          } else {
+            chunk = await resp.blob();
+            diag.progress(chunk.size);
+          }
           diag.end({ status: resp.status });
         } catch (e) {
-          diag.fail(e);
+          diag.fail(attemptController.signal.aborted && !state.controller.signal.aborted
+            ? `range stalled for ${RANGE_STALL_TIMEOUT_MS} ms`
+            : e);
           throw e;
+        } finally {
+          if (stallTimer) clearTimeout(stallTimer);
+          state.controller.signal.removeEventListener("abort", abortAttempt);
         }
         await logFallbackBlob(`stream-range-${state.downloaded}-${target - 1}`, resp, chunk);
         if (resp.status === 206) {
@@ -680,6 +721,7 @@ export const usePlayerStore = defineStore("player", () => {
         return;
       }
     } catch (e) {
+      if (state.controller.signal.aborted) return;
       console.warn("[Player] incremental fallback failed, trying full file:", e);
       state.stepIndex = FALLBACK_RANGE_STEPS.length;
     } finally {
@@ -701,6 +743,7 @@ export const usePlayerStore = defineStore("player", () => {
       contentType: "",
       shouldPlay,
       phase: "range",
+      controller: new AbortController(),
     };
     fallbackStateByElement.set(el, state);
     void continueIncrementalFallback(el, state, resumeAt, shouldPlay);
@@ -847,7 +890,11 @@ export const usePlayerStore = defineStore("player", () => {
     });
     el.addEventListener("pause", () => {
       console.log("[Player] pause event");
-      if (el === active) playing.value = false;
+      if (el === active) {
+        playing.value = false;
+        abortFallbackWork(el);
+        invalidatePreload();
+      }
     });
     el.addEventListener("ended", () => {
       console.log("[Player] ended event");
@@ -1021,6 +1068,7 @@ export const usePlayerStore = defineStore("player", () => {
       targetEl.removeAttribute("src");
       targetEl.load();
       if (track.streamUrl) {
+        beginAudioRequest(targetEl, "audio-stream", track.streamUrl);
         targetEl.src = track.streamUrl;
         targetEl.load();
         targetEl.volume = volume.value;
@@ -1069,6 +1117,7 @@ export const usePlayerStore = defineStore("player", () => {
           return;
         }
         const sourceUrl = sourceUrlForTrack(track);
+        beginAudioRequest(targetEl, "audio-stream", sourceUrl);
         targetEl.src = sourceUrl;
         targetEl.load();
         targetEl.volume = volume.value;

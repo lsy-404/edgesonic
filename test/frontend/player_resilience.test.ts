@@ -53,6 +53,11 @@ assert(playerSrc.includes("next.push([0, dur]);"), "the buffer indicator covers 
 assert(playerSrc.includes("preloaded && preloaded.index === index.value && preloaded.ready"), "next-track swap waits for the complete Blob");
 
 assert(playerSrc.includes("FALLBACK_RANGE_STEPS"), "incremental Range fallback remains enabled");
+assert(playerSrc.includes("signal: attemptController.signal"), "Range recovery passes a real abort signal to fetch");
+assert(playerSrc.includes("RANGE_STALL_TIMEOUT_MS = 20_000"), "Range recovery aborts when its body stops producing data");
+assert(playerSrc.includes("resetStallTimer();"), "Range recovery renews its stall deadline for each received chunk");
+assert(playerSrc.includes("controller: new AbortController()"), "fallback work has a lifecycle controller");
+assert(playerSrc.includes("abortFallbackWork(el);"), "track reset and pause cancel obsolete fallback work");
 assert(playerSrc.includes('state.phase = "full";'), "fallback advances from Range attempts to full-file attempts");
 assert(playerSrc.includes("fallbackAfterMediaError"), "network, decode, and unsupported-source errors enter fallback");
 assert(playerSrc.includes("advanceAfterFallbackFailure"), "exhausted fallback attempts have a terminal path");
@@ -61,6 +66,7 @@ assert(playerSrc.includes('showError(i18n.global.t("player.playbackFailed"'), "t
 assert(!playerSrc.includes("preloaded.broken"), "speculative preload failures do not mark tracks unplayable");
 assert(playerSrc.includes("normal streaming will retry on advance"), "preload failures fall back to normal streaming");
 assert(!playerSrc.includes("fallbackAfterDemuxError"), "old demux-only error gate is removed");
+assert(playerSrc.includes('beginAudioRequest(targetEl, "audio-stream"'), "native audio streams register lifecycle diagnostics");
 
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
 process.exit(failures ? 1 : 0);

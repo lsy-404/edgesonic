@@ -6,7 +6,7 @@ const player = fs.readFileSync(path.join(root, "web/src/stores/player.ts"), "utf
 const nowPlaying = fs.readFileSync(path.join(root, "web/src/views/NowPlaying.vue"), "utf-8");
 
 const currentCacheMiss = player.match(
-  /const sourceUrl = streamUrl\(trackId, streamQualityParams\(\)\);([\s\S]*?)targetEl\.volume = volume\.value;/,
+  /const sourceUrl = sourceUrlForTrack\(track\);([\s\S]*?)targetEl\.volume = volume\.value;/,
 )?.[1] ?? "";
 const clearsSourceBeforeCacheLookup = player.indexOf('targetEl.removeAttribute("src")')
   < player.indexOf("const cached = await getCachedTrackAtOrAboveQuality(trackId)");
@@ -20,7 +20,7 @@ const checks: [string, boolean][] = [
   ["cache lookup rejects lower quality", player.includes("QUALITY_RANK[candidate] >= minRank")],
   ["unknown auto quality is not substituted", player.includes('candidate === "auto"') && player.includes('requested === "auto"')],
   ["higher-quality cache hits require browser support", player.includes("canUseCachedQuality(candidate, quality)")],
-  ["original-file retry is restricted to automatic quality", player.includes('if (!quality) attempts.push(["download-full", downloadUrl(trackId)]);')],
+  ["original-file retry is restricted to automatic quality", player.includes('if (!track?.streamUrl && !quality) attempts.push(["download-full", downloadUrl(trackId)]);')],
   ["quality changes discard old preloads", /watch\(playbackQuality,[\s\S]*?invalidatePreload\(\);/.test(player)],
   ["quality changes reload active playback", /watch\(playbackQuality,[\s\S]*?loadCurrent\(shouldPlay\);/.test(player)],
   ["stale quality cache lookups cannot replace playback", player.includes("playbackQuality.value !== requestedQuality")],
