@@ -26,9 +26,9 @@ class FakeAudio extends EventTarget {
   set src(value: string) { this.source = value; this.currentSrc = value; }
   removeAttribute(name: string) { if (name === "src") { this.source = ""; this.currentSrc = ""; } }
   constructor() { super(); FakeAudio.instances.push(this); }
-  load() { this.dispatchEvent(new Event("emptied")); this.dispatchEvent(new Event("loadstart")); }
-  pause() { this.paused = true; this.dispatchEvent(new Event("pause")); }
-  async play() { this.paused = false; this.dispatchEvent(new Event("play")); }
+  load() { setTimeout(() => { this.dispatchEvent(new Event("emptied")); this.dispatchEvent(new Event("loadstart")); }, 0); }
+  pause() { if (this.paused) return; this.paused = true; setTimeout(() => this.dispatchEvent(new Event("pause")), 0); }
+  async play() { this.paused = false; queueMicrotask(() => this.dispatchEvent(new Event("play"))); }
 }
 
 async function main() {
@@ -48,7 +48,10 @@ let rangeRequests = 0;
 const server = http.createServer((request, response) => {
   if (request.headers.range) rangeRequests++;
   response.writeHead(206, { "Content-Type": "audio/mpeg", "Content-Range": "bytes 0-1199999/2400000" });
-  response.end(Buffer.alloc(1_200_000));
+  if (rangeRequests === 3) {
+    response.write(Buffer.alloc(1024));
+    setTimeout(() => { if (!response.destroyed) response.end(Buffer.alloc(1_198_976)); }, 100);
+  } else response.end(Buffer.alloc(1_200_000));
 });
 await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
 const address = server.address();
@@ -76,11 +79,15 @@ audio.dispatchEvent(new Event("error"));
 await settle();
 assert(rangeRequests === 2 && audio.src === "blob:recovered", "internal Blob source change does not cancel the next Range recovery");
 
+audio.error = { code: 3, message: "decode while loading" };
+audio.dispatchEvent(new Event("error"));
+await new Promise((resolve) => setTimeout(resolve, 10));
+assert(rangeRequests === 3, "third Range request starts before the user pauses");
 audio.pause();
-const requestsAtPause = rangeRequests;
-await audio.play();
 await settle();
-assert(audio.paused === false && rangeRequests === requestsAtPause, "user pause aborts recovery work while resume keeps the recovered Blob playable");
+player.toggle();
+await new Promise((resolve) => setTimeout(resolve, 140));
+assert(audio.paused === false && rangeRequests >= 4 && audio.src === "blob:recovered", "resume rebuilds a cancelled controller and continues the missing Range data");
 
 await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 process.exit(failures ? 1 : 0);

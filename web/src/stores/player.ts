@@ -355,7 +355,7 @@ export const usePlayerStore = defineStore("player", () => {
   // what was actually served once cross-quality substitution is in play.
   const cachedBlobKeyByElement = new WeakMap<HTMLAudioElement, string>();
   const fallbackInFlight = new WeakSet<HTMLAudioElement>();
-  const internalPauseByElement = new WeakSet<HTMLAudioElement>();
+  const internalPauseCountByElement = new WeakMap<HTMLAudioElement, number>();
 
   window.addEventListener("pagehide", () => {
     _isUnloading = true;
@@ -408,8 +408,25 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   function pauseInternally(el: HTMLAudioElement) {
-    internalPauseByElement.add(el);
-    try { el.pause(); } finally { internalPauseByElement.delete(el); }
+    if (el.paused) return;
+    internalPauseCountByElement.set(el, (internalPauseCountByElement.get(el) || 0) + 1);
+    el.pause();
+  }
+
+  function consumeInternalPause(el: HTMLAudioElement): boolean {
+    const count = internalPauseCountByElement.get(el) || 0;
+    if (!count) return false;
+    if (count === 1) internalPauseCountByElement.delete(el);
+    else internalPauseCountByElement.set(el, count - 1);
+    return true;
+  }
+
+  function resumeFallbackWork(el: HTMLAudioElement) {
+    const state = fallbackStateByElement.get(el);
+    if (!state || state.phase !== "range" || !state.controller.signal.aborted) return;
+    state.controller = new AbortController();
+    state.shouldPlay = true;
+    void continueIncrementalFallback(el, state, currentTime.value, true);
   }
 
   function resetFallbackState(el: HTMLAudioElement) {
@@ -649,14 +666,18 @@ export const usePlayerStore = defineStore("player", () => {
 
   async function continueIncrementalFallback(el: HTMLAudioElement, state: IncrementalFallbackState, resumeAt: number, shouldPlay: boolean) {
     if (el !== active || fallbackInFlight.has(el) || state.controller.signal.aborted) return;
+    const controller = state.controller;
     const track = current.value;
     if (!track || track.id !== state.trackId) return;
 
     fallbackInFlight.add(el);
     try {
       while (state.stepIndex < FALLBACK_RANGE_STEPS.length) {
-        const target = FALLBACK_RANGE_STEPS[state.stepIndex++];
-        if (target <= state.downloaded) continue;
+        const target = FALLBACK_RANGE_STEPS[state.stepIndex];
+        if (target <= state.downloaded) {
+          state.stepIndex++;
+          continue;
+        }
         // This runs only after playback already failed, so it deliberately
         // keeps no-store: recovery must never be served a cached copy of
         // whatever the browser could not play.
@@ -670,7 +691,7 @@ export const usePlayerStore = defineStore("player", () => {
           stallTimer = setTimeout(() => { stalled = true; attemptController.abort(); }, RANGE_STALL_TIMEOUT_MS);
         };
         const abortAttempt = () => attemptController.abort();
-        state.controller.signal.addEventListener("abort", abortAttempt, { once: true });
+        controller.signal.addEventListener("abort", abortAttempt, { once: true });
         resetStallTimer();
         let resp!: Response;
         let chunk!: Blob;
@@ -711,13 +732,14 @@ export const usePlayerStore = defineStore("player", () => {
           throw e;
         } finally {
           if (stallTimer) clearTimeout(stallTimer);
-          state.controller.signal.removeEventListener("abort", abortAttempt);
+          controller.signal.removeEventListener("abort", abortAttempt);
         }
         await logFallbackBlob(`stream-range-${state.downloaded}-${target - 1}`, resp, chunk);
         if (resp.status === 206) {
           state.chunks.push(chunk);
           state.downloaded += chunk.size;
           state.contentType = state.contentType || chunk.type || resp.headers.get("Content-Type") || "";
+          state.stepIndex++;
           if (chunk.size < target - (state.downloaded - chunk.size)) state.stepIndex = FALLBACK_RANGE_STEPS.length;
         } else {
           state.chunks = [chunk];
@@ -732,14 +754,14 @@ export const usePlayerStore = defineStore("player", () => {
         return;
       }
     } catch (e) {
-      if (state.controller.signal.aborted) return;
+      if (controller.signal.aborted || state.controller !== controller) return;
       console.warn("[Player] incremental fallback failed, trying full file:", e);
       state.stepIndex = FALLBACK_RANGE_STEPS.length;
     } finally {
-      if (fallbackStateByElement.get(el) === state) fallbackInFlight.delete(el);
+      if (fallbackStateByElement.get(el) === state && state.controller === controller) fallbackInFlight.delete(el);
     }
 
-    if (el === active && current.value?.id === state.trackId) {
+    if (state.controller === controller && el === active && current.value?.id === state.trackId) {
       await fallbackToFullBlob(el, state, resumeAt, state.shouldPlay || shouldPlay);
     }
   }
@@ -903,7 +925,7 @@ export const usePlayerStore = defineStore("player", () => {
       console.log("[Player] pause event");
       if (el === active) {
         playing.value = false;
-        if (!internalPauseByElement.has(el)) abortFallbackWork(el);
+        if (!consumeInternalPause(el)) abortFallbackWork(el);
         invalidatePreload();
       }
     });
@@ -1212,7 +1234,10 @@ export const usePlayerStore = defineStore("player", () => {
       loadCurrent(true);
       return;
     }
-    if (active!.paused) void active!.play().catch(() => { playing.value = false; });
+    if (active!.paused) {
+      resumeFallbackWork(active!);
+      void active!.play().catch(() => { playing.value = false; });
+    }
     else active!.pause();
   }
 

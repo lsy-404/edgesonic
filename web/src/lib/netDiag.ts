@@ -203,6 +203,7 @@ export function endAudioRequest(el: HTMLAudioElement, reason = "source cleared")
 function watchdogTick(): void {
   const now = performance.now();
   for (const entry of inflight.values()) {
+    if (entry.audio && (entry.audio.paused || entry.audio.networkState !== 2)) continue;
     const age = now - entry.startedAt;
     const sinceProgress = now - entry.lastProgressAt;
     if (age < SLOW_REQUEST_MS) continue;
