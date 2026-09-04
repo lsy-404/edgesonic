@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { classifyVersionUpdate, compareSemver, listUpdates, parseSemver } from "../../worker/src/utils/autoupdate";
+import { classifyVersionUpdate, compareSemver, isNewerStableRelease, listUpdates, parseSemver } from "../../worker/src/utils/autoupdate";
 
 let failures = 0;
 function assert(condition: boolean, message: string) {
@@ -28,6 +28,12 @@ assert(classifyVersionUpdate(version("1.2.5"), version("1.2.5"), false, false) =
 assert(compareSemver(version("1.0.0-alpha.2"), version("1.0.0-alpha.10")) < 0, "numeric prerelease identifiers use numeric ordering");
 assert(compareSemver(version("1.0.0-alpha"), version("1.0.0-alpha.1")) < 0, "shorter prerelease identifiers sort first");
 assert(version("v1.2.3+build.7").raw === "1.2.3", "build metadata does not change the normalized version");
+assert(isNewerStableRelease("1.4.0", "1.4.1"), "a newer stable release is detected");
+assert(!isNewerStableRelease("1.4.0", "1.4.0"), "an equal stable release is not an update");
+assert(!isNewerStableRelease("1.4.1", "1.4.0"), "an older stable release is not an update");
+assert(!isNewerStableRelease("1.4.0-dev.abc123", "1.4.1"), "a development build is not prompted to update");
+assert(!isNewerStableRelease("1.4.0", "1.4.1-dev.abc123"), "a development target is not an update");
+assert(!isNewerStableRelease("invalid", "1.4.1"), "an invalid current version is not an update");
 
 async function testReleaseListing() {
   const originalFetch = globalThis.fetch;

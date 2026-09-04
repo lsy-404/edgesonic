@@ -14,13 +14,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //
-// The poller in main.ts calls notify() with the latest build metadata from
-// /edgesonic/version. On the first call we capture the baseline; on any later
-// build mismatch we auto-refresh ONCE. If after that reload the deployed
-// metadata still differs from the loaded bundle (e.g. local `wrangler dev`
-// without EDGESONIC_VERSION, --no-build with stale web/dist, or missing
-// --var on deploy), we stop auto-refreshing and show a banner so the user
-// decides — this prevents the infinite reload loop.
+// The poller in main.ts calls notify() with the latest deployed version. On
+// the first call we capture the baseline; later, only a newer stable release
+// triggers one automatic refresh. Development, malformed, equal, and older
+// version values are not update signals.
 //
 // The "already auto-refreshed" flag is kept in sessionStorage so it survives a
 // single reload but is cleared when the tab closes; a fresh session can still
@@ -32,18 +29,16 @@
 // for any reason, that's the desired outcome (load latest bundle).
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
+import { isNewerStableRelease } from "../../../shared/autoupdate";
 
 interface VersionPayload {
   version: string;
-  buildTime: string | null;
 }
 
 const AUTO_REFRESH_KEY = "edgesonic:auto-refreshed";
 
 function hasUpdate(initial: VersionPayload, latest: VersionPayload): boolean {
-  return initial.version !== latest.version || (
-    latest.buildTime !== null && initial.buildTime !== latest.buildTime
-  );
+  return isNewerStableRelease(initial.version, latest.version);
 }
 
 export const useUpdateBanner = defineStore("updateBanner", () => {
@@ -63,10 +58,8 @@ export const useUpdateBanner = defineStore("updateBanner", () => {
     return hasUpdate(initial.value, latest.value);
   });
 
-  // Shown when we already auto-refreshed once but the server still reports a
-  // different build — a real update may have landed during the reload, or
-  // the server keeps returning mismatched metadata. Either way, let the user
-  // decide instead of looping.
+  // Shown when a newer stable release still remains after the one automatic
+  // refresh, so the user can choose to retry without creating a reload loop.
   const showStale = computed(() => {
     if (!initial.value || !latest.value) return false;
     if (dismissed.value) return false;

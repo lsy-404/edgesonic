@@ -129,19 +129,17 @@ const pinia = createPinia();
 app.use(pinia);
 app.use(i18n);
 
-// The loaded bundle, not the first delayed API probe, defines the baseline.
-// This preserves deploy detection when a rollout happens just after page load.
+// The loaded bundle, not the first delayed API probe, defines the version
+// baseline. This preserves newer-release detection across a just-started deploy.
 const updateBanner = useUpdateBanner(pinia);
 const demoMode = useDemoMode(pinia);
 updateBanner.notify({
   version: __EDGESONIC_VERSION__,
-  buildTime: __EDGESONIC_BUILD_TIME__,
 });
 app.mount("#app");
 
 // deploy. We poll a tiny public endpoint and feed the result into the update
-// banner store; the banner only renders once the deployed build metadata
-// differs from the first sample we recorded.
+// banner store; it only reacts to a newer stable release than this bundle.
 //
 // Initial probe runs 5s after mount (give the auth bootstrap room to breathe),
 // then every 5 minutes thereafter. Errors are deliberately swallowed — a
@@ -154,9 +152,9 @@ async function checkVersion() {
   try {
     const r = await fetch("/edgesonic/version", { cache: "no-store" });
     if (!r.ok) return;
-    const j = (await r.json()) as { ok?: boolean; version?: string; buildTime?: string | null; demoMode?: boolean; defaultTheme?: string | null; allowAllFileTypes?: boolean };
-    if (!j.ok || typeof j.version !== "string" || (j.buildTime !== null && typeof j.buildTime !== "string")) return;
-    updateBanner.notify({ version: j.version, buildTime: j.buildTime ?? null });
+    const j = (await r.json()) as { ok?: boolean; version?: string; demoMode?: boolean; defaultTheme?: string | null; allowAllFileTypes?: boolean };
+    if (!j.ok || typeof j.version !== "string") return;
+    updateBanner.notify({ version: j.version });
     demoMode.setEnabled(!!j.demoMode);
     demoMode.setAllowAllFileTypes(!!j.allowAllFileTypes);
     // Apply the server-declared default theme on first visit (when the

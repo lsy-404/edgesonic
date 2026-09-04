@@ -6,6 +6,7 @@ import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs } from "../api";
 import { activationDisplay } from "../lib/activation";
 import Icon from "../components/Icon.vue";
+import { isNewerStableRelease } from "../../../shared/autoupdate";
 
 const { t } = useI18n();
 const { isLoggedIn, username, isSuperAdmin, level, hasPerm, activation, storageFetch, edgesonicFetch, edgesonicPost, handleAuthError } = useAuth();
@@ -85,7 +86,6 @@ const levelKeys: Record<number, string> = { 0: "guest", 1: "user", 2: "admin", 3
 
 const edgesonicVersion = ref(__EDGESONIC_VERSION__);
 const edgesonicBuildTime = new Date(__EDGESONIC_BUILD_TIME__).toLocaleString();
-const releaseVersion = edgesonicVersion.value.replace(/-dev\.[^-]+(?:-dirty)?$|-dirty$/, "");
 const isDevelopmentBuild = /-dev\./.test(edgesonicVersion.value);
 const isDirtyBuild = /-dirty$/.test(edgesonicVersion.value);
 // Activation is only worth a row when something actually bounds the account;
@@ -116,9 +116,9 @@ async function loadVersionInfo() {
       const rel = await r2.json() as { tag_name?: string };
       const tag = rel.tag_name?.replace(/^v/, "") ?? "";
       latestVersion.value = tag;
-      if (tag && tag !== releaseVersion) {
-        updateAvailable.value = true;
-      }
+      updateAvailable.value = !isDevelopmentBuild
+        && !isDirtyBuild
+        && isNewerStableRelease(edgesonicVersion.value, tag);
     }
   } catch { /* offline or rate-limited — stay quiet */ } finally {
     updateChecking.value = false;

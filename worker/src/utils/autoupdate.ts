@@ -8,6 +8,7 @@ import {
   GITHUB_API,
   GITHUB_REPO,
   hasUpdateArtifact,
+  isNewerStableRelease,
   normalizeTag,
   parseSemver,
   UPDATE_ARTIFACT_NAME,
@@ -23,7 +24,7 @@ import {
 // Version maths and release eligibility are shared with the SPA, which lists
 // releases straight from the browser; re-exported so existing importers and
 // tests keep a single entry point.
-export { classifyVersionUpdate, compareSemver, normalizeTag, parseSemver };
+export { classifyVersionUpdate, compareSemver, isNewerStableRelease, normalizeTag, parseSemver };
 export type { ReleaseOption, Semver };
 
 const CF_API = "https://api.cloudflare.com/client/v4";

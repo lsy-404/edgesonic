@@ -4,6 +4,7 @@ import * as path from "node:path";
 const source = fs.readFileSync(path.resolve(__dirname, "../../web/src/stores/updateBanner.ts"), "utf-8");
 const mainSource = fs.readFileSync(path.resolve(__dirname, "../../web/src/main.ts"), "utf-8");
 const bannerSource = fs.readFileSync(path.resolve(__dirname, "../../web/src/components/UpdateBanner.vue"), "utf-8");
+const dashboardSource = fs.readFileSync(path.resolve(__dirname, "../../web/src/views/Dashboard.vue"), "utf-8");
 
 let pass = 0, fail = 0;
 function check(name: string, cond: boolean) {
@@ -11,10 +12,20 @@ function check(name: string, cond: boolean) {
   else { console.error("  ✗ " + name); fail++; }
 }
 
-// Bundle baseline must come from compiled-in constants, not the first poll.
-check("bundle baseline uses __EDGESONIC_VERSION__/BUILD_TIME__",
-  mainSource.includes("version: __EDGESONIC_VERSION__") &&
-  mainSource.includes("buildTime: __EDGESONIC_BUILD_TIME__"));
+// Bundle baseline must come from the compiled-in version, not the first poll.
+check("bundle baseline uses __EDGESONIC_VERSION__",
+  mainSource.includes("version: __EDGESONIC_VERSION__"));
+
+check("update banner only accepts newer stable releases",
+  source.includes("isNewerStableRelease(initial.version, latest.version)") &&
+  !source.includes("initial.version !== latest.version") &&
+  !source.includes("initial.buildTime !== latest.buildTime"));
+
+check("Dashboard suppresses release prompts for development and dirty builds",
+  dashboardSource.includes("!isDevelopmentBuild") &&
+  dashboardSource.includes("!isDirtyBuild") &&
+  dashboardSource.includes("isNewerStableRelease(edgesonicVersion.value, tag)") &&
+  !dashboardSource.includes("tag !== releaseVersion"));
 
 // Auto-refresh must be gated by an autoRefreshed flag so it cannot loop.
 check("notify() only refreshes when autoRefreshed is false",

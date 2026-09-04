@@ -119,6 +119,14 @@ export function compareSemver(a: Semver, b: Semver): number {
   return comparePrerelease(a.prerelease, b.prerelease);
 }
 
+export function isNewerStableRelease(currentVersion: string, targetVersion: string): boolean {
+  const current = parseSemver(currentVersion);
+  const target = parseSemver(targetVersion);
+  return !!current && !current.prerelease
+    && !!target && !target.prerelease
+    && compareSemver(target, current) > 0;
+}
+
 export function normalizeTag(tag: string): string {
   const trimmed = tag.trim();
   return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
