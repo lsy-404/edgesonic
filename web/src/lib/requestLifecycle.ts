@@ -19,7 +19,7 @@ function diagnosticUrl(input: RequestInfo | URL): string {
     const url = new URL(raw, typeof location === "undefined" ? "https://request.invalid" : location.href);
     return `${url.origin}${url.pathname}`;
   } catch {
-    return raw.split("?")[0];
+    return "(invalid request)";
   }
 }
 
@@ -29,11 +29,16 @@ export async function fetchTextWithTimeout(
   timeoutMs = READ_REQUEST_TIMEOUT_MS,
 ): Promise<TimedTextResponse> {
   const controller = new AbortController();
-  const abortFromCaller = () => controller.abort(init.signal?.reason);
-  if (init.signal?.aborted) abortFromCaller();
-  else init.signal?.addEventListener("abort", abortFromCaller, { once: true });
+  const sourceSignals = [input instanceof Request ? input.signal : undefined, init.signal].filter(Boolean) as AbortSignal[];
+  const abortFromCaller = (signal: AbortSignal) => () => controller.abort(signal.reason);
+  const abortListeners = sourceSignals.map((signal) => [signal, abortFromCaller(signal)] as const);
+  for (const [signal, listener] of abortListeners) {
+    if (signal.aborted) listener();
+    else signal.addEventListener("abort", listener, { once: true });
+  }
   const timer = setTimeout(() => controller.abort(new RequestTimeoutError(timeoutMs)), timeoutMs);
   const diagnostic = beginRequest(`api ${init.method || "GET"}`, diagnosticUrl(input));
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   try {
     const response = await fetch(input, { ...init, signal: controller.signal });
     diagnostic.progress(0);
@@ -43,7 +48,7 @@ export async function fetchTextWithTimeout(
       diagnostic.end({ status: response.status });
       return { response, text };
     }
-    const reader = response.body.getReader();
+    reader = response.body.getReader();
     const decoder = new TextDecoder();
     let text = "";
     let received = 0;
@@ -59,11 +64,13 @@ export async function fetchTextWithTimeout(
       text += decoder.decode(value, { stream: true });
     }
   } catch (error) {
+    if (!controller.signal.aborted) controller.abort(error);
     diagnostic.fail(error);
     throw error;
   } finally {
+    reader?.releaseLock();
     clearTimeout(timer);
-    init.signal?.removeEventListener("abort", abortFromCaller);
+    for (const [signal, listener] of abortListeners) signal.removeEventListener("abort", listener);
   }
 }
 import { beginRequest } from "./netDiag";

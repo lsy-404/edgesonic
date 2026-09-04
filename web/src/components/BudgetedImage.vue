@@ -22,12 +22,14 @@ function loadImage(signal: AbortSignal): Promise<void> {
     }
     let done = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let abort: (() => void) | undefined;
     const finish = (settle: () => void) => {
       if (done) return;
       done = true;
       if (timer !== undefined) clearTimeout(timer);
       image.removeEventListener("load", onLoad);
       image.removeEventListener("error", onError);
+      if (abort) signal.removeEventListener("abort", abort);
       releaseLoad = null;
       settle();
     };
@@ -35,12 +37,12 @@ function loadImage(signal: AbortSignal): Promise<void> {
     const onError = () => finish(() => reject(new Error("image load failed")));
     // Unmounting or stalling must hand the shared budget slot back, otherwise
     // one pending image can starve every other queued request.
-    const abort = () => {
+    abort = () => {
       image.src = "";
       finish(() => reject(signal.reason ?? new DOMException("image load cancelled", "AbortError")));
     };
     releaseLoad = abort;
-    timer = setTimeout(() => finish(() => reject(new Error("image load timed out"))), LOAD_TIMEOUT_MS);
+    timer = setTimeout(() => abort?.(), LOAD_TIMEOUT_MS);
     image.addEventListener("load", onLoad);
     image.addEventListener("error", onError);
     if (signal.aborted) { abort(); return; }

@@ -112,6 +112,21 @@ function cacheKey(scope: string, id: string): string {
   return `${scope}:${id}`;
 }
 
+function catalogTrack<T extends Pick<PrefetchTrack, "id">>(track: T): T {
+  const libraryId = "libraryId" in track && typeof track.libraryId === "string" ? track.libraryId : undefined;
+  return { ...track, id: libraryId || track.id };
+}
+
+function awaitWithSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+    void promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+  });
+}
+
 function remember<T>(
   cache: Map<string, CacheEntry<Promise<T>>>,
   key: string,
@@ -144,25 +159,27 @@ function remember<T>(
 }
 
 export function getTrackMetadataXml(track: Pick<PrefetchTrack, "id">, auth: Pick<TrackPrefetchAuth, "authFetch" | "scope">, signal?: AbortSignal): Promise<string> {
+  track = catalogTrack(track);
   const key = cacheKey(auth.scope, track.id);
   const entry = metadataCache.get(key);
   if (entry && !isExpired(entry)) {
     cacheStats.metadataHits++;
-    return entry.data;
+    return awaitWithSignal(entry.data, signal);
   }
   cacheStats.metadataMisses++;
-  return remember(metadataCache, key, () => auth.authFetch("getSong", { id: track.id }, signal), TTL_METADATA_MS);
+  return awaitWithSignal(remember(metadataCache, key, () => auth.authFetch("getSong", { id: track.id }, signal), TTL_METADATA_MS), signal);
 }
 
 export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAuth, "authFetch" | "scope">, signal?: AbortSignal): Promise<TrackLyricsPayload> {
+  track = catalogTrack(track);
   const key = cacheKey(auth.scope, track.id);
   const entry = lyricsCache.get(key);
   if (entry && !isExpired(entry)) {
     cacheStats.lyricsHits++;
-    return entry.data;
+    return awaitWithSignal(entry.data, signal);
   }
   cacheStats.lyricsMisses++;
-  return remember(lyricsCache, key, async () => {
+  return awaitWithSignal(remember(lyricsCache, key, async () => {
     // Prefer the enhanced endpoint so karaoke rendering has cue data
     // when the server has it. We request once; the response carries both
     // the v2 cueLine shape and the v1 line array. On failure / empty
@@ -171,7 +188,7 @@ export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAut
     try {
       xml = await auth.authFetch("getLyricsBySongId", { id: track.id, enhanced: "true" }, signal);
     } catch (error) {
-      if (signal?.aborted) throw error;
+      if (signal?.aborted || error instanceof DOMException || (error as Error)?.name === "TimeoutError") throw error;
       xml = "";
     }
     const enhancedStructured = extractXmlElements(xml, "structuredLyrics");
@@ -191,7 +208,7 @@ export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAut
     const fallback = await auth.authFetch("getLyrics", { artist: track.artist, title: track.title }, signal);
     const lrc = extractXmlInner(fallback, "lyrics");
     return lrc ? { lrc } : {};
-  }, TTL_LYRICS_MS);
+  }, TTL_LYRICS_MS), signal);
 }
 
 const COVER_TIMEOUT_MS = 15 * 1000;
@@ -202,22 +219,20 @@ function preloadImage(url: string, signal?: AbortSignal): Promise<void> {
     const image = new Image();
     let done = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let abort: (() => void) | undefined;
     const finish = (settle: () => void) => {
       if (done) return;
       done = true;
       if (timer !== undefined) clearTimeout(timer);
       image.onload = null;
       image.onerror = null;
+      if (abort) signal?.removeEventListener("abort", abort);
       settle();
     };
-    timer = setTimeout(() => {
-      // Drop the request so a stalled cover cannot hold its budget slot.
-      image.src = "";
-      finish(() => reject(new Error("cover preload timed out")));
-    }, COVER_TIMEOUT_MS);
+    timer = setTimeout(() => abort?.(), COVER_TIMEOUT_MS);
     image.onload = () => finish(resolve);
     image.onerror = () => finish(() => reject(new Error("cover preload failed")));
-    const abort = () => {
+    abort = () => {
       image.src = "";
       finish(() => reject(signal?.reason ?? new DOMException("cover preload cancelled", "AbortError")));
     };
@@ -241,14 +256,13 @@ function preloadCover(track: PrefetchTrack, auth: TrackPrefetchAuth, size: numbe
 }
 
 export function preloadTrack(track: PrefetchTrack, auth: TrackPrefetchAuth): void {
-  const catalogTrack = { ...track, id: track.libraryId || track.id };
   // "prefetch" priority: this is for the track about to play, so it must not
   // queue behind a media-library page worth of cover art.
-  void runLowPriority((signal) => getTrackMetadataXml(catalogTrack, auth, signal), "prefetch").catch(() => {});
-  void runLowPriority((signal) => getTrackLyrics(catalogTrack, auth, signal), "prefetch").catch(() => {});
+  void runLowPriority((signal) => getTrackMetadataXml(track, auth, signal), "prefetch").catch(() => {});
+  void runLowPriority((signal) => getTrackLyrics(track, auth, signal), "prefetch").catch(() => {});
   // Single 512 cover prewarm: the now-playing/PlayerBar surface uses the
   // large cover, and the small list thumbnails are fetched on demand by
   // BudgetedImage. Requesting both 96 and 512 split the HTTP cache and
   // wasted a budget slot; one 512 warms the shared entry for both uses.
-  void runLowPriority((signal) => preloadCover(catalogTrack, auth, 512, signal), "prefetch").catch(() => {});
+  void runLowPriority((signal) => preloadCover(catalogTrack(track), auth, 512, signal), "prefetch").catch(() => {});
 }

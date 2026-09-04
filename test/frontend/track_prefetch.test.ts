@@ -98,6 +98,24 @@ async function run() {
   );
   assert(nowPlayingSrc.includes("getTrackLyrics(trackAtChange"), "detail lyrics reuse the normalized preload cache");
 
+  const fileCalls: string[] = [];
+  const fileTrack: PrefetchTrack = { id: "file-id", libraryId: "catalog-id", title: "File", artist: "Artist" };
+  const fileAuth: TrackPrefetchAuth = {
+    ...auth,
+    scope: "file-catalog-cache-test",
+    authFetch: async (pathName, params) => {
+      fileCalls.push(`${pathName}:${params?.id}`);
+      return pathName === "getLyricsBySongId"
+        ? '<structuredLyrics><line start="0">Catalog</line></structuredLyrics>'
+        : '<song id="catalog-id" />';
+    },
+  };
+  preloadTrack(fileTrack, fileAuth);
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  await getTrackLyrics(fileTrack, fileAuth);
+  assert(fileCalls.filter((call) => call === "getLyricsBySongId:catalog-id").length === 1,
+    "file prefetch and detail lyrics share one catalog-id request");
+
   let recoveryCalls = 0;
   const aborted = new AbortController();
   const recoveryAuth: TrackPrefetchAuth = {

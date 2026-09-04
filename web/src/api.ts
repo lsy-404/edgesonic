@@ -48,6 +48,12 @@ function deviceHeaders(headers?: HeadersInit): Headers {
   return next;
 }
 
+async function requestJson<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const timeout = init.method && init.method !== "GET" ? WRITE_REQUEST_TIMEOUT_MS : READ_REQUEST_TIMEOUT_MS;
+  const { text } = await fetchTextWithTimeout(url, init, timeout);
+  return JSON.parse(text) as T;
+}
+
 function audioMimeFromName(name: string): string | null {
   const suffix = name.split(".").pop()?.toLowerCase() || "";
   switch (suffix) {
@@ -192,20 +198,19 @@ export function useAuth() {
     // level + a boolean "logged in" marker in localStorage. The cookie
     // itself is unreadable from JS so an XSS can no longer exfiltrate the
     // credential the way it could when it was sitting in localStorage.
-    const resp = await fetch(`${EDGESONIC_BASE}/auth/login`, {
+    const data = await requestJson<{ ok?: boolean; username?: string; level?: number; error?: string }>(`${EDGESONIC_BASE}/auth/login`, {
       method: "POST",
       headers: deviceHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify({ username: u, password: p }),
     });
-    const data = await resp.json();
     if (data.ok) {
       token.value = "1";
-      username.value = data.username;
-      level.value = data.level;
+      username.value = data.username || "";
+      level.value = data.level ?? 0;
       localStorage.setItem("edgesonic_logged_in", "1");
-      localStorage.setItem("edgesonic_user", data.username);
-      localStorage.setItem("edgesonic_level", String(data.level));
+      localStorage.setItem("edgesonic_user", data.username || "");
+      localStorage.setItem("edgesonic_level", String(data.level ?? 0));
       // Load effective permissions + profile before the router redirects so
       // the nav renders the correct tabs on the first paint after login.
       await fetchMe();
@@ -215,18 +220,17 @@ export function useAuth() {
   }
 
   async function guestLogin(): Promise<LoginResult> {
-    const resp = await fetch(`${EDGESONIC_BASE}/auth/guest`, {
+    const data = await requestJson<{ ok?: boolean; username?: string; level?: number; error?: string }>(`${EDGESONIC_BASE}/auth/guest`, {
       method: "POST",
       credentials: "same-origin",
     });
-    const data = await resp.json();
     if (data.ok) {
       token.value = "1";
-      username.value = data.username;
-      level.value = data.level;
+      username.value = data.username || "";
+      level.value = data.level ?? 0;
       localStorage.setItem("edgesonic_logged_in", "1");
-      localStorage.setItem("edgesonic_user", data.username);
-      localStorage.setItem("edgesonic_level", String(data.level));
+      localStorage.setItem("edgesonic_user", data.username || "");
+      localStorage.setItem("edgesonic_level", String(data.level ?? 0));
       await fetchMe();
       return { ok: true, name: data.username, level: data.level };
     }
@@ -254,8 +258,7 @@ export function useAuth() {
       activationEnabled: false, registrationGateMode: "all",
     };
     try {
-      const resp = await fetch(`${EDGESONIC_BASE}/auth/loginConfig`, { credentials: "same-origin" });
-      const data = await resp.json();
+      const data = await requestJson<any>(`${EDGESONIC_BASE}/auth/loginConfig`, { credentials: "same-origin" });
       if (!data.ok) return fallback;
       return {
         noticeText: data.noticeText || "",
@@ -271,13 +274,12 @@ export function useAuth() {
   }
 
   async function register(u: string, e: string, p: string, inviteCode?: string): Promise<LoginResult> {
-    const resp = await fetch(`${EDGESONIC_BASE}/auth/register`, {
+    const data = await requestJson<{ ok?: boolean; error?: string }>(`${EDGESONIC_BASE}/auth/register`, {
       method: "POST",
       headers: deviceHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify({ username: u, email: e, password: p, ...(inviteCode ? { inviteCode } : {}) }),
     });
-    const data = await resp.json();
     if (!data.ok) return { ok: false, error: data.error || "Registration failed" };
     // Registration is deliberately indistinguishable from an already-claimed
     // account, so it never attempts a follow-up login that would reintroduce
@@ -286,35 +288,32 @@ export function useAuth() {
   }
 
   async function requestPasswordReset(emailOrUsername: string): Promise<{ ok: boolean; error?: string }> {
-    const resp = await fetch(`${EDGESONIC_BASE}/auth/passwordReset/request`, {
+    const data = await requestJson<{ ok?: boolean; error?: string }>(`${EDGESONIC_BASE}/auth/passwordReset/request`, {
       method: "POST",
       headers: deviceHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify({ emailOrUsername }),
     });
-    const data = await resp.json();
     return { ok: !!data.ok, error: data.error };
   }
 
   async function confirmPasswordReset(token: string, newPassword: string): Promise<{ ok: boolean; error?: string }> {
-    const resp = await fetch(`${EDGESONIC_BASE}/auth/passwordReset/confirm`, {
+    const data = await requestJson<{ ok?: boolean; error?: string }>(`${EDGESONIC_BASE}/auth/passwordReset/confirm`, {
       method: "POST",
       headers: deviceHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify({ token, newPassword }),
     });
-    const data = await resp.json();
     return { ok: !!data.ok, error: data.error };
   }
 
   async function confirmEmailVerify(token: string): Promise<{ ok: boolean; error?: string }> {
-    const resp = await fetch(`${EDGESONIC_BASE}/auth/emailVerify/confirm`, {
+    const data = await requestJson<{ ok?: boolean; error?: string }>(`${EDGESONIC_BASE}/auth/emailVerify/confirm`, {
       method: "POST",
       headers: deviceHeaders({ "Content-Type": "application/json" }),
       credentials: "same-origin",
       body: JSON.stringify({ token }),
     });
-    const data = await resp.json();
     return { ok: !!data.ok, error: data.error };
   }
 
@@ -339,7 +338,7 @@ export function useAuth() {
     // and can't be re-used because the row still exists but the SPA's
     // logged-in flag is gone so the user is back at /login anyway.
     try {
-      await fetch(`${EDGESONIC_BASE}/auth/logout`, {
+      await requestJson(`${EDGESONIC_BASE}/auth/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
@@ -452,9 +451,9 @@ export function useAuth() {
     if (sessionCheckInFlight) return sessionCheckInFlight;
     sessionCheckInFlight = (async () => {
       try {
-        const resp = await fetch(`${EDGESONIC_BASE}/auth/sessions/list?${signedParams().toString()}`, {
+        const { response: resp } = await fetchTextWithTimeout(`${EDGESONIC_BASE}/auth/sessions/list?${signedParams().toString()}`, {
           credentials: "same-origin",
-        });
+        }, READ_REQUEST_TIMEOUT_MS);
         if (resp.ok) return;
       } catch {
         // A failed verification cannot prove the browser still has a session.
@@ -584,13 +583,12 @@ export function useAuth() {
   // Public — no session required (the link is normally opened in a
   // different browser/device than the one that requested the change).
   async function confirmEmailChange(token: string): Promise<{ ok: boolean; error?: string; email?: string }> {
-    const resp = await fetch(`${EDGESONIC_BASE}/auth/emailChange/confirm`, {
+    const data = await requestJson<{ ok: boolean; error?: string; username?: string; email?: string }>(`${EDGESONIC_BASE}/auth/emailChange/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
       body: JSON.stringify({ token }),
     });
-    const data = await resp.json() as { ok: boolean; error?: string; username?: string; email?: string };
     // Only refresh the cached profile if THIS browser's active session
     // belongs to the same account — otherwise a logged-in browser confirming
     // someone else's change link (or one that's logged into a different
@@ -642,8 +640,7 @@ export function useAuth() {
   // guard can consult it synchronously.
   async function probeGuestEnabled(): Promise<boolean> {
     try {
-      const resp = await fetch(`${EDGESONIC_BASE}/auth/guest`, { credentials: "same-origin" });
-      const data = await resp.json() as { ok?: boolean; enabled?: boolean };
+      const data = await requestJson<{ ok?: boolean; enabled?: boolean }>(`${EDGESONIC_BASE}/auth/guest`, { credentials: "same-origin" });
       const enabled = data.ok === true && data.enabled === true;
       localStorage.setItem("edgesonic_guest_enabled", enabled ? "1" : "0");
       return enabled;

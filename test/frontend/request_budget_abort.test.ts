@@ -25,6 +25,11 @@ async function run() {
     await pending.catch(() => { rejected = true; });
     assert(observedSignal?.aborted, "budget deadline aborts the work signal");
     assert(rejected, "budget deadline settles the caller promise");
+    globalThis.setTimeout = (() => 2 as unknown as ReturnType<typeof setTimeout>) as typeof setTimeout;
+    let followupRan = false;
+    await runLowPriority(() => { throw new Error("synchronous failure"); }).catch(() => {});
+    await runLowPriority(async () => { followupRan = true; });
+    assert(followupRan, "a synchronous work failure releases the budget slot");
     setPlaybackActive(false);
   } finally {
     globalThis.setTimeout = originalSetTimeout;

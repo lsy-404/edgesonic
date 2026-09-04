@@ -58,7 +58,7 @@ export function runLowPriority<T>(
         reject(controller.signal.reason);
         release();
       }, SLOT_TIMEOUT_MS);
-      void work(controller.signal).then(resolve, reject).finally(release);
+      void Promise.resolve().then(() => work(controller.signal)).then(resolve, reject).finally(release);
     });
     drain();
   });
