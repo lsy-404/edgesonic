@@ -3,7 +3,7 @@ import { permissionMiddleware } from "../../auth";
 import type { User } from "../../types/entities";
 import {
   MESSAGE_KINDS, MESSAGE_PRESENTATIONS, createUserMessage, ensureActivationExpiryMessage,
-  ensureOfficialReleaseMessage, ensureUserMessagesSchema, listUserMessages,
+  ensureOfficialMessages, ensureUserMessagesSchema, listUserMessages,
   type MessageKind, type MessagePresentation,
 } from "../../utils/messages";
 
@@ -12,7 +12,7 @@ export const messagesRoutes = new Hono<{ Bindings: Env; Variables: { user: User 
 messagesRoutes.get("/messages", async (c) => {
   const user = c.get("user");
   await ensureActivationExpiryMessage(c.env, user);
-  await ensureOfficialReleaseMessage(c.env, user);
+  await ensureOfficialMessages(c.env, user, c.req.url);
   const allMessages = await listUserMessages(c.env, user.username);
   const officialMessages = user.level >= 3 ? allMessages.filter((message) => message.source === "official") : [];
   const messages = allMessages.filter((message) => message.source !== "official");

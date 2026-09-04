@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { type MessageKind, type MessagePresentation, type UserMessage, useAuth } from "../api";
 import Icon from "./Icon.vue";
@@ -12,11 +12,13 @@ const { getMessages, markMessageRead, dismissMessage, sendUserMessage } = useAut
 const messages = ref<UserMessage[]>([]);
 const officialMessages = ref<UserMessage[]>([]);
 const panelOpen = ref(false);
+const activeView = ref<"inbox" | "compose">("inbox");
 const loading = ref(false);
 const error = ref("");
-const composeOpen = ref(false);
 const composeBusy = ref(false);
 const compose = ref({ username: "", title: "", message: "", kind: "info" as MessageKind, presentation: "inbox" as MessagePresentation });
+const trigger = ref<HTMLButtonElement | null>(null);
+const panel = ref<HTMLElement | null>(null);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 function timestamp(message: UserMessage): number {
@@ -55,9 +57,23 @@ async function refresh() {
   }
 }
 
-function openCenter() {
+async function openCenter() {
+  activeView.value = "inbox";
   panelOpen.value = true;
   void refresh();
+  await nextTick();
+  panel.value?.focus();
+}
+
+function closeCenter() {
+  panelOpen.value = false;
+  activeView.value = "inbox";
+  void nextTick(() => trigger.value?.focus());
+}
+
+function openComposer() {
+  activeView.value = "compose";
+  error.value = "";
 }
 
 async function read(message: UserMessage) {
@@ -93,7 +109,8 @@ async function send() {
       kind: compose.value.kind, presentation: compose.value.presentation,
     });
     compose.value = { username: "", title: "", message: "", kind: "info", presentation: "inbox" };
-    composeOpen.value = false;
+    activeView.value = "inbox";
+    await refresh();
   } catch {
     error.value = t("messages.sendFailed");
   } finally {
@@ -121,44 +138,76 @@ onBeforeUnmount(() => {
     <button
       type="button"
       class="message-center-trigger"
+      ref="trigger"
       :aria-label="t('messages.open')"
       :title="t('messages.open')"
       :aria-expanded="panelOpen"
-      aria-haspopup="dialog"
+      aria-controls="message-center-panel"
       @click="openCenter"
     >
       <Icon name="bell" />
       <span v-if="unreadCount" class="message-center-count" :aria-label="t('messages.unreadCount', { count: unreadCount })">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
     </button>
 
-    <div v-if="panelOpen" class="message-center-backdrop" @click.self="panelOpen = false">
-      <section class="card message-center-panel" role="dialog" aria-modal="true" :aria-label="t('messages.title')" @keydown.esc="panelOpen = false">
+    <Transition name="message-drawer">
+      <aside
+        v-if="panelOpen"
+        ref="panel"
+        id="message-center-panel"
+        class="message-center-panel"
+        role="region"
+        tabindex="-1"
+        :aria-labelledby="activeView === 'compose' ? 'message-compose-title' : 'message-center-title'"
+        @keydown.esc="closeCenter"
+      >
         <header class="message-center-header">
           <div>
-            <h2>{{ t('messages.title') }}</h2>
-            <p v-if="unreadCount">{{ t('messages.unreadCount', { count: unreadCount }) }}</p>
+            <template v-if="activeView === 'compose'">
+              <h2 id="message-compose-title">{{ t('messages.composeTitle') }}</h2>
+              <p>{{ t('messages.composeDescription') }}</p>
+            </template>
+            <template v-else>
+              <h2 id="message-center-title">{{ t('messages.title') }}</h2>
+              <p v-if="unreadCount">{{ t('messages.unreadCount', { count: unreadCount }) }}</p>
+            </template>
           </div>
           <div class="message-center-header-actions">
-            <button v-if="props.canManageUsers" type="button" class="message-center-refresh" :aria-label="t('messages.send')" :title="t('messages.send')" @click="composeOpen = !composeOpen"><Icon name="edit" /></button>
-            <button type="button" class="message-center-refresh" :disabled="loading" :aria-label="t('messages.refresh')" :title="t('messages.refresh')" @click="refresh"><Icon name="refresh" /></button>
-            <button type="button" class="message-center-close" :aria-label="t('common.close')" @click="panelOpen = false"><Icon name="cross" /></button>
+            <button v-if="activeView === 'compose'" type="button" class="message-center-refresh" :aria-label="t('messages.backToInbox')" :title="t('messages.backToInbox')" @click="activeView = 'inbox'"><Icon name="left" /></button>
+            <button v-else-if="props.canManageUsers" type="button" class="message-center-refresh" :aria-label="t('messages.send')" :title="t('messages.send')" @click="openComposer"><Icon name="edit" /></button>
+            <button v-if="activeView === 'inbox'" type="button" class="message-center-refresh" :disabled="loading" :aria-label="t('messages.refresh')" :title="t('messages.refresh')" @click="refresh"><Icon name="refresh" /></button>
+            <button type="button" class="message-center-close" :aria-label="t('common.close')" @click="closeCenter"><Icon name="cross" /></button>
           </div>
         </header>
         <p v-if="error" class="message-center-error" role="alert">{{ error }}</p>
-        <form v-if="composeOpen" class="message-compose" @submit.prevent="send">
-          <input v-model="compose.username" class="form-input" :placeholder="t('messages.recipient')" required />
-          <input v-model="compose.title" class="form-input" :placeholder="t('messages.subject')" required maxlength="200" />
-          <textarea v-model="compose.message" class="form-input" :placeholder="t('messages.body')" required maxlength="4000" rows="4"></textarea>
+        <form v-if="activeView === 'compose'" class="message-compose" @submit.prevent="send">
+          <label>
+            <span>{{ t('messages.recipient') }}</span>
+            <input v-model="compose.username" class="form-input" required />
+          </label>
+          <label>
+            <span>{{ t('messages.subject') }}</span>
+            <input v-model="compose.title" class="form-input" required maxlength="200" />
+          </label>
+          <label>
+            <span>{{ t('messages.body') }}</span>
+            <textarea v-model="compose.message" class="form-input" required maxlength="4000" rows="7"></textarea>
+          </label>
           <div class="message-compose-options">
-            <select v-model="compose.kind" class="form-input" :aria-label="t('messages.kind')">
+            <label>
+              <span>{{ t('messages.kind') }}</span>
+              <select v-model="compose.kind" class="form-input">
               <option value="info">{{ t('messages.kinds.info') }}</option>
               <option value="notice">{{ t('messages.kinds.notice') }}</option>
               <option value="warning">{{ t('messages.kinds.warning') }}</option>
-            </select>
-            <select v-model="compose.presentation" class="form-input" :aria-label="t('messages.presentation')">
+              </select>
+            </label>
+            <label>
+              <span>{{ t('messages.presentation') }}</span>
+              <select v-model="compose.presentation" class="form-input">
               <option value="inbox">{{ t('messages.presentations.inbox') }}</option>
               <option value="modal">{{ t('messages.presentations.modal') }}</option>
-            </select>
+              </select>
+            </label>
             <button type="submit" class="btn-primary" :disabled="composeBusy">{{ t('messages.send') }}</button>
           </div>
         </form>
@@ -176,7 +225,7 @@ onBeforeUnmount(() => {
               <time v-if="formatDate(message.createdAt)" :datetime="message.createdAt">{{ formatDate(message.createdAt) }}</time>
             </div>
             <h3>{{ message.title }}</h3>
-            <p>{{ message.body }}</p>
+            <div class="message-body" v-html="message.bodyHtml"></div>
             <footer class="message-card-actions">
               <span v-if="message.source === 'official'" class="message-card-source">{{ t('messages.official') }}</span>
               <span v-else class="message-card-source">{{ t('messages.service') }}</span>
@@ -187,8 +236,8 @@ onBeforeUnmount(() => {
             </footer>
           </article>
         </div>
-      </section>
-    </div>
+      </aside>
+    </Transition>
 
     <div v-if="modalMessage && !panelOpen" class="message-center-backdrop message-center-modal-backdrop" @click.self="acknowledgeModal">
       <section
@@ -201,7 +250,7 @@ onBeforeUnmount(() => {
       >
         <span class="message-modal-kind"><Icon :name="messageKind(modalMessage) === 'warning' || messageKind(modalMessage) === 'error' ? 'warn' : 'info'" /> {{ t(`messages.kinds.${messageKind(modalMessage)}`) }}</span>
         <h2>{{ modalMessage.title }}</h2>
-        <p>{{ modalMessage.body }}</p>
+        <div class="message-body" v-html="modalMessage.bodyHtml"></div>
         <div class="message-modal-actions">
           <button type="button" class="btn-primary" @click="acknowledgeModal">{{ t('messages.acknowledge') }}</button>
         </div>
@@ -230,7 +279,9 @@ onBeforeUnmount(() => {
 .message-center-trigger:focus-visible, .message-center-refresh:focus-visible, .message-center-close:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: 2px; }
 .message-center-count { position: absolute; top: -0.38rem; right: -0.42rem; min-width: 1.05rem; padding: 0 0.22rem; border-radius: 999px; background: var(--color-accent-primary); color: var(--color-text-inverse); font: 700 0.62rem/1.1 var(--font-mono); }
 .message-center-backdrop { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / 70%); }
-.message-center-panel { width: min(720px, 100%); max-height: min(80vh, 760px); padding: 1.25rem; overflow: auto; }
+.message-center-panel { position: fixed; z-index: 1200; top: 0; right: 0; bottom: 0; display: flex; width: min(31rem, 100vw); flex-direction: column; padding: 1.25rem; overflow: auto; border-left: 1px solid var(--color-border-subtle); background: var(--color-bg-primary); box-shadow: -1.1rem 0 2.7rem rgb(0 0 0 / 30%); }
+.message-drawer-enter-active, .message-drawer-leave-active { transition: transform 160ms ease, opacity 160ms ease; }
+.message-drawer-enter-from, .message-drawer-leave-to { opacity: 0; transform: translateX(1.5rem); }
 .message-center-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .message-center-header h2, .message-modal h2 { margin: 0; font-size: 1.15rem; }
 .message-center-header p { margin: 0.3rem 0 0; color: var(--color-text-secondary); font-size: var(--fs-sm); }
@@ -238,10 +289,11 @@ onBeforeUnmount(() => {
 .message-center-state, .message-center-error { margin: 1.5rem 0; color: var(--color-text-secondary); text-align: center; }
 .message-center-error { color: var(--color-danger, #e66); }
 .message-center-list { display: grid; gap: 0.7rem; }
-.message-compose { display: grid; gap: 0.55rem; margin-bottom: 1rem; padding: 0.85rem; border: 1px solid var(--color-border-subtle); border-radius: 0.45rem; }
+.message-compose { display: grid; gap: 1rem; margin: 0.25rem 0 1rem; }
+.message-compose label { display: grid; gap: 0.38rem; color: var(--color-text-secondary); font-size: var(--fs-sm); }
+.message-compose small { color: var(--color-text-muted); }
 .message-compose textarea { resize: vertical; }
-.message-compose-options { display: flex; gap: 0.55rem; justify-content: flex-end; }
-.message-compose-options select { min-width: 8rem; }
+.message-compose-options { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.55rem; align-items: end; }
 .message-card { padding: 0.95rem; border: 1px solid var(--color-border-subtle); border-left: 3px solid var(--color-accent-primary); border-radius: 0.45rem; background: color-mix(in srgb, var(--color-bg-primary) 42%, transparent); }
 .message-card-unread { border-color: var(--color-accent-primary); }
 .message-card-notice { border-left-color: var(--color-accent-primary); }
@@ -251,11 +303,19 @@ onBeforeUnmount(() => {
 .message-card-heading { margin-bottom: 0.45rem; color: var(--color-text-muted); font-size: var(--fs-xs); }
 .message-card-kind, .message-modal-kind { font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
 .message-card h3 { margin: 0; font-size: 0.98rem; }
-.message-card p, .message-modal p { margin: 0.55rem 0 0; color: var(--color-text-secondary); line-height: 1.55; white-space: pre-wrap; }
+.message-body { margin: 0.55rem 0 0; color: var(--color-text-secondary); line-height: 1.55; overflow-wrap: anywhere; }
+.message-body :deep(p:first-child) { margin-top: 0; }
+.message-body :deep(p:last-child) { margin-bottom: 0; }
+.message-body :deep(h1), .message-body :deep(h2), .message-body :deep(h3), .message-body :deep(h4) { margin: 1rem 0 0.45rem; color: var(--color-text-primary); font-size: 1em; }
+.message-body :deep(ul), .message-body :deep(ol) { margin: 0.6rem 0; padding-left: 1.3rem; }
+.message-body :deep(a) { color: var(--color-accent-primary); text-decoration: underline; }
+.message-body :deep(code) { padding: 0.1rem 0.28rem; border-radius: 0.2rem; background: color-mix(in srgb, var(--color-bg-secondary) 80%, transparent); font-family: var(--font-mono); font-size: 0.9em; }
+.message-body :deep(pre) { overflow-x: auto; padding: 0.7rem; border-radius: 0.35rem; background: color-mix(in srgb, var(--color-bg-secondary) 80%, transparent); }
+.message-body :deep(pre code) { padding: 0; background: transparent; }
 .message-card-actions { margin-top: 0.85rem; }
 .message-card-source { color: var(--color-text-muted); font-size: var(--fs-xs); }
 .message-modal { width: min(460px, 100%); padding: 1.25rem; border-left: 4px solid var(--color-accent-primary); }
 .message-modal-kind { display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.75rem; color: var(--color-accent-primary); font-size: var(--fs-xs); }
 .message-modal-actions { display: flex; justify-content: flex-end; margin-top: 1.2rem; }
-@media (max-width: 720px) { .message-center-panel { max-height: calc(100vh - 1.5rem); padding: 1rem; } .message-card-actions, .message-compose-options { align-items: flex-start; flex-direction: column; } .message-card-buttons { width: 100%; justify-content: flex-end; } .message-compose-options select, .message-compose-options button { width: 100%; } }
+@media (max-width: 720px) { .message-center-panel { width: 100vw; padding: 1rem; border-left: 0; } .message-card-actions { align-items: flex-start; flex-direction: column; } .message-compose-options { grid-template-columns: 1fr; } .message-card-buttons, .message-compose-options button { width: 100%; justify-content: flex-end; } }
 </style>

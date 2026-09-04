@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { messagesRoutes } from "../../worker/src/endpoints/edgesonic/messages";
+import { clearOfficialMessageCaches } from "../../worker/src/utils/messages";
 
 let failures = 0;
 function assert(condition: unknown, message: string) {
@@ -56,7 +57,11 @@ function buildDb() {
   return sqlite;
 }
 
-function makeApp(sqlite: DatabaseSync, caller: { username: string; level: number; activation_status?: string; activated_until?: number | null }) {
+function makeApp(
+  sqlite: DatabaseSync,
+  caller: { username: string; level: number; activation_status?: string; activated_until?: number | null },
+  extraEnv: Record<string, unknown> = {},
+) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.use("*", async (c, next) => {
@@ -64,7 +69,7 @@ function makeApp(sqlite: DatabaseSync, caller: { username: string; level: number
     return next();
   });
   app.route("/edgesonic", messagesRoutes);
-  const env = { DB: makeD1(sqlite) };
+  const env = { DB: makeD1(sqlite), ...extraEnv };
   return {
     async get(path: string) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -89,8 +94,8 @@ async function main() {
     });
     assert(sent.status === 200, `200 (got ${sent.status})`);
     const alice = makeApp(sqlite, { username: "alice", level: 1 });
-    const body = await (await alice.get("/edgesonic/messages")).json() as { messages: Array<{ title: string; kind: string; presentation: string }> };
-    assert(body.messages.some((message) => message.title === "Library maintenance" && message.kind === "info" && message.presentation === "inbox"), "recipient receives the typed inbox message");
+    const body = await (await alice.get("/edgesonic/messages")).json() as { messages: Array<{ title: string; kind: string; presentation: string; bodyHtml: string }> };
+    assert(body.messages.some((message) => message.title === "Library maintenance" && message.kind === "info" && message.presentation === "inbox" && message.bodyHtml === "<p>Uploads pause tonight.</p>"), "recipient receives a safely rendered inbox message");
   }
 
   console.log("Lower-tier administrators cannot send a message to administrators:");
@@ -132,17 +137,46 @@ async function main() {
     assert(count.n === 1, "expiry warning is deduplicated for the same end time");
   }
 
-  console.log("The latest GitHub release becomes an official super-admin message:");
+  console.log("Only newer GitHub releases become official messages, and their Markdown is safe HTML:");
   {
     const sqlite = buildDb();
     const originalFetch = global.fetch;
-    global.fetch = (async () => new Response(JSON.stringify({
-      tag_name: "v9.9.9", name: "Security patch", body: "Apply this patch now.", published_at: "2026-09-03T00:00:00Z",
-    }), { headers: { "Content-Type": "application/json" } })) as typeof fetch;
+    clearOfficialMessageCaches();
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("official-announcements.json")) return new Response(JSON.stringify({ announcements: [] }), { headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({
+        tag_name: "v9.9.9", name: "Security patch", body: "# Apply this\n\n[Release notes](https://example.com/notes) <script>alert(1)</script>", published_at: "2026-09-03T00:00:00Z",
+      }), { headers: { "Content-Type": "application/json" } });
+    }) as typeof fetch;
     try {
-      const root = makeApp(sqlite, { username: "root", level: 3 });
-      const body = await (await root.get("/edgesonic/messages")).json() as { officialMessages: Array<{ source: string; title: string; presentation: string }> };
-      assert(body.officialMessages.some((message) => message.source === "official" && message.title.includes("Security patch") && message.presentation === "modal"), "GitHub release is delivered as an official modal message");
+      const root = makeApp(sqlite, { username: "root", level: 3 }, { EDGESONIC_VERSION: "1.0.0" });
+      const body = await (await root.get("/edgesonic/messages")).json() as { officialMessages: Array<{ source: string; title: string; presentation: string; bodyHtml?: string }> };
+      const message = body.officialMessages.find((candidate) => candidate.source === "official");
+      assert(!!message && message.title.includes("Security patch") && message.presentation === "inbox", "a newer GitHub release is an inbox update");
+      assert(!!message?.bodyHtml?.includes("<h1>Apply this</h1>") && !message?.bodyHtml?.includes("script"), "Release Markdown is parsed while raw HTML is removed");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  }
+
+  console.log("Older GitHub releases are ignored, while the repository announcement file can still publish a popup:");
+  {
+    const sqlite = buildDb();
+    const originalFetch = global.fetch;
+    clearOfficialMessageCaches();
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("official-announcements.json")) return new Response(JSON.stringify({ announcements: [{
+        id: "emergency-maintenance", title: "Maintenance", body: "**Service window** starts tonight.", kind: "warning", presentation: "modal",
+      }] }), { headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ tag_name: "v1.0.0", name: "Old patch", body: "Old release" }), { headers: { "Content-Type": "application/json" } });
+    }) as typeof fetch;
+    try {
+      const root = makeApp(sqlite, { username: "root", level: 3 }, { EDGESONIC_VERSION: "2.0.0" });
+      const body = await (await root.get("/edgesonic/messages")).json() as { officialMessages: Array<{ title: string; presentation: string; bodyHtml?: string }> };
+      assert(body.officialMessages.some((message) => message.title === "Maintenance" && message.presentation === "modal"), "the standalone announcement file can publish a popup");
+      assert(!body.officialMessages.some((message) => message.title.includes("Old patch")), "older releases do not create an update message");
     } finally {
       global.fetch = originalFetch;
     }

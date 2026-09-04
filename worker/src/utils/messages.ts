@@ -1,4 +1,6 @@
-import { GITHUB_API, type GithubRelease } from "../../../shared/autoupdate";
+import { marked, Renderer } from "marked";
+import { GITHUB_API, GITHUB_REPO, compareSemver, parseSemver, type GithubRelease } from "../../../shared/autoupdate";
+import { currentVersion } from "./autoupdate";
 import type { User } from "../types/entities";
 
 export const MESSAGE_KINDS = ["info", "notice", "warning"] as const;
@@ -17,7 +19,19 @@ export type UserMessage = {
   createdAt: string;
   readAt: string | null;
   dismissedAt: string | null;
+  bodyHtml: string;
 };
+
+type OfficialAnnouncement = {
+  id: string;
+  title: string;
+  body: string;
+  kind: MessageKind;
+  presentation: MessagePresentation;
+  publishedAt?: string;
+};
+
+const OFFICIAL_ANNOUNCEMENTS_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/official-announcements.json`;
 
 let messagesSchemaEnsured = false;
 
@@ -87,6 +101,30 @@ export async function ensureActivationExpiryMessage(
 }
 
 let officialReleaseCache: { until: number; release: GithubRelease | null } | null = null;
+let officialAnnouncementsCache: { until: number; announcements: OfficialAnnouncement[] } | null = null;
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+}
+
+function renderOfficialMarkdown(markdown: string): string {
+  const renderer = new Renderer();
+  renderer.html = () => "";
+  renderer.image = () => "";
+  renderer.link = function({ href, title, tokens }) {
+    let url: URL;
+    try { url = new URL(href); } catch { return this.parser.parseInline(tokens); }
+    if (url.protocol !== "https:") return this.parser.parseInline(tokens);
+    const label = this.parser.parseInline(tokens);
+    const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+    return `<a href="${escapeHtml(url.href)}"${titleAttr} target="_blank" rel="noopener noreferrer">${label}</a>`;
+  };
+  return marked.parse(markdown.slice(0, 4000), { async: false, breaks: true, gfm: true, renderer }) as string;
+}
+
+function renderPlainText(value: string): string {
+  return `<p>${escapeHtml(value).replace(/\r?\n/g, "<br>")}</p>`;
+}
 
 async function latestOfficialRelease(env: { GITHUB_TOKEN?: string }): Promise<GithubRelease | null> {
   const now = Date.now();
@@ -107,22 +145,74 @@ async function latestOfficialRelease(env: { GITHUB_TOKEN?: string }): Promise<Gi
   return officialReleaseCache.release;
 }
 
-export async function ensureOfficialReleaseMessage(
-  env: { DB: D1Database; GITHUB_TOKEN?: string },
+function parseAnnouncements(input: unknown): OfficialAnnouncement[] {
+  const entries = (input as { announcements?: unknown })?.announcements;
+  if (!Array.isArray(entries)) return [];
+  const accepted: OfficialAnnouncement[] = [];
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object") continue;
+    const value = entry as Record<string, unknown>;
+    const id = typeof value.id === "string" ? value.id.trim() : "";
+    const title = typeof value.title === "string" ? value.title.trim() : "";
+    const body = typeof value.body === "string" ? value.body.trim() : "";
+    const kind = typeof value.kind === "string" ? value.kind : "notice";
+    const presentation = typeof value.presentation === "string" ? value.presentation : "inbox";
+    if (!/^[A-Za-z0-9._-]{1,128}$/.test(id) || !title || !body || title.length > 200 || body.length > 4000) continue;
+    if (!MESSAGE_KINDS.includes(kind as MessageKind) || !MESSAGE_PRESENTATIONS.includes(presentation as MessagePresentation)) continue;
+    accepted.push({ id, title, body, kind: kind as MessageKind, presentation: presentation as MessagePresentation });
+  }
+  return accepted;
+}
+
+async function officialAnnouncements(env: { GITHUB_TOKEN?: string }): Promise<OfficialAnnouncement[]> {
+  const now = Date.now();
+  if (officialAnnouncementsCache && officialAnnouncementsCache.until > now) return officialAnnouncementsCache.announcements;
+  try {
+    const headers: Record<string, string> = { Accept: "application/json", "User-Agent": "EdgeSonic-Messages" };
+    if (env.GITHUB_TOKEN) headers.Authorization = `Bearer ${env.GITHUB_TOKEN}`;
+    const response = await fetch(OFFICIAL_ANNOUNCEMENTS_URL, { headers });
+    if (response.status === 404) {
+      officialAnnouncementsCache = { until: now + 5 * 60 * 1000, announcements: [] };
+      return [];
+    }
+    if (!response.ok) throw new Error(`GitHub announcement lookup failed (${response.status})`);
+    const announcements = parseAnnouncements(await response.json());
+    officialAnnouncementsCache = { until: now + 5 * 60 * 1000, announcements };
+  } catch {
+    officialAnnouncementsCache = { until: now + 60 * 1000, announcements: [] };
+  }
+  return officialAnnouncementsCache.announcements;
+}
+
+export function clearOfficialMessageCaches(): void {
+  officialReleaseCache = null;
+  officialAnnouncementsCache = null;
+}
+
+export async function ensureOfficialMessages(
+  env: Env,
   user: User,
+  requestUrl: string,
 ): Promise<void> {
   if (user.level < 3) return;
-  const release = await latestOfficialRelease(env);
-  if (!release?.tag_name) return;
-  const title = `Official update: ${release.name || release.tag_name}`.slice(0, 200);
-  const body = (release.body || `Release ${release.tag_name} is available on GitHub.`).slice(0, 4000);
+  const [announcements, release, running] = await Promise.all([
+    officialAnnouncements(env), latestOfficialRelease(env), currentVersion(env, requestUrl),
+  ]);
+  for (const announcement of announcements) {
+    await createUserMessage(env, {
+      username: user.username, source: "official", kind: announcement.kind, presentation: announcement.presentation,
+      title: announcement.title, body: announcement.body, dedupeKey: `github-announcement:${announcement.id}`,
+    });
+  }
+  const releaseVersion = release?.tag_name ? parseSemver(release.tag_name) : null;
+  if (!release || !releaseVersion || compareSemver(releaseVersion, running) <= 0) return;
   await createUserMessage(env, {
     username: user.username,
     source: "official",
     kind: "notice",
-    presentation: "modal",
-    title,
-    body,
+    presentation: "inbox",
+    title: `Official update: ${release.name || release.tag_name}`.slice(0, 200),
+    body: (release.body || `Release ${release.tag_name} is available on GitHub.`).slice(0, 4000),
     dedupeKey: `github-release:${release.tag_name}`,
   });
 }
@@ -142,5 +232,6 @@ export async function listUserMessages(env: { DB: D1Database }, username: string
     readAt: row.read_at === null ? null : new Date(row.read_at * 1000).toISOString(),
     dismissedAt: row.dismissed_at === null ? null : new Date(row.dismissed_at * 1000).toISOString(),
     createdAt: new Date(row.created_at * 1000).toISOString(),
+    bodyHtml: row.source === "official" ? renderOfficialMarkdown(row.body) : renderPlainText(row.body),
   }));
 }

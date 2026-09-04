@@ -28,7 +28,12 @@ console.log("visibility and priority:");
 assert(/props\.isSuperAdmin \? officialMessages\.value : \[\]/.test(component), "official messages are client-filtered to super administrators");
 assert(/!message\.readAt && message\.presentation === "modal"/.test(component), "only unread modal-presentation messages interrupt with a dialog");
 assert(/setInterval\(\(\) => \{ void refresh\(\); \}, 60_000\)/.test(component), "refreshes messages while the account is online");
-assert(!/v-html/.test(component), "renders service message content as text rather than HTML");
+assert(/bodyHtml:\s*string/.test(api), "models the Worker-provided sanitized HTML message body");
+assert(/v-html="message\.bodyHtml"/.test(component), "renders only the Worker-provided sanitized message HTML");
+assert(!/v-html="message\.body"/.test(component), "never treats the raw Markdown body as HTML");
+assert(!/message-center-backdrop[^\n]*@click\.self="panelOpen/.test(component), "the ordinary message center does not use a blocking backdrop");
+assert(/class="message-center-panel"[\s\S]*role="region"/.test(component), "uses a non-modal side-panel region for ordinary messages");
+assert(/activeView === 'compose'/.test(component), "keeps the administrator composer in its own panel view");
 
 console.log("app integration:");
 assert(/import MessageCenter from "\.\/components\/MessageCenter\.vue"/.test(app), "loads the message center into the app shell");
