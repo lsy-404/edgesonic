@@ -57,7 +57,7 @@ async function run() {
   // -- A task that never settles must not hold its slot forever. ------------
   setPlaybackActive(true);
   const stalled = new Promise<void>(() => {});
-  void runLowPriority(() => stalled, "background");
+  void runLowPriority(() => stalled, "background").catch(() => {});
   await tick();
 
   let ranAfterStall = false;

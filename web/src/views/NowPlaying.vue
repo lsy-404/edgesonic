@@ -251,11 +251,15 @@ function agentNameFor(rootXml: string, agentId: string): string | undefined {
 }
 
 let lyricsRequest = 0;
+let lyricsController: AbortController | null = null;
 function resetLyricsScroll() {
   lyricsScrollEl.value?.scrollTo({ top: 0, behavior: "auto" });
 }
 
 watch(() => [player.current?.id, player.current?.libraryId] as const, async ([id, libraryId]) => {
+  lyricsController?.abort();
+  const controller = new AbortController();
+  lyricsController = controller;
   const request = ++lyricsRequest;
   const trackAtChange = player.current;
   if (lyricsReturnTimer) {
@@ -277,7 +281,7 @@ watch(() => [player.current?.id, player.current?.libraryId] as const, async ([id
     return;
   }
   try {
-    const payload = await getTrackLyrics({ ...trackAtChange, id: libraryId || id }, { authFetch, scope: username.value });
+    const payload = await getTrackLyrics(trackAtChange, { authFetch, scope: username.value }, controller.signal);
     if (request !== lyricsRequest) return;
     if (payload.structuredEnhanced) {
       const parsed = parseEnhancedStructured(payload.structuredEnhanced);
@@ -342,6 +346,8 @@ function onLyricsScroll() {
 }
 
 onBeforeUnmount(() => {
+  lyricsController?.abort();
+  lyricsController = null;
   if (lyricsReturnTimer) clearTimeout(lyricsReturnTimer);
   if (karaokeFrame) cancelAnimationFrame(karaokeFrame);
 });

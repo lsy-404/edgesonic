@@ -37,12 +37,13 @@ export function setPlaybackActive(active: boolean): void {
 }
 
 export function runLowPriority<T>(
-  work: () => Promise<T>,
+  work: (signal: AbortSignal) => Promise<T>,
   priority: BudgetPriority = "background",
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     queues[priority].push(() => {
       running++;
+      const controller = new AbortController();
       let released = false;
       let timer: ReturnType<typeof setTimeout> | undefined;
       const release = () => {
@@ -52,8 +53,12 @@ export function runLowPriority<T>(
         running--;
         drain();
       };
-      timer = setTimeout(release, SLOT_TIMEOUT_MS);
-      void work().then(resolve, reject).finally(release);
+      timer = setTimeout(() => {
+        controller.abort(new DOMException("request budget timed out", "TimeoutError"));
+        reject(controller.signal.reason);
+        release();
+      }, SLOT_TIMEOUT_MS);
+      void work(controller.signal).then(resolve, reject).finally(release);
     });
     drain();
   });

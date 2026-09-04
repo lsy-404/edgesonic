@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import { runLowPriority } from "../lib/requestBudget";
 
 defineOptions({ inheritAttrs: false });
 
@@ -12,7 +13,7 @@ let observer: IntersectionObserver | null = null;
 let cancelled = false;
 let releaseLoad: (() => void) | null = null;
 
-function loadImage(): Promise<void> {
+function loadImage(signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const image = imageEl.value;
     if (!image || cancelled) {
@@ -34,18 +35,22 @@ function loadImage(): Promise<void> {
     const onError = () => finish(() => reject(new Error("image load failed")));
     // Unmounting or stalling must hand the shared budget slot back, otherwise
     // one pending image can starve every other queued request.
-    releaseLoad = () => finish(resolve);
+    const abort = () => {
+      image.src = "";
+      finish(() => reject(signal.reason ?? new DOMException("image load cancelled", "AbortError")));
+    };
+    releaseLoad = abort;
     timer = setTimeout(() => finish(() => reject(new Error("image load timed out"))), LOAD_TIMEOUT_MS);
     image.addEventListener("load", onLoad);
     image.addEventListener("error", onError);
+    if (signal.aborted) { abort(); return; }
+    signal.addEventListener("abort", abort, { once: true });
     loadedSrc.value = props.src;
   });
 }
 
 function load(): void {
-  // Covers are small, cacheable GETs — let the browser (HTTP/2 multiplexing)
-  // handle concurrency instead of serialising them through a client budget.
-  void loadImage().catch(() => {
+  void runLowPriority((signal) => loadImage(signal)).catch(() => {
     if (!cancelled) emit("error");
   });
 }

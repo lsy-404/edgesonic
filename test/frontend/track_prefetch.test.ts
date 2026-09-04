@@ -96,7 +96,25 @@ async function run() {
     ancillaryAt >= 0 && audioGateAt >= 0 && ancillaryAt < audioGateAt,
     "ancillary prefetch is not gated on the current track being fully buffered",
   );
-  assert(nowPlayingSrc.includes("getTrackLyrics(trackAtChange"), "detail lyrics reuse the preload cache");
+  assert(nowPlayingSrc.includes("getTrackLyrics(trackAtChange"), "detail lyrics reuse the normalized preload cache");
+
+  let recoveryCalls = 0;
+  const aborted = new AbortController();
+  const recoveryAuth: TrackPrefetchAuth = {
+    ...auth,
+    scope: "prefetch-recovery-test",
+    authFetch: async (_path, _params, signal) => {
+      recoveryCalls++;
+      if (recoveryCalls === 1) {
+        aborted.abort(new DOMException("cancelled", "AbortError"));
+        throw signal?.reason;
+      }
+      return '<structuredLyrics><line start="0">Recovered</line></structuredLyrics>';
+    },
+  };
+  await getTrackLyrics(track, recoveryAuth, aborted.signal).catch(() => {});
+  const recovered = await getTrackLyrics(track, recoveryAuth);
+  assert(recoveryCalls === 2 && recovered.structured?.includes("Recovered"), "aborted lyrics prefetch is removed from the cache");
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
   process.exit(failures ? 1 : 0);

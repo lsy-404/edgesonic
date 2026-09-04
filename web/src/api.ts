@@ -18,6 +18,7 @@ import { useRouter } from "vue-router";
 import { i18n } from "./i18n";
 import { showError } from "./stores/toast";
 import { parseActivation, DEFAULT_ACTIVATION, type ActivationInfo } from "./lib/activation";
+import { fetchTextWithTimeout, READ_REQUEST_TIMEOUT_MS, WRITE_REQUEST_TIMEOUT_MS } from "./lib/requestLifecycle";
 export { parseXmlAttrs } from "./lib/xmlAttrs";
 
 // management-shaped moved to /tag, /storage, /edgesonic.
@@ -395,29 +396,30 @@ export function useAuth() {
   }
 
   // -------- Subsonic protocol (/rest/*) --------
-  async function authFetch(path: string, params?: Record<string, string | string[]>): Promise<string> {
-    const resp = await fetch(`${REST_BASE}/${path}?${signedParams(params).toString()}`, {
-      credentials: "same-origin",
-    });
+  async function authFetch(path: string, params?: Record<string, string | string[]>, signal?: AbortSignal): Promise<string> {
+    const { response: resp, text } = await fetchTextWithTimeout(
+      `${REST_BASE}/${path}?${signedParams(params).toString()}`,
+      { credentials: "same-origin", signal },
+      READ_REQUEST_TIMEOUT_MS,
+    );
     if (resp.status === 401) {
       handleAuthError({ status: resp.status });
       return "";
     }
-    return resp.text();
+    return text;
   }
 
   async function authPost(path: string, body: unknown): Promise<string> {
-    const resp = await fetch(`${REST_BASE}/${path}?${signedParams().toString()}`, {
-      method: "POST",
-      headers: deviceHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify(body),
-      credentials: "same-origin",
-    });
+    const { response: resp, text } = await fetchTextWithTimeout(
+      `${REST_BASE}/${path}?${signedParams().toString()}`,
+      { method: "POST", headers: deviceHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body), credentials: "same-origin" },
+      WRITE_REQUEST_TIMEOUT_MS,
+    );
     if (resp.status === 401) {
       handleAuthError({ status: resp.status });
       return "";
     }
-    return resp.text();
+    return text;
   }
 
   // call sites only need to swap function names + paths.
@@ -426,31 +428,24 @@ export function useAuth() {
   // accordingly (see handleAuthError). The body is still text() so XML-shaped
   // /rest errors keep working for Subsonic callers.
   async function fetchAt(base: string, path: string, params?: Record<string, string>, signal?: AbortSignal): Promise<string> {
-    const resp = await fetch(`${base}/${path}?${signedParams(params).toString()}`, {
-      credentials: "same-origin",
-      signal,
-    });
+    const url = `${base}/${path}?${signedParams(params).toString()}`;
+    const { response: resp, text } = await fetchTextWithTimeout(url, { credentials: "same-origin", signal }, READ_REQUEST_TIMEOUT_MS);
     if (resp.status === 401 || resp.status === 403) {
       const err = new Error("session expired") as Error & { status: number };
       err.status = resp.status;
       throw err;
     }
-    return resp.text();
+    return text;
   }
   async function postAt(base: string, path: string, body: unknown, signal?: AbortSignal): Promise<string> {
-    const resp = await fetch(`${base}/${path}?${signedParams().toString()}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      credentials: "same-origin",
-      signal,
-    });
+    const url = `${base}/${path}?${signedParams().toString()}`;
+    const { response: resp, text } = await fetchTextWithTimeout(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), credentials: "same-origin", signal }, WRITE_REQUEST_TIMEOUT_MS);
     if (resp.status === 401 || resp.status === 403) {
       const err = new Error("session expired") as Error & { status: number };
       err.status = resp.status;
       throw err;
     }
-    return resp.text();
+    return text;
   }
 
   async function confirmSessionFailure() {
@@ -486,7 +481,7 @@ export function useAuth() {
 
   const tagFetch = (path: string, params?: Record<string, string>) => fetchAt(TAG_BASE, path, params);
   const tagPost = (path: string, body: unknown) => postAt(TAG_BASE, path, body);
-  const storageFetch = (path: string, params?: Record<string, string>) => fetchAt(STORAGE_BASE, path, params);
+  const storageFetch = (path: string, params?: Record<string, string>, signal?: AbortSignal) => fetchAt(STORAGE_BASE, path, params, signal);
   const storagePost = (path: string, body: unknown) => postAt(STORAGE_BASE, path, body);
   const edgesonicFetch = (path: string, params?: Record<string, string>, signal?: AbortSignal) => fetchAt(EDGESONIC_BASE, path, params, signal);
   const edgesonicPost = (path: string, body: unknown, signal?: AbortSignal) => postAt(EDGESONIC_BASE, path, body, signal);

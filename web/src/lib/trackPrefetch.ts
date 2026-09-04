@@ -17,6 +17,7 @@ import { runLowPriority } from "./requestBudget";
 
 export interface PrefetchTrack {
   id: string;
+  libraryId?: string;
   title: string;
   artist: string;
   coverArt?: string;
@@ -34,7 +35,7 @@ export interface TrackLyricsPayload {
 }
 
 export interface TrackPrefetchAuth {
-  authFetch: (path: string, params?: Record<string, string | string[]>) => Promise<string>;
+  authFetch: (path: string, params?: Record<string, string | string[]>, signal?: AbortSignal) => Promise<string>;
   coverArtUrl: (coverId: string, size?: number) => string;
   scope: string;
 }
@@ -142,7 +143,7 @@ function remember<T>(
   return promise;
 }
 
-export function getTrackMetadataXml(track: Pick<PrefetchTrack, "id">, auth: Pick<TrackPrefetchAuth, "authFetch" | "scope">): Promise<string> {
+export function getTrackMetadataXml(track: Pick<PrefetchTrack, "id">, auth: Pick<TrackPrefetchAuth, "authFetch" | "scope">, signal?: AbortSignal): Promise<string> {
   const key = cacheKey(auth.scope, track.id);
   const entry = metadataCache.get(key);
   if (entry && !isExpired(entry)) {
@@ -150,10 +151,10 @@ export function getTrackMetadataXml(track: Pick<PrefetchTrack, "id">, auth: Pick
     return entry.data;
   }
   cacheStats.metadataMisses++;
-  return remember(metadataCache, key, () => auth.authFetch("getSong", { id: track.id }), TTL_METADATA_MS);
+  return remember(metadataCache, key, () => auth.authFetch("getSong", { id: track.id }, signal), TTL_METADATA_MS);
 }
 
-export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAuth, "authFetch" | "scope">): Promise<TrackLyricsPayload> {
+export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAuth, "authFetch" | "scope">, signal?: AbortSignal): Promise<TrackLyricsPayload> {
   const key = cacheKey(auth.scope, track.id);
   const entry = lyricsCache.get(key);
   if (entry && !isExpired(entry)) {
@@ -168,8 +169,9 @@ export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAut
     // lyricsList we fall back to v1 (no enhanced) and finally to getLyrics.
     let xml = "";
     try {
-      xml = await auth.authFetch("getLyricsBySongId", { id: track.id, enhanced: "true" });
-    } catch {
+      xml = await auth.authFetch("getLyricsBySongId", { id: track.id, enhanced: "true" }, signal);
+    } catch (error) {
+      if (signal?.aborted) throw error;
       xml = "";
     }
     const enhancedStructured = extractXmlElements(xml, "structuredLyrics");
@@ -182,11 +184,11 @@ export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAut
 
     // Fall back to v1 (no enhanced) — the server may have rejected the
     // parameter or the v2 path may have produced an empty lyricsList.
-    const v1Xml = await auth.authFetch("getLyricsBySongId", { id: track.id });
+    const v1Xml = await auth.authFetch("getLyricsBySongId", { id: track.id }, signal);
     const structured = extractXmlInner(v1Xml, "structuredLyrics");
     if (structured) return { structured };
 
-    const fallback = await auth.authFetch("getLyrics", { artist: track.artist, title: track.title });
+    const fallback = await auth.authFetch("getLyrics", { artist: track.artist, title: track.title }, signal);
     const lrc = extractXmlInner(fallback, "lyrics");
     return lrc ? { lrc } : {};
   }, TTL_LYRICS_MS);
@@ -194,7 +196,7 @@ export function getTrackLyrics(track: PrefetchTrack, auth: Pick<TrackPrefetchAut
 
 const COVER_TIMEOUT_MS = 15 * 1000;
 
-function preloadImage(url: string): Promise<void> {
+function preloadImage(url: string, signal?: AbortSignal): Promise<void> {
   if (typeof Image === "undefined") return Promise.resolve();
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -215,11 +217,17 @@ function preloadImage(url: string): Promise<void> {
     }, COVER_TIMEOUT_MS);
     image.onload = () => finish(resolve);
     image.onerror = () => finish(() => reject(new Error("cover preload failed")));
+    const abort = () => {
+      image.src = "";
+      finish(() => reject(signal?.reason ?? new DOMException("cover preload cancelled", "AbortError")));
+    };
+    if (signal?.aborted) { abort(); return; }
+    signal?.addEventListener("abort", abort, { once: true });
     image.src = url;
   });
 }
 
-function preloadCover(track: PrefetchTrack, auth: TrackPrefetchAuth, size: number): Promise<void> {
+function preloadCover(track: PrefetchTrack, auth: TrackPrefetchAuth, size: number, signal?: AbortSignal): Promise<void> {
   if (!track.coverArt) return Promise.resolve();
   const url = auth.coverArtUrl(track.coverArt, size);
   const key = cacheKey(auth.scope, url);
@@ -229,17 +237,18 @@ function preloadCover(track: PrefetchTrack, auth: TrackPrefetchAuth, size: numbe
     return entry.data;
   }
   cacheStats.coverMisses++;
-  return remember(coverCache, key, () => preloadImage(url), TTL_COVER_MS);
+  return remember(coverCache, key, () => preloadImage(url, signal), TTL_COVER_MS);
 }
 
 export function preloadTrack(track: PrefetchTrack, auth: TrackPrefetchAuth): void {
+  const catalogTrack = { ...track, id: track.libraryId || track.id };
   // "prefetch" priority: this is for the track about to play, so it must not
   // queue behind a media-library page worth of cover art.
-  void runLowPriority(() => getTrackMetadataXml(track, auth), "prefetch").catch(() => {});
-  void runLowPriority(() => getTrackLyrics(track, auth), "prefetch").catch(() => {});
+  void runLowPriority((signal) => getTrackMetadataXml(catalogTrack, auth, signal), "prefetch").catch(() => {});
+  void runLowPriority((signal) => getTrackLyrics(catalogTrack, auth, signal), "prefetch").catch(() => {});
   // Single 512 cover prewarm: the now-playing/PlayerBar surface uses the
   // large cover, and the small list thumbnails are fetched on demand by
   // BudgetedImage. Requesting both 96 and 512 split the HTTP cache and
   // wasted a budget slot; one 512 warms the shared entry for both uses.
-  void runLowPriority(() => preloadCover(track, auth, 512), "prefetch").catch(() => {});
+  void runLowPriority((signal) => preloadCover(catalogTrack, auth, 512, signal), "prefetch").catch(() => {});
 }
