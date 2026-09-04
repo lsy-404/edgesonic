@@ -35,6 +35,11 @@ assert(!seekFunction?.[0].includes("player.seek"), "mousemove coordinate updates
 assert(barSrc.includes("if (commit && target !== null) player.seek(target);"), "mouseup commits exactly one pending seek");
 assert(barSrc.includes("onBeforeUnmount(() => stopProgressDrag(false));"), "drag listeners are cleaned up on unmount");
 
+const progressCalculation = barSrc.match(/const progressPct = computed\(\(\) => \{[\s\S]*?\n\}\);/);
+assert(progressCalculation !== null, "progress percentage keeps an explicit calculation boundary");
+assert(progressCalculation?.[0].includes("Number.isFinite(duration)") && progressCalculation[0].includes("Number.isFinite(time)"), "progress rejects unknown duration and time values");
+assert(progressCalculation?.[0].includes("Math.min(100, Math.max(0,"), "progress percentage is clamped to the visible track");
+
 assert(playerSrc.includes('el.preload = "auto";'), "native audio keeps the full-load hint");
 assert(playerSrc.includes("startFullDownload("), "next tracks consume complete responses");
 const currentCacheMiss = playerSrc.match(

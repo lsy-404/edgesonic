@@ -69,7 +69,7 @@ watch(coverSrc, (src) => {
 }, { immediate: true });
 
 const bufferedSegments = computed(() => {
-  if (player.duration <= 0) return [] as { left: number; width: number }[];
+  if (!Number.isFinite(player.duration) || player.duration <= 0) return [] as { left: number; width: number }[];
   return player.bufferedRanges.map(([s, e]) => ({
     left: Math.min(Math.max((s / player.duration) * 100, 0), 100),
     width: Math.min(Math.max(((e - s) / player.duration) * 100, 0), 100),
@@ -81,11 +81,13 @@ const dragging = ref(false);
 const dragTime = ref<number | null>(null);
 
 const displayTime = computed(() => dragTime.value ?? player.currentTime);
-const progressPct = computed(() =>
-  player.duration > 0 ? (displayTime.value / player.duration) * 100 : 0,
-);
-const coverProgressPct = computed(() => Math.min(Math.max(progressPct.value, 0), 100));
-const coverProgressOffset = computed(() => 176 * (1 - coverProgressPct.value / 100));
+const progressPct = computed(() => {
+  const duration = player.duration;
+  const time = displayTime.value;
+  if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(time)) return 0;
+  return Math.min(100, Math.max(0, (time / duration) * 100));
+});
+const coverProgressOffset = computed(() => 176 * (1 - progressPct.value / 100));
 
 function fmtPrecise(sec: number): string {
   if (!isFinite(sec) || sec < 0) return "0:00.00";
