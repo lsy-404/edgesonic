@@ -1,13 +1,14 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, watch, onBeforeUnmount, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter, useRoute } from "vue-router";
 import { usePlayerStore } from "../stores/player";
 import { useAuth, formatDuration } from "../api";
 import { activeTheme } from "../theme";
 import { getTheme } from "../themes/registry";
+import { isOutsideElements } from "../lib/outsideClick";
 
 const { t } = useI18n();
 const router = useRouter();
@@ -139,6 +140,8 @@ function onVolume(e: Event) {
 }
 
 const queueOpen = ref(false);
+const queueButton = ref<HTMLElement | null>(null);
+const queuePanel = ref<HTMLElement | null>(null);
 const queueList = ref<HTMLElement | null>(null);
 watch(detailsOpen, (open) => { if (!open) queueOpen.value = false; });
 async function revealCurrentQueueItem() {
@@ -153,6 +156,12 @@ function removeFromQueue(i: number) {
   player.queue.splice(i, 1);
   if (i < player.index) player.index--;
 }
+function onDocumentPointerDown(e: PointerEvent) {
+  if (!queueOpen.value) return;
+  if (isOutsideElements(e.target, [queuePanel.value, queueButton.value])) queueOpen.value = false;
+}
+onMounted(() => document.addEventListener("pointerdown", onDocumentPointerDown));
+onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPointerDown));
 </script>
 
 <template>
@@ -243,7 +252,7 @@ function removeFromQueue(i: number) {
         @input="onVolume"
         :title="`${t('player.volume')} (↑ / ↓, M)`"
       />
-      <button class="pb-queue-btn" :class="{ active: queueOpen }" @click="queueOpen = !queueOpen" :title="t('player.queueTitle', { n: player.queue.length })">
+      <button ref="queueButton" class="pb-queue-btn" :class="{ active: queueOpen }" @click="queueOpen = !queueOpen" :title="t('player.queueTitle', { n: player.queue.length })">
         <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 6h13v2H3V6zm0 5h13v2H3v-2zm0 5h9v2H3v-2zm15 0v-6l5 3-5 3z"/></svg>
         <span class="pb-queue-count" v-if="player.queue.length">{{ player.queue.length }}</span>
       </button>
@@ -251,7 +260,7 @@ function removeFromQueue(i: number) {
 
     <!-- Queue panel (slides up from player bar) -->
     <transition name="queue-up">
-      <div v-if="queueOpen" class="pb-queue-panel">
+      <div v-if="queueOpen" ref="queuePanel" class="pb-queue-panel">
         <div class="pb-queue-header">
           <span>{{ t("player.queueTitle", { n: player.queue.length }) }}</span>
           <button class="pb-queue-close" @click="queueOpen = false">
