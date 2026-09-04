@@ -355,6 +355,7 @@ export const usePlayerStore = defineStore("player", () => {
   // what was actually served once cross-quality substitution is in play.
   const cachedBlobKeyByElement = new WeakMap<HTMLAudioElement, string>();
   const fallbackInFlight = new WeakSet<HTMLAudioElement>();
+  const internalPauseByElement = new WeakSet<HTMLAudioElement>();
 
   window.addEventListener("pagehide", () => {
     _isUnloading = true;
@@ -404,6 +405,11 @@ export const usePlayerStore = defineStore("player", () => {
   function abortFallbackWork(el: HTMLAudioElement) {
     fallbackStateByElement.get(el)?.controller.abort();
     fallbackInFlight.delete(el);
+  }
+
+  function pauseInternally(el: HTMLAudioElement) {
+    internalPauseByElement.add(el);
+    try { el.pause(); } finally { internalPauseByElement.delete(el); }
   }
 
   function resetFallbackState(el: HTMLAudioElement) {
@@ -658,9 +664,10 @@ export const usePlayerStore = defineStore("player", () => {
         const attemptController = new AbortController();
         const RANGE_STALL_TIMEOUT_MS = 20_000;
         let stallTimer: ReturnType<typeof setTimeout> | null = null;
+        let stalled = false;
         const resetStallTimer = () => {
           if (stallTimer) clearTimeout(stallTimer);
-          stallTimer = setTimeout(() => attemptController.abort(), RANGE_STALL_TIMEOUT_MS);
+          stallTimer = setTimeout(() => { stalled = true; attemptController.abort(); }, RANGE_STALL_TIMEOUT_MS);
         };
         const abortAttempt = () => attemptController.abort();
         state.controller.signal.addEventListener("abort", abortAttempt, { once: true });
@@ -674,7 +681,10 @@ export const usePlayerStore = defineStore("player", () => {
             headers: { Range: `bytes=${state.downloaded}-${target - 1}` },
             signal: attemptController.signal,
           });
-          if (!resp.ok) throw new Error(`range fallback fetch failed: ${resp.status}`);
+          if (!resp.ok) {
+            attemptController.abort();
+            throw new Error(`range fallback fetch failed: ${resp.status}`);
+          }
           const reader = resp.body?.getReader();
           if (reader) {
             const parts: BlobPart[] = [];
@@ -694,7 +704,8 @@ export const usePlayerStore = defineStore("player", () => {
           }
           diag.end({ status: resp.status });
         } catch (e) {
-          diag.fail(attemptController.signal.aborted && !state.controller.signal.aborted
+          attemptController.abort();
+          diag.fail(stalled
             ? `range stalled for ${RANGE_STALL_TIMEOUT_MS} ms`
             : e);
           throw e;
@@ -892,7 +903,7 @@ export const usePlayerStore = defineStore("player", () => {
       console.log("[Player] pause event");
       if (el === active) {
         playing.value = false;
-        abortFallbackWork(el);
+        if (!internalPauseByElement.has(el)) abortFallbackWork(el);
         invalidatePreload();
       }
     });
@@ -1000,7 +1011,7 @@ export const usePlayerStore = defineStore("player", () => {
     const nextTrack = queue.value[ni];
     const el = inactiveEl();
     resetFallbackState(el);
-    el.pause();
+    pauseInternally(el);
     el.removeAttribute("src");
     el.load();
     el.preload = "auto";
@@ -1053,7 +1064,7 @@ export const usePlayerStore = defineStore("player", () => {
       // Swap in the prebuffered element — instant start
       const next = preloaded.el;
       preloaded = null;
-      active!.pause();
+      pauseInternally(active!);
       resetFallbackState(active!);
       active!.removeAttribute("src");
       active!.load();
@@ -1061,7 +1072,7 @@ export const usePlayerStore = defineStore("player", () => {
       syncBuffered(active);
     } else {
       invalidatePreload();
-      active!.pause();
+      pauseInternally(active!);
       resetFallbackState(active!);
       const targetEl = active!;
       const trackId = track.id;
@@ -1288,7 +1299,7 @@ export const usePlayerStore = defineStore("player", () => {
     _pendingRestoreTime = null;
     invalidatePreload();
     for (const el of [elA, elB]) {
-      if (el) { el.pause(); resetFallbackState(el); el.removeAttribute("src"); el.load(); }
+      if (el) { pauseInternally(el); resetFallbackState(el); el.removeAttribute("src"); el.load(); }
     }
     queue.value = [];
     index.value = -1;

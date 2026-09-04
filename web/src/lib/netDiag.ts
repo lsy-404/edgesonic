@@ -100,8 +100,10 @@ export function beginRequest(label: string, url: string): InflightHandle {
   };
   inflight.set(entry.id, entry);
   console.info(`${TAG} start #${entry.id} ${label}`, shortUrl(url));
+  let finished = false;
   return {
     progress(receivedBytes: number) {
+      if (finished) return;
       entry.bytes = receivedBytes;
       entry.lastProgressAt = performance.now();
       if (isVerbose()) {
@@ -109,11 +111,15 @@ export function beginRequest(label: string, url: string): InflightHandle {
       }
     },
     end(detail?: Record<string, unknown>) {
+      if (finished) return;
+      finished = true;
       inflight.delete(entry.id);
       const ms = Math.round(performance.now() - entry.startedAt);
       console.info(`${TAG} done #${entry.id} ${label}: ${entry.bytes} B in ${ms} ms (${throughput(entry)})`, detail ?? "");
     },
     fail(reason: unknown) {
+      if (finished) return;
+      finished = true;
       inflight.delete(entry.id);
       const ms = Math.round(performance.now() - entry.startedAt);
       console.warn(`${TAG} fail #${entry.id} ${label} after ${ms} ms, ${entry.bytes} B received:`, safeReason(reason));
@@ -132,9 +138,15 @@ function bufferedSeconds(el: HTMLAudioElement): number {
 /** Register a browser-owned audio request without inventing byte counts. */
 export function beginAudioRequest(el: HTMLAudioElement, label: string, url: string): AudioRequestHandle {
   endAudioRequest(el, "source replaced");
-  const request = beginRequest(label, url);
-  const entry = inflight.get(nextId - 1);
+  let request: InflightHandle | null = null;
+  let entry: InflightEntry | undefined;
   let finished = false;
+  const start = () => {
+    if (finished || request) return;
+    request = beginRequest(label, url);
+    entry = inflight.get(nextId - 1);
+    update();
+  };
   const update = () => {
     if (!entry || finished) return;
     const buffered = bufferedSeconds(el);
@@ -152,24 +164,26 @@ export function beginAudioRequest(el: HTMLAudioElement, label: string, url: stri
     el.removeEventListener("canplay", update);
     el.removeEventListener("error", onError);
     el.removeEventListener("emptied", onEmptied);
-    el.removeEventListener("suspend", onSuspend);
+    el.removeEventListener("suspend", update);
+    el.removeEventListener("loadstart", start);
   };
   const finish = (kind: "end" | "fail", detail?: Record<string, unknown> | unknown) => {
     if (finished) return;
     finished = true;
     cleanup();
+    if (!request) return;
     if (kind === "end") request.end({ audio: entry?.audio, ...(detail as Record<string, unknown> | undefined) });
     else request.fail(detail);
   };
   const onError = () => finish("fail", el.error?.message || "audio error");
-  const onEmptied = () => finish("end", { reason: "source cleared" });
-  const onSuspend = () => finish("end", { reason: "native transfer suspended" });
+  const onEmptied = () => { if (request) finish("end", { reason: "source cleared" }); };
   el.addEventListener("progress", update);
   el.addEventListener("loadedmetadata", update);
   el.addEventListener("canplay", update);
   el.addEventListener("error", onError);
   el.addEventListener("emptied", onEmptied);
-  el.addEventListener("suspend", onSuspend);
+  el.addEventListener("suspend", update);
+  el.addEventListener("loadstart", start);
   const handle: AudioRequestHandle = {
     end(detail) { finish("end", detail); },
     fail(reason) { finish("fail", reason); },
@@ -288,13 +302,17 @@ function snapshotInflight(): Array<Record<string, unknown>> {
     url: shortUrl(entry.url),
     elapsedMs: Math.round(performance.now() - entry.startedAt),
     bytes: entry.bytes,
+    throughput: throughput(entry),
     audio: entry.audio,
   }));
 }
 
 function savePagehideSnapshot(): void {
   const snapshot = snapshotInflight();
-  if (!snapshot.length) return;
+  if (!snapshot.length) {
+    try { sessionStorage.removeItem(SNAPSHOT_KEY); } catch { /* storage unavailable */ }
+    return;
+  }
   console.warn(`${TAG} pagehide with in-flight requests:`, snapshot);
   try { sessionStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshot)); } catch { /* storage unavailable */ }
 }
@@ -302,6 +320,13 @@ function savePagehideSnapshot(): void {
 export function initNetDiag(): void {
   if (initialized) return;
   initialized = true;
+  let previousSnapshot: unknown = null;
+  try {
+    const saved = sessionStorage.getItem(SNAPSHOT_KEY);
+    if (saved) previousSnapshot = JSON.parse(saved);
+    sessionStorage.removeItem(SNAPSHOT_KEY);
+  } catch { /* storage unavailable or corrupt */ }
+  if (previousSnapshot) console.info(`${TAG} previous pagehide snapshot:`, previousSnapshot);
   const nav = navigator as Navigator & {
     connection?: { effectiveType?: string; saveData?: boolean; downlink?: number };
   };
@@ -325,6 +350,7 @@ export function initNetDiag(): void {
   setInterval(watchdogTick, WATCHDOG_INTERVAL_MS);
   (window as unknown as Record<string, unknown>).__esNetDiag = {
     inflight: () =>
-      snapshotInflight().map((e) => ({ ...e, throughput: typeof e.bytes === "number" ? `${Math.round(e.bytes / 1024)} KB` : "0 KB" })),
+      snapshotInflight(),
+    previousPagehide: () => previousSnapshot,
   };
 }
