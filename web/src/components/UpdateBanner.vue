@@ -39,10 +39,11 @@ const banner = useUpdateBanner();
   left: 0;
   right: 0;
   z-index: 400;
-  background: linear-gradient(90deg, rgba(20, 20, 22, 0.97), rgba(28, 28, 32, 0.97));
+  background: color-mix(in srgb, var(--color-bg-elevated) 94%, transparent);
   border-bottom: 1px solid var(--color-accent-primary);
+  color: var(--color-text-primary);
   backdrop-filter: blur(12px);
-  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 32px var(--color-bg-overlay);
 }
 .update-banner-inner {
   max-width: 1200px;
@@ -105,7 +106,7 @@ const banner = useUpdateBanner();
 }
 .update-banner-btn-ghost {
   background: transparent;
-  border: 1px solid var(--color-border-subtle, rgba(255,255,255,0.12));
+  border: 1px solid var(--color-border-subtle);
   color: var(--color-text-secondary);
 }
 .update-banner-btn-ghost:hover {
@@ -115,7 +116,7 @@ const banner = useUpdateBanner();
 .update-banner-btn-primary {
   background: var(--color-accent-primary);
   border: 1px solid var(--color-accent-primary);
-  color: var(--color-text-inverse, #0a0a0b);
+  color: var(--color-text-inverse);
 }
 .update-banner-btn-primary:hover {
   background: var(--color-text-primary);

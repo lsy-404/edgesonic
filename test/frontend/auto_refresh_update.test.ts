@@ -31,6 +31,14 @@ check("UpdateBanner renders on showStale",
   bannerSource.includes("banner.available || banner.showStale"));
 check("store exposes showStale computed",
   source.includes("showStale = computed("));
+check("UpdateBanner surface follows active theme",
+  bannerSource.includes("background: color-mix(in srgb, var(--color-bg-elevated)") &&
+  bannerSource.includes("box-shadow: 0 6px 32px var(--color-bg-overlay)") &&
+  !bannerSource.includes("rgba(20, 20, 22") &&
+  !bannerSource.includes("rgba(28, 28, 32"));
+check("UpdateBanner controls use theme color tokens",
+  bannerSource.includes("border: 1px solid var(--color-border-subtle)") &&
+  bannerSource.includes("color: var(--color-text-inverse)"));
 
 if (fail > 0) process.exit(1);
 console.log(`  ${pass} passed, ${fail} failed`);
