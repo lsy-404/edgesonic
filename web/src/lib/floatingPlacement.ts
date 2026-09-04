@@ -27,6 +27,10 @@ export interface FloatingPlacementOptions {
   viewportHeight?: number;
 }
 
+export function isScrollInsideElement(event: Event, element: HTMLElement | null): boolean {
+  return event.type === "scroll" && Boolean(element && event.composedPath().includes(element));
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, max));
 }

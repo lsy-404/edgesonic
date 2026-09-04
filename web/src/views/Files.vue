@@ -15,7 +15,7 @@ import TagEditor from "../components/TagEditor.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
 import type { ScrapeResult } from "../lib/scrape";
 import { extractMetadata } from "../lib/metadata";
-import { placeFloatingPoint } from "../lib/floatingPlacement";
+import { isScrollInsideElement, placeFloatingPoint } from "../lib/floatingPlacement";
 import Icon from "../components/Icon.vue";
 import { usePlayerStore, type Track } from "../stores/player";
 
@@ -1315,7 +1315,8 @@ async function openContextMenu(x: number, y: number, target: CtxTarget) {
   el?.querySelector<HTMLButtonElement>(".ctx-item")?.focus({ preventScroll: true });
 }
 
-function closeContextMenu() {
+function closeContextMenu(event?: Event) {
+  if (event && isScrollInsideElement(event, ctxMenuEl.value)) return;
   ctxMenu.value = null;
   ctxPlaced.value = false;
   document.removeEventListener("click", onDocumentClick);

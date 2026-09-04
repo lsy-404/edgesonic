@@ -4,7 +4,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch, type CSSProperties } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
-import { placeFloatingMenu, type FloatingPlacement } from "../lib/floatingPlacement";
+import { isScrollInsideElement, placeFloatingMenu, type FloatingPlacement } from "../lib/floatingPlacement";
 import Icon from "./Icon.vue";
 
 const props = defineProps<{
@@ -56,7 +56,8 @@ async function updateMenuPlacement() {
   menuPlaced.value = true;
 }
 
-function closeForViewportChange() {
+function closeForViewportChange(event: Event) {
+  if (isScrollInsideElement(event, menuEl.value)) return;
   emit("close");
 }
 

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { placeFloatingMenu, placeFloatingPoint, type FloatingRect } from "../../web/src/lib/floatingPlacement";
+import {
+  isScrollInsideElement,
+  placeFloatingMenu,
+  placeFloatingPoint,
+  type FloatingRect,
+} from "../../web/src/lib/floatingPlacement";
 
 const ROOT = join(__dirname, "..", "..");
 
@@ -70,11 +75,28 @@ console.log("floating placement uses the usable side of the viewport:");
 
 console.log("Vue menus use the shared viewport placement contract:");
 {
+  const menu = {} as HTMLElement;
+  assert.equal(
+    isScrollInsideElement({ type: "scroll", composedPath: () => ["menu-child", menu, "page"] } as unknown as Event, menu),
+    true,
+  );
+  assert.equal(
+    isScrollInsideElement({ type: "scroll", composedPath: () => ["page"] } as unknown as Event, menu),
+    false,
+  );
+  assert.equal(
+    isScrollInsideElement({ type: "resize", composedPath: () => [menu, "page"] } as unknown as Event, menu),
+    false,
+  );
+}
+
+{
   const files = readFileSync(join(ROOT, "web", "src", "views", "Files.vue"), "utf8");
-  assert.match(files, /import \{ placeFloatingPoint \} from "\.\.\/lib\/floatingPlacement"/);
+  assert.match(files, /isScrollInsideElement, placeFloatingPoint/);
   assert.match(files, /maxHeight: `\$\{ctxMenu\.value\?\.maxHeight \?\? 0\}px`/);
   assert.match(files, /placeFloatingPoint\(x, y, el\.getBoundingClientRect\(\), \{ margin: 8, minHeight: 120 \}\)/);
   assert.match(files, /\.ctx-menu \{[\s\S]*?position: fixed[\s\S]*?overflow-y: auto/);
+  assert.match(files, /if \(event && isScrollInsideElement\(event, ctxMenuEl\.value\)\) return/);
 }
 
 {
@@ -83,6 +105,7 @@ console.log("Vue menus use the shared viewport placement contract:");
   assert.match(songMenu, /placeFloatingMenu\(button\.getBoundingClientRect\(\), menu\.getBoundingClientRect\(\)/);
   assert.match(songMenu, /maxHeight: `\$\{menuPlacement\.value\.maxHeight\}px`/);
   assert.match(songMenu, /\.row-menu \{[\s\S]*?position: fixed[\s\S]*?overflow-y: auto/);
+  assert.match(songMenu, /if \(isScrollInsideElement\(event, menuEl\.value\)\) return/);
 }
 
 {
@@ -91,6 +114,7 @@ console.log("Vue menus use the shared viewport placement contract:");
   assert.match(optionsMenu, /placeFloatingMenu\(button\.getBoundingClientRect\(\), menu\.getBoundingClientRect\(\)/);
   assert.match(optionsMenu, /maxHeight: `\$\{menuPlacement\.value\.maxHeight\}px`/);
   assert.match(optionsMenu, /\.list-options-menu \{[\s\S]*?position: fixed[\s\S]*?overflow-y: auto/);
+  assert.match(optionsMenu, /if \(isScrollInsideElement\(event, menuEl\.value\)\) return/);
 }
 
 {

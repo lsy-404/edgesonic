@@ -125,7 +125,7 @@ console.log("the menu escapes the page it sits in:");
 console.log("every listener the menu adds is taken back:");
 {
   const open = SRC.match(/async function openContextMenu\([\s\S]*?\n}/)?.[0] ?? "";
-  const close = SRC.match(/function closeContextMenu\(\)[\s\S]*?\n}/)?.[0] ?? "";
+  const close = SRC.match(/function closeContextMenu\(event\?: Event\)[\s\S]*?\n}/)?.[0] ?? "";
   const added = [...open.matchAll(/(document|window)\.addEventListener\("(\w+)"/g)].map((m) => `${m[1]}:${m[2]}`);
   const removed = [...close.matchAll(/(document|window)\.removeEventListener\("(\w+)"/g)].map((m) => `${m[1]}:${m[2]}`);
   assert(added.length >= 4, `open registers the outside-click/keyboard/scroll listeners (${added.length})`);
@@ -138,6 +138,10 @@ console.log("every listener the menu adds is taken back:");
   assert(
     /removeEventListener\("scroll", closeContextMenu, true\)/.test(close),
     "the capturing scroll listener is removed with capture: true",
+  );
+  assert(
+    /isScrollInsideElement\(event, ctxMenuEl\.value\)/.test(close),
+    "scrolling inside the menu does not dismiss it",
   );
   assert(/onBeforeUnmount\(\(\) => \{[\s\S]*?closeContextMenu\(\)/.test(SRC), "unmount closes the menu");
   assert(/onBeforeUnmount\(\(\) => \{[\s\S]*?cancelLongPress\(\)/.test(SRC), "unmount clears a pending long-press timer");
