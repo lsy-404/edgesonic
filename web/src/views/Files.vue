@@ -15,6 +15,7 @@ import TagEditor from "../components/TagEditor.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
 import type { ScrapeResult } from "../lib/scrape";
 import { extractMetadata } from "../lib/metadata";
+import { placeFloatingPoint } from "../lib/floatingPlacement";
 import Icon from "../components/Icon.vue";
 import { usePlayerStore, type Track } from "../stores/player";
 
@@ -1265,7 +1266,7 @@ type CtxTarget =
   | { kind: "dir"; dir: DirEntry }
   | { kind: "blank" };
 
-const ctxMenu = ref<{ x: number; y: number; target: CtxTarget } | null>(null);
+const ctxMenu = ref<{ x: number; y: number; maxHeight: number; target: CtxTarget } | null>(null);
 const ctxMenuEl = ref<HTMLElement | null>(null);
 // Kept hidden until the post-render clamp has run so a menu opened near a
 // viewport edge doesn't visibly jump from the click point to its final spot.
@@ -1287,12 +1288,13 @@ const ctxOnSelection = computed(() => {
 const ctxStyle = computed<CSSProperties>(() => ({
   left: `${ctxMenu.value?.x ?? 0}px`,
   top: `${ctxMenu.value?.y ?? 0}px`,
+  maxHeight: `${ctxMenu.value?.maxHeight ?? 0}px`,
   visibility: ctxPlaced.value ? "visible" : "hidden",
 }));
 
 async function openContextMenu(x: number, y: number, target: CtxTarget) {
   ctxPlaced.value = false;
-  ctxMenu.value = { x, y, target };
+  ctxMenu.value = { x, y, maxHeight: window.innerHeight, target };
   // Re-adding an identical listener is a no-op, so reopening while a menu is
   // already up doesn't stack these.
   document.addEventListener("click", onDocumentClick);
@@ -1304,10 +1306,10 @@ async function openContextMenu(x: number, y: number, target: CtxTarget) {
   const el = ctxMenuEl.value;
   const menu = ctxMenu.value;
   if (el && menu) {
-    const { width, height } = el.getBoundingClientRect();
-    const margin = 8;
-    menu.x = Math.max(margin, Math.min(x, window.innerWidth - width - margin));
-    menu.y = Math.max(margin, Math.min(y, window.innerHeight - height - margin));
+    const placement = placeFloatingPoint(x, y, el.getBoundingClientRect(), { margin: 8, minHeight: 120 });
+    menu.x = placement.left;
+    menu.y = placement.top;
+    menu.maxHeight = placement.maxHeight;
   }
   ctxPlaced.value = true;
   el?.querySelector<HTMLButtonElement>(".ctx-item")?.focus({ preventScroll: true });
@@ -2449,6 +2451,7 @@ onBeforeUnmount(() => {
   z-index: 900;
   min-width: 190px;
   max-width: 280px;
+  overflow-y: auto;
   padding: 0.25rem 0;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-default);

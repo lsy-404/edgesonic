@@ -117,7 +117,9 @@ console.log("the menu escapes the page it sits in:");
   const open = SRC.match(/async function openContextMenu\([\s\S]*?\n}/)?.[0] ?? "";
   assert(/await nextTick\(\)/.test(open), "placement waits for the menu to render");
   assert(/getBoundingClientRect\(\)/.test(open), "placement measures the rendered menu");
-  assert(/window\.innerWidth - width/.test(open) && /window\.innerHeight - height/.test(open), "placement clamps to the viewport");
+  assert(/placeFloatingPoint\(x, y, el\.getBoundingClientRect\(\)/.test(open), "placement uses the shared viewport placer");
+  assert(/menu\.maxHeight = placement\.maxHeight/.test(open), "placement carries usable height into the menu");
+  assert(/\.ctx-menu \{[\s\S]*?overflow-y: auto/.test(SRC), "overflowing menus scroll inside their usable height");
 }
 
 console.log("every listener the menu adds is taken back:");

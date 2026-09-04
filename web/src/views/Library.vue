@@ -1156,8 +1156,8 @@ function toggleOptions() {
 }
 function onWindowClick(e: MouseEvent) {
   const target = e.target as HTMLElement;
-  if (openMenuId.value && !target.closest(".row-menu-wrap")) closeRowMenu();
-  if (optionsOpen.value && !target.closest(".list-options-wrap")) optionsOpen.value = false;
+  if (openMenuId.value && !target.closest(".row-menu-wrap, .row-menu")) closeRowMenu();
+  if (optionsOpen.value && !target.closest(".list-options-wrap, .list-options-menu")) optionsOpen.value = false;
 }
 onMounted(() => window.addEventListener("click", onWindowClick));
 onUnmounted(() => window.removeEventListener("click", onWindowClick));
@@ -1197,6 +1197,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           :open="optionsOpen"
           v-model:hide-instrumental="hideInstrumental"
           @toggle="toggleOptions"
+          @close="optionsOpen = false"
         />
       </div>
     </div>
@@ -1235,6 +1236,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         :open="optionsOpen"
         v-model:hide-instrumental="hideInstrumental"
         @toggle="toggleOptions"
+        @close="optionsOpen = false"
       />
     </div>
 
