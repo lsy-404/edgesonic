@@ -175,7 +175,7 @@ function pollScanStatus(): Promise<void> {
 function startPolling() {
   if (pollHandle.value !== null) return;
   const schedule = () => {
-    if (!mounted || document.hidden || !anyRunning.value) return;
+    if (!mounted || document.hidden || !anyRunning.value || pollHandle.value !== null) return;
     pollHandle.value = window.setTimeout(() => {
       pollHandle.value = null;
       void pollScanStatus().finally(() => {
@@ -292,7 +292,7 @@ function load(): Promise<void> {
     } catch (error) {
       if (!isAbortError(error) && mounted) sources.value = [];
     } finally {
-      loading.value = false;
+      if (loadController === controller) loading.value = false;
     }
   })().finally(() => {
     if (loadController === controller) loadController = null;
@@ -544,11 +544,12 @@ async function migratePasswords() {
 
 onMounted(async () => {
   mounted = true;
-  await load();
-  await pollScanStatus();
-  if (anyRunning.value) startPolling();
-  // P6: pause/resume polling on tab visibility changes
   document.addEventListener("visibilitychange", handleVisibilityChange);
+  await load();
+  if (!mounted) return;
+  await pollScanStatus();
+  if (!mounted) return;
+  if (anyRunning.value) startPolling();
 });
 
 onUnmounted(() => {

@@ -148,12 +148,13 @@ function loadAll(): Promise<void> {
       showToast(e instanceof Error ? e.message : String(e), "error");
     }
   } finally {
-    loading.value = false;
+    if (loadController === controller) loading.value = false;
   }
   })().finally(() => {
     if (loadController === controller) {
       loadController = null;
       loadInFlight = null;
+      loading.value = false;
     }
   });
   return loadInFlight;
@@ -321,11 +322,12 @@ function onVisibilityChange(): void {
 
 onMounted(async () => {
   mounted = true;
+  document.addEventListener("visibilitychange", onVisibilityChange);
   await loadAll();
+  if (!mounted) return;
   // Light background polling so a download/refresh kicked off elsewhere
   // eventually reflects in the UI. 30s keeps cost negligible.
   startPolling();
-  document.addEventListener("visibilitychange", onVisibilityChange);
 });
 
 onUnmounted(() => {

@@ -110,6 +110,46 @@ async function main(): Promise<void> {
   assert(requests[2].signal?.aborted === true, "unmount aborts the current request");
   assert(timers.size === 0, "unmount clears all scheduled polling timers");
 
+  // Fresh component instance: unload before the initial request resolves.
+  let earlyResolve!: (value: string) => void;
+  const earlyRequests: Array<{ signal?: AbortSignal }> = [];
+  const earlyTimers = new Map<number, () => void>();
+  const earlyListeners = new Map<string, () => void>();
+  const earlyDocument = {
+    hidden: false,
+    addEventListener(type: string, listener: () => void) { earlyListeners.set(type, listener); },
+    removeEventListener(type: string) { earlyListeners.delete(type); },
+  };
+  const earlyWindow = {
+    setTimeout(callback: () => void) { const id = earlyTimers.size + 1; earlyTimers.set(id, callback); return id; },
+    clearTimeout(id: number) { earlyTimers.delete(id); },
+  };
+  const earlyContext = vm.createContext({
+    AbortController, DOMException, JSON, Map, Set, Date, Math, Promise, console,
+    setTimeout: earlyWindow.setTimeout, clearTimeout: earlyWindow.clearTimeout,
+    window: earlyWindow, document: earlyDocument,
+    ref: (value: unknown) => ({ value }),
+    computed: (getter: () => unknown) => ({ get value() { return getter(); } }),
+    onMounted: (callback: () => Promise<void>) => { (earlyContext as any).mountedHook = callback; },
+    onUnmounted: (callback: () => void) => { (earlyContext as any).unmountedHook = callback; },
+    useI18n: () => ({ t: (key: string) => key }),
+    useAuth: () => ({ isAdmin: { value: true }, authFetch: (_p: string, _q?: unknown, signal?: AbortSignal) => {
+      earlyRequests.push({ signal });
+      return new Promise<string>((resolve) => { earlyResolve = resolve; });
+    }, coverArtUrl: () => "" }),
+    parseXmlAttrs: () => [], formatDuration: () => "",
+  });
+  vm.runInContext(transformed, earlyContext);
+  const earlyProbe = (earlyContext as any).__probe as { mountedHook: () => Promise<void>; unmountedHook: () => void };
+  const earlyMounted = earlyProbe.mountedHook();
+  earlyProbe.unmountedHook();
+  assert(earlyRequests[0].signal?.aborted === true, "unmount during initial load aborts the initial request");
+  earlyResolve(okXml);
+  await earlyMounted;
+  await Promise.resolve();
+  assert(earlyTimers.size === 0, "initial-load unmount does not schedule a poll timer");
+  assert(earlyListeners.size === 0, "initial-load unmount leaves no visibility listener");
+
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
   process.exit(failures ? 1 : 0);
 }

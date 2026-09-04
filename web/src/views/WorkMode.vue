@@ -168,10 +168,13 @@ onMounted(async () => {
   tick = window.setInterval(() => { now.value = Date.now(); }, 1000);
   document.addEventListener("visibilitychange", onVisibility);
   await pool.hydrateConfig();
+  if (!mounted) return;
   await loadProgress();
+  if (!mounted) return;
   scheduleProgressPoll();
   // Resume a machine that was already opted in before this page loaded.
   if (pool.enabled) {
+    if (!mounted) return;
     pool.start();
     await requestWakeLock();
   }
