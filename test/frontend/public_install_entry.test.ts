@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 const root = path.resolve(__dirname, "../..");
 const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
-const overtureUrl = "https://overture.demo-w10v.workers.dev/?src=wuyilingwei%2Fedgesonic";
+const overtureUrl = "https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic";
 const oldInstallerUrl = ["https://edgesonic", "-installer.demo-w10v.workers.dev"].join("");
 const publicEntrypoints = [
   "README.md",

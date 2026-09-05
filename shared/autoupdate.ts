@@ -21,7 +21,7 @@
 // about a release, so the version maths lives here rather than being restated
 // per side. Keep this file free of Worker and DOM globals.
 
-export const GITHUB_REPO = "wuyilingwei/edgesonic";
+export const GITHUB_REPO = "lsy-404/edgesonic";
 export const GITHUB_API = `https://api.github.com/repos/${GITHUB_REPO}`;
 
 export const UPDATE_ARTIFACT_NAME = "edgesonic-update.tar.gz";

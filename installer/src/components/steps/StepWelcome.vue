@@ -77,7 +77,7 @@ function start() {
           <p>{{ t("welcome.section5Body") }}</p>
         </section>
       </div>
-      <p class="field-help"><a href="https://github.com/wuyilingwei/edgesonic/blob/main/docs/DEPLOY_BY_AGENT.md" target="_blank" rel="noreferrer">{{ t("welcome.advancedDeploy") }} ↗</a></p>
+      <p class="field-help"><a href="https://github.com/lsy-404/edgesonic/blob/main/docs/DEPLOY_BY_AGENT.md" target="_blank" rel="noreferrer">{{ t("welcome.advancedDeploy") }} ↗</a></p>
     </div>
 
     <div class="tos-accept-row">

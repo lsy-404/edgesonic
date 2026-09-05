@@ -6,9 +6,9 @@
     "en": "A Subsonic-compatible music server running entirely on Cloudflare Workers, D1 and R2.",
     "zh-CN": "完全运行在 Cloudflare Workers、D1 与 R2 上的 Subsonic 兼容音乐服务。"
   },
-  "homepage": "https://github.com/Wuyilingwei/EdgeSonic",
+  "homepage": "https://github.com/lsy-404/EdgeSonic",
   "issues": {
-    "url": "https://github.com/wuyilingwei/edgesonic/issues/new"
+    "url": "https://github.com/lsy-404/edgesonic/issues/new"
   },
   "version": "0.0.0-dev",
   "tag": "v0.0.0-dev",

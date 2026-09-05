@@ -7,7 +7,7 @@
 
 Serverless Subsonic-compatible music streaming server running entirely on **Cloudflare Workers**. No dedicated host, no always-on process — deploy once, stream anywhere.
 
-### 🚀 [Open Overture and deploy your own EdgeSonic →](https://overture.demo-w10v.workers.dev/?src=wuyilingwei%2Fedgesonic)
+### 🚀 [Open Overture and deploy your own EdgeSonic →](https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic)
 
 Deploys in a few minutes from your browser — see "Quick start" below for details.
 
@@ -51,7 +51,7 @@ EdgeSonic serves two roles simultaneously:
 
 ### Deploy (recommended): Overture deployment wizard
 
-No local toolchain is required. Open [Overture](https://overture.demo-w10v.workers.dev/?src=wuyilingwei%2Fedgesonic),
+No local toolchain is required. Open [Overture](https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic),
 which is preconfigured for this repository, sign in with Cloudflare when prompted, and follow the browser-based
 steps to deploy the published EdgeSonic package. The wizard provisions or reuses the resources requested by the
 package, including D1 and R2.

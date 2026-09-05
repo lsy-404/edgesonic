@@ -111,7 +111,7 @@ async function loadVersionInfo() {
   // GitHub latest release check only (version itself is embedded in the bundle).
   updateChecking.value = true;
   try {
-    const r2 = await fetch("https://api.github.com/repos/wuyilingwei/edgesonic/releases/latest", { cache: "no-store" });
+    const r2 = await fetch("https://api.github.com/repos/lsy-404/edgesonic/releases/latest", { cache: "no-store" });
     if (r2.ok) {
       const rel = await r2.json() as { tag_name?: string };
       const tag = rel.tag_name?.replace(/^v/, "") ?? "";
@@ -500,7 +500,7 @@ onUnmounted(() => {
         <div v-if="isSuperAdmin" class="info-row">
           <span class="info-key">{{ t("dashboard.githubLatest") }}</span>
           <span class="info-val">
-            <a v-if="updateAvailable" href="https://github.com/wuyilingwei/edgesonic/releases/latest" target="_blank" rel="noopener" class="update-link">
+            <a v-if="updateAvailable" href="https://github.com/lsy-404/edgesonic/releases/latest" target="_blank" rel="noopener" class="update-link">
               {{ t("dashboard.updateAvailable", { ver: latestVersion }) }}
             </a>
              <span v-else-if="latestVersion" class="update-current">{{ t("dashboard.updateCurrent", { ver: latestVersion, state: isDevelopmentBuild || isDirtyBuild ? t("dashboard.updateStateDev") : t("dashboard.updateStateLatest") }) }}</span>

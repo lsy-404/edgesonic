@@ -6,7 +6,7 @@
 
 完全运行在 **Cloudflare Workers** 上的无服务器（Serverless）Subsonic 兼容音乐流媒体服务器。不需要独立主机，不需要常驻进程——部署一次，随处播放。
 
-### 🚀 [打开 Overture，部署你自己的 EdgeSonic →](https://overture.demo-w10v.workers.dev/?src=wuyilingwei%2Fedgesonic)
+### 🚀 [打开 Overture，部署你自己的 EdgeSonic →](https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic)
 
 几分钟内在浏览器中完成部署，细节见下方「快速开始」。
 
@@ -50,7 +50,7 @@ EdgeSonic 同时承担两个角色：
 
 ### 部署（推荐）：Overture 部署向导
 
-无需本地工具链。打开已预选本项目的 [Overture](https://overture.demo-w10v.workers.dev/?src=wuyilingwei%2Fedgesonic)，
+无需本地工具链。打开已预选本项目的 [Overture](https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic)，
 按提示使用 Cloudflare 登录，并在浏览器中完成已发布 EdgeSonic 软件包的部署。向导会按软件包声明创建或复用所需资源，
 包括 D1 和 R2。
 

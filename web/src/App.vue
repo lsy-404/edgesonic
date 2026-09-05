@@ -250,7 +250,7 @@ onBeforeUnmount(() => {
     <span class="demo-badge-text">{{ t("demo.badge") }}</span>
     <a
       class="demo-badge-deploy"
-      href="https://overture.demo-w10v.workers.dev/?src=wuyilingwei%2Fedgesonic"
+      href="https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic"
       target="_blank"
       rel="noopener noreferrer"
     >{{ t("demo.easyDeploy") }}</a>

@@ -8,7 +8,7 @@
 >
 > This is the **agent-run, local `wrangler`** deployment path. It downloads a precompiled package
 > from GitHub Releases so you never need to run `npm ci` / `npm run build:web` yourself. If you
-> want the human-driven path instead, use [Overture](https://overture.demo-w10v.workers.dev/?src=wuyilingwei%2Fedgesonic),
+> want the human-driven path instead, use [Overture](https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic),
 > the browser-based deployment wizard preconfigured for this repository.
 >
 > This document itself is written in English, but every step where you talk to the operator —
@@ -95,7 +95,7 @@ Hold onto all five answers — they're used throughout step 3.
 ### 3.1 Fetch the latest package
 
 ```bash
-curl -s https://api.github.com/repos/wuyilingwei/edgesonic/releases/latest \
+curl -s https://api.github.com/repos/lsy-404/edgesonic/releases/latest \
   | grep -o '"browser_download_url": *"[^"]*edgesonic-release.tar.gz"' \
   | cut -d'"' -f4 > /tmp/edgesonic-release-url.txt
 

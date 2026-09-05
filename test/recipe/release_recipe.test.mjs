@@ -10,7 +10,7 @@ const buildSource = fs.readFileSync(path.join(root, "scripts/build-update-bundle
 const inputs = recipe.inputs;
 const sandboxImage = recipe.worker.containers.find((entry) => entry.className === "Sandbox").image.reference;
 
-assert.equal(recipe.issues.url, "https://github.com/wuyilingwei/edgesonic/issues/new");
+assert.equal(recipe.issues.url, "https://github.com/lsy-404/edgesonic/issues/new");
 assert.equal(sandboxImage, "docker.io/DOCKERHUB_NAMESPACE/edgesonic-transcoder@sha256:__BUILD_IMAGE_DIGEST__");
 const db = recipe.resources.find((resource) => resource.id === "db");
 const music = recipe.resources.find((resource) => resource.id === "music");

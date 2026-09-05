@@ -40,22 +40,22 @@ async function testReleaseListing() {
   globalThis.fetch = async (input) => {
     if (String(input).includes("/releases?per_page=50")) {
       return Response.json([
-        { tag_name: "v1.3.0", assets: [{ name: "edgesonic-update.tar.gz", browser_download_url: "https://github.com/wuyilingwei/edgesonic/releases/download/v1.3.0/edgesonic-update.tar.gz" }] },
+        { tag_name: "v1.3.0", assets: [{ name: "edgesonic-update.tar.gz", browser_download_url: "https://github.com/lsy-404/edgesonic/releases/download/v1.3.0/edgesonic-update.tar.gz" }] },
         { tag_name: "v1.5.0", assets: [
           { name: "edgesonic-update.tar.gz", browser_download_url: "https://example.test/v1.5.0.tar.gz" },
           { name: "edgesonic-update-manifest.json", browser_download_url: "https://example.test/v1.5.0.json" },
         ] },
         { tag_name: "v2.0.0", assets: [
-          { name: "edgesonic-update.tar.gz", browser_download_url: "https://github.com/wuyilingwei/edgesonic/releases/download/v2.0.0/edgesonic-update.tar.gz" },
-          { name: "edgesonic-update-manifest.json", browser_download_url: "https://github.com/wuyilingwei/edgesonic/releases/download/v2.0.0/edgesonic-update-manifest.json" },
+          { name: "edgesonic-update.tar.gz", browser_download_url: "https://github.com/lsy-404/edgesonic/releases/download/v2.0.0/edgesonic-update.tar.gz" },
+          { name: "edgesonic-update-manifest.json", browser_download_url: "https://github.com/lsy-404/edgesonic/releases/download/v2.0.0/edgesonic-update-manifest.json" },
         ] },
         { tag_name: "v1.4.0", assets: [
-          { name: "edgesonic-update.tar.gz", browser_download_url: "https://github.com/wuyilingwei/edgesonic/releases/download/v1.4.0/edgesonic-update.tar.gz" },
-          { name: "edgesonic-update-manifest.json", browser_download_url: "https://github.com/wuyilingwei/edgesonic/releases/download/v1.4.0/edgesonic-update-manifest.json" },
+          { name: "edgesonic-update.tar.gz", browser_download_url: "https://github.com/lsy-404/edgesonic/releases/download/v1.4.0/edgesonic-update.tar.gz" },
+          { name: "edgesonic-update-manifest.json", browser_download_url: "https://github.com/lsy-404/edgesonic/releases/download/v1.4.0/edgesonic-update-manifest.json" },
         ] },
         { tag_name: "v3.0.0-beta.1", prerelease: false, assets: [
-          { name: "edgesonic-update.tar.gz", browser_download_url: "https://github.com/wuyilingwei/edgesonic/releases/download/v3.0.0-beta.1/edgesonic-update.tar.gz" },
-          { name: "edgesonic-update-manifest.json", browser_download_url: "https://github.com/wuyilingwei/edgesonic/releases/download/v3.0.0-beta.1/edgesonic-update-manifest.json" },
+          { name: "edgesonic-update.tar.gz", browser_download_url: "https://github.com/lsy-404/edgesonic/releases/download/v3.0.0-beta.1/edgesonic-update.tar.gz" },
+          { name: "edgesonic-update-manifest.json", browser_download_url: "https://github.com/lsy-404/edgesonic/releases/download/v3.0.0-beta.1/edgesonic-update-manifest.json" },
         ] },
       ]);
     }

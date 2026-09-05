@@ -50,7 +50,7 @@ The existing deploy workflow downloads a GitHub Release, extracts it, creates or
 ## Current Repository State
 
 - `./deploy.sh` is the local Wrangler deployment path.
-- [Overture](https://overture.demo-w10v.workers.dev/?src=wuyilingwei%2Fedgesonic) is the supported browser-based deploy
+- [Overture](https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic) is the supported browser-based deploy
   path for everyone else — it is preconfigured for this repository and replaced the old manual `deploy.yml` GitHub
   Actions workflow.
 - `.github/workflows/release.yml` publishes the package and the direct Workers API module artifact.

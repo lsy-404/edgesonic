@@ -267,7 +267,7 @@ ${input.tracks
     </ol>
     <div class="footer">
       <span class="row">${expiresLine}</span>
-      <span class="row">Powered by <a class="brand" href="https://github.com/wuyilingwei/edgesonic" target="_blank" rel="noopener noreferrer">EdgeSonic</a></span>
+      <span class="row">Powered by <a class="brand" href="https://github.com/lsy-404/edgesonic" target="_blank" rel="noopener noreferrer">EdgeSonic</a></span>
     </div>
   </main>
   <script>

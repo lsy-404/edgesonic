@@ -139,7 +139,7 @@ onMounted(async () => {
          it is how a visitor to a modified/hosted instance finds the source. -->
     <div class="login-powered-by">
       {{ t("login.poweredBy") }}
-      <a href="https://github.com/wuyilingwei/edgesonic" target="_blank" rel="noopener noreferrer">EdgeSonic</a>
+      <a href="https://github.com/lsy-404/edgesonic" target="_blank" rel="noopener noreferrer">EdgeSonic</a>
     </div>
   </div>
 </template>

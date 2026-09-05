@@ -120,7 +120,7 @@ const dependencies: Array<{ name: string; version: string; license: string; url:
         </p>
         <p>
           {{ t('about.source_code') || 'All source code is available on' }}
-          <a href="https://github.com/wuyilingwei/edgesonic" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/lsy-404/edgesonic" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
         </p>
@@ -197,7 +197,7 @@ const dependencies: Array<{ name: string; version: string; license: string; url:
 
     <!-- Footer -->
     <div class="about-footer">
-      <p>{{ t('about.more_info') || 'For more information, visit' }} <a href="https://github.com/wuyilingwei/edgesonic" target="_blank" rel="noopener noreferrer">github.com/wuyilingwei/edgesonic</a></p>
+      <p>{{ t('about.more_info') || 'For more information, visit' }} <a href="https://github.com/lsy-404/edgesonic" target="_blank" rel="noopener noreferrer">github.com/lsy-404/edgesonic</a></p>
     </div>
   </div>
 </template>
