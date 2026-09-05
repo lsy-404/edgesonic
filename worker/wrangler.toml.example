@@ -20,7 +20,7 @@ account_id = "<YOUR_CLOUDFLARE_ACCOUNT_ID>"
 
 # Routes — 部署到自定义域名（没有自定义域名可整块删除，改用 *.workers.dev）
 routes = [
-  { pattern = "edgesonic.voidcarve.com", custom_domain = true }
+  { pattern = "<your-domain.example.com>", custom_domain = true }
 ]
 
 # Instance identity (anti-loop chain marker)
