@@ -283,7 +283,7 @@ async function proxyFetch(
 // timedFetch / UA come from utils/scrapeFetch.ts (shared with artistScrape).
 
 // ---- LRC album catalog ----
-const LRC_API = "https://lrc.wuyilingwei.com/api";
+const LRC_API = "https://lrc.voidcarve.com/api";
 
 async function fetchLrcAlbums(): Promise<unknown> {
   const resp = await timedFetch(`${LRC_API}/albums.json`, { headers: { Accept: "application/json" } });
