@@ -15,6 +15,8 @@
 
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
+import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
+import { sha256 as nobleSha256 } from "@noble/hashes/sha2.js";
 import { rateLimitDeviceId } from "./middleware/rate_limit";
 import { md5 } from "./utils/md5";
 import { getServerRelayPolicy, parseChain } from "./utils/features";
@@ -214,13 +216,14 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
   return different === 0;
 }
 
+function deriveWebPassword(password: string, salt: Uint8Array, iterations: number): Uint8Array {
+  return pbkdf2(nobleSha256, new TextEncoder().encode(password), salt, { c: iterations, dkLen: 32 });
+}
+
 export async function hashWebPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: WEB_PASSWORD_ITERATIONS }, key, 256,
-  );
-  return `${WEB_PASSWORD_KDF}$${WEB_PASSWORD_ITERATIONS}$${bytesToBase64(salt)}$${bytesToBase64(new Uint8Array(bits))}`;
+  const digest = deriveWebPassword(password, salt, WEB_PASSWORD_ITERATIONS);
+  return `${WEB_PASSWORD_KDF}$${WEB_PASSWORD_ITERATIONS}$${bytesToBase64(salt)}$${bytesToBase64(digest)}`;
 }
 
 export async function verifyWebPassword(password: string, stored: string): Promise<{ valid: boolean; legacy: boolean }> {
@@ -234,9 +237,8 @@ export async function verifyWebPassword(password: string, stored: string): Promi
   if (!Number.isInteger(iterations) || iterations < 100_000 || iterations > 1_000_000 || !salt || !digest || digest.length !== 32) {
     return { valid: false, legacy: false };
   }
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations }, key, 256);
-  return { valid: equalBytes(new Uint8Array(bits), digest), legacy: false };
+  const derived = deriveWebPassword(password, salt, iterations);
+  return { valid: equalBytes(derived, digest), legacy: false };
 }
 
 // ============================================================================

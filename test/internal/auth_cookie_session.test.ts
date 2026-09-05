@@ -38,8 +38,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { authMiddleware } from "../../worker/src/auth";
-import { webLoginRoutes } from "../../worker/src/endpoints/edgesonic/auth";
-import { sha256, verifyWebPassword } from "../../worker/src/auth";
+import { webLoginRoutes, edgesonicAuthRoutes } from "../../worker/src/endpoints/edgesonic/auth";
+import { sha256, hashWebPassword, verifyWebPassword } from "../../worker/src/auth";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -116,6 +116,7 @@ function makeApp(sqlite: DatabaseSync): any {
   app.use("/tag/*", authMiddleware);
   app.use("/storage/*", authMiddleware);
   app.use("/edgesonic/*", authMiddleware);
+  app.route("/edgesonic", edgesonicAuthRoutes);
   const ok = (c: import("hono").Context) => c.json({ ok: true, authMethod: c.get("authMethod") });
   app.get("/rest/ping", ok);
   app.get("/tag/whoami", ok);
@@ -139,6 +140,9 @@ function makeApp(sqlite: DatabaseSync): any {
         }),
         env as any,
       );
+    },
+    async getAuthMe(cookie: string): Promise<any> {
+      return app.fetch(new Request("http://test/edgesonic/auth/me", { headers: { Cookie: cookie } }), env as any);
     },
     async getGuest(): Promise<any> {
       return app.fetch(new Request("http://test/edgesonic/auth/guest"), env as any);
@@ -229,6 +233,42 @@ async function main() {
     assert(sc.includes("Path=/"), `Path=/ present (got ${sc})`);
     const migrated = sqlite.prepare("SELECT master_password FROM users WHERE username = 'alice'").get() as { master_password: string };
     assert((await verifyWebPassword("pw", migrated.master_password)).valid && migrated.master_password.startsWith("pbkdf2-sha256$"), "successful legacy login migrates to the web KDF");
+    const sessionCookie = sc.split(";", 1)[0];
+    const { getAuthMe } = makeApp(sqlite);
+    const me = await getAuthMe(sessionCookie);
+    assert(me.status === 200, `/edgesonic/auth/me accepts the login cookie (got ${me.status})`);
+    if (me.status === 200) {
+      const body = await me.json() as { username?: string };
+      assert(body.username === "alice", `/edgesonic/auth/me resolves the logged-in user (got ${body.username})`);
+    }
+  }
+
+  console.log("\nPBKDF2 passwords keep their stored format and reject a wrong password:");
+  {
+    const originalDeriveBits = crypto.subtle.deriveBits;
+    Object.defineProperty(crypto.subtle, "deriveBits", {
+      configurable: true,
+      value: async () => { throw new DOMException("iteration counts above 100000 are not supported", "NotSupportedError"); },
+    });
+    let stored: string;
+    try {
+      stored = await hashWebPassword("pw");
+    } finally {
+      Object.defineProperty(crypto.subtle, "deriveBits", { configurable: true, value: originalDeriveBits });
+    }
+    assert(stored.startsWith("pbkdf2-sha256$210000$"), "new hashes preserve the 210000-round PBKDF2 format");
+    assert((await verifyWebPassword("pw", stored)).valid, "PBKDF2 works when WebCrypto rejects over 100000 iterations");
+    assert((await verifyWebPassword("pw", stored)).valid, "a stored PBKDF2 password verifies");
+    assert(!(await verifyWebPassword("wrong", stored)).valid, "a wrong PBKDF2 password is rejected");
+
+    const legacySalt = new Uint8Array(16).fill(7);
+    const legacyKey = await crypto.subtle.importKey("raw", new TextEncoder().encode("pw"), "PBKDF2", false, ["deriveBits"]);
+    const legacyBits = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", hash: "SHA-256", salt: legacySalt, iterations: 210_000 }, legacyKey, 256,
+    );
+    const legacyBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+    const oldStored = `pbkdf2-sha256$210000$${legacyBase64(legacySalt)}$${legacyBase64(new Uint8Array(legacyBits))}`;
+    assert((await verifyWebPassword("pw", oldStored)).valid, "a WebCrypto-generated PBKDF2 password remains valid");
   }
 
   console.log("\nlogin rate limit persists failures in D1:");

@@ -1,0 +1,4 @@
+name = "pbkdf2-workerd-probe"
+main = "pbkdf2_workerd_probe.mjs"
+compatibility_date = "2025-05-24"
+compatibility_flags = ["nodejs_compat"]
