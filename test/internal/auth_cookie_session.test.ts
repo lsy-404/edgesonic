@@ -253,11 +253,12 @@ async function main() {
     let stored: string;
     try {
       stored = await hashWebPassword("pw");
+      assert((await verifyWebPassword("pw", stored)).valid, "PBKDF2 works when WebCrypto rejects over 100000 iterations");
+      assert(!(await verifyWebPassword("wrong", stored)).valid, "a wrong password is rejected under the WebCrypto limit");
     } finally {
       Object.defineProperty(crypto.subtle, "deriveBits", { configurable: true, value: originalDeriveBits });
     }
     assert(stored.startsWith("pbkdf2-sha256$210000$"), "new hashes preserve the 210000-round PBKDF2 format");
-    assert((await verifyWebPassword("pw", stored)).valid, "PBKDF2 works when WebCrypto rejects over 100000 iterations");
     assert((await verifyWebPassword("pw", stored)).valid, "a stored PBKDF2 password verifies");
     assert(!(await verifyWebPassword("wrong", stored)).valid, "a wrong PBKDF2 password is rejected");
 
