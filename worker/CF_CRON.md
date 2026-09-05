@@ -66,7 +66,7 @@ textarea — see §4.
    so the deployed Worker has **zero** scheduled events until step 3.
 
 2. **Sign in as a super admin** (level 3) at
-   `https://edgesonic.wuyilingwei.com/` and open **Settings → Cloudflare
+   `https://edgesonic.voidcarve.com/` and open **Settings → Cloudflare
    integration**. Confirm the badge shows `CONFIGURED` — the
    `CF_API_TOKEN` Worker Secret survives a deploy because secrets live
    outside the script payload (see CF_INTEGRATION.md §4).

@@ -18,7 +18,7 @@ import { randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const workerBase = "https://edgesonic.wuyilingwei.com";
+const workerBase = "https://edgesonic.voidcarve.com";
 const concurrency = Number(process.env.R2_RESCUE_CONCURRENCY || "4");
 const mapTable = process.env.R2_RESCUE_MAP_TABLE || "ops_r2_album_only_rescue_map_20260713";
 const label = process.env.R2_RESCUE_LABEL || "album-only";
