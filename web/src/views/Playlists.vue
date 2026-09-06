@@ -342,21 +342,15 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 </script>
 
 <template>
-  <div class="page" :class="{ 'playlist-detail-sheet': currentPlaylist }">
-    <div class="page-header">
+  <div class="page">
+    <div v-if="!currentPlaylist" class="page-header">
       <div>
         <div class="mono-label">{{ t("playlists.label") }}</div>
         <h1 class="page-title">
-          <a v-if="currentPlaylist" class="back-link" @click="backToList"><Icon name="left" /> {{ t("playlists.back") }}</a>
-          <span v-else>{{ t("playlists.title") }}</span>
+          <span>{{ t("playlists.title") }}</span>
         </h1>
       </div>
-      <button v-if="!currentPlaylist" class="btn-primary" @click="openCreate">{{ t("playlists.create") }}</button>
-      <div v-else-if="canEdit" class="header-actions">
-        <button class="btn-secondary btn-sm" @click="openAddSong">{{ t("playlists.addSong") }}</button>
-        <button class="btn-secondary btn-sm" @click="openEdit">{{ t("playlists.edit") }}</button>
-        <button class="btn-danger btn-sm" @click="deletePlaylist(currentPlaylist)">{{ t("playlists.delete") }}</button>
-      </div>
+      <button class="btn-primary" @click="openCreate">{{ t("playlists.create") }}</button>
     </div>
 
     <!-- ===========================================================
@@ -404,7 +398,19 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
     <!-- ===========================================================
          Detail view
          =========================================================== -->
-    <template v-else>
+    <Transition name="playlist-detail">
+    <section v-if="currentPlaylist" class="playlist-detail-sheet">
+      <div class="page-header">
+        <div>
+          <div class="mono-label">{{ t("playlists.label") }}</div>
+          <h1 class="page-title"><button class="back-link" type="button" @click="backToList"><Icon name="left" /> {{ t("playlists.back") }}</button></h1>
+        </div>
+        <div v-if="canEdit" class="header-actions">
+          <button class="btn-secondary btn-sm" @click="openAddSong">{{ t("playlists.addSong") }}</button>
+          <button class="btn-secondary btn-sm" @click="openEdit">{{ t("playlists.edit") }}</button>
+          <button class="btn-danger btn-sm" @click="deletePlaylist(currentPlaylist)">{{ t("playlists.delete") }}</button>
+        </div>
+      </div>
       <div class="detail-header">
         <div class="detail-cover">
           <img v-if="currentPlaylist.coverArt" :src="coverArtUrl(currentPlaylist.coverArt, 256)" :alt="currentPlaylist.name" />
@@ -465,7 +471,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
           </div>
         </div>
       </div>
-    </template>
+    </section>
+    </Transition>
 
     <!-- ===========================================================
          Create modal
@@ -580,10 +587,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 </template>
 
 <style scoped>
-.back-link { cursor: pointer; color: var(--color-accent-primary); }
+.back-link { cursor: pointer; color: var(--color-accent-primary); background: none; border: 0; padding: 0; font: inherit; }
 .back-link:hover { color: var(--color-text-primary); }
-.playlist-detail-sheet { position: fixed; z-index: 80; top: var(--nav-h); left: var(--sidebar-w); right: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); overflow: auto; padding: 24px; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border); border-radius: 8px 8px 0 0; animation: playlist-detail-enter .24s ease; }
-@keyframes playlist-detail-enter { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.playlist-detail-sheet { position: fixed; z-index: 80; top: var(--nav-h); left: var(--sidebar-w); right: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); overflow: auto; padding: 24px; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border); border-radius: 8px 8px 0 0; }
+.playlist-detail-enter-active, .playlist-detail-leave-active { transition: transform .24s ease, opacity .18s ease; }
+.playlist-detail-enter-from, .playlist-detail-leave-to { transform: translateY(100%); opacity: 0; }
 @media (max-width: 960px) { .playlist-detail-sheet { left: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); } }
 
 .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
