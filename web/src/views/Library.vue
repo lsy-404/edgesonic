@@ -26,7 +26,11 @@ const player = usePlayerStore();
 const detail = useDetailStore();
 const BATCH_MAX = 50;
 
-const props = withDefaults(defineProps<{ starredOnly?: boolean }>(), { starredOnly: false });
+const props = withDefaults(defineProps<{
+  starredOnly?: boolean;
+  embedded?: boolean;
+  detailTarget?: { kind: "album" | "artist"; id: string };
+}>(), { starredOnly: false, embedded: false, detailTarget: undefined });
 const starredOnly = props.starredOnly;
 
 interface Artist { id: string; name: string; albumCount: string; starred: boolean; starredAt?: string; createdAt?: string; }
@@ -605,8 +609,10 @@ function playFromSearch(i: number) {
 }
 
 async function openArtist(artist: Artist) {
-  detail.openArtist(artist.id);
-  return;
+  if (!props.embedded) {
+    detail.openArtist(artist.id);
+    return;
+  }
   const request = ++detailRequest;
   currentArtist.value = artist;
   currentAlbum.value = null;
@@ -654,8 +660,10 @@ async function loadArtistInfo(artist: Artist) {
 }
 
 async function openAlbum(album: Album) {
-  detail.openAlbum(album.id);
-  return;
+  if (!props.embedded) {
+    detail.openAlbum(album.id);
+    return;
+  }
   const request = ++detailRequest;
   currentAlbum.value = album;
   loading.value = true;
@@ -951,6 +959,14 @@ function backToAlbums() {
 const songsHintFaded = ref(false);
 
 onMounted(() => {
+  if (props.detailTarget) {
+    if (props.detailTarget.kind === "artist") {
+      void openArtist({ id: props.detailTarget.id, name: "", albumCount: "", starred: false });
+    } else {
+      void openAlbum({ id: props.detailTarget.id, name: "", artist: "", year: "", coverArt: "", songCount: "", starred: false });
+    }
+    return;
+  }
   if (starredOnly) void loadStarred();
   else if (tab.value === "artists") loadArtists();
   else if (tab.value === "albums") loadMoreAlbums();

@@ -9,6 +9,7 @@ import { useAuth, formatDuration } from "../api";
 import { activeTheme } from "../theme";
 import { getTheme } from "../themes/registry";
 import { isOutsideElements } from "../lib/outsideClick";
+import Icon from "./Icon.vue";
 
 const { t } = useI18n();
 const player = usePlayerStore();
@@ -172,7 +173,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
     >
       <div class="pb-cover" :class="{ clickable: player.hasTrack }" :title="player.hasTrack ? expandTitle : ''">
         <img v-if="displayCoverSrc" :src="displayCoverSrc" alt="" @error="onCoverError" />
-        <svg v-else viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+        <Icon v-else name="music" :size="20" />
         <svg v-if="player.hasTrack" class="pb-cover-ring" viewBox="0 0 48 48" aria-hidden="true">
           <path class="pb-cover-ring-track" d="M24 2H46V46H2V2H24" pathLength="176" />
           <path class="pb-cover-ring-fill" d="M24 2H46V46H2V2H24" pathLength="176" :style="{ strokeDashoffset: coverProgressOffset }" />
@@ -192,23 +193,19 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
     <div class="pb-center">
       <div class="pb-controls">
         <button class="pb-btn pb-fav" :class="{ active: player.starred }" :disabled="!player.hasTrack" :title="player.starred ? t('player.unlike') : t('player.like')" @click="player.toggleStar()">
-          <svg v-if="player.starred" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-          <svg v-else viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35zm0-2.7C16.76 14.24 20 11.39 20 8.5 20 6.5 18.5 5 16.5 5c-1.54 0-3.04.99-3.57 2.36h-1.87C10.54 5.99 9.04 5 7.5 5 5.5 5 4 6.5 4 8.5c0 2.89 3.24 5.74 8 10.15z"/></svg>
+          <Icon name="heart" :size="16" />
         </button>
         <button class="pb-btn" :disabled="!player.hasTrack" :title="`${t('player.previous')} (Shift+P)`" @click="player.prev()">
-          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M6 6h2v12H6V6zm3.5 6 8.5 6V6l-8.5 6z"/></svg>
+          <Icon name="previous" :size="16" />
         </button>
         <button class="pb-btn pb-play" :disabled="!player.hasTrack" :title="`${player.playing ? t('player.pause') : t('player.play')} (Space / K)`" @click="player.toggle()">
-          <svg v-if="player.playing" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
-          <svg v-else viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M8 5v14l11-7L8 5z"/></svg>
+          <Icon :name="player.playing ? 'pause' : 'play'" :size="18" />
         </button>
         <button class="pb-btn" :disabled="!player.hasTrack" :title="`${t('player.next')} (Shift+N)`" @click="player.next()">
-          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+          <Icon name="next" :size="16" />
         </button>
         <button class="pb-btn pb-mode" :class="{ active: player.playMode !== 'sequential' }" :disabled="!player.hasTrack" :title="playModeTitle" @click="player.cyclePlayMode()">
-          <svg v-if="player.playMode === 'shuffle'" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M10.59 9.17 5.41 4 4 5.41l5.17 5.17L10.59 9.17zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.92 7.41-1.42 1.42 3.54 3.54L20 14.5V20h-5.5l2.04-2.04-3.12-3.12z"/></svg>
-          <svg v-else-if="player.playMode === 'single'" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/><text x="9.5" y="15.5" fill="currentColor" font-size="8" font-weight="bold">1</text></svg>
-          <svg v-else viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+          <Icon :name="player.playMode === 'shuffle' ? 'shuffle' : player.playMode === 'single' ? 'repeatOne' : 'repeat'" :size="16" />
         </button>
       </div>
       <div class="pb-progress-row">
@@ -241,7 +238,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
         >
           <option v-for="opt in supportedQualityOptions" :key="opt.id" :value="opt.id">{{ t(`player.quality.${opt.id}`) }}</option>
         </select>
-        <svg class="pb-quality-caret" viewBox="0 0 24 24" width="10" height="10"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+        <Icon class="pb-quality-caret" name="chevronDown" :size="10" />
       </div>
       <input
         class="pb-volume"
@@ -251,7 +248,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
         :title="`${t('player.volume')} (↑ / ↓, M)`"
       />
       <button ref="queueButton" class="pb-queue-btn" :class="{ active: queueOpen }" @click="queueOpen = !queueOpen" :title="t('player.queueTitle', { n: player.queue.length })">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 6h13v2H3V6zm0 5h13v2H3v-2zm0 5h9v2H3v-2zm15 0v-6l5 3-5 3z"/></svg>
+        <Icon name="queueNext" :size="16" />
         <span class="pb-queue-count" v-if="player.queue.length">{{ player.queue.length }}</span>
       </button>
     </div>
@@ -262,7 +259,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
         <div class="pb-queue-header">
           <span>{{ t("player.queueTitle", { n: player.queue.length }) }}</span>
           <button class="pb-queue-close" @click="queueOpen = false">
-            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            <Icon name="cross" :size="16" />
           </button>
         </div>
         <div ref="queueList" class="pb-queue-list">
@@ -280,7 +277,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
             </div>
             <span class="pb-queue-dur">{{ formatDuration(Math.floor(tr.duration)) }}</span>
             <button v-if="i !== player.index" class="pb-queue-rm" @click.stop="removeFromQueue(i)">
-              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+              <Icon name="cross" :size="14" />
             </button>
           </div>
           <div v-if="player.queue.length === 0" class="pb-queue-empty">{{ t("player.queueEmpty") }}</div>
