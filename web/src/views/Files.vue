@@ -1957,10 +1957,10 @@ onBeforeUnmount(() => {
           <span class="field-hint">{{ t("files.tidyTemplateHint", { ph: "{albumArtist} {album} {artist} {title} {year} {track} {track:02d}", ex: DEFAULT_TIDY_TEMPLATE }) }}</span>
         </div>
 
-        <label class="dry-run-row">
+        <div class="dry-run-row">
           <WinToggleSwitch :aria-label="t('files.tidyDryRun')" v-model="tidyDryRun" />
           <span>{{ t("files.tidyDryRun") }}</span>
-        </label>
+        </div>
 
         <div v-if="tidyPlanned.length" class="tidy-plan">
           <div class="tidy-plan-title mono-label">

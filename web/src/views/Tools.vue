@@ -1613,14 +1613,14 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
             <div class="transcode-grid">
               <!-- favourites / playlists are independently selectable and
                    available to any user; they land on the target chosen below. -->
-              <label class="tc-row">
+              <div class="tc-row">
                 <span class="tc-key">{{ t("settings.common.clone.starredToggle") }}</span>
                 <WinToggleSwitch :aria-label="t('settings.common.clone.starredToggle')" v-model="cloneStarredEnabled" :disabled="cloneRunning" />
-              </label>
-              <label class="tc-row">
+              </div>
+              <div class="tc-row">
                 <span class="tc-key">{{ t("settings.common.clone.playlistsToggle") }}</span>
                 <WinToggleSwitch :aria-label="t('settings.common.clone.playlistsToggle')" v-model="clonePlaylistsEnabled" :disabled="cloneRunning" />
-              </label>
+              </div>
 
               <label class="tc-row">
                 <span class="tc-key">{{ t("settings.common.clone.userMode.label") }}</span>
@@ -1651,16 +1651,16 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 
               <!-- metadata / audio write into the shared library — admin only. -->
               <template v-if="isAdmin">
-                <label class="tc-row">
+                <div class="tc-row">
                   <span class="tc-key">{{ t("settings.common.clone.metadataToggle") }}</span>
                   <WinToggleSwitch :aria-label="t('settings.common.clone.metadataToggle')" v-model="cloneMetadataEnabled" :disabled="cloneRunning" />
-                </label>
+                </div>
                 <p class="feature-desc tc-desc">{{ t("settings.common.clone.metadataToggleDesc") }}</p>
 
-                <label class="tc-row">
+                <div class="tc-row">
                   <span class="tc-key">{{ t("settings.common.clone.audioToggle") }}</span>
                   <WinToggleSwitch :aria-label="t('settings.common.clone.audioToggle')" v-model="cloneAudioEnabled" :disabled="cloneRunning" />
-                </label>
+                </div>
                 <p class="feature-desc tc-desc">{{ t("settings.common.clone.audioToggleDesc") }}</p>
 
                 <label v-if="cloneAudioEnabled" class="tc-row">
@@ -1680,14 +1680,14 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 
                 <!-- filters only appear once metadata or audio is enabled. -->
                 <div v-if="cloneMetadataEnabled || cloneAudioEnabled" class="clone-options">
-                  <label class="tc-row">
+                  <div class="tc-row">
                     <WinToggleSwitch :aria-label="t('settings.common.clone.filterPlaylistOnly')" v-model="clonePlaylistOnly" />
                     <span class="tc-key">{{ t("settings.common.clone.filterPlaylistOnly") }}</span>
-                  </label>
-                  <label class="tc-row">
+                  </div>
+                  <div class="tc-row">
                     <WinToggleSwitch :aria-label="t('settings.common.clone.filterStarredOnly')" v-model="cloneStarredOnly" />
                     <span class="tc-key">{{ t("settings.common.clone.filterStarredOnly") }}</span>
-                  </label>
+                  </div>
                   <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.clone.filterDesc") }}</p>
                 </div>
               </template>

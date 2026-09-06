@@ -527,10 +527,10 @@ onBeforeUnmount(() => {
             <label class="form-label">{{ t("playlists.comment") }} <span class="optional">({{ t("playlists.optional") }})</span></label>
             <input v-model="createForm.comment" class="form-input" />
           </div>
-          <label class="checkbox-row">
+          <div class="checkbox-row">
             <WinToggleSwitch :aria-label="t('playlists.publicFlag')" v-model="createForm.public" />
             <span>{{ t("playlists.publicFlag") }}</span>
-          </label>
+          </div>
         </div>
         <div class="modal-actions">
           <button class="btn-secondary" @click="closeCreate">{{ t("playlists.cancel") }}</button>
@@ -558,10 +558,10 @@ onBeforeUnmount(() => {
             <label class="form-label">{{ t("playlists.comment") }}</label>
             <input v-model="editForm.comment" class="form-input" />
           </div>
-          <label class="checkbox-row">
+          <div class="checkbox-row">
             <WinToggleSwitch :aria-label="t('playlists.publicFlag')" v-model="editForm.public" />
             <span>{{ t("playlists.publicFlag") }}</span>
-          </label>
+          </div>
         </div>
         <div class="modal-actions">
           <button class="btn-secondary" @click="closeEdit">{{ t("playlists.cancel") }}</button>
