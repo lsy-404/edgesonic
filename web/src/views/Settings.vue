@@ -2114,12 +2114,12 @@ onMounted(() => {
           </p>
           <div class="scrape-source-list">
             <div v-for="(id, idx) in scrapeOrder" :key="id" class="scrape-source-row">
-              <label class="scrape-source-toggle">
+              <div class="scrape-source-toggle">
                 <WinToggleSwitch :aria-label="SCRAPE_ALL_SOURCES.find((s) => s.id === id)?.label || id" :model-value="scrapeEnabledSet.has(id)" :disabled="!canManageSettings" @update:model-value="toggleScrapeSource(id, $event)" />
                 <span class="scrape-source-label">
                   {{ SCRAPE_ALL_SOURCES.find((s) => s.id === id)?.label || id }}
                 </span>
-              </label>
+              </div>
               <div class="scrape-source-rank">
                 <span class="rank-num">{{ idx + 1 }}</span>
                 <button
@@ -2172,10 +2172,10 @@ onMounted(() => {
             <p class="feature-desc tc-desc">{{ t("settings.common.scan.intervalHoursDesc") }}</p>
 
             <!-- ETag check -->
-            <label class="tc-row">
+            <div class="tc-row">
               <span class="tc-key">{{ t("settings.common.scan.etagCheck") }}</span>
               <WinToggleSwitch :aria-label="t('settings.common.scan.etagCheck')" v-model="scanEtagCheck" :disabled="!canManageSettings" />
-            </label>
+            </div>
             <p class="feature-desc tc-desc">{{ t("settings.common.scan.etagCheckDesc") }}</p>
 
             <!-- Rescan strategy -->
@@ -2221,10 +2221,10 @@ onMounted(() => {
             {{ t("settings.common.crossOriginIsolation.hint") }}
           </p>
           <div class="transcode-grid">
-            <label class="tc-row">
+            <div class="tc-row">
               <span class="tc-key">{{ t("settings.common.crossOriginIsolation.toggleLabel") }}</span>
               <WinToggleSwitch :aria-label="t('settings.common.crossOriginIsolation.toggleLabel')" v-model="cioEnabled" :disabled="!canManageSettings" />
-            </label>
+            </div>
             <p class="feature-desc tc-desc">{{ t("settings.common.crossOriginIsolation.toggleDesc") }}</p>
 
             <div class="tc-actions">
@@ -2324,10 +2324,10 @@ onMounted(() => {
             <p v-if="selectedCfUpdate?.isMajor" class="feature-desc tc-desc" style="color: var(--color-accent-primary)">
               {{ t("settings.common.cf.majorWarning") }}
             </p>
-            <label v-if="selectedCfUpdate?.isMajor" class="dry-run-row">
+            <div v-if="selectedCfUpdate?.isMajor" class="dry-run-row">
               <WinToggleSwitch :aria-label="t('settings.common.cf.confirmMajor')" v-model="cfMajorConfirmed" />
               <span>{{ t("settings.common.cf.confirmMajor") }}</span>
-            </label>
+            </div>
             <div class="tc-actions">
               <button class="btn-primary" :disabled="!cfStatus.configured || cfUpdateBusy || !cfUpdateCanRun" @click="runCfUpdate">
                 {{ cfUpdateBusy ? t("settings.common.cf.updating") : t("settings.common.cf.updateNow") }}
@@ -2449,10 +2449,10 @@ onMounted(() => {
           </div>
 
           <div class="transcode-grid">
-            <label class="tc-row">
+            <div class="tc-row">
               <span class="tc-key">{{ t("settings.common.presign.r2Toggle") }}</span>
               <WinToggleSwitch :aria-label="t('settings.common.presign.r2Toggle')" v-model="r2PresignEnabled" :disabled="!canManageSettings" />
-            </label>
+            </div>
             <p class="feature-desc tc-desc">{{ t("settings.common.presign.r2ToggleDesc") }}</p>
             <div class="tc-actions">
               <button
@@ -2464,10 +2464,10 @@ onMounted(() => {
               </button>
             </div>
 
-            <label class="tc-row">
+            <div class="tc-row">
               <span class="tc-key">{{ t("settings.common.presign.webdavToggle") }}</span>
               <WinToggleSwitch :aria-label="t('settings.common.presign.webdavToggle')" v-model="webdavPresignEnabled" :disabled="!canManageSettings" />
-            </label>
+            </div>
             <p class="feature-desc tc-desc">{{ t("settings.common.presign.webdavToggleDesc") }}</p>
             <div class="tc-actions">
               <button
@@ -2541,12 +2541,12 @@ onMounted(() => {
           </p>
           <div class="scrape-source-list">
             <div v-for="(id, idx) in artistInfoOrder" :key="id" class="scrape-source-row">
-              <label class="scrape-source-toggle">
+              <div class="scrape-source-toggle">
                 <WinToggleSwitch :aria-label="ARTIST_INFO_ALL_SOURCES.find((s) => s.id === id)?.label || id" :model-value="artistInfoEnabledSet.has(id)" :disabled="!canManageSettings" @update:model-value="toggleArtistInfoSource(id, $event)" />
                 <span class="scrape-source-label">
                   {{ ARTIST_INFO_ALL_SOURCES.find((s) => s.id === id)?.label || id }}
                 </span>
-              </label>
+              </div>
               <div class="scrape-source-rank">
                 <span class="rank-num">{{ idx + 1 }}</span>
                 <button
