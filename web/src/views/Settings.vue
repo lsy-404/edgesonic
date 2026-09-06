@@ -2115,7 +2115,7 @@ onMounted(() => {
           <div class="scrape-source-list">
             <div v-for="(id, idx) in scrapeOrder" :key="id" class="scrape-source-row">
               <label class="scrape-source-toggle">
-                <WinToggleSwitch :model-value="scrapeEnabledSet.has(id)" :disabled="!canManageSettings" @update:model-value="toggleScrapeSource(id, $event)" />
+                <WinToggleSwitch :aria-label="SCRAPE_ALL_SOURCES.find((s) => s.id === id)?.label || id" :model-value="scrapeEnabledSet.has(id)" :disabled="!canManageSettings" @update:model-value="toggleScrapeSource(id, $event)" />
                 <span class="scrape-source-label">
                   {{ SCRAPE_ALL_SOURCES.find((s) => s.id === id)?.label || id }}
                 </span>
@@ -2174,7 +2174,7 @@ onMounted(() => {
             <!-- ETag check -->
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.scan.etagCheck") }}</span>
-              <WinToggleSwitch v-model="scanEtagCheck" :disabled="!canManageSettings" />
+              <WinToggleSwitch :aria-label="t('settings.common.scan.etagCheck')" v-model="scanEtagCheck" :disabled="!canManageSettings" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.scan.etagCheckDesc") }}</p>
 
@@ -2223,7 +2223,7 @@ onMounted(() => {
           <div class="transcode-grid">
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.crossOriginIsolation.toggleLabel") }}</span>
-              <WinToggleSwitch v-model="cioEnabled" :disabled="!canManageSettings" />
+              <WinToggleSwitch :aria-label="t('settings.common.crossOriginIsolation.toggleLabel')" v-model="cioEnabled" :disabled="!canManageSettings" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.crossOriginIsolation.toggleDesc") }}</p>
 
@@ -2325,7 +2325,7 @@ onMounted(() => {
               {{ t("settings.common.cf.majorWarning") }}
             </p>
             <label v-if="selectedCfUpdate?.isMajor" class="dry-run-row">
-              <WinToggleSwitch v-model="cfMajorConfirmed" />
+              <WinToggleSwitch :aria-label="t('settings.common.cf.confirmMajor')" v-model="cfMajorConfirmed" />
               <span>{{ t("settings.common.cf.confirmMajor") }}</span>
             </label>
             <div class="tc-actions">
@@ -2451,7 +2451,7 @@ onMounted(() => {
           <div class="transcode-grid">
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.presign.r2Toggle") }}</span>
-              <WinToggleSwitch v-model="r2PresignEnabled" :disabled="!canManageSettings" />
+              <WinToggleSwitch :aria-label="t('settings.common.presign.r2Toggle')" v-model="r2PresignEnabled" :disabled="!canManageSettings" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.presign.r2ToggleDesc") }}</p>
             <div class="tc-actions">
@@ -2466,7 +2466,7 @@ onMounted(() => {
 
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.presign.webdavToggle") }}</span>
-              <WinToggleSwitch v-model="webdavPresignEnabled" :disabled="!canManageSettings" />
+              <WinToggleSwitch :aria-label="t('settings.common.presign.webdavToggle')" v-model="webdavPresignEnabled" :disabled="!canManageSettings" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.presign.webdavToggleDesc") }}</p>
             <div class="tc-actions">
@@ -2542,7 +2542,7 @@ onMounted(() => {
           <div class="scrape-source-list">
             <div v-for="(id, idx) in artistInfoOrder" :key="id" class="scrape-source-row">
               <label class="scrape-source-toggle">
-                <WinToggleSwitch :model-value="artistInfoEnabledSet.has(id)" :disabled="!canManageSettings" @update:model-value="toggleArtistInfoSource(id, $event)" />
+                <WinToggleSwitch :aria-label="ARTIST_INFO_ALL_SOURCES.find((s) => s.id === id)?.label || id" :model-value="artistInfoEnabledSet.has(id)" :disabled="!canManageSettings" @update:model-value="toggleArtistInfoSource(id, $event)" />
                 <span class="scrape-source-label">
                   {{ ARTIST_INFO_ALL_SOURCES.find((s) => s.id === id)?.label || id }}
                 </span>
@@ -3003,6 +3003,7 @@ onMounted(() => {
                 <span class="feature-desc">{{ featureDesc(f) }}</span>
               </div>
               <WinToggleSwitch
+                :aria-label="featureName(f.key)"
                 :model-value="f.value === 1"
                 :disabled="!canManageSettings"
                 :title="canManageSettings ? '' : t('settings.common.levelRequired')"
@@ -3022,6 +3023,7 @@ onMounted(() => {
                 <span class="feature-desc">{{ t("settings.activation.enableDesc") }}</span>
               </div>
               <WinToggleSwitch
+                :aria-label="t('settings.activation.enableTitle')"
                 :model-value="activationFeature?.value === 1"
                 :disabled="!canManageSettings || !activationFeature"
                 :title="activationFeature ? '' : t('settings.activation.unavailable')"

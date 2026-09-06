@@ -132,7 +132,7 @@ onMounted(load);
                 {{ permLabel(key) }}
                 <span v-if="isLocked(level, key)" class="perm-lock" :title="t('settings.permissions.lockedHint')"><Icon name="lock" /></span>
               </span>
-              <WinToggleSwitch :model-value="permissions.find(p => p.level === level && p.name === key)?.enabled" :disabled="permissions.find(p => p.level === level && p.name === key)?.locked" @update:model-value="toggle(level, key, $event)" />
+              <WinToggleSwitch :aria-label="permLabel(key)" :model-value="permissions.find(p => p.level === level && p.name === key)?.enabled" :disabled="permissions.find(p => p.level === level && p.name === key)?.locked" @update:model-value="toggle(level, key, $event)" />
             </div>
           </div>
           <div class="corner corner-tr"></div>

@@ -837,7 +837,7 @@ onUnmounted(() => {
           </div>
           <div class="form-group enabled-row span-all">
             <label class="form-label enabled-label">{{ t("sources.enabled") }}</label>
-            <WinToggleSwitch v-model="editForm.enabled" />
+            <WinToggleSwitch :aria-label="t('sources.enabled')" v-model="editForm.enabled" />
           </div>
         </div>
         <div class="modal-actions">

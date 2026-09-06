@@ -1,8 +1,9 @@
 <template>
   <div class="win-switch-root" :style="rootStyle">
-    <span v-if="Header" class="win-switch-header">{{ Header }}</span>
+    <WinTextBlock v-if="Header" class="win-switch-header" :Text="Header" />
     <div class="win-switch-wrap" :class="{ 'is-disabled': !IsEnabledResolved }" @click="onWrapClick">
     <div class="win-switch"
+         v-bind="switchAttrs"
          :class="{ 'is-on': isOnValue, 'dragging': isDragging, 'is-pressed': isPressed, 'is-disabled': !IsEnabledResolved }"
          role="switch"
          :aria-checked="isOnValue"
@@ -15,12 +16,19 @@
         <div class="thumb"></div>
       </div>
     </div>
-      <span v-if="$slots.default" class="win-switch-label"><slot></slot></span>
+      <WinTextBlock v-if="$slots.default" class="win-switch-label"><slot></slot></WinTextBlock>
+      <WinTextBlock v-else class="win-switch-label" :Text="isOnValue ? resolvedOnContent : resolvedOffContent" />
     </div>
   </div>
 </template>
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, useAttrs } from 'vue';
+import { useI18n } from './i18n/index';
+import WinTextBlock from './WinTextBlock.vue';
+
+defineOptions({ inheritAttrs: false });
+
+const { t } = useI18n();
 const props = defineProps({
   IsOn: { type: Boolean, default: undefined },
   Header: { type: String, default: '' },
@@ -34,12 +42,19 @@ const props = defineProps({
   disabled: Boolean
 });
 const emit = defineEmits(['update:IsOn', 'Toggled', 'update:modelValue']);
+const attrs = useAttrs();
+const switchAttrs = computed(() => {
+  const { class: _class, style: _style, ...rest } = attrs;
+  return rest;
+});
 const isDragging = ref(false);
 const isPressed = ref(false);
 const currentTx = ref(0);
 const internalIsOn = ref(props.IsOn ?? props.modelValue ?? false);
 const isOnValue = computed(() => props.IsOn ?? props.modelValue ?? internalIsOn.value);
 const IsEnabledResolved = computed(() => props.IsEnabled && !props.disabled);
+const resolvedOnContent = computed(() => props.OnContent || props.onContent || t('text.on'));
+const resolvedOffContent = computed(() => props.OffContent || props.offContent || t('text.off'));
 const cssLength = (value) => {
   if (value === '' || value === undefined || value === null) return '';
   if (typeof value === 'string' && value.trim() !== '' && !Number.isNaN(Number(value.trim()))) return `${Number(value.trim())}px`;

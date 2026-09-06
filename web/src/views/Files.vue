@@ -1499,7 +1499,7 @@ onBeforeUnmount(() => {
         <span class="upload-options-hint">{{ t("files.syncUploadHint") }}</span>
       </div>
       <div class="upload-options-row">
-        <WinToggleSwitch v-model="uploadParseMetadata" :title="t('files.parseMetadataHint')" />
+        <WinToggleSwitch :aria-label="t('files.parseMetadata')" v-model="uploadParseMetadata" :title="t('files.parseMetadataHint')" />
         <span class="upload-options-label">{{ t("files.parseMetadata") }}</span>
         <span class="upload-options-hint">{{ t("files.parseMetadataHint") }}</span>
       </div>
@@ -1519,9 +1519,9 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="sync-options-row">
-        <WinToggleSwitch v-model="includeLyrics" />
+        <WinToggleSwitch :aria-label="t('files.includeLyrics')" v-model="includeLyrics" />
         <span class="upload-options-label">{{ t("files.includeLyrics") }}</span>
-        <WinToggleSwitch v-model="includeVariants" />
+        <WinToggleSwitch :aria-label="t('files.includeVariants')" v-model="includeVariants" />
         <span class="upload-options-label">{{ t("files.includeVariants") }}</span>
       </div>
       <div class="local-convert-guide">
@@ -1958,7 +1958,7 @@ onBeforeUnmount(() => {
         </div>
 
         <label class="dry-run-row">
-          <WinToggleSwitch v-model="tidyDryRun" />
+          <WinToggleSwitch :aria-label="t('files.tidyDryRun')" v-model="tidyDryRun" />
           <span>{{ t("files.tidyDryRun") }}</span>
         </label>
 
