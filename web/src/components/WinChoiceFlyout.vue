@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch, type CSSProperties } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, useId, watch, type CSSProperties } from "vue";
 import { isScrollInsideElement, placeFloatingMenu, type FloatingPlacement } from "../lib/floatingPlacement";
 import { WinButton } from "../vendor/winui";
 import Icon from "./Icon.vue";
@@ -18,6 +18,8 @@ const props = defineProps<{
 const emit = defineEmits<{ "update:modelValue": [value: string] }>();
 
 const open = ref(false);
+const instanceId = useId();
+const listboxId = `win-choice-listbox-${instanceId}`;
 const triggerEl = ref<HTMLElement | null>(null);
 const listEl = ref<HTMLElement | null>(null);
 const menuPlaced = ref(false);
@@ -26,7 +28,7 @@ const menuPlacement = ref<FloatingPlacement>({ left: 0, top: 0, maxHeight: 0, pl
 
 const selectedChoice = computed(() => props.choices.find((choice) => choice.id === props.modelValue) ?? props.choices[0]);
 const activeChoiceIndex = computed(() => Math.max(0, props.choices.findIndex((choice) => choice.id === activeId.value)));
-const activeDescendant = computed(() => `win-choice-${activeId.value}`);
+const activeDescendant = computed(() => optionDomId(activeId.value));
 const menuStyle = computed<CSSProperties>(() => ({
   left: `${menuPlacement.value.left}px`,
   top: `${menuPlacement.value.top}px`,
@@ -37,6 +39,14 @@ const menuStyle = computed<CSSProperties>(() => ({
 
 function focusTrigger() {
   triggerEl.value?.querySelector<HTMLButtonElement>("button")?.focus();
+}
+
+function optionDomId(choiceId: string) {
+  return `win-choice-option-${instanceId}-${choiceId}`;
+}
+
+function revealActiveChoice() {
+  document.getElementById(optionDomId(activeId.value))?.scrollIntoView({ block: "nearest" });
 }
 
 function closeMenu(restoreFocus = false) {
@@ -114,6 +124,7 @@ function onTriggerKeydown(event: KeyboardEvent) {
 function onListKeydown(event: KeyboardEvent) {
   if (event.key === "Escape") {
     event.preventDefault();
+    event.stopPropagation();
     closeMenu(true);
   } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     event.preventDefault();
@@ -125,7 +136,16 @@ function onListKeydown(event: KeyboardEvent) {
     event.preventDefault();
     const choice = props.choices[activeChoiceIndex.value];
     if (choice) selectChoice(choice);
+  } else if (event.key === "Tab") {
+    closeMenu();
   }
+}
+
+function onFocusOut(event: FocusEvent) {
+  if (!open.value) return;
+  const nextFocus = event.relatedTarget as Node | null;
+  if (nextFocus && (triggerEl.value?.contains(nextFocus) || listEl.value?.contains(nextFocus))) return;
+  closeMenu();
 }
 
 function onDocumentPointerDown(event: PointerEvent) {
@@ -160,17 +180,20 @@ watch(open, (isOpen) => {
   }
 });
 watch(() => props.modelValue, (value) => { activeId.value = value; });
+watch(activeId, () => {
+  if (open.value) void nextTick(revealActiveChoice);
+});
 onBeforeUnmount(unbindListeners);
 </script>
 
 <template>
-  <div ref="triggerEl" class="win-choice">
+  <div ref="triggerEl" class="win-choice" @focusout="onFocusOut">
     <WinButton
       class="win-choice-trigger"
       :aria-label="ariaLabel"
       aria-haspopup="listbox"
       :aria-expanded="open"
-      :aria-controls="open ? 'win-choice-listbox' : undefined"
+      :aria-controls="open ? listboxId : undefined"
       @Click="toggleMenu"
       @keydown="onTriggerKeydown"
     >
@@ -180,7 +203,7 @@ onBeforeUnmount(unbindListeners);
     <Teleport to="body">
       <div
         v-if="open"
-        id="win-choice-listbox"
+        :id="listboxId"
         ref="listEl"
         class="win-choice-flyout"
         :class="`open-${menuPlacement.placement}`"
@@ -190,10 +213,11 @@ onBeforeUnmount(unbindListeners);
         :aria-label="ariaLabel"
         :aria-activedescendant="activeDescendant"
         @keydown="onListKeydown"
+        @focusout="onFocusOut"
       >
         <div
           v-for="choice in choices"
-          :id="`win-choice-${choice.id}`"
+          :id="optionDomId(choice.id)"
           :key="choice.id"
           class="win-choice-option"
           :class="{ active: activeId === choice.id, selected: modelValue === choice.id, disabled: choice.disabled }"
