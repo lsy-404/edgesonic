@@ -48,7 +48,7 @@ async function openPopup() {
   placePopup();
   popupOpen.value = true;
   await nextTick();
-  range.value?.querySelector<HTMLElement>("[role=slider]")?.focus();
+  range.value?.focus();
 }
 
 function onSoundButton() {
@@ -76,6 +76,20 @@ function onKeydown(event: KeyboardEvent) {
 
 function onWindowResize() {
   if (popupOpen.value) placePopup();
+}
+
+function onRangeFocusOut(event: FocusEvent) {
+  if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) adjusting.value = false;
+}
+
+function onRangeKeydown(event: KeyboardEvent) {
+  const delta = event.key === "ArrowUp" || event.key === "ArrowRight" ? 0.01
+    : event.key === "ArrowDown" || event.key === "ArrowLeft" ? -0.01 : 0;
+  if (!delta) return;
+  event.preventDefault();
+  event.stopPropagation();
+  adjusting.value = true;
+  player.setVolume(Math.min(1, Math.max(0, player.volume + delta)));
 }
 
 watch(() => player.volume, (value) => {
@@ -110,7 +124,7 @@ onBeforeUnmount(() => {
         <Icon :name="volumeIcon" :size="16" />
       </WinButton>
     </div>
-    <div class="player-volume__desktop-slider">
+    <div class="player-volume__desktop-slider" role="slider" tabindex="0" :aria-label="t('player.volume')" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="player.volume" @pointerdown.capture="adjusting = true" @pointerup.capture="adjusting = false" @pointercancel.capture="adjusting = false" @keydown.capture="onRangeKeydown" @keyup.capture="adjusting = false" @focusout="onRangeFocusOut">
       <WinSlider
         class="player-volume__range"
         :Value="player.volume"
@@ -118,13 +132,7 @@ onBeforeUnmount(() => {
         :Maximum="1"
         :StepFrequency="0.01"
         Width="clamp(160px, 14vw, 200px)"
-        :AriaLabel="t('player.volume')"
         @update:Value="setVolume"
-        @InteractionStarted="adjusting = true"
-        @InteractionCompleted="adjusting = false"
-        @keydown="adjusting = true"
-        @keyup="adjusting = false"
-        @blur="adjusting = false"
       />
       <span v-if="adjusting" class="player-volume__percent" aria-live="polite">{{ percent }}%</span>
     </div>
@@ -136,22 +144,15 @@ onBeforeUnmount(() => {
         <span>{{ t('player.volume') }}</span>
         <output>{{ percent }}%</output>
       </div>
-      <div class="player-volume__popup-slider">
+      <div ref="range" class="player-volume__popup-slider" role="slider" tabindex="0" :aria-label="t('player.volume')" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="player.volume" @pointerdown.capture="adjusting = true" @pointerup.capture="adjusting = false" @pointercancel.capture="adjusting = false" @keydown.capture="onRangeKeydown" @keyup.capture="adjusting = false" @focusout="onRangeFocusOut">
         <WinSlider
-          ref="range"
           class="player-volume__range player-volume__popup-range"
           :Value="player.volume"
           :Minimum="0"
           :Maximum="1"
           :StepFrequency="0.01"
           Width="100%"
-          :AriaLabel="t('player.volume')"
           @update:Value="setVolume"
-          @InteractionStarted="adjusting = true"
-          @InteractionCompleted="adjusting = false"
-          @keydown="adjusting = true"
-          @keyup="adjusting = false"
-          @blur="adjusting = false"
         />
         <span v-if="adjusting" class="player-volume__percent" aria-live="polite">{{ percent }}%</span>
       </div>
