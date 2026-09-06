@@ -109,14 +109,20 @@ assert(
 );
 
 const playerBarSource = fs.readFileSync(path.resolve(__dirname, "../../web/src/components/PlayerBar.vue"), "utf8");
+const volumeControlSource = fs.readFileSync(path.resolve(__dirname, "../../web/src/components/PlayerVolumeControl.vue"), "utf8");
 assert(
   playerBarSource.includes("Space / K")
     && playerBarSource.includes("Shift+P")
     && playerBarSource.includes("Shift+N")
-    && playerBarSource.includes("↑ / ↓, M")
+    && volumeControlSource.includes("↑ / ↓, M")
     && playerBarSource.includes("t('player.seekShortcut')"),
   "player controls disclose every supported shortcut group",
 );
-assert(playerBarSource.includes('step="0.01"'), "volume slider can represent five-percent keyboard steps exactly");
+assert(
+  volumeControlSource.includes(':StepFrequency="0.01"')
+    && volumeControlSource.includes('player.setVolume(value)')
+    && volumeControlSource.includes('watch(() => player.volume'),
+  "the extracted volume control preserves precise input and external volume synchronization",
+);
 
 process.exit(failures ? 1 : 0);

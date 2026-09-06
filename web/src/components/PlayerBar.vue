@@ -586,12 +586,17 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
     display: grid; grid-template-columns: 1fr auto auto;
     grid-template-rows: 28px 32px; column-gap: 0.3rem; row-gap: 0.35rem;
     top: 0.5rem; left: 0.5rem; right: 0.5rem; width: auto;
-    transform: none; align-items: center;
+    transform: none; align-items: center; pointer-events: none;
   }
   .player-bar.details-open .pb-audio-settings { display: contents; }
-  .player-bar.details-open .pb-audio-settings :deep(.player-volume) { grid-column: 2; grid-row: 1; }
-  .player-bar.details-open .pb-quality-wrap { grid-column: 1 / -1; grid-row: 2; justify-self: end; }
-  .player-bar.details-open .pb-queue-btn { grid-column: 3; grid-row: 1; }
+  .player-bar.details-open .pb-audio-settings :deep(.player-volume) { grid-column: 2; grid-row: 1; pointer-events: auto; }
+  .player-bar.details-open .pb-quality-wrap { grid-column: 1 / -1; grid-row: 2; justify-self: end; pointer-events: auto; }
+  .player-bar.details-open .pb-queue-btn { grid-column: 3; grid-row: 1; pointer-events: auto; }
+}
+
+@media (max-width: 360px) {
+  .player-bar.details-open .pb-fav,
+  .player-bar.details-open .pb-mode { display: none; }
 }
 
 @media (min-width: 961px) {
