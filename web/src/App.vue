@@ -9,6 +9,10 @@ import PlayerBar from "./components/PlayerBar.vue";
 import UpdateBanner from "./components/UpdateBanner.vue";
 import MessageCenter from "./components/MessageCenter.vue";
 import Icon from "./components/Icon.vue";
+import MobileNavigation from "./components/MobileNavigation.vue";
+import DetailHost from "./components/DetailHost.vue";
+import { useDetailStore } from "./stores/detail";
+import { WinButton } from "./vendor/winui";
 import { usePlayerStore } from "./stores/player";
 import { useDemoMode } from "./stores/demoMode";
 import { activeTheme, resetTheme, restoreSavedTheme } from "./theme";
@@ -28,6 +32,8 @@ const {
   subsonicMasterPasswordNotice, dismissSubsonicMasterPasswordNotice,
 } = useAuth();
 const player = usePlayerStore();
+const detail = useDetailStore();
+const mainRegion = ref<HTMLElement | null>(null);
 const demoMode = useDemoMode();
 
 // Inactive-session handling: with guest access on, the account degrades to
@@ -70,8 +76,15 @@ watch(isLoggedIn, (now) => {
   }
 }, { immediate: true });
 
-const menuOpen = ref(false);
-watch(() => route.path, () => { menuOpen.value = false; });
+const pageOrder = ["/", "/library", "/starred", "/playlists", "/radio", "/podcasts", "/shares", "/dashboard", "/files", "/sources", "/users", "/tools", "/settings", "/about"];
+const pageTransitionName = ref("page-next");
+watch(() => route.path, (to, from) => {
+  pageTransitionName.value = pageOrder.indexOf(to) < pageOrder.indexOf(from) ? "page-previous" : "page-next";
+  detail.close();
+});
+function resetPageScroll() {
+  if (mainRegion.value) mainRegion.value.scrollTop = 0;
+}
 
 const globalSearchInput = ref<HTMLInputElement | null>(null);
 const globalSearchQuery = ref("");
@@ -122,33 +135,10 @@ const onPlayerKeyboardShortcut = createPlayerKeyboardShortcutHandler({
 });
 window.addEventListener("keydown", onPlayerKeyboardShortcut);
 
-function openMenuFromLogo() {
-  menuOpen.value = true;
-}
-
-function collapseNowPlaying() {
-  if (window.history.length > 1) router.back();
-  else void router.push("/library");
-}
-
-const pageTransitionName = ref("page");
-router.beforeEach((to, from) => {
-  if (to.path === "/now-playing") pageTransitionName.value = "expand";
-  else if (from.path === "/now-playing") pageTransitionName.value = "collapse";
-  else pageTransitionName.value = "page";
-  return true;
-});
-
 const levelKeys: Record<number, string> = { 0: "guest", 1: "user", 2: "admin", 3: "super" };
 const levelLabel = computed(() => levelKeys[level.value] ? t(`app.levels.${levelKeys[level.value]}`) : String(level.value));
 
-// `perm` gates a nav item on real effective capability (from /auth/me), not
-// just level: an admin without manage_users sees no Users tab, without
-// manage_sources no Sources tab, etc. An array is any-of (Tools serves several
-// admin capabilities). `minLevel` is only a coarse floor (guests never
-// manage). Settings sits in the bottom group and is visible to every signed-in
-// user — its advanced section gates on manage_settings inside.
-interface NavItem { label: string; path: string; minLevel: number; perm?: string | string[]; icon?: string; }
+interface NavItem { label: string; path: string; minLevel: number; perm?: string | string[]; icon: string; }
 interface NavGroup { label: string; items: NavItem[]; }
 
 function permitted(perm?: string | string[]): boolean {
@@ -161,31 +151,25 @@ const groups = computed<NavGroup[]>(() => {
     {
       label: t("app.groups.library"),
       items: [
-        { label: t("app.menu.dashboard"), path: "/", minLevel: 0 },
-        { label: t("app.menu.library"), path: "/library", minLevel: 0 },
-        { label: t("app.menu.starred"), path: "/starred", minLevel: 0 },
-        { label: t("app.menu.playlists"), path: "/playlists", minLevel: 0 },
-        { label: t("app.menu.radio"), path: "/radio", minLevel: 0 },
-        { label: t("app.menu.podcasts"), path: "/podcasts", minLevel: 0 },
-        { label: t("app.menu.shares"), path: "/shares", minLevel: 0 },
+        { label: t("app.menu.home"), path: "/", minLevel: 0, icon: "home" },
+        { label: t("app.menu.library"), path: "/library", minLevel: 0, icon: "library" },
+        { label: t("app.menu.starred"), path: "/starred", minLevel: 0, icon: "heart" },
+        { label: t("app.menu.playlists"), path: "/playlists", minLevel: 0, icon: "playlist" },
+        { label: t("app.menu.radio"), path: "/radio", minLevel: 0, icon: "radio" },
+        { label: t("app.menu.podcasts"), path: "/podcasts", minLevel: 0, icon: "podcast" },
+        { label: t("app.menu.shares"), path: "/shares", minLevel: 0, icon: "share" },
       ],
     },
     {
       label: t("app.groups.management"),
       items: [
-        { label: t("app.menu.files"), path: "/files", minLevel: 1, perm: "manage_files" },
-        { label: t("app.menu.sources"), path: "/sources", minLevel: 1, perm: "manage_sources" },
-        { label: t("app.menu.users"), path: "/users", minLevel: 1, perm: "manage_users" },
-        // Tools hosts the Subsonic sync (clone-to-self), which every non-guest
-        // may use; admin-only tools inside gate themselves individually.
-        { label: t("app.menu.tools"), path: "/tools", minLevel: 1 },
-      ],
-    },
-    {
-      label: t("app.groups.help"),
-      items: [
-        { label: t("app.menu.settings"), path: "/settings", minLevel: 0 },
-        { label: t("app.menu.about"), path: "/about", minLevel: 0 },
+        { label: t("app.menu.dashboard"), path: "/dashboard", minLevel: 0, icon: "dashboard" },
+        { label: t("app.menu.files"), path: "/files", minLevel: 1, perm: "manage_files", icon: "folder" },
+        { label: t("app.menu.sources"), path: "/sources", minLevel: 1, perm: "manage_sources", icon: "library" },
+        { label: t("app.menu.users"), path: "/users", minLevel: 1, perm: "manage_users", icon: "users" },
+        { label: t("app.menu.tools"), path: "/tools", minLevel: 1, icon: "tools" },
+        { label: t("app.menu.settings"), path: "/settings", minLevel: 0, icon: "gear" },
+        { label: t("app.menu.about"), path: "/about", minLevel: 0, icon: "help" },
       ],
     },
   ];
@@ -195,6 +179,7 @@ const groups = computed<NavGroup[]>(() => {
 });
 
 function doLogout() {
+  detail.close();
   player.clear();
   logout();
   router.push("/login");
@@ -307,31 +292,19 @@ onBeforeUnmount(() => {
   <!-- 未登录：全屏渲染（Login）；bare 路由同样全屏，不套框架 -->
   <router-view v-if="!isLoggedIn || isBare" />
 
-  <!-- 登录后框架：NavBar + Sidebar + Main + PlayerBar -->
   <div
     v-else
     class="shell"
     :class="{
-      'now-playing-shell': route.path === '/now-playing',
+      'details-open': detail.isOpen,
       'demo-shell': demoMode.enabled,
     }"
   >
     <nav class="navbar">
-      <!-- left: logo; on mobile it toggles the sidebar -->
       <div class="nav-left">
-        <button
-          class="nav-logo nav-logo-menu"
-          aria-controls="main-sidebar"
-          :aria-expanded="menuOpen"
-          :aria-label="t('app.openNavigation')"
-          @click="openMenuFromLogo"
-        >
-          <img src="/logo.svg" alt="EdgeSonic" class="nav-logo-img" />
-          <span class="logo-text">EDGESONIC</span>
-        </button>
-        <router-link to="/" class="nav-logo nav-logo-home">
-          <img src="/logo.svg" alt="EdgeSonic" class="nav-logo-img" />
-          <span class="logo-text">EDGESONIC</span>
+        <router-link to="/" class="nav-logo" :aria-label="t('app.menu.home')">
+          <img src="/logo.svg" alt="" class="nav-logo-img" />
+          <span class="logo-text">EdgeSonic</span>
         </router-link>
       </div>
 
@@ -353,31 +326,16 @@ onBeforeUnmount(() => {
         </button>
       </form>
 
-      <!-- right: user -->
       <div class="nav-user">
         <span class="nav-username">{{ displayName }}</span>
         <span class="status-badge" :class="level >= 3 ? 'warning' : level >= 2 ? 'info' : 'muted'">{{ levelLabel }}</span>
         <MessageCenter :is-super-admin="level >= 3" :can-manage-users="hasPerm('manage_users')" />
-        <button class="btn-secondary btn-sm" @click="doLogout">{{ t("app.logout") }}</button>
+        <WinButton class="nav-logout" Style="SubtleButtonStyle" :title="t('app.logout')" :aria-label="t('app.logout')" @Click="doLogout"><Icon name="logout" :size="18" /><span>{{ t("app.logout") }}</span></WinButton>
       </div>
 
-      <div class="nav-scanline"></div>
     </nav>
 
-    <button
-      v-if="route.path === '/now-playing'"
-      class="now-playing-collapse"
-      type="button"
-      :title="t('player.collapse')"
-      :aria-label="t('player.collapse')"
-      @click="collapseNowPlaying"
-    >
-      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="m7.41 8.59 4.59 4.58 4.59-4.58L18 10l-6 6-6-6z"/></svg>
-    </button>
-
-    <div class="sidebar-overlay" :class="{ open: menuOpen }" @click="menuOpen = false"></div>
-
-    <aside id="main-sidebar" class="sidebar" :class="{ open: menuOpen }">
+    <aside id="main-sidebar" class="sidebar" :aria-label="t('app.primaryNavigation')">
       <div class="sidebar-scroll">
         <div v-for="g in groups" :key="g.label" class="nav-group">
           <div class="nav-group-label">{{ g.label }}</div>
@@ -388,7 +346,7 @@ onBeforeUnmount(() => {
             class="side-link"
             :class="{ active: item.path === '/' ? route.path === '/' : route.path.startsWith(item.path) }"
           >
-           <span v-if="item.icon" class="side-emoji" aria-hidden="true">{{ item.icon }}</span>{{ item.label }}
+           <Icon :name="item.icon" :size="20" /><span>{{ item.label }}</span>
           </router-link>
         </div>
       </div>
@@ -400,21 +358,26 @@ onBeforeUnmount(() => {
       ></div>
     </aside>
 
-    <main class="main">
+    <main ref="mainRegion" class="main" tabindex="-1">
       <router-view v-slot="{ Component, route: activeRoute }">
-        <transition :name="pageTransitionName" mode="out-in">
-          <component :is="Component" :key="activeRoute.path" />
-        </transition>
+        <Transition :name="pageTransitionName" mode="out-in" @before-enter="resetPageScroll">
+          <div :key="activeRoute.path" class="page-view">
+            <component :is="Component" />
+          </div>
+        </Transition>
       </router-view>
     </main>
 
+    <DetailHost />
     <PlayerBar />
+    <MobileNavigation :groups="groups" />
   </div>
 </template>
 
 <style>
 @import "./assets/palette.css";
 @import "./assets/decor.css";
+@import "./assets/winui.css";
 
 /* === App shell === */
 .shell,
@@ -458,149 +421,43 @@ onBeforeUnmount(() => {
 .subsonic-password-notice-actions { display: flex; justify-content: flex-end; gap: 0.55rem; }
 .toast-enter-active, .toast-leave-active { transition: opacity 0.2s, transform 0.2s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(0.5rem); }
-.shell.now-playing-shell {
-  height: 100vh;
-  height: 100dvh;
-  min-height: 0;
-  overflow: hidden;
+:root {
+  --nav-h: 64px;
+  --sidebar-w: 224px;
+  --mobile-nav-h: 64px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bottom-nav-space: 0px;
 }
-
-/* --- NavBar (fixed, 60px) --- */
+.shell { height: 100dvh; min-height: 0; overflow: hidden; }
 .navbar {
   position: fixed;
-  top: 0; left: 0; right: 0;
+  inset: 0 0 auto;
   z-index: 200;
   height: var(--nav-h);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  padding: 0 1.5rem;
-  background: rgba(10, 10, 11, 0.92);
-  backdrop-filter: blur(12px);
+  gap: 24px;
+  padding: 0 24px;
+  background: color-mix(in srgb, var(--color-bg-secondary) 92%, transparent);
+  backdrop-filter: blur(24px) saturate(140%);
   border-bottom: 1px solid var(--color-border-subtle);
 }
-.nav-scanline {
-  position: absolute;
-  left: 0; right: 0; bottom: -1px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-accent-dim), transparent);
-  /* Static: the old opacity pulse read as the whole title bar flickering. */
-  pointer-events: none;
-}
-.nav-left {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-}
-.nav-global-search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: min(28vw, 360px);
-}
-.nav-global-search .form-input {
-  width: 100%;
-  min-width: 0;
-  padding-right: 2.25rem;
-}
-.nav-global-search-submit {
-  position: absolute;
-  right: 0.35rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.7rem;
-  height: 1.7rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-.nav-global-search-submit:hover,
-.nav-global-search-submit:focus-visible { color: var(--color-accent-primary); }
-.nav-global-search-submit svg { width: 1rem; height: 1rem; }
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-.nav-logo {
-  display: flex; align-items: center; gap: 10px;
-  font-family: var(--font-mono);
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  color: var(--color-accent-primary);
-  line-height: 1;
-  white-space: nowrap;
-  text-decoration: none;
-}
-.nav-logo-menu { display: none; }
-.nav-logo-img {
-  height: 38px;
-  width: 38px;
-  object-fit: contain;
-  display: block;
-}
-.nav-links { display: flex; gap: 1.25rem; }
-.nav-link {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-  transition: color 0.2s;
-}
-.nav-link:hover, .nav-link.active { color: var(--color-accent-primary); }
-.link-prefix { color: var(--color-text-muted); }
-.nav-user { display: flex; align-items: center; gap: 0.7rem; flex: 1; justify-content: flex-end; }
-.nav-username {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  color: var(--color-text-primary);
-  letter-spacing: 0.05em;
-  max-width: 140px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.now-playing-collapse {
-  position: fixed;
-  top: calc(var(--nav-h) + 0.75rem);
-  left: calc(var(--sidebar-w) + 1.75rem);
-  z-index: 130;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  border: 1px solid var(--color-border-subtle);
-  background: color-mix(in srgb, var(--color-bg-secondary) 78%, transparent);
-  color: var(--color-text-secondary);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
-}
-.now-playing-collapse:hover {
-  color: var(--color-accent-primary);
-  border-color: var(--color-border-strong);
-  background: var(--color-bg-tertiary);
-}
-/* --- Sidebar (240px) ---
- * .sidebar is the fixed flex host; only .sidebar-scroll (the nav-group
- * list) scrolls. .sidebar-footer-spacer is an empty reserved spacer below
- * it, sized per-theme (see themes/registry.ts's sidebarFooterHeight) — a
- * theme can fade .sidebar's own background to transparent across exactly
- * that height from its own stylesheet, so a shared page-wide background
- * shows through instead of needing a second, separate widget here.
- */
+.nav-left { display: flex; flex: 0 0 calc(var(--sidebar-w) - 24px); align-items: center; }
+.nav-logo { display: inline-flex; align-items: center; gap: 10px; color: var(--color-text-primary); text-decoration: none; white-space: nowrap; font: 600 18px/1.2 var(--font-body); letter-spacing: -0.025em; }
+.nav-logo-img { width: 32px; height: 32px; object-fit: contain; }
+.nav-global-search { position: relative; display: flex; align-items: center; flex: 0 1 440px; min-width: 0; }
+.nav-global-search .form-input { width: 100%; min-width: 0; padding-right: 40px; }
+.nav-global-search-submit { position: absolute; right: 4px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.nav-global-search-submit:hover { background: var(--color-bg-tertiary); color: var(--color-text-primary); }
+.nav-global-search-submit svg { width: 17px; height: 17px; }
+.nav-user { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-left: auto; min-width: 0; }
+.nav-username { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--color-text-secondary); }
+.nav-logout { display: flex; gap: 7px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; min-height: 36px; padding: 7px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.icon-button:hover { color: var(--color-text-primary); background: var(--color-bg-tertiary); }
+.icon-button:focus-visible, .side-link:focus-visible, .nav-logo:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: -2px; }
 .sidebar {
   position: fixed;
   top: var(--nav-h);
@@ -608,133 +465,59 @@ onBeforeUnmount(() => {
   left: 0;
   width: var(--sidebar-w);
   z-index: 150;
-  background: var(--color-bg-secondary);
-  border-right: 1px solid var(--color-border-subtle);
   display: flex;
   flex-direction: column;
-  transition: transform 0.25s ease, background 0.25s ease;
+  background: color-mix(in srgb, var(--color-bg-secondary) 94%, transparent);
+  border-right: 1px solid var(--color-border-subtle);
 }
-.sidebar-scroll {
-  flex: 1;
-  min-height: 0;
+.sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; display: flex; flex-direction: column; gap: 28px; padding: 20px 12px; }
+.nav-group { display: flex; flex-direction: column; gap: 4px; }
+.nav-group-label { color: var(--color-text-muted); font-size: 12px; font-weight: 600; padding: 0 14px 6px; }
+.side-link { position: relative; display: flex; align-items: center; gap: 14px; min-height: 40px; padding: 8px 14px; box-sizing: border-box; border-radius: 4px; color: var(--color-text-secondary); font-size: 14px; text-decoration: none; transition: background 160ms ease, color 160ms ease; }
+.side-link:hover { color: var(--color-text-primary); background: var(--color-bg-tertiary); }
+.side-link.active { color: var(--color-text-primary); background: var(--color-accent-dim); font-weight: 600; }
+.side-link.active::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 2px; background: var(--color-accent-primary); }
+.side-link.active .es-icon { color: var(--color-accent-primary); }
+.sidebar-footer-spacer { flex-shrink: 0; }
+.main {
+  position: fixed;
+  inset: var(--nav-h) 0 calc(var(--player-h) + var(--bottom-nav-space)) var(--sidebar-w);
+  min-width: 0;
+  padding: 28px 32px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior-y: contain;
-  padding: 1.25rem 0.9rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  outline: none;
+  scrollbar-gutter: stable;
 }
-.nav-group { display: flex; flex-direction: column; gap: 2px; }
-.nav-group-label {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.2em;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  padding: 0 0.6rem 0.4rem;
-}
-.side-link {
-  display: block;
-  padding: 0.45rem 0.6rem;
-  font-size: var(--fs-md);
-  color: var(--color-text-secondary);
-  border-left: 2px solid transparent;
-  border-radius: 0 2px 2px 0;
-  transition: all 0.15s;
-}
-.side-link:hover { color: var(--color-text-primary); background: var(--color-bg-tertiary); }
-.side-link.active {
-  color: var(--color-accent-primary);
-  background: var(--color-accent-dim);
-  border-left-color: var(--color-accent-primary);
-}
-/* optional emoji prefix inside .side-link — generic for future nav items. */
-.side-emoji {
-  display: inline-block;
-  margin-right: 0.45rem;
-  font-size: 0.95em;
-  vertical-align: -1px;
-}
-.sidebar-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 140;
-  background: var(--color-bg-overlay);
-  touch-action: none;
-}
-
-/* Reserved space at the bottom of the sidebar flex column, sized from the
- * active theme's `sidebarFooterHeight` (0 for themes that don't set one —
- * see themes/registry.ts). A theme that wants this space to visually bleed
- * into a shared page background does so via its own stylesheet targeting
- * `.sidebar` directly (e.g. themes/elements/elements.css); this file never
- * mentions any specific theme.
- */
-.sidebar-footer-spacer {
-  flex-shrink: 0;
-}
-
-/* --- Main content --- */
-.main {
-  margin-left: var(--sidebar-w);
-  padding: calc(var(--nav-h) + 1.5rem) 1.75rem calc(var(--player-h) + 1.5rem);
-  min-height: 100vh;
-}
-.now-playing-shell .main {
-  height: 100vh;
-  height: 100dvh;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.now-playing-shell .nowplaying {
-  height: auto;
-  flex: 1;
-  min-height: 0;
-}
-
-/* --- Page transitions ---
- * "page": plain navigation between regular views.
- * "expand"/"collapse": entering/leaving /now-playing — a bottom-sheet motion
- * that reads as the detail view growing out of (and shrinking back into) the
- * player bar it's opened from.
- */
-.page-enter-active, .page-leave-active { transition: opacity 0.16s ease, transform 0.16s ease; }
-.page-enter-from { opacity: 0; transform: translateY(8px); }
-.page-leave-to { opacity: 0; transform: translateY(-8px); }
-
-.expand-enter-active { transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-.expand-enter-from { opacity: 0; transform: translateY(48px) scale(0.97); }
-.expand-leave-active { transition: opacity 0.15s ease; }
-.expand-leave-to { opacity: 0; }
-
-.collapse-enter-active { transition: opacity 0.2s ease; }
-.collapse-enter-from { opacity: 0; }
-.collapse-leave-active { transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.4, 0, 1, 1); }
-.collapse-leave-to { opacity: 0; transform: translateY(48px) scale(0.97); }
-
-/* --- Responsive: ≤960px 侧栏由 Logo 展开 --- */
-@media (max-width: 960px) {
-  .navbar { gap: 0.6rem; padding: 0 0.75rem; }
-  .nav-left { flex: 0 0 auto; }
-  .nav-global-search { flex: 1 1 auto; width: auto; min-width: 0; }
-  .nav-user { flex: 0 0 auto; }
+.page-view { min-width: 0; min-height: 100%; }
+.page-next-enter-active, .page-previous-enter-active { transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease; }
+.page-next-leave-active, .page-previous-leave-active { transition: transform 160ms cubic-bezier(0.4, 0, 1, 1), opacity 140ms ease; }
+.page-next-enter-from, .page-previous-leave-to { transform: translateX(48px); opacity: 0; }
+.page-next-leave-to, .page-previous-enter-from { transform: translateX(-48px); opacity: 0; }
+@media (max-width: 1150px) {
   .nav-user .status-badge { display: none; }
-  .nav-logo-home { display: none; }
-  .nav-logo-menu { display: flex; }
-  .nav-links { display: none; }
-  .nav-username { display: none; }
-  .sidebar { transform: translateX(-100%); bottom: 0; box-shadow: 8px 0 40px rgba(0, 0, 0, 0.6); }
-  .sidebar.open { transform: translateX(0); }
-  .sidebar-overlay.open { display: block; }
-  .main { margin-left: 0; padding-left: 1rem; padding-right: 1rem; }
-  .now-playing-collapse { display: inline-flex; left: 1rem; }
+  .nav-username { max-width: 84px; }
 }
-
+@media (max-width: 960px) {
+  :root { --bottom-nav-space: calc(var(--mobile-nav-h) + var(--safe-bottom)); }
+  .navbar { gap: 12px; padding: 0 16px; }
+  .nav-left { flex: 0 0 auto; }
+  .nav-global-search { flex: 1 1 auto; }
+  .nav-user { flex: 0 0 auto; gap: 4px; }
+  .nav-username, .nav-logout span { display: none; }
+  .sidebar { display: none; }
+  .main { left: 0; padding: 20px; }
+  .nav-logout { min-width: 36px; padding: 8px; }
+}
 @media (max-width: 600px) {
+  .navbar { gap: 10px; padding: 0 12px; }
   .nav-logo .logo-text { display: none; }
+  .nav-logo-img { width: 28px; height: 28px; }
+  .main { padding: 20px 16px; scrollbar-gutter: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-next-enter-active, .page-next-leave-active, .page-previous-enter-active, .page-previous-leave-active { transition-duration: 1ms; }
 }
 
 /* --- Activation expired banner (persistent, click → Settings) --- */
@@ -792,5 +575,5 @@ onBeforeUnmount(() => {
 }
 .demo-badge-authenticated { top: calc(var(--nav-h) + 0.45rem); }
 .demo-shell .sidebar { top: calc(var(--nav-h) + 2.25rem); }
-.demo-shell .main { padding-top: calc(var(--nav-h) + 3.75rem); }
+.demo-shell .main { padding-top: 60px; }
 </style>

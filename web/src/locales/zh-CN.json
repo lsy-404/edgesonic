@@ -63,10 +63,9 @@
   },
   "app": {
     "groups": {
-      "library": "媒体库",
+      "library": "音乐",
       "starred": "我喜欢",
-      "management": "管理",
-      "help": "帮助"
+      "management": "管理与帮助"
     },
     "menu": {
       "dashboard": "仪表盘",
@@ -82,7 +81,8 @@
       "podcasts": "播客",
       "shares": "分享",
       "playlists": "歌单",
-      "about": "关于"
+      "about": "关于",
+      "home": "首页"
     },
     "logout": "登出",
     "openNavigation": "打开导航",
@@ -97,7 +97,9 @@
       "user": "用户",
       "admin": "管理员",
       "super": "超管"
-    }
+    },
+    "primaryNavigation": "主导航",
+    "more": "更多"
   },
   "pageTitles": {
     "Login": "登录",
@@ -121,7 +123,8 @@
     "Playlists": "歌单",
     "Now Playing": "正在播放",
     "About": "关于",
-    "Work Mode": "工作模式"
+    "Work Mode": "工作模式",
+    "Home": "首页"
   },
   "login": {
     "subtitle": "无服务器音乐控制台",
@@ -428,7 +431,15 @@
     "apply": "应用",
     "applySelected": "应用所选字段",
     "details": "详情",
-    "fields": { "title": "标题", "artist": "歌手", "albumArtist": "专辑艺术家", "album": "专辑", "year": "年份", "lyrics": "歌词", "cover": "封面" },
+    "fields": {
+      "title": "标题",
+      "artist": "歌手",
+      "albumArtist": "专辑艺术家",
+      "album": "专辑",
+      "year": "年份",
+      "lyrics": "歌词",
+      "cover": "封面"
+    },
     "noResults": "无结果。",
     "allSourcesFailed": "所有源均失败 — 详见上方错误。",
     "disabled": "设置中已禁用元数据刮削。",

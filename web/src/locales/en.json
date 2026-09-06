@@ -63,9 +63,8 @@
   },
   "app": {
     "groups": {
-      "library": "LIBRARY",
-      "management": "MANAGEMENT",
-      "help": "HELP"
+      "library": "Music",
+      "management": "Manage & help"
     },
     "menu": {
       "dashboard": "Dashboard",
@@ -81,7 +80,8 @@
       "podcasts": "Podcasts",
       "shares": "Shares",
       "playlists": "Playlists",
-      "about": "About"
+      "about": "About",
+      "home": "Home"
     },
     "logout": "LOGOUT",
     "openNavigation": "Open navigation",
@@ -96,7 +96,9 @@
       "user": "USER",
       "admin": "ADMIN",
       "super": "SUPER"
-    }
+    },
+    "primaryNavigation": "Main navigation",
+    "more": "More"
   },
   "pageTitles": {
     "Login": "Login",
@@ -120,7 +122,8 @@
     "Playlists": "Playlists",
     "Now Playing": "Now Playing",
     "About": "About",
-    "Work Mode": "Work Mode"
+    "Work Mode": "Work Mode",
+    "Home": "Home"
   },
   "login": {
     "subtitle": "SERVERLESS MUSIC CONSOLE",
@@ -427,7 +430,15 @@
     "apply": "Apply",
     "applySelected": "Apply selected fields",
     "details": "Details",
-    "fields": { "title": "Title", "artist": "Artist", "albumArtist": "Album artist", "album": "Album", "year": "Year", "lyrics": "Lyrics", "cover": "Cover" },
+    "fields": {
+      "title": "Title",
+      "artist": "Artist",
+      "albumArtist": "Album artist",
+      "album": "Album",
+      "year": "Year",
+      "lyrics": "Lyrics",
+      "cover": "Cover"
+    },
     "noResults": "No results.",
     "allSourcesFailed": "All sources failed — see source-specific errors above.",
     "disabled": "Metadata scraping is disabled in Settings.",

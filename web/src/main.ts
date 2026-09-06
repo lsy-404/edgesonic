@@ -21,7 +21,7 @@ import "./theme"; // side-effect: applies saved theme attribute before first pai
 import { setTheme } from "./theme";
 import App from "./App.vue";
 import Login from "./views/Login.vue";
-import Dashboard from "./views/Dashboard.vue";
+import Home from "./views/Home.vue";
 import Library from "./views/Library.vue";
 import Sources from "./views/Sources.vue";
 import Files from "./views/Files.vue";
@@ -43,14 +43,13 @@ const routes = [
   // Requires a session but stays reachable for inactive ones — it's where an
   // expired/disabled account redeems an activation code (see the guard below).
   { path: "/activation", component: () => import("./views/ActivationRequired.vue"), meta: { title: "Activation" } },
-  { path: "/", component: Dashboard, meta: { title: "Dashboard" } },
+  { path: "/", component: Home, meta: { title: "Home" } },
+  { path: "/dashboard", component: () => import("./views/Dashboard.vue"), meta: { title: "Dashboard" } },
   { path: "/library", component: Library, meta: { title: "Library" } },
   { path: "/starred", component: Library, props: { starredOnly: true }, meta: { title: "Liked" } },
   { path: "/sources", component: Sources, meta: { title: "Sources", perm: "manage_sources" } },
   { path: "/files", component: Files, meta: { title: "Files", perm: "manage_files" } },
   { path: "/users", component: Users, meta: { title: "Users", perm: "manage_users" } },
-  // Permissions matrix now lives inside Settings; keep the old route working.
-  { path: "/permissions", redirect: "/settings" },
   { path: "/settings", component: Settings, meta: { title: "Settings" } },
   // Tools hosts the Subsonic sync (clone-to-self) available to every non-guest;
   // admin-only tools inside gate themselves. Lazy-loaded, rarely visited.
@@ -61,7 +60,6 @@ const routes = [
   { path: "/shares", component: () => import("./views/Shares.vue"), meta: { title: "Shares" } },
   // owns its detail state inline so back-nav doesn't re-pick a playlist.
   { path: "/playlists", component: () => import("./views/Playlists.vue"), meta: { title: "Playlists" } },
-  { path: "/now-playing", component: () => import("./views/NowPlaying.vue"), meta: { title: "Now Playing" } },
   { path: "/about", component: () => import("./views/About.vue"), meta: { title: "About", minLevel: 0 } },
   // `bare` drops the whole app shell (sidebar, player bar, theme background):
   // a machine parked here is a worker, and every pixel painted is CPU taken
