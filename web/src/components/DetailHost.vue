@@ -12,11 +12,14 @@ const detail = useDetailStore();
 const player = usePlayerStore();
 const { t } = useI18n();
 let previousFocus: HTMLElement | null = null;
-const title = computed(() => detail.kind === "now-playing" ? t("player.collapse") : t("library.title"));
+const title = computed(() => detail.kind === "now-playing"
+  ? t("player.expand")
+  : detail.kind === "artist" ? t("library.tabArtists") : t("library.tabAlbums"));
 const mediaKind = computed<"album" | "artist">(() => detail.kind === "artist" ? "artist" : "album");
 
 function close() { detail.close(); }
 function onKeydown(event: KeyboardEvent) {
+  if ((event.target as HTMLElement | null)?.closest(".modal, [role='dialog']")) return;
   if (event.key === "Escape" && detail.isOpen) {
     event.preventDefault();
     close();

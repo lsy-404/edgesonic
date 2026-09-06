@@ -51,7 +51,7 @@ type SortMode = "newest" | "oldestStarred" | "newestAdded" | "oldestAdded" | "na
 // ?tab= lets other pages (dashboard stat cards) land on a specific view.
 const route = useRoute();
 const router = useRouter();
-const requestedTab = String(route.query.tab || "");
+const requestedTab = props.embedded ? "" : String(route.query.tab || "");
 const tab = ref<Tab>(
   requestedTab === "artists" || requestedTab === "albums" || requestedTab === "songs"
     ? requestedTab
@@ -459,6 +459,7 @@ async function locateCurrentSong() {
 }
 
 watch(sortMode, () => {
+  if (props.embedded) return;
   if (starredOnly) return;
   if (isSearchActive.value) {
     if (searchTimer) clearTimeout(searchTimer);
@@ -478,8 +479,8 @@ watch(sortMode, () => {
 });
 
 const SEARCH_DEBOUNCE_MS = 300;
-const searchQuery = ref(typeof route.query.q === "string" ? route.query.q : "");
-const lyricsQuery = ref(typeof route.query.lyrics === "string" ? route.query.lyrics : "");
+const searchQuery = ref(!props.embedded && typeof route.query.q === "string" ? route.query.q : "");
+const lyricsQuery = ref(!props.embedded && typeof route.query.lyrics === "string" ? route.query.lyrics : "");
 const extendedSearchOpen = ref(!!lyricsQuery.value);
 const searching = ref(false);
 const searchResults = ref<{ artists: Artist[]; albums: Album[]; songs: Track[] } | null>(null);
@@ -500,6 +501,7 @@ function lyricsSearchIsPreparing(error: { code: string; message: string }): bool
 }
 
 async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
+  if (props.embedded) return;
   const request = ++searchRequest;
   searchController?.abort();
   const controller = new AbortController();
@@ -553,17 +555,20 @@ function updateSearchRoute(query: string, lyricQuery: string) {
 }
 
 watch(() => route.query.q, (q) => {
+  if (props.embedded) return;
   const query = typeof q === "string" ? q : "";
   if (searchQuery.value !== query) searchQuery.value = query;
 }, { immediate: true });
 
 watch(() => route.query.lyrics, (q) => {
+  if (props.embedded) return;
   const query = typeof q === "string" ? q : "";
   if (lyricsQuery.value !== query) lyricsQuery.value = query;
   extendedSearchOpen.value = !!query || extendedSearchOpen.value;
 }, { immediate: true });
 
 watch([searchQuery, lyricsQuery], ([q, lyricQ]) => {
+  if (props.embedded) return;
   if (searchTimer) clearTimeout(searchTimer);
   const query = q.trim();
   const lyricQuery = lyricQ.trim();
@@ -624,6 +629,14 @@ async function openArtist(artist: Artist) {
   try {
     const xml = await authFetch("getArtist", { id: artist.id });
     if (request !== detailRequest) return;
+    const root = parseXmlAttrs(xml, "artist")[0] || {};
+    currentArtist.value = {
+      ...artist,
+      name: root.name || artist.name,
+      albumCount: root.albumCount || artist.albumCount,
+      starred: root.starred === "true" || artist.starred,
+      starredAt: root.starred || artist.starredAt,
+    };
     albums.value = parseXmlAttrs(xml, "album").map((a) => ({
       id: a.id || "", name: a.name || a.title || "", artist: a.artist || artist.name,
       year: a.year || "", coverArt: a.coverArt || "", songCount: a.songCount || "",
@@ -670,6 +683,18 @@ async function openAlbum(album: Album) {
   try {
     const xml = await authFetch("getAlbum", { id: album.id });
     if (request !== detailRequest) return;
+    const root = parseXmlAttrs(xml, "album")[0] || {};
+    currentAlbum.value = {
+      ...album,
+      name: root.name || album.name,
+      artist: root.artist || album.artist,
+      year: root.year || album.year,
+      coverArt: root.coverArt || album.coverArt,
+      songCount: root.songCount || album.songCount,
+      starred: root.starred === "true" || album.starred,
+      starredAt: root.starred || album.starredAt,
+      createdAt: root.created || album.createdAt,
+    };
     songs.value = parseXmlAttrs(xml, "song").map((s) => ({
       id: s.id || "",
       title: s.title || "",
@@ -680,6 +705,8 @@ async function openAlbum(album: Album) {
       starred: !!s.starred,
       starredAt: s.starred || undefined,
       createdAt: s.created || undefined,
+      artistId: s.artistId || undefined,
+      albumId: s.albumId || root.id || album.id,
     }));
   } catch {
     if (request === detailRequest) songs.value = [];
@@ -940,6 +967,10 @@ function toggleSelected(id: string) {
 function clearSelection() { selectedIds.value = []; }
 
 function backToList() {
+  if (props.embedded) {
+    detail.close();
+    return;
+  }
   detailRequest++;
   currentArtist.value = null;
   currentAlbum.value = null;
@@ -951,6 +982,10 @@ function backToList() {
 }
 
 function backToAlbums() {
+  if (props.embedded && !currentArtist.value) {
+    detail.close();
+    return;
+  }
   detailRequest++;
   currentAlbum.value = null;
   songs.value = [];
@@ -980,6 +1015,7 @@ onMounted(() => {
 });
 
 watch(() => tab.value, () => {
+  if (props.embedded) return;
   refreshTargets();
 }, { flush: "post" });
 
@@ -1273,7 +1309,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
     </div>
 
     <!-- Library-wide search — always visible, independent of tabs/drilldown. -->
-    <div v-if="!starredOnly" class="library-search">
+    <div v-if="!starredOnly && !embedded" class="library-search">
       <div class="primary-search-field">
         <label class="sr-only" for="library-search">{{ t("library.searchLabel") }}</label>
         <input id="library-search" v-model="searchQuery" class="form-input search-input" type="search" :placeholder="t('library.searchPlaceholder')" />
@@ -1303,7 +1339,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 
     <template v-if="!isSearchActive">
     <!-- View tabs and sorting (hidden while drilled into an artist/album) -->
-    <div v-if="!currentArtist && !currentAlbum" class="library-controls">
+    <div v-if="!currentArtist && !currentAlbum && !embedded" class="library-controls">
       <div class="view-tabs">
       <button :class="['view-tab', { active: tab === 'songs' }]" @click="switchTab('songs')">{{ t("library.tabSongs") }}</button>
       <button :class="['view-tab', { active: tab === 'albums' }]" @click="switchTab('albums')">{{ t("library.tabAlbums") }}</button>
