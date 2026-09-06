@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatDuration } from "../api";
 import { usePlayerStore, type Track } from "../stores/player";
@@ -33,6 +33,8 @@ const loading = ref(false);
 const currentPlaylist = ref<Playlist | null>(null);
 const entries = ref<PlaylistEntry[]>([]);
 const detailLoading = ref(false);
+let playlistRequest = 0;
+let playlistFocus: HTMLElement | null = null;
 
 const showCreate = ref(false);
 const createForm = ref({ name: "", comment: "", public: false });
@@ -107,30 +109,36 @@ async function loadPlaylists() {
 }
 
 async function openPlaylist(p: Playlist) {
+  const request = ++playlistRequest;
+  playlistFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   currentPlaylist.value = p;
   entries.value = [];
   detailLoading.value = true;
   try {
     const xml = await authFetch("getPlaylist", { id: p.id });
+    if (request !== playlistRequest) return;
     // Refresh the playlist meta from the latest server snapshot — counts may
     // have shifted between list load and detail open.
     const meta = parseXmlAttrs(xml, "playlist")[0];
     if (meta) currentPlaylist.value = parsePlaylist(meta);
     entries.value = parseXmlAttrs(xml, "entry").map(parseEntry);
   } catch {
-    entries.value = [];
+    if (request === playlistRequest) entries.value = [];
   } finally {
-    detailLoading.value = false;
+    if (request === playlistRequest) detailLoading.value = false;
   }
 }
 
 function backToList() {
+  playlistRequest++;
   currentPlaylist.value = null;
   entries.value = [];
   showEdit.value = false;
   showAddSong.value = false;
   addSongResults.value = [];
   addSongQuery.value = "";
+  void nextTick(() => playlistFocus?.focus({ preventScroll: true }));
+  playlistFocus = null;
 }
 
 function openCreate() {
@@ -338,12 +346,15 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key === "Escape" && currentPlaylist.value) backToList();
 }
 onMounted(() => window.addEventListener("keydown", onKeydown));
-onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
+onBeforeUnmount(() => {
+  playlistRequest++;
+  window.removeEventListener("keydown", onKeydown);
+});
 </script>
 
 <template>
   <div class="page">
-    <div v-if="!currentPlaylist" class="page-header">
+    <div v-show="!currentPlaylist" class="page-header" :inert="!!currentPlaylist">
       <div>
         <div class="mono-label">{{ t("playlists.label") }}</div>
         <h1 class="page-title">
@@ -356,7 +367,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
     <!-- ===========================================================
          List view
          =========================================================== -->
-    <template v-if="!currentPlaylist">
+    <div v-show="!currentPlaylist" :inert="!!currentPlaylist">
       <div v-if="loading && !playlists.length" class="empty-state">
         <div class="empty-state-icon"><Icon name="empty" /></div>
         <div>{{ t("common.loading") }}</div>
@@ -393,13 +404,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
           <div class="corner corner-bl"></div>
         </div>
       </div>
-    </template>
+    </div>
 
     <!-- ===========================================================
          Detail view
          =========================================================== -->
+    <Teleport to="body">
     <Transition name="playlist-detail">
-    <section v-if="currentPlaylist" class="playlist-detail-sheet">
+    <section v-if="currentPlaylist" class="playlist-detail-sheet" role="region" :aria-label="currentPlaylist.name">
       <div class="page-header">
         <div>
           <div class="mono-label">{{ t("playlists.label") }}</div>
@@ -473,6 +485,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
       </div>
     </section>
     </Transition>
+    </Teleport>
 
     <!-- ===========================================================
          Create modal
@@ -593,6 +606,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 .playlist-detail-enter-active, .playlist-detail-leave-active { transition: transform .24s ease, opacity .18s ease; }
 .playlist-detail-enter-from, .playlist-detail-leave-to { transform: translateY(100%); opacity: 0; }
 @media (max-width: 960px) { .playlist-detail-sheet { left: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); } }
+@media (prefers-reduced-motion: reduce) { .playlist-detail-enter-active, .playlist-detail-leave-active { transition: none; } }
 
 .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 
