@@ -31,6 +31,7 @@ app.use("*", async (c, next) => {
   return next();
 });
 app.route("/storage", filesRoutes);
+app.onError((error, c) => c.json({ error: error.message }, 500));
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {

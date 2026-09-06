@@ -329,7 +329,8 @@ async function finishAudioUpload(
 
 function isContentLengthMismatch(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /fixed.?length|length.*stream|stream.*length/i.test(message);
+  return /^Attempt to (?:write too many bytes through|close a) (?:a )?FixedLengthStream/i.test(message)
+    || /^FixedLengthStream length mismatch:/i.test(message);
 }
 
 function isSafeUploadName(name: string): boolean {

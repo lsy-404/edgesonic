@@ -43,7 +43,8 @@ try {
   check((await stored.json()).size === bytes.byteLength, "R2 stored every uploaded byte");
 
   const mismatch = await fetch(`http://127.0.0.1:${port}/__mismatch`);
-  check(mismatch.status === 400, `mismatched fixed length returns 400 (got ${mismatch.status})`);
+  const mismatchBody = await mismatch.json();
+  check(mismatch.status === 400, `mismatched fixed length returns 400 (got ${mismatch.status}, ${JSON.stringify(mismatchBody)})`);
 
   const seed = await fetch(`http://127.0.0.1:${port}/storage/files/upload?source=r2&name=conflict.mp3`, { method: "POST", body: bytes });
   check(seed.status === 200, `seed upload returns 200 (got ${seed.status})`);
