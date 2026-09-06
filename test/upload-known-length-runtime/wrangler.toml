@@ -1,0 +1,8 @@
+name = "upload-known-length-runtime"
+main = "worker.ts"
+compatibility_date = "2025-05-24"
+compatibility_flags = ["nodejs_compat"]
+
+[[r2_buckets]]
+binding = "TEST_BUCKET"
+bucket_name = "upload-known-length-runtime"
