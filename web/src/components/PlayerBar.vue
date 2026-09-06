@@ -3,29 +3,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRouter, useRoute } from "vue-router";
 import { usePlayerStore } from "../stores/player";
+import { useDetailStore } from "../stores/detail";
 import { useAuth, formatDuration } from "../api";
 import { activeTheme } from "../theme";
 import { getTheme } from "../themes/registry";
 import { isOutsideElements } from "../lib/outsideClick";
 
 const { t } = useI18n();
-const router = useRouter();
-const route = useRoute();
 const player = usePlayerStore();
+const detail = useDetailStore();
 const { coverArtUrl } = useAuth();
 
 const activeThemeDef = computed(() => getTheme(activeTheme.value));
 
-let lastRoute = "/library";
-watch(() => route.path, (p) => { if (p !== "/now-playing") lastRoute = p; }, { immediate: true });
-const detailsOpen = computed(() => route.path === "/now-playing");
+const detailsOpen = computed(() => detail.kind === "now-playing");
 
 function goNowPlaying() {
   if (!player.hasTrack) return;
-  if (route.path === "/now-playing") router.push(lastRoute);
-  else router.push("/now-playing");
+  detail.toggleNowPlaying();
 }
 
 const playModeTitle = computed(() => t(`player.playMode.${player.playMode}`));
@@ -297,7 +293,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 <style scoped>
 .player-bar {
   position: fixed;
-  left: 0; right: 0; bottom: 0;
+  left: 0; right: 0; bottom: var(--bottom-nav-space, 0px);
   height: var(--player-h);
   z-index: 100;
   display: flex;
