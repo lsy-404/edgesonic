@@ -380,7 +380,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   width: 40px; text-align: center; flex-shrink: 0;
 }
 .pb-progress {
-  position: relative; flex: 1; height: 14px;
+  position: relative; flex: 1; height: 32px;
   display: flex; align-items: center; cursor: pointer; touch-action: none;
 }
 .pb-progress.disabled { cursor: default; }
@@ -397,14 +397,21 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   pointer-events: none;
 }
 .pb-progress-thumb {
-  position: absolute; width: 10px; height: 10px;
-  border: 2px solid var(--color-bg-elevated); border-radius: 50%;
-  background: var(--accent-base, var(--color-accent-primary));
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  position: absolute; width: 22px; height: 22px;
+  border: 1px solid var(--ControlStrokeColorDefaultBrush, var(--ctrl-border)); border-radius: 50%;
+  background: var(--SliderOuterThumbBackground, var(--ctrl-fill-default));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transform: translateX(-50%);
-  opacity: 0; transition: opacity 0.15s;
+  opacity: 1;
 }
-.pb-progress:hover .pb-progress-thumb, .pb-progress-thumb.active { opacity: 1; }
+.pb-progress-thumb::after {
+  content: ""; position: absolute; inset: 4px; border-radius: 50%;
+  background: var(--accent-base, var(--color-accent-primary));
+  transform: scale(.86); transition: transform var(--fast-duration) var(--fast-out-slow-in);
+}
+.pb-progress-thumb > * { display: none; }
+.pb-progress:hover .pb-progress-thumb::after { background: var(--accent-hover, var(--color-accent-primary)); transform: scale(1.167); }
+.pb-progress-thumb.active::after { background: var(--accent-pressed, var(--color-accent-primary)); transform: scale(.71); }
 .pb-progress-tooltip {
   position: absolute;
   bottom: 16px;
