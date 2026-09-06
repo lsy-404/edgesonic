@@ -16,6 +16,7 @@ import BudgetedImage from "../components/BudgetedImage.vue";
 import { showInfo } from "../stores/toast";
 import { isInstrumentalTitle } from "../lib/instrumental";
 import type { ScrapeResult } from "../lib/scrape";
+import { buildLibrarySearchParams } from "../lib/librarySearch";
 
 const { t } = useI18n();
 
@@ -467,15 +468,32 @@ watch(sortMode, () => {
 
 const SEARCH_DEBOUNCE_MS = 300;
 const searchQuery = ref(typeof route.query.q === "string" ? route.query.q : "");
+const lyricsQuery = ref(typeof route.query.lyrics === "string" ? route.query.lyrics : "");
+const extendedSearchOpen = ref(!!lyricsQuery.value);
 const searching = ref(false);
 const searchResults = ref<{ artists: Artist[]; albums: Album[]; songs: Track[] } | null>(null);
 const searchError = ref("");
-const isSearchActive = computed(() => !!searchQuery.value.trim());
+const isSearchActive = computed(() => !!searchQuery.value.trim() || !!lyricsQuery.value.trim());
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let searchRequest = 0;
+let searchController: AbortController | null = null;
 
-async function runSearch(query: string) {
+function searchProtocolError(xml: string): { code: string; message: string } | null {
+  if (!xml || !/(?:status=["']failed["']|<error\b)/i.test(xml)) return null;
+  const error = parseXmlAttrs(xml, "error")[0];
+  return { code: error?.code || "", message: error?.message || xml };
+}
+
+function lyricsSearchIsPreparing(error: { code: string; message: string }): boolean {
+  return /edgeSonicLyricsSearchInitializing/i.test(`${error.code} ${error.message}`)
+    || /(?:lyrics?|lyric)[^\s]*(?:index|search)|(?:index|search)[^\s]*(?:lyrics?|lyric)|not[_ -]?ready|prepar|build/i.test(`${error.code} ${error.message}`);
+}
+
+async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
   const request = ++searchRequest;
+  searchController?.abort();
+  const controller = new AbortController();
+  searchController = controller;
   searching.value = true;
   searchError.value = "";
   // Drop any drilldown so the page-header title/breadcrumb don't show stale
@@ -484,14 +502,17 @@ async function runSearch(query: string) {
   currentArtist.value = null;
   currentAlbum.value = null;
   try {
-    const xml = await authFetch("search3", {
-      query, artistCount: "20", albumCount: "20", songCount: "100",
-      songSort: sortMode.value === "newest" || sortMode.value === "newestAdded"
-        ? "newest"
-        : sortMode.value === "oldestAdded" ? "oldest"
-        : sortMode.value === "nameDesc" ? "titleDesc" : "title",
-    });
+    const xml = await authFetch("search3", buildLibrarySearchParams(query, lyricQuery, sortMode.value), controller.signal);
     if (request !== searchRequest) return;
+    const protocolError = searchProtocolError(xml);
+    if (protocolError) {
+      searchResults.value = null;
+      searchError.value = lyricQuery && lyricsSearchIsPreparing(protocolError)
+        ? t("library.lyricsSearchPreparing")
+        : t("library.searchFailed");
+      searching.value = false;
+      return;
+    }
     searchResults.value = {
       artists: parseXmlAttrs(xml, "artist").map((a) => ({
         id: a.id || "", name: a.name || "", albumCount: a.albumCount || "",
@@ -505,6 +526,7 @@ async function runSearch(query: string) {
       songs: parseXmlAttrs(xml, "song").map(mapSongRow),
     };
   } catch {
+    if (controller.signal.aborted) return;
     if (request !== searchRequest) return;
     searchResults.value = null;
     searchError.value = t("library.searchFailed");
@@ -521,35 +543,63 @@ function updateSearchRoute(query: string) {
   void router.replace({ query: nextQuery });
 }
 
+function updateLyricsRoute(query: string) {
+  const current = typeof route.query.lyrics === "string" ? route.query.lyrics : "";
+  if (current === query) return;
+  const nextQuery = { ...route.query };
+  if (query) nextQuery.lyrics = query;
+  else delete nextQuery.lyrics;
+  void router.replace({ query: nextQuery });
+}
+
 watch(() => route.query.q, (q) => {
   const query = typeof q === "string" ? q : "";
   if (searchQuery.value !== query) searchQuery.value = query;
 }, { immediate: true });
 
-watch(searchQuery, (q) => {
+watch(() => route.query.lyrics, (q) => {
+  const query = typeof q === "string" ? q : "";
+  if (lyricsQuery.value !== query) lyricsQuery.value = query;
+  extendedSearchOpen.value = !!query || extendedSearchOpen.value;
+}, { immediate: true });
+
+watch([searchQuery, lyricsQuery], ([q, lyricQ]) => {
   if (searchTimer) clearTimeout(searchTimer);
   const query = q.trim();
+  const lyricQuery = lyricQ.trim();
   searchRequest++;
-  if (!query) {
+  searchController?.abort();
+  searchController = null;
+  if (!query && !lyricQuery) {
     searching.value = false;
     searchError.value = "";
     searchResults.value = null;
     updateSearchRoute("");
+    updateLyricsRoute("");
     return;
   }
   updateSearchRoute(query);
+  updateLyricsRoute(lyricQuery);
   searching.value = true;
   searchError.value = "";
-  searchTimer = setTimeout(() => void runSearch(query), SEARCH_DEBOUNCE_MS);
+  searchTimer = setTimeout(() => void runSearch(query, lyricQuery), SEARCH_DEBOUNCE_MS);
 }, { immediate: true });
 
 function clearSearch() {
   searchQuery.value = "";
+  lyricsQuery.value = "";
+  extendedSearchOpen.value = false;
+}
+
+function toggleExtendedSearch() {
+  extendedSearchOpen.value = !extendedSearchOpen.value;
+  if (!extendedSearchOpen.value) lyricsQuery.value = "";
 }
 
 function retrySearch() {
   const query = searchQuery.value.trim();
-  if (query) void runSearch(query);
+  const lyricQuery = lyricsQuery.value.trim();
+  if (query || lyricQuery) void runSearch(query, lyricQuery);
 }
 
 function playFromSearch(i: number) {
@@ -934,6 +984,8 @@ onUnmounted(() => {
   if (io) { io.disconnect(); io = null; }
   if (waterfallRO) { waterfallRO.disconnect(); waterfallRO = null; }
   if (searchTimer) clearTimeout(searchTimer);
+  searchController?.abort();
+  searchController = null;
 });
 
 const shareOpen = ref(false);
@@ -1204,9 +1256,30 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 
     <!-- Library-wide search — always visible, independent of tabs/drilldown. -->
     <div v-if="!starredOnly" class="library-search">
-      <label class="sr-only" for="library-search">{{ t("library.searchLabel") }}</label>
-      <input id="library-search" v-model="searchQuery" class="form-input search-input" type="search" :placeholder="t('library.searchPlaceholder')" />
-      <button v-if="searchQuery" type="button" class="search-clear" :aria-label="t('library.clearSearch')" :title="t('common.close')" @click="clearSearch"><Icon name="cross" /></button>
+      <div class="primary-search-field">
+        <label class="sr-only" for="library-search">{{ t("library.searchLabel") }}</label>
+        <input id="library-search" v-model="searchQuery" class="form-input search-input" type="search" :placeholder="t('library.searchPlaceholder')" />
+        <button v-if="searchQuery" type="button" class="search-clear" :aria-label="t('library.clearSearch')" :title="t('common.close')" @click="clearSearch"><Icon name="cross" /></button>
+      </div>
+      <button
+        type="button"
+        class="btn-secondary btn-sm extended-search-toggle"
+        :aria-expanded="extendedSearchOpen"
+        aria-controls="library-lyrics-search"
+        @click="toggleExtendedSearch"
+      >{{ t("library.extendedSearch") }}</button>
+      <div v-if="extendedSearchOpen" class="extended-search-panel">
+        <label class="sr-only" for="library-lyrics-search">{{ t("library.lyricsSearchLabel") }}</label>
+        <input
+          id="library-lyrics-search"
+          v-model="lyricsQuery"
+          class="form-input search-input"
+          type="search"
+          :placeholder="t('library.lyricsSearchPlaceholder')"
+          @keydown.esc="toggleExtendedSearch"
+        />
+        <button v-if="lyricsQuery" type="button" class="search-clear" :aria-label="t('library.clearLyricsSearch')" :title="t('common.close')" @click="lyricsQuery = ''"><Icon name="cross" /></button>
+      </div>
     </div>
 
     <template v-if="!isSearchActive">
@@ -1911,11 +1984,18 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 .library-search {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 0.5rem;
   margin-bottom: 1rem;
-  max-width: 360px;
+  max-width: 560px;
 }
-.search-input { width: 100%; padding-right: 2rem; }
+.primary-search-field { position: relative; flex: 1 1 260px; min-width: 0; }
+.primary-search-field .search-input { width: 100%; }
+.extended-search-toggle { flex: 0 0 auto; }
+.extended-search-panel { position: relative; flex: 1 1 100%; min-width: 0; }
+.extended-search-panel .search-input { width: 100%; padding-right: 2rem; }
+.search-input { padding-right: 2rem; }
 .search-clear {
   position: absolute;
   right: 0.5rem;
