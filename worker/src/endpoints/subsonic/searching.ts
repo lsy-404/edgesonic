@@ -20,6 +20,7 @@ import { subsonicOK } from "../../utils/xml";
 import { mapArtist, mapAlbum, mapSong, type AnnotationLite } from "../../types/subsonic";
 import type { User, Annotation } from "../../types/entities";
 import { parsePageOffset, parsePageSize } from "./pagination";
+import { subsonicError } from "../../auth";
 
 export const searchRoutes = new Hono<{
   Bindings: Env;
@@ -58,6 +59,7 @@ const search23Handler = (tag: "searchResult2" | "searchResult3") =>
   async (c: Context): Promise<Response> => {
     // Empty query = full listing (Navidrome-compatible) — the web Songs view relies on it
     const query = normalizeQuery(c.req.query("query") || "");
+    const lyricsQuery = c.req.query("lyricsQuery")?.trim() || undefined;
 
     const artistCount = parsePageSize(c.req.query("artistCount"), 20);
     const artistOffset = parsePageOffset(c.req.query("artistOffset"));
@@ -68,10 +70,24 @@ const search23Handler = (tag: "searchResult2" | "searchResult3") =>
     const songSort = c.req.query("songSort");
 
     const queries = createQueries((c.env as Env).DB);
-    const result = await queries.search(query, {
-      artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset,
-      songSort: songSort === "newest" || songSort === "oldest" || songSort === "titleDesc" ? songSort : "title",
-    });
+    let result;
+    try {
+      result = await queries.search(query, {
+        artistCount, artistOffset, albumCount, albumOffset, songCount, songOffset,
+        songSort: songSort === "newest" || songSort === "oldest" || songSort === "titleDesc" ? songSort : "title",
+        lyricsQuery,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "lyrics-search-initializing") {
+        return c.text(subsonicError(0, "edgeSonicLyricsSearchInitializing"), 503, {
+          ...XML,
+          "Retry-After": "5",
+          "X-EdgeSonic-Lyrics-Search": "initializing",
+        });
+      }
+      if (error instanceof Error && error.message === "lyrics-search-query-too-long") return c.text(subsonicError(10, "lyricsQuery is too long"), 400, XML);
+      throw error;
+    }
 
     const userId = currentUserId(c);
     const [artistAnn, albumAnn, songAnn] = await Promise.all([

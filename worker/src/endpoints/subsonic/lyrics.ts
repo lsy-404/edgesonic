@@ -53,6 +53,7 @@ import {
 import { subsonicOK } from "../../utils/xml";
 import { subsonicError } from "../../auth";
 import { ensureRichLyricsColumn } from "../../utils/schema_patch";
+import { syncLyricsSearchForSong } from "../../utils/lyricsSearch";
 import { parseNetEaseLyrics } from "../../../../shared/neteaseLyrics";
 
 export const lyricsRoutes = new Hono();
@@ -100,6 +101,7 @@ async function resolveLyrics(
           await db.prepare(
             "UPDATE song_masters SET lyrics = ?, updated_at = ? WHERE id = ?",
           ).bind(normalized, Math.floor(Date.now() / 1000), masterId).run();
+          await syncLyricsSearchForSong(db, masterId);
         } catch {
           // intentionally silent.
         }
@@ -123,6 +125,7 @@ async function resolveLyrics(
     )
       .bind(normalized, Math.floor(Date.now() / 1000), masterId)
       .run();
+    await syncLyricsSearchForSong(db, masterId);
   } catch {
     // intentionally silent — see comment above.
   }
@@ -176,6 +179,7 @@ async function resolveRichLyrics(
             await db.prepare(
               "UPDATE song_masters SET lyrics_rich = ?, updated_at = ? WHERE id = ?",
             ).bind(serializeRich(rich), Math.floor(Date.now() / 1000), masterId).run();
+            await syncLyricsSearchForSong(db, masterId);
           } catch {
             // intentionally silent.
           }
@@ -201,6 +205,7 @@ async function resolveRichLyrics(
           await db.prepare(
             "UPDATE song_masters SET lyrics_rich = ?, updated_at = ? WHERE id = ?",
           ).bind(serializeRich(parsed), Math.floor(Date.now() / 1000), masterId).run();
+          await syncLyricsSearchForSong(db, masterId);
         } catch {
           // intentionally silent.
         }

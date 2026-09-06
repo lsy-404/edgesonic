@@ -391,6 +391,40 @@ CREATE INDEX IF NOT EXISTS idx_songmasters_album ON song_masters(album_id);
 CREATE INDEX IF NOT EXISTS idx_songmasters_artist ON song_masters(artist_id);
 CREATE INDEX IF NOT EXISTS idx_songmasters_title ON song_masters(title);
 
+CREATE TABLE IF NOT EXISTS lyrics_search_documents (
+  song_id TEXT PRIMARY KEY,
+  body TEXT NOT NULL,
+  FOREIGN KEY (song_id) REFERENCES song_masters(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS lyrics_search_grams (
+  gram TEXT NOT NULL,
+  song_id TEXT NOT NULL,
+  PRIMARY KEY (gram, song_id),
+  FOREIGN KEY (song_id) REFERENCES song_masters(id) ON DELETE CASCADE
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS lyrics_search_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  version INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  last_song_id TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_lyrics_search_grams_song ON lyrics_search_grams(song_id);
+CREATE TABLE IF NOT EXISTS lyrics_search_dirty (
+  song_id TEXT PRIMARY KEY,
+  revision INTEGER NOT NULL DEFAULT 0
+);
+CREATE TRIGGER IF NOT EXISTS lyrics_search_song_insert AFTER INSERT ON song_masters BEGIN
+  INSERT INTO lyrics_search_dirty(song_id, revision) VALUES (NEW.id, 0) ON CONFLICT(song_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS lyrics_search_song_update AFTER UPDATE OF lyrics, lyrics_rich ON song_masters BEGIN
+  INSERT INTO lyrics_search_dirty(song_id, revision) VALUES (NEW.id, 0) ON CONFLICT(song_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS lyrics_search_song_delete AFTER DELETE ON song_masters BEGIN
+  DELETE FROM lyrics_search_documents WHERE song_id = OLD.id;
+  DELETE FROM lyrics_search_grams WHERE song_id = OLD.id;
+  DELETE FROM lyrics_search_dirty WHERE song_id = OLD.id;
+END;
+
 CREATE TABLE IF NOT EXISTS song_artists (
   song_id TEXT NOT NULL,
   artist_id TEXT NOT NULL,

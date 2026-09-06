@@ -70,6 +70,7 @@ const EXTENSIONS: Array<{ name: string; versions: number[]; attrs?: Record<strin
   { name: "tokenInfo", versions: [1] },
   { name: "formPost", versions: [1] },
   { name: "songLyrics", versions: [1, 2] },
+  { name: "edgeSonicExtendedSearch", versions: [1], attrs: { lyricsQuery: "true" } },
   {
     name: "edgeSonicCloneProxy",
     versions: [1],

@@ -40,6 +40,7 @@ import { fetchLrcSidecar, fetchSidecarRich } from "./lrcSidecar";
 import { getFeatureString } from "./features";
 import { ensureRichLyricsColumn } from "./schema_patch";
 import { serializeRich } from "./richLyrics";
+import { syncLyricsSearchForSong } from "./lyricsSearch";
 
 const LAST_RUN_KEY = "cron:last_lrc_backfill_ts";
 // Kept well under the Workers subrequest ceiling — each candidate costs one
@@ -93,6 +94,7 @@ export async function runLrcBackfill(db: D1Database, env: Env): Promise<LrcBackf
             WHERE id = ? AND (lyrics IS NULL OR lyrics = '')`,
         ).bind(lrc, Math.floor(Date.now() / 1000), cand.master_id).run();
         if (result.meta.changes > 0) filled++;
+        if (result.meta.changes > 0) await syncLyricsSearchForSong(db, cand.master_id);
       }
       // Also fetch a rich sidecar (.ttml / .krc / enhanced .lrc)
       // when one is present. Independent of the LRC result above — a
@@ -103,6 +105,7 @@ export async function runLrcBackfill(db: D1Database, env: Env): Promise<LrcBackf
           `UPDATE song_masters SET lyrics_rich = ?, updated_at = ?
             WHERE id = ? AND (lyrics_rich IS NULL OR lyrics_rich = '')`,
         ).bind(serializeRich(rich), Math.floor(Date.now() / 1000), cand.master_id).run();
+        await syncLyricsSearchForSong(db, cand.master_id);
       }
     } catch {
       // Best-effort — a transient R2/WebDAV/D1 hiccup on one track must not

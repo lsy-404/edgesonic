@@ -14,6 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import type { Artist, Album, SongMaster, SongInstance, Annotation, User, Playlist, Bookmark, PlayQueue, TranscodeJob, InternetRadioStation, PodcastChannel, PodcastEpisode, Share } from "../types/entities";
+import { advanceLyricsSearchIndex, lyricsSearchGrams, normalizeLyricsSearchText } from "../utils/lyricsSearch";
 
 export interface SongNames {
   artist_name: string | null;
@@ -368,6 +369,7 @@ export function createQueries(db: D1Database) {
       // (which never send this) see no behavior change; the web Songs tab
       // passes "newest"/"oldest" to browse by library insertion time.
       songSort?: "title" | "titleDesc" | "newest" | "oldest";
+      lyricsQuery?: string;
     } = {}): Promise<{
       artists: Artist[];
       albums: Album[];
@@ -381,6 +383,13 @@ export function createQueries(db: D1Database) {
           : opts.songSort === "titleDesc"
             ? "sm.sort_title DESC"
             : "sm.sort_title ASC";
+      if (opts.lyricsQuery?.trim()) {
+        const normalized = normalizeLyricsSearchText(opts.lyricsQuery, null);
+        if (Array.from(normalized).length > 512) throw new Error("lyrics-search-query-too-long");
+        if (await advanceLyricsSearchIndex(db) !== "ready") throw new Error("lyrics-search-initializing");
+        const result = await db.prepare(`WITH wanted AS (SELECT DISTINCT value gram FROM json_each(?)), candidates AS (SELECT g.song_id FROM lyrics_search_grams g JOIN wanted w ON w.gram=g.gram GROUP BY g.song_id HAVING COUNT(DISTINCT g.gram)=(SELECT COUNT(*) FROM wanted)) SELECT ${SONG_ROW_COLS} FROM candidates c JOIN lyrics_search_documents d ON d.song_id=c.song_id JOIN song_masters sm ON sm.id=c.song_id ${SONG_ROW_JOINS} WHERE instr(d.body,?)>0 AND sm.title LIKE ? ORDER BY ${songOrder}, sm.id ASC LIMIT ? OFFSET ?`).bind(JSON.stringify(lyricsSearchGrams(normalized)), normalized, like, opts.songCount ?? 20, opts.songOffset ?? 0).all<SongRow>();
+        return { artists: [], albums: [], songs: result.results };
+      }
       const [artists, albums, songs] = await Promise.all([
         db.prepare(
           "SELECT * FROM artists WHERE name LIKE ? ORDER BY sort_name ASC LIMIT ? OFFSET ?"
