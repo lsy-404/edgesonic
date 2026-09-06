@@ -28,7 +28,8 @@ const icons = {
 const icon = computed(() => icons[props.name as keyof typeof icons] ?? Circle);
 const numericSize = computed(() => typeof props.size === "number" ? props.size : undefined);
 const iconStyle = computed(() => {
-  const size = props.size === undefined ? "1em" : typeof props.size === "number" ? `${props.size}px` : props.size;
+  const rawSize = props.size === undefined ? "1em" : typeof props.size === "number" ? `${props.size}px` : props.size;
+  const size = /^\d+(?:\.\d+)?$/.test(rawSize) ? `${rawSize}px` : rawSize;
   return { width: size, height: size };
 });
 </script>

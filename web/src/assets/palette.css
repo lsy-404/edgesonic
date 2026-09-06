@@ -8,47 +8,45 @@
      not the OS scheme; light theme blocks below flip this to `light`. */
   color-scheme: dark;
 
-  /* bg —— studio zinc 黑阶 */
-  --color-bg-primary: #0a0a0b;
-  --color-bg-secondary: #111113;
-  --color-bg-tertiary: #18181b;
-  --color-bg-elevated: #1f1f23;
-  --color-bg-overlay: rgba(0, 0, 0, 0.7);
+  /* WinUI 3 dark Mica surfaces. */
+  --color-bg-primary: #1c1c1c;
+  --color-bg-secondary: #242424;
+  --color-bg-tertiary: #2d2d2d;
+  --color-bg-elevated: #383838;
+  --color-bg-overlay: rgba(0, 0, 0, 0.52);
 
   /* text */
-  --color-text-primary: #e4e4e7;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #71717a;
-  --color-text-inverse: #0a0a0b;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.78);
+  --color-text-muted: rgba(255, 255, 255, 0.56);
+  --color-text-inverse: #003544;
 
-  /* accent —— shop 的白金主强调 */
-  --color-accent-primary: #ffffff;
-  --color-accent-dim: rgba(255, 255, 255, 0.15);
+  --color-accent-primary: #4cc2ff;
+  --color-accent-dim: rgba(96, 205, 255, 0.13);
 
   /* status */
-  --color-status-success: #3fb950;
-  --color-status-warning: #f0883e;
-  --color-status-error: #f85149;
-  --color-status-info: #58a6ff;
+  --color-status-success: #86efac;
+  --color-status-warning: #fbbf24;
+  --color-status-error: #f87171;
+  --color-status-info: #7dd3fc;
 
   /* border */
-  --color-border-subtle: rgba(255, 255, 255, 0.1);
-  --color-border-default: rgba(255, 255, 255, 0.2);
-  --color-border-strong: rgba(255, 255, 255, 0.4);
+  --color-border-subtle: rgba(255, 255, 255, 0.0837);
+  --color-border-default: rgba(255, 255, 255, 0.14);
+  --color-border-strong: rgba(255, 255, 255, 0.22);
 
-  /* typography —— system font stack (studio-style interop) */
-  --font-display: 'Bebas Neue', sans-serif;
-  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  --font-display: 'Segoe UI Variable', 'Segoe UI', system-ui, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-body: var(--font-display);
+  --font-mono: var(--font-display);
   --fs-xs: 0.72rem; --fs-sm: 0.78rem; --fs-base: 0.82rem; --fs-md: 0.88rem;
   --fs-lg: 0.94rem; --fs-h3: 1.05rem; --fs-h2: 1.25rem;
-  --fs-h1: clamp(2rem, 6vw, 4rem);
+  --fs-h1: 28px;
 
   /* layout / effects */
   --nav-h: 60px;
   --player-h: 72px;
   --sidebar-w: 240px;
-  --glow: 0 0 20px rgba(255, 255, 255, 0.12);
+  --glow: 0 0 20px rgba(96, 205, 255, 0.18);
 }
 
 /* --- Theme variants ---
@@ -117,19 +115,25 @@
 
 :root[data-theme="white"] {
   color-scheme: light;
-  --color-bg-primary: #f7f8fc;
+  --color-bg-primary: #f3f3f3;
   --color-bg-secondary: #ffffff;
-  --color-bg-tertiary: #e9edf6;
+  --color-bg-tertiary: #fbfbfb;
   --color-bg-elevated: #ffffff;
-  --color-text-primary: #182033;
-  --color-text-secondary: #536178;
-  --color-text-muted: #8190a6;
+  --color-bg-overlay: rgba(0, 0, 0, 0.3);
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: rgba(0, 0, 0, 0.72);
+  --color-text-muted: rgba(0, 0, 0, 0.52);
   --color-text-inverse: #ffffff;
-  --color-accent-primary: #374d7a;
-  --color-accent-dim: rgba(55, 77, 122, 0.16);
-  --color-border-subtle: rgba(55, 77, 122, 0.14);
-  --color-border-default: rgba(55, 77, 122, 0.26);
-  --color-border-strong: rgba(55, 77, 122, 0.42);
+  --color-accent-primary: #0067c0;
+  --color-accent-dim: rgba(0, 103, 192, 0.1);
+  --color-border-subtle: rgba(0, 0, 0, 0.0578);
+  --color-border-default: rgba(0, 0, 0, 0.14);
+  --color-border-strong: rgba(0, 0, 0, 0.24);
+  --color-status-success: #067647;
+  --color-status-warning: #a15c07;
+  --color-status-error: #b42318;
+  --color-status-info: #0369a1;
+  --glow: 0 0 20px rgba(0, 103, 192, 0.16);
 }
 
 /* --deco-a/b/c: each element's three signature colours.
