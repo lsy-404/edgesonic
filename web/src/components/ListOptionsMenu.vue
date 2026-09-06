@@ -60,6 +60,10 @@ function unbindViewportListeners() {
   window.removeEventListener("scroll", closeForViewportChange, true);
 }
 
+function toggleHideInstrumental() {
+  emit("update:hideInstrumental", !props.hideInstrumental);
+}
+
 watch(() => props.open, (open) => {
   if (open) {
     bindViewportListeners();
@@ -80,13 +84,13 @@ onBeforeUnmount(unbindViewportListeners);
     </button>
     <Teleport to="body">
       <div v-if="open" ref="menuEl" class="list-options-menu" :class="`open-${menuPlacement.placement}`" :style="menuStyle" @click.stop>
-        <label class="list-options-item">
+        <div class="list-options-item" @click="toggleHideInstrumental">
           <span class="list-options-text">
             {{ t("library.hideInstrumental") }}
             <span class="list-options-hint">{{ t("library.hideInstrumentalHint") }}</span>
           </span>
-          <WinToggleSwitch :model-value="hideInstrumental" @update:model-value="emit('update:hideInstrumental', $event)" />
-        </label>
+          <WinToggleSwitch :aria-label="t('library.hideInstrumental')" :model-value="hideInstrumental" @click.stop @update:model-value="emit('update:hideInstrumental', $event)" />
+        </div>
       </div>
     </Teleport>
   </div>
