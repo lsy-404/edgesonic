@@ -1499,10 +1499,7 @@ onBeforeUnmount(() => {
         <span class="upload-options-hint">{{ t("files.syncUploadHint") }}</span>
       </div>
       <div class="upload-options-row">
-        <label class="toggle" :title="t('files.parseMetadataHint')">
-          <input type="checkbox" v-model="uploadParseMetadata" />
-          <span class="toggle-slider"></span>
-        </label>
+        <WinToggleSwitch v-model="uploadParseMetadata" :title="t('files.parseMetadataHint')" />
         <span class="upload-options-label">{{ t("files.parseMetadata") }}</span>
         <span class="upload-options-hint">{{ t("files.parseMetadataHint") }}</span>
       </div>
@@ -1522,9 +1519,9 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="sync-options-row">
-        <label class="toggle"><input type="checkbox" v-model="includeLyrics" /><span class="toggle-slider"></span></label>
+        <WinToggleSwitch v-model="includeLyrics" />
         <span class="upload-options-label">{{ t("files.includeLyrics") }}</span>
-        <label class="toggle"><input type="checkbox" v-model="includeVariants" /><span class="toggle-slider"></span></label>
+        <WinToggleSwitch v-model="includeVariants" />
         <span class="upload-options-label">{{ t("files.includeVariants") }}</span>
       </div>
       <div class="local-convert-guide">
@@ -1961,10 +1958,7 @@ onBeforeUnmount(() => {
         </div>
 
         <label class="dry-run-row">
-          <label class="toggle">
-            <input type="checkbox" v-model="tidyDryRun" />
-            <span class="toggle-slider"></span>
-          </label>
+          <WinToggleSwitch v-model="tidyDryRun" />
           <span>{{ t("files.tidyDryRun") }}</span>
         </label>
 

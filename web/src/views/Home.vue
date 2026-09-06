@@ -175,16 +175,15 @@ onBeforeUnmount(() => {
         <h1 id="home-title">{{ msg("title") }}</h1>
         <p>{{ msg("subtitle") }}</p>
       </div>
-      <button
+      <WinButton
         class="quiet"
-        type="button"
-        :disabled="anyLoading"
+        :IsEnabled="!anyLoading"
         :aria-label="msg('refresh')"
-        @click="loadAll"
+        @Click="loadAll"
       >
         <WinProgressRing v-if="anyLoading" :Width="16" :Height="16" :MinWidth="16" :MinHeight="16" />
         <Icon v-else name="refresh" /><span>{{ msg("refresh") }}</span>
-      </button>
+      </WinButton>
     </header>
     <p v-if="playError" class="play-error" role="status">
       {{ msg("albumLoadFailed") }}
@@ -196,13 +195,13 @@ onBeforeUnmount(() => {
         </p>
         <strong>{{ currentTrack.title }}</strong
         ><span>{{ currentTrack.artist }} · {{ currentTrack.album }}</span
-        ><button
+        ><WinButton
           class="text-action"
-          type="button"
-          @click="detail.openNowPlaying()"
+          Style="SubtleButtonStyle"
+          @Click="detail.openNowPlaying()"
         >
           <Icon name="headphones" />{{ msg("openNowPlaying") }}
-        </button></template
+        </WinButton></template
       >
       <template v-else-if="featured"
         ><p class="eyebrow"><Icon name="album" />{{ msg("featured") }}</p>
@@ -219,13 +218,13 @@ onBeforeUnmount(() => {
       >
     </section>
     <nav class="shortcuts" :aria-label="msg('shortcuts')">
-      <button type="button" @click="go('/library')">
-        <Icon name="library" />{{ msg("library") }}</button
-      ><button type="button" @click="go('/starred')">
-        <Icon name="heart" />{{ msg("liked") }}</button
-      ><button type="button" @click="go('/playlists')">
+      <WinButton @Click="go('/library')">
+        <Icon name="library" />{{ msg("library") }}</WinButton
+      ><WinButton @Click="go('/starred')">
+        <Icon name="heart" />{{ msg("liked") }}</WinButton
+      ><WinButton @Click="go('/playlists')">
         <Icon name="playlist" />{{ msg("playlists") }}
-      </button>
+      </WinButton>
     </nav>
     <section v-if="empty" class="empty-library">
       <span class="empty-icon"><Icon name="album" size="32" /></span>
@@ -273,9 +272,9 @@ onBeforeUnmount(() => {
         <template v-else
           ><div v-if="failed.has(section)" class="section-error" role="status">
             <span>{{ msg("sectionLoadFailed") }}</span
-            ><button type="button" @click="retry(section)">
+            ><WinButton @Click="retry(section)">
               {{ msg("retry") }}
-            </button>
+            </WinButton>
           </div>
           <p
             v-if="!albums[section].length && !failed.has(section)"

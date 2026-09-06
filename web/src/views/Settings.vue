@@ -2115,15 +2115,7 @@ onMounted(() => {
           <div class="scrape-source-list">
             <div v-for="(id, idx) in scrapeOrder" :key="id" class="scrape-source-row">
               <label class="scrape-source-toggle">
-                <label class="toggle">
-                  <input
-                    type="checkbox"
-                    :checked="scrapeEnabledSet.has(id)"
-                    :disabled="!canManageSettings"
-                    @change="toggleScrapeSource(id, ($event.target as HTMLInputElement).checked)"
-                  />
-                  <span class="toggle-slider"></span>
-                </label>
+                <WinToggleSwitch :model-value="scrapeEnabledSet.has(id)" :disabled="!canManageSettings" @update:model-value="toggleScrapeSource(id, $event)" />
                 <span class="scrape-source-label">
                   {{ SCRAPE_ALL_SOURCES.find((s) => s.id === id)?.label || id }}
                 </span>
@@ -2182,14 +2174,7 @@ onMounted(() => {
             <!-- ETag check -->
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.scan.etagCheck") }}</span>
-              <label class="toggle">
-                <input
-                  type="checkbox"
-                  v-model="scanEtagCheck"
-                  :disabled="!canManageSettings"
-                />
-                <span class="toggle-slider"></span>
-              </label>
+              <WinToggleSwitch v-model="scanEtagCheck" :disabled="!canManageSettings" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.scan.etagCheckDesc") }}</p>
 
@@ -2238,14 +2223,7 @@ onMounted(() => {
           <div class="transcode-grid">
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.crossOriginIsolation.toggleLabel") }}</span>
-              <label class="toggle">
-                <input
-                  type="checkbox"
-                  v-model="cioEnabled"
-                  :disabled="!canManageSettings"
-                />
-                <span class="toggle-slider"></span>
-              </label>
+              <WinToggleSwitch v-model="cioEnabled" :disabled="!canManageSettings" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.crossOriginIsolation.toggleDesc") }}</p>
 
@@ -2347,10 +2325,7 @@ onMounted(() => {
               {{ t("settings.common.cf.majorWarning") }}
             </p>
             <label v-if="selectedCfUpdate?.isMajor" class="dry-run-row">
-              <label class="toggle">
-                <input type="checkbox" v-model="cfMajorConfirmed" />
-                <span class="toggle-slider"></span>
-              </label>
+              <WinToggleSwitch v-model="cfMajorConfirmed" />
               <span>{{ t("settings.common.cf.confirmMajor") }}</span>
             </label>
             <div class="tc-actions">
@@ -2476,10 +2451,7 @@ onMounted(() => {
           <div class="transcode-grid">
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.presign.r2Toggle") }}</span>
-              <label class="toggle">
-                <input type="checkbox" v-model="r2PresignEnabled" :disabled="!canManageSettings" />
-                <span class="toggle-slider"></span>
-              </label>
+              <WinToggleSwitch v-model="r2PresignEnabled" :disabled="!canManageSettings" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.presign.r2ToggleDesc") }}</p>
             <div class="tc-actions">
@@ -2494,10 +2466,7 @@ onMounted(() => {
 
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.presign.webdavToggle") }}</span>
-              <label class="toggle">
-                <input type="checkbox" v-model="webdavPresignEnabled" :disabled="!canManageSettings" />
-                <span class="toggle-slider"></span>
-              </label>
+              <WinToggleSwitch v-model="webdavPresignEnabled" :disabled="!canManageSettings" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.presign.webdavToggleDesc") }}</p>
             <div class="tc-actions">
@@ -2573,15 +2542,7 @@ onMounted(() => {
           <div class="scrape-source-list">
             <div v-for="(id, idx) in artistInfoOrder" :key="id" class="scrape-source-row">
               <label class="scrape-source-toggle">
-                <label class="toggle">
-                  <input
-                    type="checkbox"
-                    :checked="artistInfoEnabledSet.has(id)"
-                    :disabled="!canManageSettings"
-                    @change="toggleArtistInfoSource(id, ($event.target as HTMLInputElement).checked)"
-                  />
-                  <span class="toggle-slider"></span>
-                </label>
+                <WinToggleSwitch :model-value="artistInfoEnabledSet.has(id)" :disabled="!canManageSettings" @update:model-value="toggleArtistInfoSource(id, $event)" />
                 <span class="scrape-source-label">
                   {{ ARTIST_INFO_ALL_SOURCES.find((s) => s.id === id)?.label || id }}
                 </span>
@@ -3041,15 +3002,12 @@ onMounted(() => {
                 <span class="feature-name">{{ featureName(f.key) }}</span>
                 <span class="feature-desc">{{ featureDesc(f) }}</span>
               </div>
-              <label class="toggle" :title="canManageSettings ? '' : t('settings.common.levelRequired')">
-                <input
-                  type="checkbox"
-                  :checked="f.value === 1"
-                  :disabled="!canManageSettings"
-                  @change="toggleFeature(f, ($event.target as HTMLInputElement).checked)"
-                />
-                <span class="toggle-slider"></span>
-              </label>
+              <WinToggleSwitch
+                :model-value="f.value === 1"
+                :disabled="!canManageSettings"
+                :title="canManageSettings ? '' : t('settings.common.levelRequired')"
+                @update:model-value="toggleFeature(f, $event)"
+              />
             </div>
           </div>
         </div>
@@ -3063,15 +3021,12 @@ onMounted(() => {
                 <span class="feature-name">{{ t("settings.activation.enableTitle") }}</span>
                 <span class="feature-desc">{{ t("settings.activation.enableDesc") }}</span>
               </div>
-              <label class="toggle" :title="activationFeature ? '' : t('settings.activation.unavailable')">
-                <input
-                  type="checkbox"
-                  :checked="activationFeature?.value === 1"
-                  :disabled="!canManageSettings || !activationFeature"
-                  @change="activationFeature && toggleFeature(activationFeature, ($event.target as HTMLInputElement).checked)"
-                />
-                <span class="toggle-slider"></span>
-              </label>
+              <WinToggleSwitch
+                :model-value="activationFeature?.value === 1"
+                :disabled="!canManageSettings || !activationFeature"
+                :title="activationFeature ? '' : t('settings.activation.unavailable')"
+                @update:model-value="activationFeature && toggleFeature(activationFeature, $event)"
+              />
             </div>
             <div class="feature-row">
               <div class="feature-info">

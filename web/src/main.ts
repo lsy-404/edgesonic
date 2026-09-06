@@ -31,6 +31,7 @@ import { useUpdateBanner } from "./stores/updateBanner";
 import { useDemoMode } from "./stores/demoMode";
 import { initNetDiag } from "./lib/netDiag";
 import { fetchTextWithTimeout } from "./lib/requestLifecycle";
+import { WinToggleSwitch } from "./vendor/winui";
 
 initNetDiag();
 const routes = [
@@ -127,6 +128,7 @@ app.use(router);
 const pinia = createPinia();
 app.use(pinia);
 app.use(i18n);
+app.component("WinToggleSwitch", WinToggleSwitch);
 
 // The loaded bundle, not the first delayed API probe, defines the version
 // baseline. This preserves newer-release detection across a just-started deploy.
