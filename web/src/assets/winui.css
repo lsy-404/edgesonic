@@ -105,18 +105,23 @@
 
 body { background: var(--app-bg); color: var(--text-primary); font-family: var(--ContentControlThemeFontFamily); }
 
+.win-switch-root { min-width: 0; }
+
 button, .btn-primary, .btn-secondary, .btn-danger {
   min-height: 32px; border-radius: var(--ControlCornerRadius); font-family: var(--ContentControlThemeFontFamily);
   font-weight: 400; letter-spacing: 0; text-transform: none;
-  transition: background var(--fast-duration) var(--fast-out-slow-in), border-color var(--fast-duration) var(--fast-out-slow-in), color var(--fast-duration) var(--fast-out-slow-in);
+  transition: background var(--fast-duration) var(--fast-out-slow-in), border-color var(--fast-duration) var(--fast-out-slow-in), color var(--fast-duration) var(--fast-out-slow-in), box-shadow var(--fast-duration) var(--fast-out-slow-in), transform var(--fast-duration) var(--fast-out-slow-in);
 }
-.btn-primary { background: var(--accent-base); border-color: var(--accent-base); color: var(--accent-text); }
-.btn-primary:hover:not(:disabled) { background: var(--accent-hover); box-shadow: none; }
-.btn-primary:active:not(:disabled) { background: var(--accent-pressed); }
-.btn-secondary { background: var(--ctrl-fill-default); border-color: var(--ctrl-border); color: var(--text-primary); }
-.btn-secondary:hover:not(:disabled), .btn-danger:hover:not(:disabled) { background: var(--ctrl-fill-secondary); border-color: var(--ctrl-border-accent); }
-.btn-danger { border-color: color-mix(in srgb, var(--SystemFillColorCriticalBrush) 52%, transparent); }
-.btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled { opacity: 1; color: var(--text-disabled); background: var(--ctrl-fill-disabled); border-color: var(--ctrl-border); }
+button.btn-primary, button.btn-secondary, button.btn-danger { border-style: solid; border-width: 1px; box-shadow: inset 0 1px rgba(255, 255, 255, 0.14); }
+button.btn-primary { background: var(--accent-base); border-color: var(--accent-base); color: var(--accent-text); }
+button.btn-primary:hover:not(:disabled) { background: var(--accent-hover); box-shadow: inset 0 1px rgba(255, 255, 255, 0.22); }
+button.btn-primary:active:not(:disabled) { background: var(--accent-pressed); box-shadow: inset 0 1px rgba(0, 0, 0, 0.18); transform: translateY(1px); }
+button.btn-secondary { background: var(--ctrl-fill-default); border-color: var(--ctrl-border); color: var(--text-primary); }
+button.btn-secondary:hover:not(:disabled), button.btn-danger:hover:not(:disabled) { background: var(--ctrl-fill-secondary); border-color: var(--ctrl-border-accent); }
+button.btn-secondary:active:not(:disabled), button.btn-danger:active:not(:disabled) { background: var(--ctrl-fill-tertiary); box-shadow: inset 0 1px rgba(0, 0, 0, 0.18); transform: translateY(1px); }
+button.btn-danger { border-color: color-mix(in srgb, var(--SystemFillColorCriticalBrush) 52%, transparent); }
+button.btn-primary:focus-visible, button.btn-secondary:focus-visible, button.btn-danger:focus-visible { outline: 2px solid var(--accent-base); outline-offset: 2px; }
+button.btn-primary:disabled, button.btn-secondary:disabled, button.btn-danger:disabled { opacity: 1; color: var(--text-disabled); background: var(--ctrl-fill-disabled); border-color: var(--ctrl-border); box-shadow: none; cursor: default; }
 
 .form-input, .form-select, .form-textarea {
   min-height: 32px; border-radius: var(--ControlCornerRadius); border-color: var(--ctrl-border); background: var(--ctrl-fill-default);

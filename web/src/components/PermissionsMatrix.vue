@@ -132,15 +132,7 @@ onMounted(load);
                 {{ permLabel(key) }}
                 <span v-if="isLocked(level, key)" class="perm-lock" :title="t('settings.permissions.lockedHint')"><Icon name="lock" /></span>
               </span>
-              <label class="toggle">
-                <input
-                  type="checkbox"
-                  :checked="permissions.find(p => p.level === level && p.name === key)?.enabled"
-                  :disabled="permissions.find(p => p.level === level && p.name === key)?.locked"
-                  @change="toggle(level, key, ($event.target as HTMLInputElement).checked)"
-                />
-                <span class="toggle-slider"></span>
-              </label>
+              <WinToggleSwitch :model-value="permissions.find(p => p.level === level && p.name === key)?.enabled" :disabled="permissions.find(p => p.level === level && p.name === key)?.locked" @update:model-value="toggle(level, key, $event)" />
             </div>
           </div>
           <div class="corner corner-tr"></div>
@@ -175,6 +167,5 @@ onMounted(load);
 .perm-lock { display: inline-flex; color: var(--color-text-muted); }
 .perm-lock svg { width: 12px; height: 12px; }
 .perm-row-locked .perm-name { color: var(--color-text-muted, var(--color-text-secondary)); opacity: 0.7; }
-.perm-row-locked .toggle { opacity: 0.5; cursor: not-allowed; }
-.perm-row-locked .toggle input:disabled + .toggle-slider { cursor: not-allowed; }
+.perm-row-locked .win-switch-root { opacity: 0.5; cursor: not-allowed; }
 </style>

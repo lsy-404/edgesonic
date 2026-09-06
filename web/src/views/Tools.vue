@@ -1615,17 +1615,11 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
                    available to any user; they land on the target chosen below. -->
               <label class="tc-row">
                 <span class="tc-key">{{ t("settings.common.clone.starredToggle") }}</span>
-                <label class="toggle">
-                  <input type="checkbox" v-model="cloneStarredEnabled" :disabled="cloneRunning" />
-                  <span class="toggle-slider"></span>
-                </label>
+                <WinToggleSwitch v-model="cloneStarredEnabled" :disabled="cloneRunning" />
               </label>
               <label class="tc-row">
                 <span class="tc-key">{{ t("settings.common.clone.playlistsToggle") }}</span>
-                <label class="toggle">
-                  <input type="checkbox" v-model="clonePlaylistsEnabled" :disabled="cloneRunning" />
-                  <span class="toggle-slider"></span>
-                </label>
+                <WinToggleSwitch v-model="clonePlaylistsEnabled" :disabled="cloneRunning" />
               </label>
 
               <label class="tc-row">
@@ -1659,19 +1653,13 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
               <template v-if="isAdmin">
                 <label class="tc-row">
                   <span class="tc-key">{{ t("settings.common.clone.metadataToggle") }}</span>
-                  <label class="toggle">
-                    <input type="checkbox" v-model="cloneMetadataEnabled" :disabled="cloneRunning" />
-                    <span class="toggle-slider"></span>
-                  </label>
+                  <WinToggleSwitch v-model="cloneMetadataEnabled" :disabled="cloneRunning" />
                 </label>
                 <p class="feature-desc tc-desc">{{ t("settings.common.clone.metadataToggleDesc") }}</p>
 
                 <label class="tc-row">
                   <span class="tc-key">{{ t("settings.common.clone.audioToggle") }}</span>
-                  <label class="toggle">
-                    <input type="checkbox" v-model="cloneAudioEnabled" :disabled="cloneRunning" />
-                    <span class="toggle-slider"></span>
-                  </label>
+                  <WinToggleSwitch v-model="cloneAudioEnabled" :disabled="cloneRunning" />
                 </label>
                 <p class="feature-desc tc-desc">{{ t("settings.common.clone.audioToggleDesc") }}</p>
 
@@ -1693,17 +1681,11 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
                 <!-- filters only appear once metadata or audio is enabled. -->
                 <div v-if="cloneMetadataEnabled || cloneAudioEnabled" class="clone-options">
                   <label class="tc-row">
-                    <label class="toggle">
-                      <input type="checkbox" v-model="clonePlaylistOnly" />
-                      <span class="toggle-slider"></span>
-                    </label>
+                    <WinToggleSwitch v-model="clonePlaylistOnly" />
                     <span class="tc-key">{{ t("settings.common.clone.filterPlaylistOnly") }}</span>
                   </label>
                   <label class="tc-row">
-                    <label class="toggle">
-                      <input type="checkbox" v-model="cloneStarredOnly" />
-                      <span class="toggle-slider"></span>
-                    </label>
+                    <WinToggleSwitch v-model="cloneStarredOnly" />
                     <span class="tc-key">{{ t("settings.common.clone.filterStarredOnly") }}</span>
                   </label>
                   <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.clone.filterDesc") }}</p>
@@ -1786,10 +1768,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
           <div class="sub-block">
             <div class="sub-header">
               <span class="mono-label">{{ t("settings.common.sync.title") }}</span>
-              <label class="toggle" :title="syncEnabled ? t('settings.common.sync.on') : t('settings.common.sync.off')">
-                <input type="checkbox" :checked="syncEnabled" :disabled="syncBusy" @change="saveSyncConfig(($event.target as HTMLInputElement).checked)" />
-                <span class="toggle-slider"></span>
-              </label>
+              <WinToggleSwitch :model-value="syncEnabled" :disabled="syncBusy" :title="syncEnabled ? t('settings.common.sync.on') : t('settings.common.sync.off')" @update:model-value="saveSyncConfig($event)" />
             </div>
             <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.sync.desc") }}</p>
             <label class="tc-row">

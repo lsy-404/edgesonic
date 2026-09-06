@@ -528,10 +528,7 @@ onBeforeUnmount(() => {
             <input v-model="createForm.comment" class="form-input" />
           </div>
           <label class="checkbox-row">
-            <label class="toggle">
-              <input v-model="createForm.public" type="checkbox" />
-              <span class="toggle-slider"></span>
-            </label>
+            <WinToggleSwitch v-model="createForm.public" />
             <span>{{ t("playlists.publicFlag") }}</span>
           </label>
         </div>
@@ -562,10 +559,7 @@ onBeforeUnmount(() => {
             <input v-model="editForm.comment" class="form-input" />
           </div>
           <label class="checkbox-row">
-            <label class="toggle">
-              <input v-model="editForm.public" type="checkbox" />
-              <span class="toggle-slider"></span>
-            </label>
+            <WinToggleSwitch v-model="editForm.public" />
             <span>{{ t("playlists.publicFlag") }}</span>
           </label>
         </div>

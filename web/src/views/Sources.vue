@@ -837,10 +837,7 @@ onUnmounted(() => {
           </div>
           <div class="form-group enabled-row span-all">
             <label class="form-label enabled-label">{{ t("sources.enabled") }}</label>
-            <label class="toggle">
-              <input type="checkbox" v-model="editForm.enabled" />
-              <span class="toggle-slider"></span>
-            </label>
+            <WinToggleSwitch v-model="editForm.enabled" />
           </div>
         </div>
         <div class="modal-actions">

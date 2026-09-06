@@ -85,14 +85,7 @@ onBeforeUnmount(unbindViewportListeners);
             {{ t("library.hideInstrumental") }}
             <span class="list-options-hint">{{ t("library.hideInstrumentalHint") }}</span>
           </span>
-          <span class="toggle">
-            <input
-              type="checkbox"
-              :checked="hideInstrumental"
-              @change="emit('update:hideInstrumental', ($event.target as HTMLInputElement).checked)"
-            />
-            <span class="toggle-slider"></span>
-          </span>
+          <WinToggleSwitch :model-value="hideInstrumental" @update:model-value="emit('update:hideInstrumental', $event)" />
         </label>
       </div>
     </Teleport>
