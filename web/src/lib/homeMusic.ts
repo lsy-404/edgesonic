@@ -48,6 +48,9 @@ export function tracksFromXml(rows: Record<string, string>[], album: HomeAlbum):
       albumId: row.albumId || album.id,
       coverArt: row.coverArt || album.coverArt,
       duration: Number.parseInt(row.duration || "0", 10) || 0,
+      starred: !!row.starred,
+      starredAt: row.starred || undefined,
+      createdAt: row.created || undefined,
     }))
     .filter((track) => track.id && track.title);
 }
