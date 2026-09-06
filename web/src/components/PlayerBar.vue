@@ -527,7 +527,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 
 @media (max-width: 960px) {
   :global(:root:has(.player-bar:not(.details-open))) { --player-h: 72px; }
-  :global(:root:has(.player-bar.details-open)) { --player-h: 150px; }
+  :global(:root:has(.player-bar.details-open)) { --player-h: 120px; }
   .player-bar { gap: 0.5rem; padding: 0 0.5rem; }
   .pb-track { width: auto; flex: 1; }
   .pb-right { width: auto; gap: 0.3rem; }
@@ -539,9 +539,10 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 
   .player-bar.details-open .pb-track { display: none; }
   .player-bar:not(.details-open) .pb-track {
-    width: 100%;
+    width: calc(100% - 13.75rem);
+    flex: 0 1 calc(100% - 13.75rem);
     padding-left: 0.35rem;
-    padding-right: 9.5rem;
+    padding-right: 0;
   }
   .player-bar:not(.details-open) .pb-cover {
     position: relative;
@@ -584,7 +585,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   }
   .player-bar.details-open .pb-right {
     display: grid; grid-template-columns: 1fr auto auto;
-    grid-template-rows: 28px 32px; column-gap: 0.3rem; row-gap: 0.35rem;
+    grid-template-rows: 36px 32px; column-gap: 0.3rem; row-gap: 0.5rem;
     top: 0.5rem; left: 0.5rem; right: 0.5rem; width: auto;
     transform: none; align-items: center; pointer-events: none;
   }
