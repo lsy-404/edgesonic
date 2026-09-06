@@ -1,0 +1,78 @@
+@import "../vendor/winui/styles/theme.css";
+
+/* WinUI 3 material bridge. Product themes continue to own the accent and
+   surface palette through their existing --color-* variables. */
+:root {
+  color-scheme: light dark;
+  --ContentControlThemeFontFamily: "Segoe UI Variable", "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-body: var(--ContentControlThemeFontFamily);
+  --accent-base: var(--color-accent-primary);
+  --accent-hover: color-mix(in srgb, var(--color-accent-primary) 88%, white);
+  --accent-pressed: color-mix(in srgb, var(--color-accent-primary) 82%, black);
+  --accent-aa-fill: var(--color-accent-primary);
+  --accent-text: var(--color-text-inverse);
+  --accent-text-secondary: color-mix(in srgb, var(--color-text-inverse) 76%, transparent);
+  --app-bg: var(--color-bg-primary);
+  --layer-default: color-mix(in srgb, var(--color-bg-secondary) 88%, transparent);
+  --flyout-bg: color-mix(in srgb, var(--color-bg-elevated) 94%, transparent);
+  --card-bg: var(--color-bg-secondary);
+  --card-bg-secondary: var(--color-bg-tertiary);
+  --card-stroke: var(--color-border-subtle);
+  --stroke-divider: var(--color-border-subtle);
+  --ctrl-fill-default: var(--color-bg-elevated);
+  --ctrl-fill-secondary: var(--color-bg-tertiary);
+  --ctrl-fill-tertiary: var(--color-bg-primary);
+  --ctrl-fill-disabled: color-mix(in srgb, var(--color-bg-elevated) 60%, transparent);
+  --ctrl-fill-input-active: var(--color-bg-primary);
+  --ctrl-border-rest: var(--color-border-subtle);
+  --ctrl-border: var(--color-border-subtle);
+  --ctrl-border-accent: var(--color-border-strong);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-muted);
+  --text-disabled: var(--color-text-muted);
+  --ControlCornerRadius: 4px;
+  --ContentDialogCornerRadius: 8px;
+}
+
+body { background: var(--app-bg); color: var(--text-primary); font-family: var(--ContentControlThemeFontFamily); }
+
+button, .btn-primary, .btn-secondary, .btn-danger {
+  min-height: 32px; border-radius: var(--ControlCornerRadius); font-family: var(--ContentControlThemeFontFamily);
+  font-weight: 400; letter-spacing: 0; text-transform: none;
+  transition: background var(--fast-duration) var(--fast-out-slow-in), border-color var(--fast-duration) var(--fast-out-slow-in), color var(--fast-duration) var(--fast-out-slow-in);
+}
+.btn-primary { background: var(--accent-base); border-color: var(--accent-base); color: var(--accent-text); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); box-shadow: none; }
+.btn-primary:active:not(:disabled) { background: var(--accent-pressed); }
+.btn-secondary { background: var(--ctrl-fill-default); border-color: var(--ctrl-border); color: var(--text-primary); }
+.btn-secondary:hover:not(:disabled), .btn-danger:hover:not(:disabled) { background: var(--ctrl-fill-secondary); border-color: var(--ctrl-border-accent); }
+.btn-danger { border-color: color-mix(in srgb, var(--SystemFillColorCriticalBrush) 52%, transparent); }
+.btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled { opacity: 1; color: var(--text-disabled); background: var(--ctrl-fill-disabled); border-color: var(--ctrl-border); }
+
+.form-input, .form-select, .form-textarea {
+  min-height: 32px; border-radius: var(--ControlCornerRadius); border-color: var(--ctrl-border); background: var(--ctrl-fill-default);
+  color: var(--text-primary); font-family: var(--ContentControlThemeFontFamily);
+  transition: border-color var(--fast-duration) var(--fast-out-slow-in), background var(--fast-duration) var(--fast-out-slow-in);
+}
+.form-input:hover, .form-select:hover, .form-textarea:hover { background: var(--ctrl-fill-secondary); }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent-base); box-shadow: 0 0 0 1px var(--accent-base); }
+
+.card, .table-wrap, .settings-section, .browser-card, .sub-section { border-radius: var(--ContentDialogCornerRadius); border-color: var(--card-stroke); background: var(--card-bg); }
+.card.hoverable:hover { background: var(--card-bg-secondary); border-color: var(--ctrl-border-accent); box-shadow: var(--ElevationControlFlyoutShadow, 0 8px 24px rgba(0, 0, 0, .18)); transform: none; }
+
+.seg { border-radius: var(--ControlCornerRadius); border-color: var(--ctrl-border); overflow: hidden; }
+.seg-btn { min-height: 30px; font-family: var(--ContentControlThemeFontFamily); letter-spacing: 0; text-transform: none; }
+.seg-btn:hover:not(:disabled) { background: var(--ctrl-fill-secondary); }
+.seg-btn.active { background: var(--accent-base); color: var(--accent-text); }
+
+.modal { border-radius: var(--ContentDialogCornerRadius); background: var(--flyout-bg); border-color: var(--card-stroke); box-shadow: var(--ElevationControlFlyoutShadow, 0 8px 24px rgba(0, 0, 0, .18)); }
+.modal-title, .page-title, .card-title, .form-label, .mono-label { font-family: var(--ContentControlThemeFontFamily); letter-spacing: 0; text-transform: none; }
+.menu, .context-menu, .options-menu { border-radius: var(--ContentDialogCornerRadius); background: var(--flyout-bg); border-color: var(--card-stroke); box-shadow: var(--ElevationControlFlyoutShadow, 0 8px 24px rgba(0, 0, 0, .18)); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme$="ocean"]):not([data-theme$="scarlet"]):not([data-theme$="sky"]):not([data-theme$="earth"]) {
+    --accent-hover: color-mix(in srgb, var(--color-accent-primary) 74%, white);
+    --accent-pressed: color-mix(in srgb, var(--color-accent-primary) 84%, black);
+  }
+}
