@@ -10,6 +10,8 @@ import { activeTheme } from "../theme";
 import { getTheme } from "../themes/registry";
 import { isOutsideElements } from "../lib/outsideClick";
 import Icon from "./Icon.vue";
+import PlayerQualityControl from "./PlayerQualityControl.vue";
+import PlayerVolumeControl from "./PlayerVolumeControl.vue";
 
 const { t } = useI18n();
 const player = usePlayerStore();
@@ -26,26 +28,6 @@ function goNowPlaying() {
 }
 
 const playModeTitle = computed(() => t(`player.playMode.${player.playMode}`));
-// Mirrors the QUALITY_OPTIONS keys in stores/player.ts — kept as a plain id
-// list here (rather than importing the map) since the UI only needs the ids
-// to build <option> elements; the format/maxBitRate mapping is the store's
-// concern.
-const QUALITY_SELECT_OPTIONS = [
-  { id: "auto" },
-  { id: "mp3-128", mime: "audio/mpeg" },
-  { id: "mp3-192", mime: "audio/mpeg" },
-  { id: "aac-128", mime: "audio/mp4; codecs=mp4a.40.2" },
-  { id: "opus-128", mime: "audio/ogg; codecs=opus" },
-  { id: "flac", mime: "audio/flac" },
-  { id: "wav", mime: "audio/wav" },
-];
-const supportedQualityOptions = computed(() => QUALITY_SELECT_OPTIONS.filter((option) => {
-  if (!option.mime || typeof Audio === "undefined") return true;
-  return new Audio().canPlayType(option.mime) !== "";
-}));
-watch(supportedQualityOptions, (options) => {
-  if (!options.some((option) => option.id === player.playbackQuality)) player.playbackQuality = "auto";
-}, { immediate: true });
 const expandTitle = computed(() => t(detailsOpen.value ? "player.collapse" : "player.expand"));
 
 const coverFailed = ref(false);
@@ -133,10 +115,6 @@ function onProgressPointerDown(e: PointerEvent) {
 }
 
 onBeforeUnmount(() => stopProgressDrag(false));
-
-function onVolume(e: Event) {
-  player.setVolume(parseFloat((e.target as HTMLInputElement).value));
-}
 
 const queueOpen = ref(false);
 const queueButton = ref<HTMLElement | null>(null);
@@ -233,26 +211,14 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
       </div>
     </div>
 
-    <!-- Volume + Queue toggle -->
+    <!-- Audio settings + queue toggle -->
     <div class="pb-right">
-      <div class="pb-quality-wrap">
-        <select
-          class="pb-quality"
-          v-model="player.playbackQuality"
-          :title="t('player.quality.title')"
-          :aria-label="t('player.quality.title')"
-        >
-          <option v-for="opt in supportedQualityOptions" :key="opt.id" :value="opt.id">{{ t(`player.quality.${opt.id}`) }}</option>
-        </select>
-        <Icon class="pb-quality-caret" name="chevronDown" :size="10" />
+      <div class="pb-audio-settings">
+        <PlayerVolumeControl />
+        <div class="pb-quality-wrap">
+          <PlayerQualityControl />
+        </div>
       </div>
-      <input
-        class="pb-volume"
-        type="range" min="0" max="1" step="0.01"
-        :value="player.volume"
-        @input="onVolume"
-        :title="`${t('player.volume')} (↑ / ↓, M)`"
-      />
       <button ref="queueButton" class="pb-queue-btn" :class="{ active: queueOpen }" @click="queueOpen = !queueOpen" :title="t('player.queueTitle', { n: player.queue.length })">
         <Icon name="queueNext" :size="16" />
         <span class="pb-queue-count" v-if="player.queue.length">{{ player.queue.length }}</span>
@@ -452,37 +418,10 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   pointer-events: none;
 }
 
-/* --- right: quality + volume + queue --- */
-.pb-right { display: flex; align-items: center; gap: 0.6rem; width: 270px; flex-shrink: 0; justify-content: flex-end; }
-.pb-quality-wrap { position: relative; flex-shrink: 0; }
-.pb-quality {
-  appearance: none;
-  width: 96px;
-  height: 28px;
-  background: none;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 4px;
-  color: var(--color-text-secondary);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  padding: 0 1.3rem 0 0.55rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.pb-quality:hover, .pb-quality:focus { color: var(--color-accent-primary); border-color: var(--color-accent-dim); }
-.pb-quality:focus { outline: none; }
-.pb-quality option { background: var(--color-bg-elevated); color: var(--color-text-primary); }
-.pb-quality-caret {
-  position: absolute;
-  right: 0.4rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-text-muted);
-  pointer-events: none;
-}
-.pb-quality:hover ~ .pb-quality-caret,
-.pb-quality:focus ~ .pb-quality-caret { color: var(--color-accent-primary); }
-.pb-volume { width: 80px; accent-color: var(--color-accent-primary); cursor: pointer; }
+/* --- right: volume above quality, queue alongside --- */
+.pb-right { display: flex; align-items: center; gap: 0.6rem; width: 300px; flex-shrink: 0; justify-content: flex-end; }
+.pb-audio-settings { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-end; gap: 0.25rem; }
+.pb-quality-wrap { display: flex; min-width: 0; }
 .pb-queue-btn {
   position: relative;
   background: none; border: 1px solid var(--color-border-subtle);
@@ -584,12 +523,12 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   transform: translateY(10px);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 960px) {
   .player-bar { gap: 0.5rem; padding: 0 0.5rem; }
   .pb-track { width: auto; flex: 1; }
   .pb-right { width: auto; gap: 0.3rem; }
-  .pb-volume { display: none; }
-  .pb-quality-wrap { display: none; }
+  .pb-audio-settings { flex: 0 0 auto; }
+  .player-bar:not(.details-open) .pb-quality-wrap { display: none; }
   .player-bar:not(.details-open) .pb-progress-row { display: none; }
   .pb-center { flex: 0 0 auto; }
   .pb-queue-panel { width: calc(100vw - 1rem); }
