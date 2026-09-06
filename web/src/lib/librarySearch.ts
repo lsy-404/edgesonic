@@ -1,5 +1,16 @@
 export type LibrarySearchSort = "newest" | "oldestAdded" | "nameAsc" | "nameDesc" | "newestAdded" | "oldestStarred";
 
+export function buildLibrarySearchRoute(
+  current: Record<string, unknown>,
+  query: string,
+  lyricsQuery: string,
+): Record<string, string | string[]> {
+  const next = Object.fromEntries(Object.entries(current).filter(([key]) => key !== "q" && key !== "lyrics")) as Record<string, string | string[]>;
+  if (query) next.q = query;
+  if (lyricsQuery) next.lyrics = lyricsQuery;
+  return next;
+}
+
 export function buildLibrarySearchParams(
   query: string,
   lyricsQuery: string,

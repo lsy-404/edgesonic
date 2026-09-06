@@ -16,7 +16,7 @@ import BudgetedImage from "../components/BudgetedImage.vue";
 import { showInfo } from "../stores/toast";
 import { isInstrumentalTitle } from "../lib/instrumental";
 import type { ScrapeResult } from "../lib/scrape";
-import { buildLibrarySearchParams } from "../lib/librarySearch";
+import { buildLibrarySearchParams, buildLibrarySearchRoute } from "../lib/librarySearch";
 
 const { t } = useI18n();
 
@@ -454,6 +454,11 @@ async function locateCurrentSong() {
 
 watch(sortMode, () => {
   if (starredOnly) return;
+  if (isSearchActive.value) {
+    if (searchTimer) clearTimeout(searchTimer);
+    void runSearch(searchQuery.value.trim(), lyricsQuery.value.trim());
+    return;
+  }
   albumLoadRequest++;
   songLoadRequest++;
   allAlbums.value = [];
@@ -485,8 +490,7 @@ function searchProtocolError(xml: string): { code: string; message: string } | n
 }
 
 function lyricsSearchIsPreparing(error: { code: string; message: string }): boolean {
-  return /edgeSonicLyricsSearchInitializing/i.test(`${error.code} ${error.message}`)
-    || /(?:lyrics?|lyric)[^\s]*(?:index|search)|(?:index|search)[^\s]*(?:lyrics?|lyric)|not[_ -]?ready|prepar|build/i.test(`${error.code} ${error.message}`);
+  return /edgeSonicLyricsSearchInitializing/i.test(`${error.code} ${error.message}`);
 }
 
 async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
@@ -534,21 +538,11 @@ async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
   if (request === searchRequest) searching.value = false;
 }
 
-function updateSearchRoute(query: string) {
-  const current = typeof route.query.q === "string" ? route.query.q : "";
-  if (current === query) return;
-  const nextQuery = { ...route.query };
-  if (query) nextQuery.q = query;
-  else delete nextQuery.q;
-  void router.replace({ query: nextQuery });
-}
-
-function updateLyricsRoute(query: string) {
-  const current = typeof route.query.lyrics === "string" ? route.query.lyrics : "";
-  if (current === query) return;
-  const nextQuery = { ...route.query };
-  if (query) nextQuery.lyrics = query;
-  else delete nextQuery.lyrics;
+function updateSearchRoute(query: string, lyricQuery: string) {
+  const nextQuery = buildLibrarySearchRoute(route.query, query, lyricQuery);
+  const currentQuery = typeof route.query.q === "string" ? route.query.q : "";
+  const currentLyrics = typeof route.query.lyrics === "string" ? route.query.lyrics : "";
+  if (currentQuery === query && currentLyrics === lyricQuery) return;
   void router.replace({ query: nextQuery });
 }
 
@@ -574,12 +568,10 @@ watch([searchQuery, lyricsQuery], ([q, lyricQ]) => {
     searching.value = false;
     searchError.value = "";
     searchResults.value = null;
-    updateSearchRoute("");
-    updateLyricsRoute("");
+    updateSearchRoute("", "");
     return;
   }
-  updateSearchRoute(query);
-  updateLyricsRoute(lyricQuery);
+  updateSearchRoute(query, lyricQuery);
   searching.value = true;
   searchError.value = "";
   searchTimer = setTimeout(() => void runSearch(query, lyricQuery), SEARCH_DEBOUNCE_MS);
@@ -594,6 +586,10 @@ function clearSearch() {
 function toggleExtendedSearch() {
   extendedSearchOpen.value = !extendedSearchOpen.value;
   if (!extendedSearchOpen.value) lyricsQuery.value = "";
+  void nextTick(() => {
+    if (extendedSearchOpen.value) document.getElementById("library-lyrics-search")?.focus();
+    else document.getElementById("library-extended-search-toggle")?.focus();
+  });
 }
 
 function retrySearch() {
@@ -716,7 +712,7 @@ function parseArtists(artistStr: string): string[] {
 async function searchAndOpenArtist(artistName: string) {
   const query = artistName.trim();
   if (!query) return;
-  await runSearch(query);
+  await runSearch(query, "");
   const matches = searchResults.value?.artists || [];
   if (matches.length > 0) {
     await openArtist(matches[0]);
@@ -1262,6 +1258,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         <button v-if="searchQuery" type="button" class="search-clear" :aria-label="t('library.clearSearch')" :title="t('common.close')" @click="clearSearch"><Icon name="cross" /></button>
       </div>
       <button
+        id="library-extended-search-toggle"
         type="button"
         class="btn-secondary btn-sm extended-search-toggle"
         :aria-expanded="extendedSearchOpen"
