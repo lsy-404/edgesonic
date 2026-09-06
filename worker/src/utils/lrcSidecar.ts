@@ -39,7 +39,6 @@
 import { parseStorageUri, type StreamResult } from "../adapters";
 import { createR2Adapter } from "../adapters/r2";
 import { createWebDAVAdapter } from "../adapters/webdav";
-import { syncLyricsSearchForSong } from "./lyricsSearch";
 import {
   parseSidecarToRich,
   serializeRich,
@@ -187,7 +186,6 @@ export async function importLrcOnScan(
             SET lyrics = ?, updated_at = ?
           WHERE id = ? AND (lyrics IS NULL OR lyrics = '')`,
       ).bind(lrc, Math.floor(Date.now() / 1000), masterId).run();
-      await syncLyricsSearchForSong(db, masterId);
     }
   } catch {
     // Swallow: sidecar import is best-effort. A transient D1 / R2 / WebDAV
@@ -202,7 +200,6 @@ export async function importLrcOnScan(
             SET lyrics_rich = ?, updated_at = ?
           WHERE id = ? AND (lyrics_rich IS NULL OR lyrics_rich = '')`,
       ).bind(json, Math.floor(Date.now() / 1000), masterId).run();
-      await syncLyricsSearchForSong(db, masterId);
     }
   } catch {
     // Swallow: rich sidecar import is best-effort.

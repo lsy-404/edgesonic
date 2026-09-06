@@ -45,18 +45,18 @@
 CREATE TABLE IF NOT EXISTS storage_sources (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL CHECK (type IN ('webdav', 'subsonic', 'r2', 'url', 's3')),
-  name TEXT NOT NULL DEFAULT '',                     -- 005: human-readable label
+  name TEXT NOT NULL DEFAULT '',                     -- human-readable label
   base_url TEXT NOT NULL,
   username TEXT,
   password TEXT,
-  password_encrypted TEXT,                           -- 023: AES-256-GCM blob (`v1:<base64url>`) — unused after crypto removal, column kept for compat
-  presign_username TEXT,                             -- 097: optional read-only WebDAV account for presign URL (falls back to username if null)
-  presign_password TEXT,                             -- 097: paired with presign_username
-  root_path TEXT NOT NULL DEFAULT '',                -- 003: path inside the remote; effective URL = base_url + root_path
-  region TEXT NOT NULL DEFAULT 'us-east-1',          -- 096: SigV4 region (MinIO: any value; R2: 'auto'; AWS: real region)
+  password_encrypted TEXT,                           -- AES-256-GCM blob (`v1:<base64url>`) — unused after crypto removal, column kept for compat
+  presign_username TEXT,                             -- optional read-only WebDAV account for presign URL (falls back to username if null)
+  presign_password TEXT,                             -- paired with presign_username
+  root_path TEXT NOT NULL DEFAULT '',                -- path inside the remote; effective URL = base_url + root_path
+  region TEXT NOT NULL DEFAULT 'us-east-1',          -- SigV4 region (MinIO: any value; R2: 'auto'; AWS: real region)
   last_sync INTEGER,
   enabled INTEGER DEFAULT 1,
-  mode TEXT NOT NULL DEFAULT 'library',              -- 026: 'library' | 'sync_only'
+  mode TEXT NOT NULL DEFAULT 'library',              -- 'library' | 'sync_only'
   cache_tier TEXT NOT NULL DEFAULT 'off'             -- R2 hot-cache tier for this source's remote files
     CHECK (cache_tier IN ('off', 'standard', 'extended')),
   created_at INTEGER DEFAULT (unixepoch()),
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS users (
   master_password TEXT NOT NULL,                     -- SHA-256 hashed, for web login only
   level INTEGER DEFAULT 1 CHECK (level BETWEEN 0 AND 3),
   enabled INTEGER DEFAULT 1,
-  avatar_r2_key TEXT,                                -- 014/035: R2 key for getAvatar (NULL → no avatar)
+  avatar_r2_key TEXT,                                -- R2 key for getAvatar (NULL → no avatar)
   nickname TEXT,                                      -- EdgeSonic display name (NULL → fall back to username)
   email TEXT,                                        -- self-service password reset + email registration (NULL → not set)
   email_verified INTEGER NOT NULL DEFAULT 0,          -- informational only, not a login/reset gate
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS subsonic_credentials (
   username TEXT NOT NULL,
   password TEXT NOT NULL,                            -- plaintext (Subsonic protocol requirement)
   label TEXT DEFAULT '',                             -- user label e.g. "My Phone", "Desktop"
-  stream_proxy_strategy TEXT NOT NULL DEFAULT 'always', -- 092: 'always'|'never'|'r2_only'|'webdav_only'
+  stream_proxy_strategy TEXT NOT NULL DEFAULT 'always', -- 'always'|'never'|'r2_only'|'webdav_only'
   expires_at INTEGER,                                -- activation horizon at issue time; NULL = unbounded
   last_used INTEGER,                                 -- unix timestamp of last auth
   created_at INTEGER DEFAULT (unixepoch()),
@@ -379,8 +379,8 @@ CREATE TABLE IF NOT EXISTS song_masters (
   genre TEXT,
   compilation INTEGER DEFAULT 0,
   participants TEXT,                                 -- JSON: [{role:"composer",name:"..."}]
-  lyrics TEXT,                                       -- 015/036: full LRC / plain text; getLyrics reads here first
-  lyrics_rich TEXT,                                  -- 0259: JSON-serialized RichLyrics (cueLine/cue/agents) for songLyrics v2; NULL when only line-level LRC is available
+  lyrics TEXT,                                       -- full LRC / plain text; getLyrics reads here first
+  lyrics_rich TEXT,                                  -- JSON-serialized RichLyrics (cueLine/cue/agents) for songLyrics v2; NULL when only line-level LRC is available
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (album_id) REFERENCES albums(id),
@@ -404,9 +404,7 @@ CREATE TABLE IF NOT EXISTS lyrics_search_grams (
 ) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS lyrics_search_state (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  version INTEGER NOT NULL,
-  status TEXT NOT NULL,
-  last_song_id TEXT NOT NULL DEFAULT ''
+  initialized INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_lyrics_search_grams_song ON lyrics_search_grams(song_id);
 CREATE TABLE IF NOT EXISTS lyrics_search_dirty (
@@ -416,12 +414,13 @@ CREATE TABLE IF NOT EXISTS lyrics_search_dirty (
 CREATE TRIGGER IF NOT EXISTS lyrics_search_song_insert AFTER INSERT ON song_masters BEGIN
   INSERT INTO lyrics_search_dirty(song_id, revision) VALUES (NEW.id, 0) ON CONFLICT(song_id) DO UPDATE SET revision = revision + 1;
 END;
-CREATE TRIGGER IF NOT EXISTS lyrics_search_song_update AFTER UPDATE OF lyrics, lyrics_rich ON song_masters BEGIN
+CREATE TRIGGER IF NOT EXISTS lyrics_search_song_update AFTER UPDATE OF lyrics, lyrics_rich ON song_masters
+WHEN OLD.lyrics IS NOT NEW.lyrics OR OLD.lyrics_rich IS NOT NEW.lyrics_rich BEGIN
   INSERT INTO lyrics_search_dirty(song_id, revision) VALUES (NEW.id, 0) ON CONFLICT(song_id) DO UPDATE SET revision = revision + 1;
 END;
 CREATE TRIGGER IF NOT EXISTS lyrics_search_song_delete AFTER DELETE ON song_masters BEGIN
-  DELETE FROM lyrics_search_documents WHERE song_id = OLD.id;
   DELETE FROM lyrics_search_grams WHERE song_id = OLD.id;
+  DELETE FROM lyrics_search_documents WHERE song_id = OLD.id;
   DELETE FROM lyrics_search_dirty WHERE song_id = OLD.id;
 END;
 
@@ -463,9 +462,9 @@ CREATE TABLE IF NOT EXISTS song_instances (
   duration INTEGER,                                  -- seconds
   size INTEGER,                                      -- bytes
   missing INTEGER DEFAULT 0,                         -- 1 if file not found at source
-  tag_scanned INTEGER NOT NULL DEFAULT 0,            -- 004: 0=not scanned, 1=tags applied, 2=no usable tags
-  source_etag TEXT,                                  -- 020: remote ETag for incremental scan skip
-  source_last_modified INTEGER,                      -- 020: remote last_modified (unix seconds)
+  tag_scanned INTEGER NOT NULL DEFAULT 0,            -- 0=not scanned, 1=tags applied, 2=no usable tags
+  source_etag TEXT,                                  -- remote ETag for incremental scan skip
+  source_last_modified INTEGER,                      -- remote last_modified (unix seconds)
   expires_at INTEGER,                                -- hard TTL ceiling for source_type='cached' rows, set once at cache-write time, never extended
   last_accessed_at INTEGER,                          -- bumped on each cache hit; LRU key for evictForRoom (NULL sorts first = evicted before any real hit)
   created_at INTEGER DEFAULT (unixepoch()),
@@ -525,7 +524,7 @@ CREATE TABLE IF NOT EXISTS playlists (
   song_count INTEGER DEFAULT 0,
   duration INTEGER DEFAULT 0,
   cover_r2_key TEXT,
-  comment TEXT,                                      -- 007: free-form description
+  comment TEXT,                                      -- free-form description
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (owner) REFERENCES users(username) ON DELETE CASCADE
@@ -553,8 +552,8 @@ CREATE TABLE IF NOT EXISTS transcode_jobs (
   status TEXT DEFAULT 'pending'
     CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
   output_instance_id TEXT,                           -- resulting instance after completion
-  engine TEXT,                                       -- 010: which backend ran it (sandbox|external|browser_pool)
-  profile_id TEXT,                                   -- 010: catalogue id of the target profile
+  engine TEXT,                                       -- which backend ran it (sandbox|external|browser_pool)
+  profile_id TEXT,                                   -- catalogue id of the target profile
   error_message TEXT,
   created_at INTEGER DEFAULT (unixepoch()),
   completed_at INTEGER,
@@ -777,7 +776,7 @@ INSERT OR IGNORE INTO features (key, value, description) VALUES
   ('allow_email_password_reset', 0, '允许通过邮箱自助重置密码（独立于自助注册开关）'),
   ('enable_activation',       0, '账户激活体系总开关（关闭时所有账号视为永久激活）');
 
--- 0011: scrape_enabled master switch
+-- scrape_enabled master switch
 INSERT OR IGNORE INTO features (key, value, description, updated_at) VALUES
   ('scrape_enabled', 1, '元数据刮削总开关', unixepoch());
 -- Back-fill the Chinese description on databases seeded with the old English
@@ -788,7 +787,7 @@ UPDATE features SET description = '元数据刮削总开关'
 -- ============================================================================
 -- ============================================================================
 -- String/JSON-valued feature flags. Used by 049 transcode engine, 051 scan,
--- 052 work pool, 065 COOP/COEP, 088 concurrency, 091/092 presign.
+-- work pool, 065 COOP/COEP, 088 concurrency, 091/092 presign.
 CREATE TABLE IF NOT EXISTS feature_strings (
   key         TEXT PRIMARY KEY,
   value       TEXT NOT NULL DEFAULT '',
@@ -796,7 +795,7 @@ CREATE TABLE IF NOT EXISTS feature_strings (
   updated_at  INTEGER DEFAULT (unixepoch())
 );
 
--- 0010: 049 transcode engine defaults
+-- 049 transcode engine defaults
 INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
   ('transcode_engine',           'disabled', '转码引擎 (sandbox|external|disabled)'),
   ('external_transcoder_url',    '',          '外部转码器 URL（仅在 engine=external 时生效）'),
@@ -807,15 +806,15 @@ INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
 -- global setting) — drop any row a prior deploy already seeded.
 DELETE FROM feature_strings WHERE key IN ('transcode_mode', 'default_transcode_profiles');
 
--- 0011: scrape source priority
+-- scrape source priority
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('scrape_enabled_sources', '["lrc","netease","qmusic","kugou"]', 'Enabled scrape sources in priority order (JSON array)', unixepoch());
 
--- 0016: lastfm api key (empty = off)
+-- lastfm api key (empty = off)
 INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
   ('lastfm_api_key', '', 'Last.fm API key for metadata proxy (empty = disabled)');
 
--- 0260 (was 0253): full artist bio/cover source priority list. Tried in
+-- full artist bio/cover source priority list. Tried in
 -- array order, first enabled hit wins last.fm is no longer hardcoded first —
 -- CN sources default ahead of it since they cover CN artists far better.
 -- A source not present in the array is disabled (self-healing: pre-260
@@ -824,51 +823,51 @@ INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
 INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
   ('lastfm_fallback_sources', '["netease","qmusic","lastfm"]', 'Artist bio/cover source priority list (netease/qmusic/lastfm), tried in array order; JSON array, empty = all disabled');
 
--- 0253: cadence (hours) for the cron-driven batch backfill that scans artists
+-- cadence (hours) for the cron-driven batch backfill that scans artists
 -- missing biography / cover and tries netease/qmusic. Default 24h; 0=disabled.
 INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
   ('artist_scrape_interval_hours', '24', 'Hours between automatic artist bio/cover backfill scans (0=disabled)');
 
--- 178: declarative S2S relay policy advertised via getOpenSubsonicExtensions
--- (OpenSubsonic #254). Empty → derived from allow_being_proxied (allow/deny);
+-- declarative S2S relay policy advertised via getOpenSubsonicExtensions
+-- Empty → derived from allow_being_proxied (allow/deny);
 -- set explicitly to allow|deny|no-cache to override.
 INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
   ('server_relay_policy', '', 'S2S 中继策略 (allow|deny|no-cache；空=依 allow_being_proxied 推导)');
 
--- 0020: 051 incremental scan tunables
+-- 051 incremental scan tunables
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('scan_interval_hours', '6', 'WebDAV auto-scan interval in hours; 0 = disabled', unixepoch()),
   ('scan_etag_check',     '1', '0|1 — use ETag/lastModified/size triple to skip unchanged files', unixepoch()),
   ('scan_rescan_strategy','auto', 'auto|worker|browser — who re-reads tags on change', unixepoch()),
   ('scan_browser_auto',   '1', '0|1 — Files.vue auto-drains pending metadata queue', unixepoch());
 
--- 0021: 052 work pool tunables
+-- 052 work pool tunables
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('worker_pool_enabled',          '1',   'Whether the browser work pool is active (0|1)', unixepoch()),
   ('worker_claim_ttl_seconds',     '60',  'Heartbeat timeout before stale claim is re-queued', unixepoch());
 
--- 0022: 065 cross-origin isolation (default ON)
+-- 065 cross-origin isolation (default ON)
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('enable_cross_origin_isolation',
    '1',
    'COOP/COEP response headers — required for SharedArrayBuffer + ffmpeg.wasm multi-thread. 0|1.',
    unixepoch());
 
--- 0025: 088 concurrent workers (1..8, default 3)
+-- 088 concurrent workers (1..8, default 3)
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('worker_max_concurrent', '3', 'Concurrent Web Workers per browser (1-8)', unixepoch());
 
--- 0028: 091 R2 presign (default OFF — needs R2 S3 secrets; see SECRETS.md §3)
+-- 091 R2 presign (default OFF — needs R2 S3 secrets; see SECRETS.md §3)
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('enable_r2_presign', '0', 'R2 presigned URL direct stream (0=off, 1=on; needs R2 S3 secrets)', unixepoch());
 
--- 0030: 092 WebDAV presign — 0035/108: default OFF. The userinfo redirect
+-- 092 WebDAV presign — 0035/108: default OFF. The userinfo redirect
 -- (user:pass@host) is rejected by browsers/ExoPlayer/AVFoundation and leaks
 -- WebDAV credentials to streaming clients; in-Worker proxy is the default.
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('enable_webdav_presign', '0', 'WebDAV presigned URL direct stream (0=off, 1=on; leaks creds to clients — see 108)', unixepoch());
 
--- 0033: 101 R2 cost estimation — free-tier allocation setting
+-- 101 R2 cost estimation — free-tier allocation setting
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('r2_free_allocation_gb', '10',
    'GB of R2 free tier (10 GB total) allocated to EdgeSonic for monthly cost estimation',
@@ -886,21 +885,21 @@ INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALU
    'Extended cache tier: larger budget and per-file cap but a short TTL, for sources set to cache_tier=extended',
    unixepoch());
 
--- 0036: 110 periodic browser-pool metadata re-check (unsupported formats +
+-- 110 periodic browser-pool metadata re-check (unsupported formats +
 -- lyrics/disc backfill). Default 24h; 0 disables.
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('metadata_recheck_interval_hours', '24',
    'Hours between automatic browser-pool metadata re-checks for unsupported-format or lyrics/disc-incomplete songs (0=disabled)',
    unixepoch());
 
--- 0038: 113 periodic batch LRC sidecar backfill for the pre-existing library.
+-- 113 periodic batch LRC sidecar backfill for the pre-existing library.
 -- Default 24h; 0 disables.
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('lrc_backfill_interval_hours', '24',
    'Hours between automatic batch scans for sibling .lrc sidecar files on songs still missing lyrics (0=disabled)',
    unixepoch());
 
--- 199: Security — allow level 1+ users to generate their own API credentials
+-- Security — allow level 1+ users to generate their own API credentials
 -- Default ON (1). When enabled, users can create/manage Subsonic credentials
 -- for third-party clients. When disabled (0), only admins (level 2+) can
 -- manage credentials.
@@ -1132,7 +1131,7 @@ CREATE TABLE IF NOT EXISTS ktv_pv_bindings (
 -- ============================================================================
 
 -- ============================================================================
--- 0253 — artist biography / image_url columns for CN scrape fallback.
+-- — artist biography / image_url columns for CN scrape fallback.
 -- Idempotent ALTERs; SQLite rejects ADD COLUMN if the column already exists,
 -- so we guard with a PRAGMA-based check via the application's schema_patch
 -- helper (see utils/schema_patch.ts). These statements are safe to re-run

@@ -84,7 +84,7 @@ const EXTENSIONS: Array<{ name: string; versions: number[]; attrs?: Record<strin
 ];
 
 const extensionsHandler = async (c: import("hono").Context) => {
-  // OpenSubsonic #254: advertise the declarative S2S relay policy and
+  // Advertise the declarative S2S relay policy and
   // this server's loop-prevention UUID at the response root. server_uuid is our
   // persistent INSTANCE_ID (the same id used in the X-OpenSubsonic-Path /
   // X-EdgeSonic-Chain loop guard).

@@ -23,7 +23,6 @@ import { createSubsonicAdapter } from "../../adapters/subsonic";
 import { encodePath } from "./scan";
 import { srcBaseUrl, type SourceRow } from "../../utils/slices";
 import { PayloadTooLargeError, limitReadableStream } from "../../utils/streamLimit";
-import { syncLyricsSearchForSong } from "../../utils/lyricsSearch";
 import type { User } from "../../types/entities";
 
 export const filesRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
@@ -488,7 +487,6 @@ async function cleanupOrphanMaster(db: D1Database, masterId: string) {
   const master = await db.prepare("SELECT album_id, artist_id FROM song_masters WHERE id = ?")
     .bind(masterId).first<{ album_id: string; artist_id: string }>();
   await db.prepare("DELETE FROM song_masters WHERE id = ?").bind(masterId).run();
-  await syncLyricsSearchForSong(db, masterId);
   if (master) {
     await db.prepare("DELETE FROM albums WHERE id = ? AND NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = ?)")
       .bind(master.album_id, master.album_id).run();

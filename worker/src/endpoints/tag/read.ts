@@ -19,7 +19,6 @@ import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import { md5 } from "../../utils/md5";
 import { parseTags } from "../../utils/tags";
-import { syncLyricsSearchForSong } from "../../utils/lyricsSearch";
 import { fetchSlices, type SourceRow } from "../../utils/slices";
 import {
   artistInsertStatements,
@@ -101,7 +100,6 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
             ...songArtistStatements(db, row.master_id, artistCredits),
           ];
           await db.batch(stmts);
-          if (tags.lyrics) await syncLyricsSearchForSong(db, row.master_id);
           scanned = 1;
           tagged++;
         }

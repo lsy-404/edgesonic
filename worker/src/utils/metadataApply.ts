@@ -38,7 +38,6 @@
 //   "seen" so a future scan does not re-queue the work forever.
 
 import { md5 } from "./md5";
-import { syncLyricsSearchForSong } from "./lyricsSearch";
 import { deriveBitrate } from "./audioMetrics";
 import {
   artistInsertStatements,
@@ -164,7 +163,6 @@ export async function applyMetadataResult(
     await db.prepare(
       "UPDATE song_masters SET lyrics = COALESCE(NULLIF(lyrics, ''), ?), updated_at = ? WHERE id = ?",
     ).bind(tags.lyrics, Math.floor(Date.now() / 1000), inst.master_id).run();
-    await syncLyricsSearchForSong(db, inst.master_id);
   }
 
   // Subsonic getSong/getAlbum reads duration from song_masters, so a null

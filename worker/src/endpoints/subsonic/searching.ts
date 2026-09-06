@@ -55,17 +55,21 @@ export function normalizeQuery(raw: string): string {
   return m ? m[1] : q;
 }
 
+function searchCount(raw: string | undefined): number {
+  return raw?.trim() === "0" ? 0 : parsePageSize(raw, 20);
+}
+
 const search23Handler = (tag: "searchResult2" | "searchResult3") =>
   async (c: Context): Promise<Response> => {
     // Empty query = full listing (Navidrome-compatible) — the web Songs view relies on it
     const query = normalizeQuery(c.req.query("query") || "");
     const lyricsQuery = c.req.query("lyricsQuery")?.trim() || undefined;
 
-    const artistCount = parsePageSize(c.req.query("artistCount"), 20);
+    const artistCount = searchCount(c.req.query("artistCount"));
     const artistOffset = parsePageOffset(c.req.query("artistOffset"));
-    const albumCount = parsePageSize(c.req.query("albumCount"), 20);
+    const albumCount = searchCount(c.req.query("albumCount"));
     const albumOffset = parsePageOffset(c.req.query("albumOffset"));
-    const songCount = parsePageSize(c.req.query("songCount"), 20);
+    const songCount = searchCount(c.req.query("songCount"));
     const songOffset = parsePageOffset(c.req.query("songOffset"));
     const songSort = c.req.query("songSort");
 
@@ -85,7 +89,9 @@ const search23Handler = (tag: "searchResult2" | "searchResult3") =>
           "X-EdgeSonic-Lyrics-Search": "initializing",
         });
       }
-      if (error instanceof Error && error.message === "lyrics-search-query-too-long") return c.text(subsonicError(10, "lyricsQuery is too long"), 400, XML);
+      if (error instanceof Error && error.message === "lyrics-search-query-too-long") {
+        return c.text(subsonicError(10, "lyricsQuery must contain at most 512 characters"), 400, XML);
+      }
       throw error;
     }
 

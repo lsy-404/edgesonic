@@ -1993,6 +1993,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 .extended-search-panel { position: relative; flex: 1 1 100%; min-width: 0; }
 .extended-search-panel .search-input { width: 100%; padding-right: 2rem; }
 .search-input { padding-right: 2rem; }
+.search-input::-webkit-search-cancel-button { display: none; }
 .search-clear {
   position: absolute;
   right: 0.5rem;
