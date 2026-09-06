@@ -4,6 +4,7 @@
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
+import Icon from "./Icon.vue";
 
 type StarKind = "song" | "album" | "artist";
 
@@ -61,9 +62,7 @@ async function toggle() {
     :disabled="busy"
     @click.stop="toggle"
   >
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="m12 17.27 6.18 3.73-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-    </svg>
+    <Icon name="heart" :size="16" :fill="active ? 'currentColor' : 'none'" />
   </button>
 </template>
 

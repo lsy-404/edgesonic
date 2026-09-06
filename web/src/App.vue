@@ -98,6 +98,7 @@ async function focusGlobalSearch() {
 function submitGlobalSearch() {
   const q = globalSearchQuery.value.trim();
   if (!q) return;
+  detail.close();
   void router.push({ path: "/library", query: { q } });
 }
 
@@ -302,7 +303,7 @@ onBeforeUnmount(() => {
   >
     <nav class="navbar">
       <div class="nav-left">
-        <router-link to="/" class="nav-logo" :aria-label="t('app.menu.home')">
+        <router-link to="/" class="nav-logo" :aria-label="t('app.menu.home')" @click="detail.close()">
           <img src="/logo.svg" alt="" class="nav-logo-img" />
           <span class="logo-text">EdgeSonic</span>
         </router-link>
@@ -345,6 +346,7 @@ onBeforeUnmount(() => {
             :to="item.path"
             class="side-link"
             :class="{ active: item.path === '/' ? route.path === '/' : route.path.startsWith(item.path) }"
+            @click="detail.close()"
           >
            <Icon :name="item.icon" :size="20" /><span>{{ item.label }}</span>
           </router-link>
@@ -358,7 +360,7 @@ onBeforeUnmount(() => {
       ></div>
     </aside>
 
-    <main ref="mainRegion" class="main" tabindex="-1">
+    <main ref="mainRegion" class="main" tabindex="-1" :inert="detail.isOpen">
       <router-view v-slot="{ Component, route: activeRoute }">
         <Transition :name="pageTransitionName" mode="out-in" @before-enter="resetPageScroll">
           <div :key="activeRoute.path" class="page-view">
@@ -370,7 +372,7 @@ onBeforeUnmount(() => {
 
     <DetailHost />
     <PlayerBar />
-    <MobileNavigation :groups="groups" />
+    <MobileNavigation :groups="groups" @navigate="detail.close()" />
   </div>
 </template>
 
@@ -428,7 +430,7 @@ onBeforeUnmount(() => {
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --bottom-nav-space: 0px;
 }
-.shell { height: 100dvh; min-height: 0; overflow: hidden; }
+.shell { height: 100dvh; min-height: 0; overflow: hidden; z-index: auto; }
 .navbar {
   position: fixed;
   inset: 0 0 auto;
@@ -480,7 +482,7 @@ onBeforeUnmount(() => {
 .side-link.active .es-icon { color: var(--color-accent-primary); }
 .sidebar-footer-spacer { flex-shrink: 0; }
 .main {
-  position: fixed;
+  position: absolute;
   inset: var(--nav-h) 0 calc(var(--player-h) + var(--bottom-nav-space)) var(--sidebar-w);
   min-width: 0;
   padding: 28px 32px;

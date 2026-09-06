@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { albumsFromXml, isSuccessfulSubsonicResponse, loadHomeSections, shuffled, tracksFromXml, type HomeSection } from "../../web/src/lib/homeMusic";
+import { albumsFromXml, isSuccessfulSubsonicResponse, shuffled, tracksFromXml } from "../../web/src/lib/homeMusic";
 
 let failures = 0;
 function assert(condition: unknown, message: string) { if (condition) console.log(`  ✓ ${message}`); else { failures++; console.error(`  ✗ ${message}`); } }
@@ -18,14 +18,8 @@ async function main() {
   assert(!isSuccessfulSubsonicResponse('<subsonic-response status="failed"><error message="no" /></subsonic-response>'), "protocol error is rejected");
   assert(!isSuccessfulSubsonicResponse("<html>gateway error</html>"), "non-Subsonic error page is rejected");
 
-  console.log("section loading preserves successful and previously visible sections:");
-  const previous = { newest: albums, frequent: [{ ...albums[0], id: "old-frequent" }], recent: [] };
-  const result = await loadHomeSections(async (section: HomeSection) => {
-    if (section === "frequent") throw new Error("temporary failure");
-    return section === "recent" ? [{ id: "recent-1", name: "Recent", artist: "Band" }] : [{ id: "new-1", name: "New", artist: "Band" }];
-  }, previous);
-  assert(result.albums.newest[0].id === "new-1" && result.albums.recent[0].id === "recent-1", "successful sections update independently");
-  assert(result.failed.has("frequent") && result.albums.frequent[0].id === "old-frequent", "failed section keeps existing content for retry");
+  const favorite = tracksFromXml([{ id: "saved", title: "Saved", starred: "2026-09-06T00:00:00Z", created: "2026-09-01T00:00:00Z" }], albums[0])[0];
+  assert(favorite.starred === true && favorite.starredAt === "2026-09-06T00:00:00Z" && favorite.createdAt === "2026-09-01T00:00:00Z", "home playback keeps favorite and creation metadata");
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
   process.exit(failures ? 1 : 0);

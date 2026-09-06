@@ -99,7 +99,8 @@
       "super": "超管"
     },
     "primaryNavigation": "主导航",
-    "more": "更多"
+    "more": "更多",
+    "mediaDetails": "音乐详情"
   },
   "pageTitles": {
     "Login": "登录",
@@ -749,7 +750,8 @@
       "opus-128": "Opus 128k",
       "flac": "FLAC",
       "wav": "WAV"
-    }
+    },
+    "removeFromQueue": "从播放列表移除 {title}"
   },
   "nowPlaying": {
     "lyricsLoadFailed": "歌词加载失败",
@@ -1610,10 +1612,10 @@
     "unknownAlbum": "未知专辑"
   },
   "playlists": {
-    "label": "// 歌单",
+    "label": "歌单",
     "title": "歌单",
     "empty": "暂无歌单 — 点击「新建歌单」开始",
-    "create": "+ 新建歌单",
+    "create": "新建歌单",
     "name": "歌单名",
     "namePlaceholder": "例如：周末歌单",
     "comment": "备注",

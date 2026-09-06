@@ -1,15 +1,17 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatDuration } from "../api";
 import { usePlayerStore, type Track } from "../stores/player";
+import { useDetailStore } from "../stores/detail";
 import Icon from "../components/Icon.vue";
 
 const { t } = useI18n();
 const { authFetch, coverArtUrl, username } = useAuth();
 const player = usePlayerStore();
+const detail = useDetailStore();
 
 interface Playlist {
   id: string;
@@ -48,6 +50,20 @@ const showAddSong = ref(false);
 const addSongQuery = ref("");
 const addSongResults = ref<Array<{ id: string; title: string; artist: string; album: string }>>([]);
 const addSongBusy = ref(false);
+
+let dialogFocus: HTMLElement | null = null;
+watch([showCreate, showEdit, showAddSong], async (states) => {
+  if (states.some(Boolean)) {
+    dialogFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    await nextTick();
+    document.querySelector<HTMLDialogElement>("dialog.playlist-dialog:not([open])")?.showModal();
+  } else {
+    const target = dialogFocus;
+    dialogFocus = null;
+    await nextTick();
+    target?.focus({ preventScroll: true });
+  }
+});
 
 const toast = ref({ show: false, msg: "", type: "success" as "success" | "error" });
 function showToast(msg: string, type: "success" | "error" = "success") {
@@ -112,6 +128,7 @@ async function openPlaylist(p: Playlist) {
   const request = ++playlistRequest;
   playlistFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   currentPlaylist.value = p;
+  void nextTick(() => document.querySelector<HTMLButtonElement>(".playlist-detail-sheet .back-link")?.focus({ preventScroll: true }));
   entries.value = [];
   detailLoading.value = true;
   try {
@@ -137,8 +154,9 @@ function backToList() {
   showAddSong.value = false;
   addSongResults.value = [];
   addSongQuery.value = "";
-  void nextTick(() => playlistFocus?.focus({ preventScroll: true }));
+  const focusTarget = playlistFocus;
   playlistFocus = null;
+  void nextTick(() => focusTarget?.focus({ preventScroll: true }));
 }
 
 function openCreate() {
@@ -343,6 +361,8 @@ const canEdit = computed(() =>
 
 onMounted(loadPlaylists);
 function onKeydown(event: KeyboardEvent) {
+  if (event.defaultPrevented) return;
+  if (detail.isOpen || (event.target as HTMLElement | null)?.closest(".modal, dialog, [role='dialog']")) return;
   if (event.key === "Escape" && currentPlaylist.value) backToList();
 }
 onMounted(() => window.addEventListener("keydown", onKeydown));
@@ -354,20 +374,20 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page">
-    <div v-show="!currentPlaylist" class="page-header" :inert="!!currentPlaylist">
+    <div :style="{ visibility: currentPlaylist ? 'hidden' : undefined }" class="page-header" :inert="!!currentPlaylist">
       <div>
         <div class="mono-label">{{ t("playlists.label") }}</div>
         <h1 class="page-title">
           <span>{{ t("playlists.title") }}</span>
         </h1>
       </div>
-      <button class="btn-primary" @click="openCreate">{{ t("playlists.create") }}</button>
+      <button class="btn-primary" @click="openCreate"><Icon name="plus" />{{ t("playlists.create") }}</button>
     </div>
 
     <!-- ===========================================================
          List view
          =========================================================== -->
-    <div v-show="!currentPlaylist" :inert="!!currentPlaylist">
+    <div :style="{ visibility: currentPlaylist ? 'hidden' : undefined }" :inert="!!currentPlaylist">
       <div v-if="loading && !playlists.length" class="empty-state">
         <div class="empty-state-icon"><Icon name="empty" /></div>
         <div>{{ t("common.loading") }}</div>
@@ -381,7 +401,11 @@ onBeforeUnmount(() => {
           v-for="p in playlists"
           :key="p.id"
           class="card playlist-card"
+          role="button"
+          tabindex="0"
           @click="openPlaylist(p)"
+          @keydown.enter.prevent="openPlaylist(p)"
+          @keydown.space.prevent="openPlaylist(p)"
         >
          <div class="playlist-cover">
             <img v-if="p.coverArt" :src="coverArtUrl(p.coverArt, 256)" :alt="p.name" loading="lazy" />
@@ -411,16 +435,16 @@ onBeforeUnmount(() => {
          =========================================================== -->
     <Teleport to="body">
     <Transition name="playlist-detail">
-    <section v-if="currentPlaylist" class="playlist-detail-sheet" role="region" :aria-label="currentPlaylist.name">
+    <section v-if="currentPlaylist" class="playlist-detail-sheet" :inert="detail.isOpen" role="region" :aria-label="currentPlaylist.name">
       <div class="page-header">
         <div>
           <div class="mono-label">{{ t("playlists.label") }}</div>
           <h1 class="page-title"><button class="back-link" type="button" @click="backToList"><Icon name="left" /> {{ t("playlists.back") }}</button></h1>
         </div>
         <div v-if="canEdit" class="header-actions">
-          <button class="btn-secondary btn-sm" @click="openAddSong">{{ t("playlists.addSong") }}</button>
-          <button class="btn-secondary btn-sm" @click="openEdit">{{ t("playlists.edit") }}</button>
-          <button class="btn-danger btn-sm" @click="deletePlaylist(currentPlaylist)">{{ t("playlists.delete") }}</button>
+          <button class="btn-secondary btn-sm" @click="openAddSong"><Icon name="plus" />{{ t("playlists.addSong") }}</button>
+          <button class="btn-secondary btn-sm" @click="openEdit"><Icon name="edit" />{{ t("playlists.edit") }}</button>
+          <button class="btn-danger btn-sm" @click="deletePlaylist(currentPlaylist)"><Icon name="cross" />{{ t("playlists.delete") }}</button>
         </div>
       </div>
       <div class="detail-header">
@@ -487,10 +511,11 @@ onBeforeUnmount(() => {
     </Transition>
     </Teleport>
 
+    <Teleport to="body">
     <!-- ===========================================================
          Create modal
          =========================================================== -->
-    <div v-if="showCreate" class="modal-backdrop" @click.self="closeCreate">
+    <dialog v-if="showCreate" class="modal-backdrop playlist-dialog" :aria-label="t('playlists.create')" @cancel.prevent="closeCreate" @click.self="closeCreate">
       <div class="modal">
         <div class="modal-title">{{ t("playlists.create") }}</div>
         <div style="display:flex; flex-direction:column; gap:0.7rem">
@@ -519,12 +544,12 @@ onBeforeUnmount(() => {
         <div class="corner corner-tl"></div>
         <div class="corner corner-br"></div>
       </div>
-    </div>
+    </dialog>
 
     <!-- ===========================================================
          Edit modal
          =========================================================== -->
-    <div v-if="showEdit" class="modal-backdrop" @click.self="closeEdit">
+    <dialog v-if="showEdit" class="modal-backdrop playlist-dialog" :aria-label="t('playlists.edit')" @cancel.prevent="closeEdit" @click.self="closeEdit">
       <div class="modal">
         <div class="modal-title">{{ t("playlists.edit") }}</div>
         <div style="display:flex; flex-direction:column; gap:0.7rem">
@@ -553,12 +578,12 @@ onBeforeUnmount(() => {
         <div class="corner corner-tl"></div>
         <div class="corner corner-br"></div>
       </div>
-    </div>
+    </dialog>
 
     <!-- ===========================================================
          Add-song modal
          =========================================================== -->
-    <div v-if="showAddSong" class="modal-backdrop" @click.self="closeAddSong">
+    <dialog v-if="showAddSong" class="modal-backdrop playlist-dialog" :aria-label="t('playlists.addSong')" @cancel.prevent="closeAddSong" @click.self="closeAddSong">
       <div class="modal add-song-modal">
         <div class="modal-title">{{ t("playlists.addSong") }}</div>
         <div class="search-row">
@@ -593,16 +618,28 @@ onBeforeUnmount(() => {
         <div class="corner corner-tl"></div>
         <div class="corner corner-br"></div>
       </div>
-    </div>
+    </dialog>
+
+    </Teleport>
 
     <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">{{ toast.msg }}</div>
   </div>
 </template>
 
 <style scoped>
+.playlist-dialog { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; padding: 16px; }
+.playlist-detail-sheet > .page-header { flex-wrap: wrap; gap: 16px; }
+.playlist-detail-sheet > .page-header .page-title { font-size: 14px; }
+@media (max-width: 600px) {
+  .playlist-detail-sheet { padding: 16px; }
+  .playlist-detail-sheet .detail-header { align-items: start; gap: 16px; }
+  .playlist-detail-sheet .detail-cover { width: 100px; height: 100px; flex: 0 0 100px; }
+  .playlist-detail-sheet .detail-title { font-size: 24px; }
+}
+
 .back-link { cursor: pointer; color: var(--color-accent-primary); background: none; border: 0; padding: 0; font: inherit; }
 .back-link:hover { color: var(--color-text-primary); }
-.playlist-detail-sheet { position: fixed; z-index: 80; top: var(--nav-h); left: var(--sidebar-w); right: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); overflow: auto; padding: 24px; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border); border-radius: 8px 8px 0 0; }
+.playlist-detail-sheet { position: fixed; z-index: 80; top: var(--nav-h); left: var(--sidebar-w); right: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); overflow: auto; padding: 24px; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border-subtle); border-radius: 8px 8px 0 0; }
 .playlist-detail-enter-active, .playlist-detail-leave-active { transition: transform .24s ease, opacity .18s ease; }
 .playlist-detail-enter-from, .playlist-detail-leave-to { transform: translateY(100%); opacity: 0; }
 @media (max-width: 960px) { .playlist-detail-sheet { left: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); } }

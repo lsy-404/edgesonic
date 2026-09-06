@@ -161,6 +161,7 @@ const currentAlbum = ref<Album | null>(null);
 const loading = ref(false);
 const error = ref("");
 let detailRequest = 0;
+let detailController: AbortController | null = null;
 
 const ALBUM_PAGE = 100;
 const allAlbums = ref<Album[]>([]);
@@ -619,22 +620,27 @@ async function openArtist(artist: Artist) {
     return;
   }
   const request = ++detailRequest;
+  detailController?.abort();
+  const controller = new AbortController();
+  detailController = controller;
+  error.value = "";
   currentArtist.value = artist;
   currentAlbum.value = null;
   songs.value = [];
   artistInfo.value = null;
   artistInfoError.value = "";
   loading.value = true;
-  void loadArtistInfo(artist);
+  void loadArtistInfo(artist, controller.signal);
   try {
-    const xml = await authFetch("getArtist", { id: artist.id });
+    const xml = await authFetch("getArtist", { id: artist.id }, controller.signal);
     if (request !== detailRequest) return;
-    const root = parseXmlAttrs(xml, "artist")[0] || {};
+    const root = parseXmlAttrs(xml, "artist")[0];
+    if (!root?.id || /status=["']failed["']/.test(xml)) throw new Error("artist unavailable");
     currentArtist.value = {
       ...artist,
       name: root.name || artist.name,
       albumCount: root.albumCount || artist.albumCount,
-      starred: root.starred === "true" || artist.starred,
+      starred: !!root.starred,
       starredAt: root.starred || artist.starredAt,
     };
     albums.value = parseXmlAttrs(xml, "album").map((a) => ({
@@ -643,18 +649,18 @@ async function openArtist(artist: Artist) {
       starred: !!a.starred, starredAt: a.starred || undefined, createdAt: a.created || undefined,
     }));
   } catch {
-    if (request === detailRequest) albums.value = [];
+    if (request === detailRequest && !controller.signal.aborted) { albums.value = []; error.value = t("library.loadFailed"); }
   } finally {
     if (request === detailRequest) loading.value = false;
   }
 }
 
-async function loadArtistInfo(artist: Artist) {
+async function loadArtistInfo(artist: Artist, signal?: AbortSignal) {
   const request = ++artistInfoRequest;
   artistInfoLoading.value = true;
   artistInfoError.value = "";
   try {
-    const xml = await authFetch("getArtistInfo", { id: artist.id, count: "1" });
+    const xml = await authFetch("getArtistInfo", { id: artist.id, count: "1" }, signal);
     if (/status="failed"/.test(xml)) throw new Error("artist info unavailable");
     if (request !== artistInfoRequest) return;
     const info: ArtistInfo = {
@@ -678,12 +684,17 @@ async function openAlbum(album: Album) {
     return;
   }
   const request = ++detailRequest;
+  detailController?.abort();
+  const controller = new AbortController();
+  detailController = controller;
+  error.value = "";
   currentAlbum.value = album;
   loading.value = true;
   try {
-    const xml = await authFetch("getAlbum", { id: album.id });
+    const xml = await authFetch("getAlbum", { id: album.id }, controller.signal);
     if (request !== detailRequest) return;
-    const root = parseXmlAttrs(xml, "album")[0] || {};
+    const root = parseXmlAttrs(xml, "album")[0];
+    if (!root?.id || /status=["']failed["']/.test(xml)) throw new Error("album unavailable");
     currentAlbum.value = {
       ...album,
       name: root.name || album.name,
@@ -691,16 +702,16 @@ async function openAlbum(album: Album) {
       year: root.year || album.year,
       coverArt: root.coverArt || album.coverArt,
       songCount: root.songCount || album.songCount,
-      starred: root.starred === "true" || album.starred,
+      starred: !!root.starred,
       starredAt: root.starred || album.starredAt,
       createdAt: root.created || album.createdAt,
     };
     songs.value = parseXmlAttrs(xml, "song").map((s) => ({
       id: s.id || "",
       title: s.title || "",
-      artist: s.artist || album.artist,
-      album: s.album || album.name,
-      coverArt: s.coverArt || album.coverArt || undefined,
+      artist: s.artist || root.artist || album.artist,
+      album: s.album || root.name || album.name,
+      coverArt: s.coverArt || root.coverArt || album.coverArt || undefined,
       duration: parseInt(s.duration || "0"),
       starred: !!s.starred,
       starredAt: s.starred || undefined,
@@ -709,7 +720,7 @@ async function openAlbum(album: Album) {
       albumId: s.albumId || root.id || album.id,
     }));
   } catch {
-    if (request === detailRequest) songs.value = [];
+    if (request === detailRequest && !controller.signal.aborted) { songs.value = []; error.value = t("library.loadFailed"); }
   } finally {
     if (request === detailRequest) loading.value = false;
   }
@@ -789,7 +800,19 @@ function onStarChanged(kind: StarKind, item: StarEntity, value: boolean) {
     item.starred = value;
   }
   if (starredOnly && !value) removeStarred(kind, item.id);
+  detail.notifyStarChange(kind, item.id, value);
 }
+
+watch(() => detail.starChange, (change) => {
+  if (!change) return;
+  const rows: StarEntity[] = change.kind === "song"
+    ? [...allSongs.value, ...songs.value, ...starredLists.value.songs, ...(searchResults.value?.songs ?? [])]
+    : change.kind === "album"
+      ? [...allAlbums.value, ...albums.value, ...starredLists.value.albums, ...(searchResults.value?.albums ?? []), ...(currentAlbum.value ? [currentAlbum.value] : [])]
+      : [...artists.value, ...starredLists.value.artists, ...(searchResults.value?.artists ?? []), ...(currentArtist.value ? [currentArtist.value] : [])];
+  for (const item of rows) if (item.id === change.id) item.starred = change.starred;
+  if (starredOnly && !change.starred) removeStarred(change.kind, change.id);
+});
 
 function onStarError() {
   error.value = t("library.starUpdateFailed");
@@ -982,6 +1005,7 @@ function backToList() {
 }
 
 function backToAlbums() {
+  detailController?.abort();
   if (props.embedded && !currentArtist.value) {
     detail.close();
     return;
@@ -989,6 +1013,12 @@ function backToAlbums() {
   detailRequest++;
   currentAlbum.value = null;
   songs.value = [];
+  error.value = "";
+}
+
+function retryDetail() {
+  if (currentAlbum.value) void openAlbum(currentAlbum.value);
+  else if (currentArtist.value) void openArtist(currentArtist.value);
 }
 
 const songsHintFaded = ref(false);
@@ -1035,6 +1065,7 @@ watch(() => player.starred, () => {
 watch(() => player.current?.id, () => { locateRetryId = null; });
 
 onUnmounted(() => {
+  detailController?.abort();
   if (io) { io.disconnect(); io = null; }
   if (waterfallRO) { waterfallRO.disconnect(); waterfallRO = null; }
   if (searchTimer) clearTimeout(searchTimer);
@@ -1270,9 +1301,10 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 </script>
 
 <template>
-  <div class="library">
-    <div class="page-header">
-      <div>
+  <div class="library" :class="{ 'library--embedded': embedded }">
+    <div class="page-header" :class="{ 'media-detail-heading': embedded }">
+      <BudgetedImage v-if="embedded && currentAlbum?.coverArt" :key="currentAlbum.coverArt" class="media-detail-cover" :src="coverArtUrl(currentAlbum.coverArt, 256)" :alt="currentAlbum.name" @error="currentAlbum.coverArt = ''" />
+      <div class="media-detail-titles">
         <div class="mono-label breadcrumb">
           <a @click="backToList">{{ starredOnly ? t("library.starredBreadcrumb") : t("library.breadcrumb") }}</a>
           <template v-if="currentArtist"> / <a @click="backToAlbums">{{ currentArtist.name }}</a></template>
@@ -1341,9 +1373,9 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
     <!-- View tabs and sorting (hidden while drilled into an artist/album) -->
     <div v-if="!currentArtist && !currentAlbum && !embedded" class="library-controls">
       <div class="view-tabs">
-      <button :class="['view-tab', { active: tab === 'songs' }]" @click="switchTab('songs')">{{ t("library.tabSongs") }}</button>
-      <button :class="['view-tab', { active: tab === 'albums' }]" @click="switchTab('albums')">{{ t("library.tabAlbums") }}</button>
-      <button :class="['view-tab', { active: tab === 'artists' }]" @click="switchTab('artists')">{{ t("library.tabArtists") }}</button>
+      <button :class="['view-tab', { active: tab === 'songs' }]" @click="switchTab('songs')"><Icon name="music" /> {{ t("library.tabSongs") }}</button>
+      <button :class="['view-tab', { active: tab === 'albums' }]" @click="switchTab('albums')"><Icon name="album" /> {{ t("library.tabAlbums") }}</button>
+      <button :class="['view-tab', { active: tab === 'artists' }]" @click="switchTab('artists')"><Icon name="users" /> {{ t("library.tabArtists") }}</button>
       </div>
       <label class="sort-control">
         <span class="mono-label">{{ t("library.sortLabel") }}</span>
@@ -1368,7 +1400,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       />
     </div>
 
-    <div v-if="error" class="status-badge error">{{ error }}</div>
+    <div v-if="error" class="status-badge error" role="alert">{{ error }}<button v-if="embedded" type="button" class="btn-secondary btn-sm" @click="retryDetail"><Icon name="refresh" />{{ t("common.retry") }}</button></div>
 
     <!-- Drill-down: songs of an album (any tab) -->
     <!-- The trailing 32px track holds the per-row "⋮" menu (SongRowMenu) —
@@ -1421,7 +1453,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
          />
       </div>
       <div v-if="loading" class="empty-state">{{ t("common.loading") }}</div>
-      <div v-else-if="!albumSongs.length" class="empty-state">{{ t("library.noTracks") }}</div>
+      <div v-else-if="!albumSongs.length && !error" class="empty-state">{{ t("library.noTracks") }}</div>
     </div>
 
     <!-- Drill-down: albums of an artist -->
@@ -1871,6 +1903,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
     </div>
 
     <!-- Tag editor (single + batch) -->
+    <Teleport to="body">
     <TagEditor
       :open="editorOpen"
       :mode="editorMode"
@@ -1896,10 +1929,12 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         />
       </template>
     </TagEditor>
+    </Teleport>
 
     <!-- Share modal. Lightweight standalone (no extra component) — opens
          on row/card share button click; on success, shows the public URL with
          a copy button. -->
+    <Teleport to="body">
     <div v-if="shareOpen" class="modal-backdrop" @click.self="closeShare">
       <div class="modal share-modal">
         <div class="modal-title">{{ t("library.share") }} — {{ shareTarget?.label }}</div>
@@ -1990,10 +2025,23 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         <div class="corner corner-br"></div>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
+.library--embedded { padding: 24px; }
+.media-detail-heading { flex-wrap: wrap; align-items: center; gap: 16px; }
+.media-detail-heading .media-detail-titles { flex: 1; min-width: 0; }
+.media-detail-cover { width: 96px; height: 96px; object-fit: cover; flex-shrink: 0; border-radius: 8px; }
+.media-detail-heading .detail-actions { width: 100%; flex-wrap: wrap; }
+.media-detail-heading .page-title { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .library--embedded { padding: 16px; }
+  .media-detail-cover { width: 72px; height: 72px; }
+  .media-detail-heading .page-title { font-size: 24px; }
+}
+
 .breadcrumb { margin-bottom: 0.25rem; }
 .breadcrumb a { color: var(--color-text-muted); cursor: pointer; }
 .breadcrumb a:hover { color: var(--color-accent-primary); }

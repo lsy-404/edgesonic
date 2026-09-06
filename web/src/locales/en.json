@@ -98,7 +98,8 @@
       "super": "SUPER"
     },
     "primaryNavigation": "Main navigation",
-    "more": "More"
+    "more": "More",
+    "mediaDetails": "Music details"
   },
   "pageTitles": {
     "Login": "Login",
@@ -752,7 +753,8 @@
       "opus-128": "Opus 128k",
       "flac": "FLAC",
       "wav": "WAV"
-    }
+    },
+    "removeFromQueue": "Remove {title} from queue"
   },
   "nowPlaying": {
     "lyricsLoadFailed": "Failed to load lyrics",
@@ -1624,10 +1626,10 @@
     "unknownAlbum": "Unknown album"
   },
   "playlists": {
-    "label": "// playlists",
+    "label": "playlists",
     "title": "Playlists",
     "empty": "No playlists yet — click \"New playlist\" to create one",
-    "create": "+ New playlist",
+    "create": "New playlist",
     "name": "Name",
     "namePlaceholder": "e.g. Weekend mix",
     "comment": "Comment",

@@ -4,20 +4,38 @@ import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import Icon from "./Icon.vue";
 
-interface NavigationItem { label: string; path: string; icon: string }
-interface NavigationGroup { label: string; items: NavigationItem[] }
+interface NavigationItem {
+  label: string;
+  path: string;
+  icon: string;
+}
+interface NavigationGroup {
+  label: string;
+  items: NavigationItem[];
+}
 const props = defineProps<{ groups: NavigationGroup[] }>();
+const emit = defineEmits<{ navigate: [] }>();
 const { t } = useI18n();
 const route = useRoute();
 const moreOpen = ref(false);
 const moreButton = ref<HTMLButtonElement | null>(null);
 const morePanel = ref<HTMLDialogElement | null>(null);
 const primaryPaths = ["/", "/library", "/starred", "/playlists"];
-const primaryItems = computed(() => primaryPaths.flatMap((path) =>
-  props.groups.flatMap((group) => group.items).filter((item) => item.path === path)));
-const moreGroups = computed(() => props.groups.map((group) => ({
-  ...group, items: group.items.filter((item) => !primaryPaths.includes(item.path)),
-})).filter((group) => group.items.length));
+const primaryItems = computed(() =>
+  primaryPaths.flatMap((path) =>
+    props.groups
+      .flatMap((group) => group.items)
+      .filter((item) => item.path === path),
+  ),
+);
+const moreGroups = computed(() =>
+  props.groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !primaryPaths.includes(item.path)),
+    }))
+    .filter((group) => group.items.length),
+);
 const moreActive = computed(() => !primaryPaths.includes(route.path));
 
 function showMore(element: Element) {
@@ -30,14 +48,25 @@ function finishClose(element: Element) {
 function dismissBackdrop(event: MouseEvent) {
   if (event.target !== event.currentTarget) return;
   const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
-  if (event.clientY < bounds.top || event.clientX < bounds.left || event.clientX > bounds.right || event.clientY > bounds.bottom) moreOpen.value = false;
+  if (
+    event.clientY < bounds.top ||
+    event.clientX < bounds.left ||
+    event.clientX > bounds.right ||
+    event.clientY > bounds.bottom
+  )
+    moreOpen.value = false;
 }
 const mobileQuery = window.matchMedia("(max-width: 960px)");
 function onViewportChange(event: MediaQueryListEvent) {
   if (!event.matches) moreOpen.value = false;
 }
 mobileQuery.addEventListener("change", onViewportChange);
-watch(() => route.fullPath, () => { moreOpen.value = false; });
+watch(
+  () => route.fullPath,
+  () => {
+    moreOpen.value = false;
+  },
+);
 onBeforeUnmount(() => {
   morePanel.value?.close();
   mobileQuery.removeEventListener("change", onViewportChange);
@@ -53,6 +82,7 @@ onBeforeUnmount(() => {
       class="mobile-nav-item"
       :class="{ active: route.path === item.path }"
       :aria-current="route.path === item.path ? 'page' : undefined"
+      @click="emit('navigate')"
     >
       <Icon :name="item.icon" :size="21" />
       <span>{{ item.label }}</span>
@@ -68,12 +98,16 @@ onBeforeUnmount(() => {
       @click="moreOpen = true"
     >
       <Icon name="menu" :size="21" />
-      <span>{{ t('app.more') }}</span>
+      <span>{{ t("app.more") }}</span>
     </button>
   </nav>
 
   <Teleport to="body">
-    <Transition name="navigation-sheet" @enter="showMore" @after-leave="finishClose">
+    <Transition
+      name="navigation-sheet"
+      @enter="showMore"
+      @after-leave="finishClose"
+    >
       <dialog
         v-if="moreOpen"
         id="mobile-more-navigation"
@@ -84,12 +118,22 @@ onBeforeUnmount(() => {
         @click="dismissBackdrop"
       >
         <header class="mobile-more-header">
-          <h2 id="mobile-more-title">{{ t('app.more') }}</h2>
-          <button class="icon-button" type="button" :aria-label="t('common.close')" autofocus @click="moreOpen = false">
+          <h2 id="mobile-more-title">{{ t("app.more") }}</h2>
+          <button
+            class="icon-button"
+            type="button"
+            :aria-label="t('common.close')"
+            autofocus
+            @click="moreOpen = false"
+          >
             <Icon name="cross" :size="20" />
           </button>
         </header>
-        <section v-for="group in moreGroups" :key="group.label" class="mobile-more-group">
+        <section
+          v-for="group in moreGroups"
+          :key="group.label"
+          class="mobile-more-group"
+        >
           <h3>{{ group.label }}</h3>
           <router-link
             v-for="item in group.items"
@@ -98,7 +142,10 @@ onBeforeUnmount(() => {
             class="mobile-more-link"
             :class="{ active: route.path === item.path }"
             :aria-current="route.path === item.path ? 'page' : undefined"
-            @click="moreOpen = false"
+            @click="
+              moreOpen = false;
+              emit('navigate');
+            "
           >
             <Icon :name="item.icon" :size="20" />
             <span>{{ item.label }}</span>
@@ -111,7 +158,9 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.mobile-navigation { display: none; }
+.mobile-navigation {
+  display: none;
+}
 .mobile-more-panel {
   position: fixed;
   inset: auto 0 0;
@@ -130,18 +179,64 @@ onBeforeUnmount(() => {
   color: var(--color-text-primary);
   box-shadow: 0 -8px 48px rgb(0 0 0 / 24%);
 }
-.mobile-more-panel::backdrop { background: var(--color-bg-overlay); }
-.mobile-more-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.mobile-more-header h2 { font: 600 20px/1.5 var(--font-body); margin: 0; }
-.mobile-more-group { margin-top: 20px; }
-.mobile-more-group h3 { margin: 0 0 6px; color: var(--color-text-muted); font-size: 12px; font-weight: 600; }
-.mobile-more-link { display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 8px 12px; border-radius: 4px; color: var(--color-text-secondary); text-decoration: none; }
-.mobile-more-link span { flex: 1; }
-.mobile-more-link:hover { background: var(--color-bg-tertiary); color: var(--color-text-primary); }
-.mobile-more-link.active { background: var(--color-accent-dim); color: var(--color-accent-primary); }
-.navigation-sheet-enter-active { transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms ease; }
-.navigation-sheet-leave-active { transition: transform 200ms cubic-bezier(0.4, 0, 1, 1), opacity 160ms ease; }
-.navigation-sheet-enter-from, .navigation-sheet-leave-to { transform: translateY(100%); opacity: 0; }
+.mobile-more-panel::backdrop {
+  background: var(--color-bg-overlay);
+}
+.mobile-more-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mobile-more-header h2 {
+  font: 600 20px/1.5 var(--font-body);
+  margin: 0;
+}
+.mobile-more-group {
+  margin-top: 20px;
+}
+.mobile-more-group h3 {
+  margin: 0 0 6px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.mobile-more-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+.mobile-more-link span {
+  flex: 1;
+}
+.mobile-more-link:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+.mobile-more-link.active {
+  background: var(--color-accent-dim);
+  color: var(--color-accent-primary);
+}
+.navigation-sheet-enter-active {
+  transition:
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms ease;
+}
+.navigation-sheet-leave-active {
+  transition:
+    transform 200ms cubic-bezier(0.4, 0, 1, 1),
+    opacity 160ms ease;
+}
+.navigation-sheet-enter-from,
+.navigation-sheet-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
+}
 @media (max-width: 960px) {
   .mobile-navigation {
     position: fixed;
@@ -156,13 +251,46 @@ onBeforeUnmount(() => {
     backdrop-filter: blur(24px) saturate(150%);
     border-top: 1px solid var(--color-border-subtle);
   }
-  .mobile-nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-width: 0; min-height: 48px; padding: 4px; border: 0; border-radius: 4px; background: transparent; color: var(--color-text-secondary); text-decoration: none; font: 500 11px/1.2 var(--font-body); cursor: pointer; }
-  .mobile-nav-item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mobile-nav-item.active { color: var(--color-accent-primary); background: var(--color-accent-dim); }
-  .mobile-nav-item:hover { background: var(--color-bg-tertiary); }
-  .mobile-nav-item:focus-visible, .mobile-more-link:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: -2px; }
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+    min-height: 48px;
+    padding: 4px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font: 500 11px/1.2 var(--font-body);
+    cursor: pointer;
+  }
+  .mobile-nav-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobile-nav-item.active {
+    color: var(--color-accent-primary);
+    background: var(--color-accent-dim);
+  }
+  .mobile-nav-item:hover {
+    background: var(--color-bg-tertiary);
+  }
+  .mobile-nav-item:focus-visible,
+  .mobile-more-link:focus-visible {
+    outline: 2px solid var(--color-accent-primary);
+    outline-offset: -2px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .navigation-sheet-enter-active, .navigation-sheet-leave-active { transition-duration: 1ms; }
+  .navigation-sheet-enter-active,
+  .navigation-sheet-leave-active {
+    transition-duration: 1ms;
+  }
 }
 </style>

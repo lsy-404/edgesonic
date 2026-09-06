@@ -169,7 +169,13 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
     <div
       class="pb-track"
       :class="{ clickable: player.hasTrack }"
+      :role="player.hasTrack ? 'button' : undefined"
+      :tabindex="player.hasTrack ? 0 : undefined"
+      :aria-label="player.hasTrack ? expandTitle : undefined"
+      :aria-expanded="player.hasTrack ? detailsOpen : undefined"
       @click="goNowPlaying"
+      @keydown.enter.prevent="goNowPlaying"
+      @keydown.space.prevent="goNowPlaying"
     >
       <div class="pb-cover" :class="{ clickable: player.hasTrack }" :title="player.hasTrack ? expandTitle : ''">
         <img v-if="displayCoverSrc" :src="displayCoverSrc" alt="" @error="onCoverError" />
@@ -258,7 +264,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
       <div v-if="queueOpen" ref="queuePanel" class="pb-queue-panel">
         <div class="pb-queue-header">
           <span>{{ t("player.queueTitle", { n: player.queue.length }) }}</span>
-          <button class="pb-queue-close" @click="queueOpen = false">
+          <button class="pb-queue-close" :aria-label="t('common.close')" @click="queueOpen = false">
             <Icon name="cross" :size="16" />
           </button>
         </div>
@@ -276,7 +282,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
               <div class="pb-queue-artist">{{ tr.artist }}</div>
             </div>
             <span class="pb-queue-dur">{{ formatDuration(Math.floor(tr.duration)) }}</span>
-            <button v-if="i !== player.index" class="pb-queue-rm" @click.stop="removeFromQueue(i)">
+            <button v-if="i !== player.index" class="pb-queue-rm" :aria-label="t('player.removeFromQueue', { title: tr.title })" @click.stop="removeFromQueue(i)">
               <Icon name="cross" :size="14" />
             </button>
           </div>
@@ -297,7 +303,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   align-items: center;
   gap: 1.5rem;
   padding: 0 1.25rem;
-  background: rgba(10, 10, 11, 0.95);
+  background: color-mix(in srgb, var(--color-bg-secondary) 95%, transparent);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--color-border-subtle);
 }
@@ -313,6 +319,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   color: var(--color-text-muted);
 }
 .pb-cover.clickable, .pb-meta.clickable { cursor: pointer; }
+.pb-track:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: 3px; border-radius: 4px; }
 .pb-cover.clickable:hover { border-color: var(--color-accent-dim); }
 .pb-meta.clickable:hover .pb-title { color: var(--color-accent-primary); }
 .pb-cover img { width: 100%; height: 100%; object-fit: cover; }
@@ -510,7 +517,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   display: flex;
   flex-direction: column;
   background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-subtle);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.3);

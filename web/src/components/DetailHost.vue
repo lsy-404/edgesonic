@@ -12,62 +12,174 @@ const detail = useDetailStore();
 const player = usePlayerStore();
 const { t } = useI18n();
 let previousFocus: HTMLElement | null = null;
-const title = computed(() => detail.kind === "now-playing"
-  ? t("player.expand")
-  : detail.kind === "artist" ? t("library.tabArtists") : t("library.tabAlbums"));
-const mediaKind = computed<"album" | "artist">(() => detail.kind === "artist" ? "artist" : "album");
+const title = computed(() =>
+  detail.kind === "now-playing"
+    ? t("pageTitles.Now Playing")
+    : t("app.mediaDetails"),
+);
+const mediaKind = computed<"album" | "artist">(() =>
+  detail.kind === "artist" ? "artist" : "album",
+);
 
-function close() { detail.close(); }
+function close() {
+  detail.close();
+}
 function onKeydown(event: KeyboardEvent) {
-  if ((event.target as HTMLElement | null)?.closest(".modal, [role='dialog']")) return;
+  if (event.defaultPrevented) return;
+  if ((event.target as HTMLElement | null)?.closest(".modal, dialog, [role='dialog']"))
+    return;
   if (event.key === "Escape" && detail.isOpen) {
     event.preventDefault();
     close();
   }
 }
 
-watch(() => detail.isOpen, async (open) => {
-  if (open) {
-    previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    await nextTick();
-    document.querySelector<HTMLElement>(".detail-host__close")?.focus();
-  } else {
-    previousFocus?.focus({ preventScroll: true });
-    previousFocus = null;
-  }
-});
-watch(() => player.hasTrack, (hasTrack) => {
-  if (!hasTrack && detail.kind === "now-playing") detail.close();
-});
+watch(
+  () => detail.isOpen,
+  async (open) => {
+    if (open) {
+      previousFocus =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      await nextTick();
+      document.querySelector<HTMLElement>(".detail-host__close")?.focus();
+    } else {
+      previousFocus?.focus({ preventScroll: true });
+      previousFocus = null;
+    }
+  },
+);
+watch(
+  () => player.hasTrack,
+  (hasTrack) => {
+    if (!hasTrack && detail.kind === "now-playing") detail.close();
+  },
+);
 window.addEventListener("keydown", onKeydown);
 onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 </script>
 
 <template>
-  <Transition name="detail-sheet">
-    <section v-if="detail.isOpen" class="detail-host" role="region" :aria-label="title">
-      <header class="detail-host__header">
-        <span class="detail-host__eyebrow">{{ title }}</span>
-        <button class="detail-host__close" type="button" :aria-label="t('common.close')" @click="close"><Icon name="cross" :size="18" /></button>
-      </header>
-      <div class="detail-host__body">
-        <NowPlaying v-if="detail.kind === 'now-playing' && player.hasTrack" />
-        <Library v-else-if="detail.target" :key="`${mediaKind}:${detail.target}`" embedded :detail-target="{ kind: mediaKind, id: detail.target }" />
-      </div>
-    </section>
-  </Transition>
+  <Teleport to="body">
+    <Transition name="detail-sheet">
+      <section
+        v-if="detail.isOpen"
+        class="detail-host"
+        role="region"
+        :aria-label="title"
+      >
+        <header class="detail-host__header">
+          <span class="detail-host__eyebrow">{{ title }}</span>
+          <button
+            class="detail-host__close"
+            type="button"
+            :aria-label="t('common.close')"
+            @click="close"
+          >
+            <Icon name="cross" :size="18" />
+          </button>
+        </header>
+        <div class="detail-host__body">
+          <NowPlaying v-if="detail.kind === 'now-playing' && player.hasTrack" />
+          <Library
+            v-else-if="detail.target"
+            :key="`${mediaKind}:${detail.target}`"
+            embedded
+            :detail-target="{ kind: mediaKind, id: detail.target }"
+          />
+        </div>
+      </section>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
-.detail-host { position: fixed; z-index: 90; top: var(--nav-h); left: var(--sidebar-w); right: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); display: flex; flex-direction: column; background: var(--color-bg-secondary); border: 1px solid var(--color-border); border-bottom: 0; border-radius: 8px 8px 0 0; box-shadow: 0 -12px 40px rgb(0 0 0 / .3); overflow: hidden; }
-.detail-host__header { height: 48px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-border-subtle); background: var(--color-bg-tertiary); }
-.detail-host__eyebrow { font-size: var(--fs-sm); color: var(--color-text-secondary); font-weight: 600; }
-.detail-host__close { width: 32px; height: 32px; border: 0; border-radius: 4px; background: transparent; color: var(--color-text-primary); line-height: 1; cursor: pointer; }
-.detail-host__close:hover, .detail-host__close:focus-visible { background: var(--color-bg-elevated); outline: 2px solid var(--color-accent-primary); outline-offset: 1px; }
-.detail-host__body { min-height: 0; flex: 1; overflow: auto; }
-.detail-host__body :deep(.nowplaying) { height: 100%; }
-.detail-sheet-enter-active, .detail-sheet-leave-active { transition: transform .24s ease, opacity .18s ease; }
-.detail-sheet-enter-from, .detail-sheet-leave-to { transform: translateY(100%); opacity: 0; }
-@media (max-width: 960px) { .detail-host { top: var(--nav-h); left: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); } }
-@media (prefers-reduced-motion: reduce) { .detail-sheet-enter-active, .detail-sheet-leave-active { transition: none; } }
+.detail-host {
+  position: fixed;
+  z-index: 90;
+  top: var(--nav-h);
+  left: var(--sidebar-w);
+  right: 0;
+  bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px));
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -12px 40px rgb(0 0 0 / 0.3);
+  overflow: hidden;
+}
+.detail-host__header {
+  height: 48px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-tertiary);
+}
+.detail-host__eyebrow {
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+.detail-host__close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-primary);
+  line-height: 1;
+  cursor: pointer;
+}
+.detail-host__close:hover,
+.detail-host__close:focus-visible {
+  background: var(--color-bg-elevated);
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 1px;
+}
+.detail-host__body {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+.detail-host__body :deep(.page) {
+  padding: 24px;
+}
+.detail-host__body :deep(.nowplaying) {
+  height: 100%;
+}
+.detail-sheet-enter-active,
+.detail-sheet-leave-active {
+  transition:
+    transform 0.24s ease,
+    opacity 0.18s ease;
+}
+.detail-sheet-enter-from,
+.detail-sheet-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
+}
+@media (max-width: 960px) {
+  .detail-host {
+    top: var(--nav-h);
+    left: 0;
+    bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px));
+  }
+}
+@media (max-width: 600px) {
+  .detail-host__body :deep(.page) {
+    padding: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .detail-sheet-enter-active,
+  .detail-sheet-leave-active {
+    transition: none;
+  }
+}
 </style>

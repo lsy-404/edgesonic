@@ -137,3 +137,5 @@ button, .btn-primary, .btn-secondary, .btn-danger {
 .page-title { font-family: var(--ContentControlThemeFontFamily); font-size: 28px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.15; text-transform: none; }
 .modal-title, .card-title, .form-label, .mono-label { font-family: var(--ContentControlThemeFontFamily); letter-spacing: 0.012em; text-transform: none; }
 .menu, .context-menu, .options-menu { border-radius: var(--ContentDialogCornerRadius); background: var(--flyout-bg); border-color: var(--card-stroke); box-shadow: var(--ElevationControlFlyoutShadow, 0 8px 24px rgba(0, 0, 0, .18)); }
+
+.modal { backdrop-filter: blur(24px) saturate(140%); min-width: 0; width: min(520px, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; }
