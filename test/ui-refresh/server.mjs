@@ -161,7 +161,13 @@ const server = await createServer({
             construct(Target, args) {
               const element = Reflect.construct(Target, args);
               for (const event of ['volumechange', 'playing', 'pause', 'seeked']) {
-                element.addEventListener(event, () => report('audio', {event, volume:element.volume, time:element.currentTime, paused:element.paused}));
+                element.addEventListener(event, () => {
+                  report('audio', {event, volume:element.volume, time:element.currentTime, paused:element.paused});
+                  if (event === 'volumechange') requestAnimationFrame(() => {
+                    const label = document.querySelector('.player-volume__percent');
+                    if (label) report('volume-readout', {text:label.textContent, bounds:label.getBoundingClientRect().toJSON()});
+                  });
+                });
               }
               return element;
             }

@@ -52,7 +52,10 @@ async function openPopup() {
 }
 
 function onSoundButton() {
-  if (isMobileLayout()) void openPopup();
+  if (isMobileLayout()) {
+    if (popupOpen.value) closePopup();
+    else void openPopup();
+  }
   else toggleMute();
 }
 
@@ -75,7 +78,9 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 function onWindowResize() {
-  if (popupOpen.value) placePopup();
+  if (!popupOpen.value) return;
+  if (isMobileLayout()) placePopup();
+  else closePopup();
 }
 
 function onRangeFocusOut(event: FocusEvent) {
@@ -85,11 +90,11 @@ function onRangeFocusOut(event: FocusEvent) {
 function onRangeKeydown(event: KeyboardEvent) {
   const delta = event.key === "ArrowUp" || event.key === "ArrowRight" ? 0.01
     : event.key === "ArrowDown" || event.key === "ArrowLeft" ? -0.01 : 0;
-  if (!delta) return;
+  if (!delta && event.key !== "Home" && event.key !== "End") return;
   event.preventDefault();
   event.stopPropagation();
   adjusting.value = true;
-  player.setVolume(Math.min(1, Math.max(0, player.volume + delta)));
+  player.setVolume(event.key === "Home" ? 0 : event.key === "End" ? 1 : Math.min(1, Math.max(0, player.volume + delta)));
 }
 
 watch(() => player.volume, (value) => {
@@ -124,13 +129,14 @@ onBeforeUnmount(() => {
         <Icon :name="volumeIcon" :size="16" />
       </WinButton>
     </div>
-    <div class="player-volume__desktop-slider" role="slider" tabindex="0" :aria-label="t('player.volume')" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="player.volume" @pointerdown.capture="adjusting = true" @pointerup.capture="adjusting = false" @pointercancel.capture="adjusting = false" @keydown.capture="onRangeKeydown" @keyup.capture="adjusting = false" @focusout="onRangeFocusOut">
+    <div class="player-volume__desktop-slider" role="slider" tabindex="0" :aria-label="t('player.volume')" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="player.volume" :aria-valuetext="`${percent}%`" @pointerdown.capture="adjusting = true" @pointerup.capture="adjusting = false" @pointercancel.capture="adjusting = false" @lostpointercapture.capture="adjusting = false" @keydown.capture="onRangeKeydown" @keyup.capture="adjusting = false" @focusout="onRangeFocusOut">
       <WinSlider
         class="player-volume__range"
         :Value="player.volume"
         :Minimum="0"
         :Maximum="1"
         :StepFrequency="0.01"
+        :IsThumbToolTipEnabled="false"
         Width="clamp(160px, 14vw, 200px)"
         @update:Value="setVolume"
       />
@@ -142,15 +148,15 @@ onBeforeUnmount(() => {
     <div v-if="popupOpen" ref="popup" class="player-volume__popup" :style="popupStyle" role="dialog" :aria-label="t('player.volume')" @keydown.escape.stop.prevent="closePopup">
       <div class="player-volume__popup-header">
         <span>{{ t('player.volume') }}</span>
-        <output>{{ percent }}%</output>
       </div>
-      <div ref="range" class="player-volume__popup-slider" role="slider" tabindex="0" :aria-label="t('player.volume')" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="player.volume" @pointerdown.capture="adjusting = true" @pointerup.capture="adjusting = false" @pointercancel.capture="adjusting = false" @keydown.capture="onRangeKeydown" @keyup.capture="adjusting = false" @focusout="onRangeFocusOut">
+      <div ref="range" class="player-volume__popup-slider" role="slider" tabindex="0" :aria-label="t('player.volume')" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="player.volume" :aria-valuetext="`${percent}%`" @pointerdown.capture="adjusting = true" @pointerup.capture="adjusting = false" @pointercancel.capture="adjusting = false" @lostpointercapture.capture="adjusting = false" @keydown.capture="onRangeKeydown" @keyup.capture="adjusting = false" @focusout="onRangeFocusOut">
         <WinSlider
-          class="player-volume__range player-volume__popup-range"
+          style="width: 100%"
           :Value="player.volume"
           :Minimum="0"
           :Maximum="1"
           :StepFrequency="0.01"
+        :IsThumbToolTipEnabled="false"
           Width="100%"
           @update:Value="setVolume"
         />
@@ -166,6 +172,7 @@ onBeforeUnmount(() => {
   color: var(--color-text-secondary); border-color: var(--color-border-subtle);
 }
 .player-volume :deep(.player-volume__button:hover), .player-volume :deep(.player-volume__button:focus-visible) { color: var(--color-accent-primary); border-color: var(--color-accent-dim); }
+.player-volume__desktop-slider:focus-visible, .player-volume__popup-slider:focus-visible { outline: 2px solid var(--accent-base); outline-offset: 3px; border-radius: 4px; }
 .player-volume__desktop-slider { position: relative; display: flex; align-items: flex-start; height: 42px; }
 .player-volume__percent {
   position: absolute; right: 0; bottom: 0;
@@ -173,13 +180,11 @@ onBeforeUnmount(() => {
 }
 .player-volume__popup {
   position: fixed; z-index: 320;
-  width: min(22rem, calc(100vw - 2rem)); padding: 0.9rem 1rem 1rem;
+  width: min(352px, calc(100vw - 32px)); padding: 0.9rem 1rem 1rem;
   background: var(--color-bg-elevated); border: 1px solid var(--color-border-strong);
   border-radius: 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
 }
 .player-volume__popup-header { display: flex; justify-content: space-between; margin-bottom: 0.6rem; color: var(--color-text-primary); font-size: var(--fs-sm); }
-.player-volume__popup-header output { color: var(--color-text-muted); font-family: var(--font-mono); }
-.player-volume__popup-slider { position: relative; min-height: 2.5rem; }
-.player-volume__popup-range { width: 100%; }
+.player-volume__popup-slider { position: relative; min-height: 48px; }
 @media (max-width: 960px) { .player-volume__desktop-slider { display: none; } }
 </style>
