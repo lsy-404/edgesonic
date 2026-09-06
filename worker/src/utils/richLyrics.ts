@@ -648,7 +648,7 @@ function parseKrcTextToRich(text: string): RichLyrics | null {
     richLines.push({ start: startMs, value: plain });
     synced = true;
 
-    // Words normally use `<offset_ms,duration_ms,0>word` in KRC/KLRC. Some
+    // Words normally use `<offset_ms,duration_ms,0>word` in KRC. Some
     // exporters write the equivalent `word(offset_ms,duration_ms,0)` form.
     const cues: RichCue[] = [];
     let cursor = 0;
@@ -712,7 +712,7 @@ export async function parseSidecarToRich(
       return null;
     }
   }
-  if (ext === "krc" || ext === "klrc") {
+  if (ext === "krc" || ext === "elrc") {
     const binary = await parseKrcToRich(bytes);
     if (binary) return binary;
     try {

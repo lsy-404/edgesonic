@@ -414,26 +414,26 @@ async function main() {
     assert(fetchCalls.length === 0, "did NOT hit external fetch (lyrics_rich populated)");
   }
 
-  console.log("\ngetLyricsBySongId — stale line-only rich data is refreshed from a KLRC sidecar:");
+  console.log("\ngetLyricsBySongId — stale line-only rich data is refreshed from an ELRC sidecar:");
   {
     fetchCalls = [];
     fetchHandler = () => new Response("UNEXPECTED", { status: 500 });
     const sqlite = buildDb();
-    sqlite.prepare("INSERT INTO song_instances (id, master_id, storage_uri, suffix) VALUES ('si-klrc', 'sg-1', 'r2://music/Hello.mp3', 'mp3')").run();
+    sqlite.prepare("INSERT INTO song_instances (id, master_id, storage_uri, suffix) VALUES ('si-elrc', 'sg-1', 'r2://music/Hello.mp3', 'mp3')").run();
     sqlite.prepare("UPDATE song_masters SET lyrics_rich = ? WHERE id = 'sg-1'").run(JSON.stringify({
       tracks: [{ kind: "main", lang: "xxx", synced: true, line: [{ start: 0, value: "逐字" }], cueLine: [], agents: [] }],
     }));
     const { get } = makeApp(sqlite, {
-      "music/Hello.klrc": "[0,1000]<0,400,0>逐<400,600,0>字",
+      "music/Hello.elrc": "[0,1000]<0,400,0>逐<400,600,0>字",
     });
     const r = await get("/rest/getLyricsBySongId?id=sg-1&enhanced=true");
     const xml = await r.text();
     assert(xml.includes("<cueLine") && xml.includes(">逐</cue>") && xml.includes(">字</cue>"),
-      "enhanced response replaces stale line-only data with KLRC cues");
+      "enhanced response replaces stale line-only data with ELRC cues");
     assert(!/<cue\b[^>]*\bvalue=/.test(xml), "cue text uses the OpenSubsonic XML body instead of a private value attribute");
     const stored = sqlite.prepare("SELECT lyrics_rich FROM song_masters WHERE id = 'sg-1'").get() as { lyrics_rich: string };
-    assert(stored.lyrics_rich.includes('"cue"'), "refreshed KLRC cue data is persisted");
-    assert(fetchCalls.length === 0, "does not use an external lyric when a KLRC sidecar exists");
+    assert(stored.lyrics_rich.includes('"cue"'), "refreshed ELRC cue data is persisted");
+    assert(fetchCalls.length === 0, "does not use an external lyric when an ELRC sidecar exists");
   }
 
   console.log("\ngetLyricsBySongId — existing rich lines containing NetEase JSON are normalized:");

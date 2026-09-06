@@ -152,7 +152,7 @@ async function main() {
     assert(out[2]?.text === "第一句翻译" && out[2]?.synced, "non-adjacent same-time line is retained instead of being discarded");
   }
 
-  console.log("\nG. Structured cue attributes preserve KLRC word timing:");
+  console.log("\nG. Structured cue attributes preserve ELRC word timing:");
   {
     const cues = parseCueValues('<cue start="0" end="400" value="逐" byteStart="0" byteEnd="3"/><cue start="400" end="1000" value="字" byteStart="3" byteEnd="6"/>');
     assert(cues.length === 2, `two self-closing cues are parsed (got ${cues.length})`);

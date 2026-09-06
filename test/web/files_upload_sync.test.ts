@@ -36,11 +36,11 @@ assert(sameDir[0].kind === "audio" && sameDir[1].kind === "variant", "second aud
 const companions = classifyUploadItems(files([
   ["track.lrc", "disc-1/track.lrc"],
   ["track.ttml", "disc-1/track.ttml"],
-  ["track.klrc", "disc-1/track.klrc"],
+  ["track.elrc", "disc-1/track.elrc"],
   ["track.ncm", "disc-1/track.ncm"],
   ["cover.jpg", "disc-1/cover.jpg"],
 ]));
-assert(companions.slice(0, 3).every((item) => item.kind === "lyrics"), "LRC, TTML, and KLRC are lyrics sidecars");
+assert(companions.slice(0, 3).every((item) => item.kind === "lyrics"), "LRC, TTML, and ELRC are lyrics sidecars");
 assert(companions[3].kind === "encrypted" && !companions[3].selected, "encrypted input is recognized and excluded by default");
 companions[3].kind = "audio";
 companions[3].selected = true;

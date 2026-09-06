@@ -18,7 +18,7 @@
 // entries of their own.
 //
 // Covers:
-//  • .lrc / .ttml / .krc / .klrc / .txt / images are accepted with allow_all_file_types
+//  • .lrc / .ttml / .krc / .elrc / .txt / images are accepted with allow_all_file_types
 //    off — they belong in a music folder
 //  • a companion lands in R2 but gets no song_instances row (registering one
 //    produced a phantom "Pending Uploads" track no metadata pass could fix)
@@ -141,7 +141,7 @@ async function main() {
       ["lyrics.lrc", null],
       ["lyrics.ttml", null],
       ["lyrics.krc", null],
-      ["lyrics.klrc", null],
+      ["lyrics.elrc", null],
       ["notes.txt", "text/plain"],
       ["cover.jpg", "image/jpeg"],
       ["back.png", "image/png"],
@@ -173,7 +173,7 @@ async function main() {
       ["a.lrc", null, "text/plain; charset=utf-8"],
       // Browsers commonly fall back to octet-stream for unknown extensions.
       ["b.krc", "application/octet-stream", "text/plain; charset=utf-8"],
-      ["c.klrc", "application/octet-stream", "text/plain; charset=utf-8"],
+      ["c.elrc", "application/octet-stream", "text/plain; charset=utf-8"],
       ["d.ttml", null, "application/ttml+xml"],
       ["e.txt", null, "text/plain; charset=utf-8"],
       ["f.jpg", null, "image/jpeg"],
