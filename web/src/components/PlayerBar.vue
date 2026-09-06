@@ -386,20 +386,22 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 .pb-progress.disabled { cursor: default; }
 .pb-progress::before {
   content: ""; position: absolute; left: 0; right: 0;
-  height: 3px; background: var(--color-bg-elevated);
+  height: 4px; border-radius: 999px; background: var(--ctrl-fill-tertiary, var(--color-bg-elevated));
 }
-.pb-progress-fill { position: absolute; left: 0; height: 3px; background: var(--color-accent-primary); }
+.pb-progress-fill { position: absolute; left: 0; height: 4px; border-radius: 999px; background: var(--accent-base, var(--color-accent-primary)); }
 .pb-progress-buffered {
   position: absolute;
-  height: 3px;
-  background: var(--color-text-secondary);
+  height: 4px; border-radius: 999px;
+  background: var(--ctrl-fill-secondary, var(--color-text-secondary));
   opacity: 0.35;
   pointer-events: none;
 }
 .pb-progress-thumb {
-  position: absolute; width: 9px; height: 9px;
-  background: var(--color-accent-primary);
-  transform: translateX(-50%) rotate(45deg);
+  position: absolute; width: 10px; height: 10px;
+  border: 2px solid var(--color-bg-elevated); border-radius: 50%;
+  background: var(--accent-base, var(--color-accent-primary));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transform: translateX(-50%);
   opacity: 0; transition: opacity 0.15s;
 }
 .pb-progress:hover .pb-progress-thumb, .pb-progress-thumb.active { opacity: 1; }
@@ -420,7 +422,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 
 /* --- right: volume above quality, queue alongside --- */
 .pb-right { display: flex; align-items: center; gap: 0.6rem; width: 300px; flex-shrink: 0; justify-content: flex-end; }
-.pb-audio-settings { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-end; gap: 0.25rem; }
+.pb-audio-settings { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-end; gap: 2px; }
 .pb-quality-wrap { display: flex; min-width: 0; }
 .pb-queue-btn {
   position: relative;
@@ -524,6 +526,8 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 }
 
 @media (max-width: 960px) {
+  :global(:root:has(.player-bar:not(.details-open))) { --player-h: 72px; }
+  :global(:root:has(.player-bar.details-open)) { --player-h: 150px; }
   .player-bar { gap: 0.5rem; padding: 0 0.5rem; }
   .pb-track { width: auto; flex: 1; }
   .pb-right { width: auto; gap: 0.3rem; }
@@ -537,7 +541,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   .player-bar:not(.details-open) .pb-track {
     width: 100%;
     padding-left: 0.35rem;
-    padding-right: 8rem;
+    padding-right: 9.5rem;
   }
   .player-bar:not(.details-open) .pb-cover {
     position: relative;
@@ -546,7 +550,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   .player-bar:not(.details-open) .pb-cover-ring { display: block; }
   .player-bar:not(.details-open) .pb-center {
     position: absolute;
-    right: 4rem;
+    right: 6.25rem;
     width: auto;
     flex: 0 0 auto;
   }
@@ -567,11 +571,30 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   }
   .player-bar.details-open { justify-content: center; }
   .player-bar.details-open .pb-track { display: none; }
-  .player-bar.details-open .pb-center { width: 100%; flex: 1; }
-  .player-bar.details-open .pb-progress-row { max-width: none; }
-  .player-bar.details-open .pb-right {
-    top: 0.75rem;
-    transform: none;
+  .player-bar.details-open .pb-center {
+    position: absolute; inset: 0; display: block; width: auto;
   }
+  .player-bar.details-open .pb-controls {
+    position: absolute; top: 0.5rem; left: 50%;
+    transform: translateX(-50%);
+  }
+  .player-bar.details-open .pb-progress-row {
+    position: absolute; bottom: 0.6rem; left: 0.5rem; right: 0.5rem;
+    width: auto; max-width: none;
+  }
+  .player-bar.details-open .pb-right {
+    display: grid; grid-template-columns: 1fr auto auto;
+    grid-template-rows: 28px 32px; column-gap: 0.3rem; row-gap: 0.35rem;
+    top: 0.5rem; left: 0.5rem; right: 0.5rem; width: auto;
+    transform: none; align-items: center;
+  }
+  .player-bar.details-open .pb-audio-settings { display: contents; }
+  .player-bar.details-open .pb-audio-settings :deep(.player-volume) { grid-column: 2; grid-row: 1; }
+  .player-bar.details-open .pb-quality-wrap { grid-column: 1 / -1; grid-row: 2; justify-self: end; }
+  .player-bar.details-open .pb-queue-btn { grid-column: 3; grid-row: 1; }
+}
+
+@media (min-width: 961px) {
+  :global(:root:has(.player-bar)) { --player-h: 96px; }
 }
 </style>
