@@ -30,6 +30,7 @@ import { maybeRunArtistScrapeBackfill } from "./utils/artistScrapeBackfill";
 import { maybeRunPeerSync } from "./utils/peerSync";
 import { reapExpiredGuestTokens } from "./utils/guestTokenReaper";
 import { maybeRunCacheEviction } from "./utils/cacheEviction";
+import { advanceLyricsSearchIndex } from "./utils/lyricsSearch";
 import { webLoginRoutes } from "./endpoints/edgesonic/auth";
 import { sharePublicRoutes } from "./endpoints/share_public";
 
@@ -206,6 +207,11 @@ export default {
     ctx.waitUntil(
       maybeRunCacheEviction(env, ctx).catch((e) => {
         console.error("scheduled maybeRunCacheEviction failed:", e);
+      }),
+    );
+    ctx.waitUntil(
+      advanceLyricsSearchIndex(env.DB, 48).catch((e) => {
+        console.error("scheduled advanceLyricsSearchIndex failed:", e);
       }),
     );
   },

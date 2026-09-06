@@ -14,6 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import type { Artist, Album, SongMaster, SongInstance, Annotation, User, Playlist, Bookmark, PlayQueue, TranscodeJob, InternetRadioStation, PodcastChannel, PodcastEpisode, Share } from "../types/entities";
+import { findLyricsSongIds } from "../utils/lyricsSearch";
 
 export interface SongNames {
   artist_name: string | null;
@@ -368,6 +369,7 @@ export function createQueries(db: D1Database) {
       // (which never send this) see no behavior change; the web Songs tab
       // passes "newest"/"oldest" to browse by library insertion time.
       songSort?: "title" | "titleDesc" | "newest" | "oldest";
+      lyricsQuery?: string;
     } = {}): Promise<{
       artists: Artist[];
       albums: Album[];
@@ -381,6 +383,28 @@ export function createQueries(db: D1Database) {
           : opts.songSort === "titleDesc"
             ? "sm.sort_title DESC"
             : "sm.sort_title ASC";
+      if (opts.lyricsQuery?.trim()) {
+        const ids = await findLyricsSongIds(db, opts.lyricsQuery);
+        if (ids === null) throw new Error("lyrics-search-initializing");
+        if (ids.length === 0) return { artists: [], albums: [], songs: [] };
+        const songs: SongRow[] = [];
+        for (let offset = 0; offset < ids.length; offset += 80) {
+          const group = ids.slice(offset, offset + 80);
+          const result = await db.prepare(
+            `SELECT ${SONG_ROW_COLS} FROM song_masters sm ${SONG_ROW_JOINS}
+             WHERE sm.id IN (${group.map(() => "?").join(",")}) AND sm.title LIKE ?`,
+          ).bind(...group, like).all<SongRow>();
+          songs.push(...result.results);
+        }
+        const direction = opts.songSort === "titleDesc" ? -1 : 1;
+        songs.sort((a, b) => opts.songSort === "newest"
+          ? (b.created_at ?? 0) - (a.created_at ?? 0)
+          : opts.songSort === "oldest"
+            ? (a.created_at ?? 0) - (b.created_at ?? 0)
+            : direction * (a.sort_title ?? a.title).localeCompare(b.sort_title ?? b.title));
+        const start = opts.songOffset ?? 0;
+        return { artists: [], albums: [], songs: songs.slice(start, start + (opts.songCount ?? 20)) };
+      }
       const [artists, albums, songs] = await Promise.all([
         db.prepare(
           "SELECT * FROM artists WHERE name LIKE ? ORDER BY sort_name ASC LIMIT ? OFFSET ?"

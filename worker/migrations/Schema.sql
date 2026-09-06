@@ -391,6 +391,24 @@ CREATE INDEX IF NOT EXISTS idx_songmasters_album ON song_masters(album_id);
 CREATE INDEX IF NOT EXISTS idx_songmasters_artist ON song_masters(artist_id);
 CREATE INDEX IF NOT EXISTS idx_songmasters_title ON song_masters(title);
 
+CREATE TABLE IF NOT EXISTS lyrics_search_documents (
+  song_id TEXT PRIMARY KEY,
+  body TEXT NOT NULL,
+  FOREIGN KEY (song_id) REFERENCES song_masters(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS lyrics_search_grams (
+  gram TEXT NOT NULL,
+  song_id TEXT NOT NULL,
+  PRIMARY KEY (gram, song_id),
+  FOREIGN KEY (song_id) REFERENCES song_masters(id) ON DELETE CASCADE
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS lyrics_search_state (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  version INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  last_song_id TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS song_artists (
   song_id TEXT NOT NULL,
   artist_id TEXT NOT NULL,

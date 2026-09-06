@@ -23,6 +23,7 @@ import {
   UNUSED_ARTIST_CLEANUP_SQL,
 } from "../../utils/artistCredits";
 import { createQueries } from "../../db/queries";
+import { syncLyricsSearchForSong } from "../../utils/lyricsSearch";
 
 type Queries = ReturnType<typeof createQueries>;
 import { requiredPrefixLen, rebuildTagPrefix } from "../../utils/tagwrite";
@@ -348,6 +349,7 @@ async function applyTagsToSong(
   if (!Object.keys(tags).length && !cover && lyricsKeyword === KW_NULL) {
     await db.prepare("UPDATE song_masters SET lyrics = NULL, updated_at = ? WHERE id = ?")
       .bind(Math.floor(Date.now() / 1000), master.id).run();
+    await syncLyricsSearchForSong(db, master.id);
     return { ok: true, masterId: master.id, albumId: master.album_id, artistId: master.artist_id, files: sidecarFiles };
   }
   if (!Object.keys(tags).length && !cover && lyricsKeyword === KW_WRITE) {
@@ -436,6 +438,7 @@ async function applyTagsToSong(
     await db.prepare("UPDATE song_masters SET lyrics = NULL, updated_at = ? WHERE id = ?")
       .bind(now, master.id).run();
   }
+  if (tags.lyrics !== undefined || lyricsNull) await syncLyricsSearchForSong(db, master.id);
   if (tags.year || genreValue) {
     await db.prepare("UPDATE albums SET year = COALESCE(?, year), genre = ?, updated_at = ? WHERE id = ?")
       .bind(tags.year ?? null, genreValue ?? null, now, albumId).run();
