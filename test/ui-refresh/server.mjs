@@ -4,6 +4,7 @@ import { realpath } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
+const fixturePort = Number(process.env.EDGESONIC_UI_FIXTURE_PORT || 5199);
 const dependencyRoot = dirname(await realpath(`${root}node_modules`));
 const albums = [
   ["a1", "Night Signals", "Glass Harbour", "#2c5568", "#b3cd9a"],
@@ -126,7 +127,7 @@ const server = await createServer({
   root: `${root}web`,
   server: {
     host: "127.0.0.1",
-    port: 5199,
+    port: fixturePort,
     strictPort: true,
     fs: {
       allow: [
@@ -166,7 +167,7 @@ const server = await createServer({
       },
       configureServer(vite) {
         vite.middlewares.use(async (request, response, next) => {
-          const url = new URL(request.url, "http://127.0.0.1:5199");
+          const url = new URL(request.url, `http://127.0.0.1:${fixturePort}`);
           const referrer = new URL(request.headers.referer || url.href);
           const scenario = referrer.searchParams.get("scenario") || "normal";
           const endpoint = url.pathname.split("/").pop();
@@ -206,7 +207,12 @@ const server = await createServer({
           if (url.pathname === "/edgesonic/messages")
             return send(response, {
               ok: true,
-              messages: [],
+              messages: scenario === "messages" ? Array.from({ length: 18 }, (_, index) => ({
+                id: `message-${index + 1}`,
+                title: `Library notice ${index + 1}`,
+                bodyHtml: "<p>Music library information.</p><p>Long content verifies scrolling and keeps message actions reachable.</p>",
+                kind: "info", presentation: "inbox", createdAt: `2026-09-06T${String(23 - index).padStart(2, "0")}:00:00Z`, readAt: null, source: "service",
+              })) : [],
               officialMessages: [],
             });
           if (url.pathname === "/edgesonic/version")
@@ -400,7 +406,7 @@ const server = await createServer({
   ],
 });
 await server.listen();
-console.log("UI verification: http://127.0.0.1:5199/ and /__fixture/mobile");
+console.log(`UI verification: http://127.0.0.1:${fixturePort}/ and /__fixture/mobile`);
 process.on("SIGINT", () => {
   void server.close();
 });

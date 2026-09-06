@@ -477,7 +477,7 @@ onBeforeUnmount(() => {
 .nav-group-label { color: var(--color-text-muted); font-size: 12px; font-weight: 600; padding: 0 14px 6px; }
 .side-link { position: relative; display: flex; align-items: center; gap: 14px; min-height: 40px; padding: 8px 14px; box-sizing: border-box; border-radius: 4px; color: var(--color-text-secondary); font-size: 14px; text-decoration: none; transition: background 160ms ease, color 160ms ease; }
 .side-link:hover { color: var(--color-text-primary); background: var(--color-bg-tertiary); }
-.side-link.active { color: var(--color-text-primary); background: var(--color-accent-dim); font-weight: 600; }
+.side-link.active { color: var(--color-text-primary); background: var(--navigation-selection-fill); font-weight: 600; }
 .side-link.active::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 2px; background: var(--color-accent-primary); }
 .side-link.active .es-icon { color: var(--color-accent-primary); }
 .sidebar-footer-spacer { flex-shrink: 0; }

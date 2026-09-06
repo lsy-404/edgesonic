@@ -3,6 +3,7 @@
 /* WinUI 3 material bridge. Explicit application themes decide all colors;
    this file never follows the operating system's color preference. */
 :root {
+  --navigation-selection-fill: light-dark(#e6e6e6, #373737);
   --ContentControlThemeFontFamily: "Segoe UI Variable", "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-body: var(--ContentControlThemeFontFamily);
   --accent-base: #4cc2ff;

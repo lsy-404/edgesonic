@@ -149,6 +149,7 @@ onBeforeUnmount(() => {
       <span v-if="unreadCount" class="message-center-count" :aria-label="t('messages.unreadCount', { count: unreadCount })">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
     </button>
 
+    <Teleport to="body">
     <Transition name="message-drawer">
       <aside
         v-if="panelOpen"
@@ -158,7 +159,7 @@ onBeforeUnmount(() => {
         role="region"
         tabindex="-1"
         :aria-labelledby="activeView === 'compose' ? 'message-compose-title' : 'message-center-title'"
-        @keydown.esc="closeCenter"
+        @keydown.esc.stop.prevent="closeCenter"
       >
         <header class="message-center-header">
           <div>
@@ -256,6 +257,7 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </div>
+    </Teleport>
   </div>
 </template>
 
@@ -279,17 +281,17 @@ onBeforeUnmount(() => {
 .message-center-trigger:focus-visible, .message-center-refresh:focus-visible, .message-center-close:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: 2px; }
 .message-center-count { position: absolute; top: -0.38rem; right: -0.42rem; min-width: 1.05rem; padding: 0 0.22rem; border-radius: 999px; background: var(--color-accent-primary); color: var(--color-text-inverse); font: 700 0.62rem/1.1 var(--font-mono); }
 .message-center-backdrop { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / 70%); }
-.message-center-panel { position: fixed; z-index: 1200; top: 0; right: 0; bottom: 0; display: flex; width: min(31rem, 100vw); flex-direction: column; padding: 1.25rem; overflow: auto; border-left: 1px solid var(--color-border-subtle); background: var(--color-bg-primary); box-shadow: -1.1rem 0 2.7rem rgb(0 0 0 / 30%); }
+.message-center-panel { position: fixed; z-index: 1200; top: 0; right: 0; bottom: 0; height: 100dvh; max-height: 100dvh; box-sizing: border-box; display: flex; width: min(31rem, 100vw); flex-direction: column; padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1.25rem max(1.25rem, env(safe-area-inset-bottom, 0px)); overflow: hidden; border-left: 1px solid var(--color-border-subtle); background: var(--color-bg-primary); box-shadow: -1.1rem 0 2.7rem rgb(0 0 0 / 30%); }
 .message-drawer-enter-active, .message-drawer-leave-active { transition: transform 160ms ease, opacity 160ms ease; }
 .message-drawer-enter-from, .message-drawer-leave-to { opacity: 0; transform: translateX(1.5rem); }
-.message-center-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.message-center-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-shrink: 0; }
 .message-center-header h2, .message-modal h2 { margin: 0; font-size: 1.15rem; }
 .message-center-header p { margin: 0.3rem 0 0; color: var(--color-text-secondary); font-size: var(--fs-sm); }
 .message-center-header-actions, .message-card-buttons { display: flex; gap: 0.45rem; }
 .message-center-state, .message-center-error { margin: 1.5rem 0; color: var(--color-text-secondary); text-align: center; }
 .message-center-error { color: var(--color-danger, #e66); }
-.message-center-list { display: grid; gap: 0.7rem; }
-.message-compose { display: grid; gap: 1rem; margin: 0.25rem 0 1rem; }
+.message-center-list { display: grid; gap: 0.7rem; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; padding-right: 0.3rem; scrollbar-gutter: stable; }
+.message-compose { display: grid; gap: 1rem; margin: 0.25rem 0 1rem; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 0.5rem; }
 .message-compose label { display: grid; gap: 0.38rem; color: var(--color-text-secondary); font-size: var(--fs-sm); }
 .message-compose small { color: var(--color-text-muted); }
 .message-compose textarea { resize: vertical; }
@@ -314,8 +316,8 @@ onBeforeUnmount(() => {
 .message-body :deep(pre code) { padding: 0; background: transparent; }
 .message-card-actions { margin-top: 0.85rem; }
 .message-card-source { color: var(--color-text-muted); font-size: var(--fs-xs); }
-.message-modal { width: min(460px, 100%); padding: 1.25rem; border-left: 4px solid var(--color-accent-primary); }
+.message-modal { max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; width: min(460px, 100%); padding: 1.25rem; border-left: 4px solid var(--color-accent-primary); }
 .message-modal-kind { display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.75rem; color: var(--color-accent-primary); font-size: var(--fs-xs); }
 .message-modal-actions { display: flex; justify-content: flex-end; margin-top: 1.2rem; }
-@media (max-width: 720px) { .message-center-panel { width: 100vw; padding: 1rem; border-left: 0; } .message-card-actions { align-items: flex-start; flex-direction: column; } .message-compose-options { grid-template-columns: 1fr; } .message-card-buttons, .message-compose-options button { width: 100%; justify-content: flex-end; } }
+@media (max-width: 720px) { .message-center-panel { width: 100vw; padding: max(1rem, env(safe-area-inset-top, 0px)) 1rem max(1rem, env(safe-area-inset-bottom, 0px)); border-left: 0; } .message-card-actions { align-items: flex-start; flex-direction: column; } .message-compose-options { grid-template-columns: 1fr; } .message-card-buttons, .message-compose-options button { width: 100%; justify-content: flex-end; } }
 </style>

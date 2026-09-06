@@ -219,7 +219,7 @@ onBeforeUnmount(() => {
   color: var(--color-text-primary);
 }
 .mobile-more-link.active {
-  background: var(--color-accent-dim);
+  background: var(--navigation-selection-fill);
   color: var(--color-accent-primary);
 }
 .navigation-sheet-enter-active {
@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
   }
   .mobile-nav-item.active {
     color: var(--color-accent-primary);
-    background: var(--color-accent-dim);
+    background: var(--navigation-selection-fill);
   }
   .mobile-nav-item:hover {
     background: var(--color-bg-tertiary);
