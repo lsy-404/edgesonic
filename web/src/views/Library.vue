@@ -6,6 +6,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, parseXmlInner, formatDuration } from "../api";
 import { usePlayerStore, type Track } from "../stores/player";
+import { useDetailStore } from "../stores/detail";
 import TagEditor from "../components/TagEditor.vue";
 import Icon from "../components/Icon.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
@@ -22,6 +23,7 @@ const { t } = useI18n();
 
 const { authFetch, writeTags, batchWriteTags, rescanSongs, coverArtUrl, downloadUrl, isAdmin } = useAuth();
 const player = usePlayerStore();
+const detail = useDetailStore();
 const BATCH_MAX = 50;
 
 const props = withDefaults(defineProps<{ starredOnly?: boolean }>(), { starredOnly: false });
@@ -603,6 +605,8 @@ function playFromSearch(i: number) {
 }
 
 async function openArtist(artist: Artist) {
+  detail.openArtist(artist.id);
+  return;
   const request = ++detailRequest;
   currentArtist.value = artist;
   currentAlbum.value = null;
@@ -650,6 +654,8 @@ async function loadArtistInfo(artist: Artist) {
 }
 
 async function openAlbum(album: Album) {
+  detail.openAlbum(album.id);
+  return;
   const request = ++detailRequest;
   currentAlbum.value = album;
   loading.value = true;

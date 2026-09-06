@@ -8,6 +8,7 @@ import { useAuth } from "../api";
 import { getTrackLyrics } from "../lib/trackPrefetch";
 import { cuePlaybackProgress } from "../lib/lyricProgress";
 
+defineProps<{ embedded?: boolean }>();
 const player = usePlayerStore();
 const { t } = useI18n();
 const { coverArtUrl, authFetch, username } = useAuth();

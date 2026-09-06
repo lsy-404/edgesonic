@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatDuration } from "../api";
 import { usePlayerStore, type Track } from "../stores/player";
@@ -334,10 +334,15 @@ const canEdit = computed(() =>
 );
 
 onMounted(loadPlaylists);
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === "Escape" && currentPlaylist.value) backToList();
+}
+onMounted(() => window.addEventListener("keydown", onKeydown));
+onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" :class="{ 'playlist-detail-sheet': currentPlaylist }">
     <div class="page-header">
       <div>
         <div class="mono-label">{{ t("playlists.label") }}</div>
@@ -577,6 +582,9 @@ onMounted(loadPlaylists);
 <style scoped>
 .back-link { cursor: pointer; color: var(--color-accent-primary); }
 .back-link:hover { color: var(--color-text-primary); }
+.playlist-detail-sheet { position: fixed; z-index: 80; top: var(--nav-h); left: var(--sidebar-w); right: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); overflow: auto; padding: 24px; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border); border-radius: 8px 8px 0 0; animation: playlist-detail-enter .24s ease; }
+@keyframes playlist-detail-enter { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@media (max-width: 960px) { .playlist-detail-sheet { left: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); } }
 
 .header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 
