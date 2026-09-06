@@ -25,7 +25,7 @@ assert(app.includes("onGlobalSearchShortcut") && app.includes("event.key.toLower
 assert(app.includes('@keydown.enter.prevent="submitGlobalSearch"'), "Enter submits the global search form");
 assert(app.includes('@keydown.esc.prevent="clearGlobalSearch"'), "Escape clears the global search field");
 assert(library.includes("watch(() => route.query.q"), "Library restores queries from route state");
-assert(library.includes("updateSearchRoute(query)"), "Library writes local query changes back to the route");
+assert(library.includes("updateSearchRoute(query, lyricQuery)"), "Library writes both search conditions back to the route atomically");
 assert(library.includes("let searchRequest = 0") && library.includes("if (request !== searchRequest) return;"), "stale search responses are discarded");
 assert(library.includes("const searchError = ref(\"\")") && library.includes('t("library.searchFailed")'), "search failures have a distinct state");
 assert(library.includes('class="btn-secondary btn-sm" @click="retrySearch"'), "search failures can be retried");
