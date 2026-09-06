@@ -5,13 +5,14 @@ import { usePlayerStore } from "../stores/player";
 import Icon from "./Icon.vue";
 import { volumePercent, toggledVolume } from "./PlayerVolumeControl";
 import { WinButton } from "../vendor/winui";
+import WinSlider from "../vendor/winui/components/WinSlider.vue";
 
 const { t } = useI18n();
 const player = usePlayerStore();
 
 const trigger = ref<HTMLElement | null>(null);
 const popup = ref<HTMLElement | null>(null);
-const range = ref<HTMLInputElement | null>(null);
+const range = ref<HTMLElement | null>(null);
 const popupOpen = ref(false);
 const adjusting = ref(false);
 const lastAudible = ref(player.volume > 0 ? player.volume : 0.5);
@@ -23,8 +24,7 @@ function isMobileLayout() {
   return window.matchMedia("(max-width: 960px)").matches;
 }
 
-function setVolume(event: Event) {
-  const value = Number((event.target as HTMLInputElement).value);
+function setVolume(value: number) {
   player.setVolume(value);
 }
 
@@ -48,7 +48,7 @@ async function openPopup() {
   placePopup();
   popupOpen.value = true;
   await nextTick();
-  range.value?.focus();
+  range.value?.querySelector<HTMLElement>("[role=slider]")?.focus();
 }
 
 function onSoundButton() {
@@ -111,18 +111,17 @@ onBeforeUnmount(() => {
       </WinButton>
     </div>
     <div class="player-volume__desktop-slider">
-      <input
+      <WinSlider
         class="player-volume__range"
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        :value="player.volume"
-        :aria-label="t('player.volume')"
-        @input="setVolume"
-        @pointerdown="adjusting = true"
-        @pointerup="adjusting = false"
-        @pointercancel="adjusting = false"
+        :Value="player.volume"
+        :Minimum="0"
+        :Maximum="1"
+        :StepFrequency="0.01"
+        Width="clamp(160px, 14vw, 200px)"
+        :AriaLabel="t('player.volume')"
+        @update:Value="setVolume"
+        @InteractionStarted="adjusting = true"
+        @InteractionCompleted="adjusting = false"
         @keydown="adjusting = true"
         @keyup="adjusting = false"
         @blur="adjusting = false"
@@ -138,19 +137,18 @@ onBeforeUnmount(() => {
         <output>{{ percent }}%</output>
       </div>
       <div class="player-volume__popup-slider">
-        <input
+        <WinSlider
           ref="range"
           class="player-volume__range player-volume__popup-range"
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          :value="player.volume"
-          :aria-label="t('player.volume')"
-          @input="setVolume"
-          @pointerdown="adjusting = true"
-          @pointerup="adjusting = false"
-          @pointercancel="adjusting = false"
+          :Value="player.volume"
+          :Minimum="0"
+          :Maximum="1"
+          :StepFrequency="0.01"
+          Width="100%"
+          :AriaLabel="t('player.volume')"
+          @update:Value="setVolume"
+          @InteractionStarted="adjusting = true"
+          @InteractionCompleted="adjusting = false"
           @keydown="adjusting = true"
           @keyup="adjusting = false"
           @blur="adjusting = false"
@@ -168,16 +166,6 @@ onBeforeUnmount(() => {
 }
 .player-volume :deep(.player-volume__button:hover), .player-volume :deep(.player-volume__button:focus-visible) { color: var(--color-accent-primary); border-color: var(--color-accent-dim); }
 .player-volume__desktop-slider { position: relative; display: flex; align-items: flex-start; height: 42px; }
-.player-volume__range {
-  width: clamp(160px, 14vw, 200px); height: 20px; margin: 0;
-  appearance: none; border-radius: 999px; background: transparent; cursor: pointer;
-}
-.player-volume__range::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: var(--ctrl-fill-tertiary, var(--color-bg-tertiary)); }
-.player-volume__range::-webkit-slider-thumb { width: 12px; height: 12px; margin-top: -4px; appearance: none; border: 2px solid var(--color-bg-elevated); border-radius: 50%; background: var(--accent-base, var(--color-accent-primary)); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
-.player-volume__range::-moz-range-track { height: 4px; border: 0; border-radius: 999px; background: var(--ctrl-fill-tertiary, var(--color-bg-tertiary)); }
-.player-volume__range::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--accent-base, var(--color-accent-primary)); }
-.player-volume__range::-moz-range-thumb { width: 8px; height: 8px; border: 2px solid var(--color-bg-elevated); border-radius: 50%; background: var(--accent-base, var(--color-accent-primary)); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
-.player-volume__range:focus-visible { outline: 2px solid var(--accent-base, var(--color-accent-primary)); outline-offset: 3px; }
 .player-volume__percent {
   position: absolute; right: 0; bottom: 0;
   color: var(--color-text-muted); font-family: var(--font-mono); font-size: var(--fs-xs); line-height: 1;
