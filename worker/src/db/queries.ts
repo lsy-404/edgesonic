@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import type { Artist, Album, SongMaster, SongInstance, Annotation, User, Playlist, Bookmark, PlayQueue, TranscodeJob, InternetRadioStation, PodcastChannel, PodcastEpisode, Share } from "../types/entities";
-import { findLyricsSongIds } from "../utils/lyricsSearch";
+import { advanceLyricsSearchIndex, lyricsSearchGrams, normalizeLyricsSearchText } from "../utils/lyricsSearch";
 
 export interface SongNames {
   artist_name: string | null;
@@ -384,26 +384,11 @@ export function createQueries(db: D1Database) {
             ? "sm.sort_title DESC"
             : "sm.sort_title ASC";
       if (opts.lyricsQuery?.trim()) {
-        const ids = await findLyricsSongIds(db, opts.lyricsQuery);
-        if (ids === null) throw new Error("lyrics-search-initializing");
-        if (ids.length === 0) return { artists: [], albums: [], songs: [] };
-        const songs: SongRow[] = [];
-        for (let offset = 0; offset < ids.length; offset += 80) {
-          const group = ids.slice(offset, offset + 80);
-          const result = await db.prepare(
-            `SELECT ${SONG_ROW_COLS} FROM song_masters sm ${SONG_ROW_JOINS}
-             WHERE sm.id IN (${group.map(() => "?").join(",")}) AND sm.title LIKE ?`,
-          ).bind(...group, like).all<SongRow>();
-          songs.push(...result.results);
-        }
-        const direction = opts.songSort === "titleDesc" ? -1 : 1;
-        songs.sort((a, b) => opts.songSort === "newest"
-          ? (b.created_at ?? 0) - (a.created_at ?? 0)
-          : opts.songSort === "oldest"
-            ? (a.created_at ?? 0) - (b.created_at ?? 0)
-            : direction * (a.sort_title ?? a.title).localeCompare(b.sort_title ?? b.title));
-        const start = opts.songOffset ?? 0;
-        return { artists: [], albums: [], songs: songs.slice(start, start + (opts.songCount ?? 20)) };
+        const normalized = normalizeLyricsSearchText(opts.lyricsQuery, null);
+        if (Array.from(normalized).length > 512) throw new Error("lyrics-search-query-too-long");
+        if (await advanceLyricsSearchIndex(db) !== "ready") throw new Error("lyrics-search-initializing");
+        const result = await db.prepare(`WITH wanted AS (SELECT DISTINCT value gram FROM json_each(?)), candidates AS (SELECT g.song_id FROM lyrics_search_grams g JOIN wanted w ON w.gram=g.gram GROUP BY g.song_id HAVING COUNT(DISTINCT g.gram)=(SELECT COUNT(*) FROM wanted)) SELECT ${SONG_ROW_COLS} FROM candidates c JOIN lyrics_search_documents d ON d.song_id=c.song_id JOIN song_masters sm ON sm.id=c.song_id ${SONG_ROW_JOINS} WHERE instr(d.body,?)>0 AND sm.title LIKE ? ORDER BY ${songOrder}, sm.id ASC LIMIT ? OFFSET ?`).bind(JSON.stringify(lyricsSearchGrams(normalized)), normalized, like, opts.songCount ?? 20, opts.songOffset ?? 0).all<SongRow>();
+        return { artists: [], albums: [], songs: result.results };
       }
       const [artists, albums, songs] = await Promise.all([
         db.prepare(

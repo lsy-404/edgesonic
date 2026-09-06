@@ -1,129 +1,26 @@
-const INDEX_VERSION = 1;
-const INIT_BATCH_SIZE = 12;
-const GRAM_QUERY_CHUNK = 64;
-const SONG_QUERY_CHUNK = 80;
-const ensuredDatabases = new WeakSet<object>();
-
-interface LyricsRow {
-  id: string;
-  lyrics: string | null;
-  lyrics_rich: string | null;
-}
-
+const VERSION = 2;
+const ensured = new WeakSet<object>();
 export type LyricsSearchProgress = "ready" | "building";
 
-function normalizePlainLyrics(value: string): string {
-  return value.split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line && !/^\[[a-zA-Z#][^\]]*\]$/.test(line))
-    .map((line) => line.replace(/\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g, ""))
-    .filter(Boolean).join(" ");
+export function normalizeLyricsSearchText(lyrics: string | null, rich: string | null): string {
+  const plain = (value: string) => value.split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !/^\[[a-zA-Z#][^\]]*\]$/.test(line)).map((line) => line.replace(/\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g, "")).filter(Boolean).join(" ");
+  const values = [lyrics ?? ""];
+  if (rich) try { for (const track of ((JSON.parse(rich) as { tracks?: Array<{ line?: Array<{ value?: string }>; cueLine?: Array<{ value?: string; cue?: Array<{ value?: string }> }> }> }).tracks ?? [])) { for (const line of track.line ?? []) if (line.value) values.push(line.value); for (const line of track.cueLine ?? []) { if (line.value) values.push(line.value); for (const cue of line.cue ?? []) if (cue.value) values.push(cue.value); } } } catch { /* ignore malformed rich lyrics */ }
+  return values.map(plain).filter(Boolean).join(" ").normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ").trim();
 }
-
-function richValues(value: string | null): string[] {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value) as { tracks?: Array<{ line?: Array<{ value?: unknown }>; cueLine?: Array<{ value?: unknown; cue?: Array<{ value?: unknown }> }> }> };
-    return (parsed.tracks ?? []).flatMap((track) => [
-      ...(track.line ?? []).map((line) => typeof line.value === "string" ? line.value : ""),
-      ...(track.cueLine ?? []).flatMap((line) => [
-        typeof line.value === "string" ? line.value : "",
-        ...(line.cue ?? []).map((cue) => typeof cue.value === "string" ? cue.value : ""),
-      ]),
-    ]).filter(Boolean);
-  } catch {
-    return [];
-  }
+export function lyricsSearchGrams(text: string): string[] { const chars = Array.from(text), out = new Set<string>(); for (let i=0;i<chars.length;i++) { out.add(chars[i]); if (i+1<chars.length) out.add(chars[i]+chars[i+1]); } return [...out]; }
+async function schema(db: D1Database) {
+  if (ensured.has(db as object)) return;
+  await db.batch([
+    db.prepare("CREATE TABLE IF NOT EXISTS lyrics_search_documents(song_id TEXT PRIMARY KEY, body TEXT NOT NULL)"), db.prepare("CREATE TABLE IF NOT EXISTS lyrics_search_grams(gram TEXT NOT NULL, song_id TEXT NOT NULL, PRIMARY KEY(gram,song_id)) WITHOUT ROWID"), db.prepare("CREATE INDEX IF NOT EXISTS idx_lyrics_search_grams_song ON lyrics_search_grams(song_id)"), db.prepare("CREATE TABLE IF NOT EXISTS lyrics_search_dirty(song_id TEXT PRIMARY KEY, revision INTEGER NOT NULL DEFAULT 0)"), db.prepare("CREATE TABLE IF NOT EXISTS lyrics_search_state(id INTEGER PRIMARY KEY CHECK(id=1), version INTEGER NOT NULL, initialized INTEGER NOT NULL DEFAULT 0)"),
+    db.prepare("CREATE TRIGGER IF NOT EXISTS lyrics_search_song_insert AFTER INSERT ON song_masters BEGIN INSERT INTO lyrics_search_dirty(song_id,revision) VALUES(NEW.id,0) ON CONFLICT(song_id) DO UPDATE SET revision=revision+1; END"), db.prepare("CREATE TRIGGER IF NOT EXISTS lyrics_search_song_update AFTER UPDATE OF lyrics,lyrics_rich ON song_masters BEGIN INSERT INTO lyrics_search_dirty(song_id,revision) VALUES(NEW.id,0) ON CONFLICT(song_id) DO UPDATE SET revision=revision+1; END"), db.prepare("CREATE TRIGGER IF NOT EXISTS lyrics_search_song_delete AFTER DELETE ON song_masters BEGIN DELETE FROM lyrics_search_documents WHERE song_id=OLD.id; DELETE FROM lyrics_search_grams WHERE song_id=OLD.id; DELETE FROM lyrics_search_dirty WHERE song_id=OLD.id; END"),
+  ]); ensured.add(db as object);
 }
-
-export function normalizeLyricsSearchText(lyrics: string | null, lyricsRich: string | null): string {
-  return [lyrics ? normalizePlainLyrics(lyrics) : "", ...richValues(lyricsRich).map(normalizePlainLyrics)]
-    .filter(Boolean).join(" ").normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ").trim();
+export async function advanceLyricsSearchIndex(db: D1Database, limit=12): Promise<LyricsSearchProgress> {
+  await schema(db); const state=await db.prepare("SELECT version,initialized FROM lyrics_search_state WHERE id=1").first<{version:number;initialized:number}>();
+  if (!state || state.version!==VERSION || !state.initialized) await db.batch([db.prepare("INSERT OR IGNORE INTO lyrics_search_dirty(song_id,revision) SELECT id,0 FROM song_masters"),db.prepare("INSERT INTO lyrics_search_state(id,version,initialized) VALUES(1,?,1) ON CONFLICT(id) DO UPDATE SET version=excluded.version,initialized=1").bind(VERSION)]);
+  const rows=await db.prepare("SELECT d.song_id,d.revision,sm.lyrics,sm.lyrics_rich FROM lyrics_search_dirty d JOIN song_masters sm ON sm.id=d.song_id ORDER BY d.song_id LIMIT ?").bind(limit).all<{song_id:string;revision:number;lyrics:string|null;lyrics_rich:string|null}>();
+  for (const row of rows.results) { const body=normalizeLyricsSearchText(row.lyrics,row.lyrics_rich), guard="EXISTS(SELECT 1 FROM lyrics_search_dirty d JOIN song_masters sm ON sm.id=d.song_id WHERE d.song_id=? AND d.revision=? AND sm.lyrics IS ? AND sm.lyrics_rich IS ?)"; await db.batch([db.prepare(`DELETE FROM lyrics_search_grams WHERE song_id=? AND ${guard}`).bind(row.song_id,row.song_id,row.revision,row.lyrics,row.lyrics_rich),db.prepare(`DELETE FROM lyrics_search_documents WHERE song_id=? AND ${guard}`).bind(row.song_id,row.song_id,row.revision,row.lyrics,row.lyrics_rich),db.prepare(`INSERT INTO lyrics_search_documents(song_id,body) SELECT ?,? WHERE ${guard}`).bind(row.song_id,body,row.song_id,row.revision,row.lyrics,row.lyrics_rich),db.prepare(`INSERT INTO lyrics_search_grams(gram,song_id) SELECT value,? FROM json_each(?) WHERE ${guard}`).bind(row.song_id,JSON.stringify(lyricsSearchGrams(body)),row.song_id,row.revision,row.lyrics,row.lyrics_rich),db.prepare(`DELETE FROM lyrics_search_dirty WHERE song_id=? AND revision=? AND ${guard}`).bind(row.song_id,row.revision,row.song_id,row.revision,row.lyrics,row.lyrics_rich)]); }
+  return await db.prepare("SELECT 1 FROM lyrics_search_dirty LIMIT 1").first() ? "building" : "ready";
 }
-
-function grams(text: string): string[] {
-  const chars = Array.from(text);
-  const out = new Set<string>();
-  for (let i = 0; i < chars.length; i++) {
-    out.add(chars[i]);
-    if (i + 1 < chars.length) out.add(chars[i] + chars[i + 1]);
-  }
-  return [...out];
-}
-
-async function ensureLyricsSearchSchema(db: D1Database): Promise<void> {
-  if (ensuredDatabases.has(db as object)) return;
-  await db.prepare("CREATE TABLE IF NOT EXISTS lyrics_search_documents (song_id TEXT PRIMARY KEY, body TEXT NOT NULL)").run();
-  await db.prepare("CREATE TABLE IF NOT EXISTS lyrics_search_grams (gram TEXT NOT NULL, song_id TEXT NOT NULL, PRIMARY KEY (gram, song_id)) WITHOUT ROWID").run();
-  await db.prepare("CREATE TABLE IF NOT EXISTS lyrics_search_state (id INTEGER PRIMARY KEY CHECK (id = 1), version INTEGER NOT NULL, status TEXT NOT NULL, last_song_id TEXT NOT NULL DEFAULT '')").run();
-  ensuredDatabases.add(db as object);
-}
-
-async function replaceSongIndex(db: D1Database, songId: string, lyrics: string | null, lyricsRich: string | null): Promise<void> {
-  const body = normalizeLyricsSearchText(lyrics, lyricsRich);
-  await db.prepare("DELETE FROM lyrics_search_grams WHERE song_id = ?").bind(songId).run();
-  await db.prepare("DELETE FROM lyrics_search_documents WHERE song_id = ?").bind(songId).run();
-  if (!body) return;
-  await db.prepare("INSERT INTO lyrics_search_documents (song_id, body) VALUES (?, ?)").bind(songId, body).run();
-  const allGrams = grams(body);
-  for (const group of Array.from({ length: Math.ceil(allGrams.length / SONG_QUERY_CHUNK) }, (_, i) => allGrams.slice(i * SONG_QUERY_CHUNK, (i + 1) * SONG_QUERY_CHUNK))) {
-    await db.prepare("INSERT INTO lyrics_search_grams (gram, song_id) SELECT value, ? FROM json_each(?)")
-      .bind(songId, JSON.stringify(group)).run();
-  }
-}
-
-export async function syncLyricsSearchForSong(db: D1Database, songId: string): Promise<void> {
-  await ensureLyricsSearchSchema(db);
-  const row = await db.prepare("SELECT id, lyrics, lyrics_rich FROM song_masters WHERE id = ?").bind(songId).first<LyricsRow>();
-  if (row) await replaceSongIndex(db, row.id, row.lyrics, row.lyrics_rich);
-  else {
-    await db.prepare("DELETE FROM lyrics_search_grams WHERE song_id = ?").bind(songId).run();
-    await db.prepare("DELETE FROM lyrics_search_documents WHERE song_id = ?").bind(songId).run();
-  }
-}
-
-export async function advanceLyricsSearchIndex(db: D1Database, batchSize = INIT_BATCH_SIZE): Promise<LyricsSearchProgress> {
-  await ensureLyricsSearchSchema(db);
-  let state = await db.prepare("SELECT version, status, last_song_id FROM lyrics_search_state WHERE id = 1").first<{ version: number; status: string; last_song_id: string }>();
-  if (!state || state.version !== INDEX_VERSION) {
-    await db.prepare("INSERT INTO lyrics_search_state (id, version, status, last_song_id) VALUES (1, ?, 'building', '') ON CONFLICT(id) DO UPDATE SET version = excluded.version, status = excluded.status, last_song_id = excluded.last_song_id")
-      .bind(INDEX_VERSION).run();
-    state = { version: INDEX_VERSION, status: "building", last_song_id: "" };
-  }
-  if (state.status === "ready") return "ready";
-  const rows = await db.prepare("SELECT id, lyrics, lyrics_rich FROM song_masters WHERE id > ? ORDER BY id ASC LIMIT ?")
-    .bind(state.last_song_id, batchSize).all<LyricsRow>();
-  for (const row of rows.results) await replaceSongIndex(db, row.id, row.lyrics, row.lyrics_rich);
-  if (rows.results.length < batchSize) {
-    await db.prepare("UPDATE lyrics_search_state SET status = 'ready' WHERE id = 1").run();
-    return "ready";
-  }
-  await db.prepare("UPDATE lyrics_search_state SET last_song_id = ? WHERE id = 1").bind(rows.results.at(-1)!.id).run();
-  return "building";
-}
-
-export async function findLyricsSongIds(db: D1Database, rawQuery: string): Promise<string[] | null> {
-  const query = rawQuery.normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ").trim();
-  if (!query) return [];
-  if (await advanceLyricsSearchIndex(db) !== "ready") return null;
-  let candidates: Set<string> | null = null;
-  const required = grams(query);
-  for (let offset = 0; offset < required.length; offset += GRAM_QUERY_CHUNK) {
-    const chunk = required.slice(offset, offset + GRAM_QUERY_CHUNK);
-    const result = await db.prepare(`SELECT song_id FROM lyrics_search_grams WHERE gram IN (${chunk.map(() => "?").join(",")}) GROUP BY song_id HAVING COUNT(DISTINCT gram) = ?`)
-      .bind(...chunk, chunk.length).all<{ song_id: string }>();
-    const found = new Set(result.results.map((row) => row.song_id));
-    const prior: Set<string> | null = candidates;
-    candidates = prior === null ? found : new Set<string>([...prior].filter((id: string) => found.has(id)));
-    if (candidates.size === 0) return [];
-  }
-  const exact: string[] = [];
-  const ids = [...(candidates ?? [])];
-  for (let offset = 0; offset < ids.length; offset += SONG_QUERY_CHUNK) {
-    const group = ids.slice(offset, offset + SONG_QUERY_CHUNK);
-    const result = await db.prepare(`SELECT song_id FROM lyrics_search_documents WHERE song_id IN (${group.map(() => "?").join(",")}) AND instr(body, ?) > 0`)
-      .bind(...group, query).all<{ song_id: string }>();
-    exact.push(...result.results.map((row) => row.song_id));
-  }
-  return exact;
-}
+export async function syncLyricsSearchForSong(db: D1Database, songId: string): Promise<void> { await schema(db); await db.prepare("INSERT OR IGNORE INTO lyrics_search_dirty(song_id,revision) VALUES(?,0)").bind(songId).run(); }

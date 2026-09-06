@@ -408,6 +408,22 @@ CREATE TABLE IF NOT EXISTS lyrics_search_state (
   status TEXT NOT NULL,
   last_song_id TEXT NOT NULL DEFAULT ''
 );
+CREATE INDEX IF NOT EXISTS idx_lyrics_search_grams_song ON lyrics_search_grams(song_id);
+CREATE TABLE IF NOT EXISTS lyrics_search_dirty (
+  song_id TEXT PRIMARY KEY,
+  revision INTEGER NOT NULL DEFAULT 0
+);
+CREATE TRIGGER IF NOT EXISTS lyrics_search_song_insert AFTER INSERT ON song_masters BEGIN
+  INSERT INTO lyrics_search_dirty(song_id, revision) VALUES (NEW.id, 0) ON CONFLICT(song_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS lyrics_search_song_update AFTER UPDATE OF lyrics, lyrics_rich ON song_masters BEGIN
+  INSERT INTO lyrics_search_dirty(song_id, revision) VALUES (NEW.id, 0) ON CONFLICT(song_id) DO UPDATE SET revision = revision + 1;
+END;
+CREATE TRIGGER IF NOT EXISTS lyrics_search_song_delete AFTER DELETE ON song_masters BEGIN
+  DELETE FROM lyrics_search_documents WHERE song_id = OLD.id;
+  DELETE FROM lyrics_search_grams WHERE song_id = OLD.id;
+  DELETE FROM lyrics_search_dirty WHERE song_id = OLD.id;
+END;
 
 CREATE TABLE IF NOT EXISTS song_artists (
   song_id TEXT NOT NULL,

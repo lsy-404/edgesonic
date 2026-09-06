@@ -85,6 +85,7 @@ const search23Handler = (tag: "searchResult2" | "searchResult3") =>
           "X-EdgeSonic-Lyrics-Search": "initializing",
         });
       }
+      if (error instanceof Error && error.message === "lyrics-search-query-too-long") return c.text(subsonicError(10, "lyricsQuery is too long"), 400, XML);
       throw error;
     }
 
