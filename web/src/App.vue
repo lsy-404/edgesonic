@@ -34,6 +34,34 @@ const {
 const player = usePlayerStore();
 const detail = useDetailStore();
 const mainRegion = ref<HTMLElement | null>(null);
+const sidebarScroll = ref<HTMLElement | null>(null);
+const selectionStyle = ref<Record<string, string>>({ opacity: "0" });
+let sidebarObserver: ResizeObserver | undefined;
+function updateSidebarSelection() {
+  const container = sidebarScroll.value;
+  const selected = container?.querySelector<HTMLElement>(".side-link.active");
+  if (!container || !selected || !container.clientWidth) {
+    selectionStyle.value = { opacity: "0" };
+    return;
+  }
+  const bounds = container.getBoundingClientRect();
+  const target = selected.getBoundingClientRect();
+  selectionStyle.value = {
+    opacity: "1",
+    transform: `translateY(${target.top - bounds.top + container.scrollTop}px)`,
+    left: `${target.left - bounds.left}px`,
+    width: `${target.width}px`,
+    height: `${target.height}px`,
+  };
+}
+watch(sidebarScroll, (element) => {
+  sidebarObserver?.disconnect();
+  if (!element) return;
+  sidebarObserver = new ResizeObserver(updateSidebarSelection);
+  sidebarObserver.observe(element);
+  updateSidebarSelection();
+}, { flush: "post" });
+onBeforeUnmount(() => sidebarObserver?.disconnect());
 const demoMode = useDemoMode();
 
 // Inactive-session handling: with guest access on, the account degrades to
@@ -82,6 +110,8 @@ watch(() => route.path, (to, from) => {
   pageTransitionName.value = pageOrder.indexOf(to) < pageOrder.indexOf(from) ? "page-previous" : "page-next";
   detail.close();
 });
+watch(() => route.path, () => nextTick(updateSidebarSelection));
+
 function resetPageScroll() {
   if (mainRegion.value) mainRegion.value.scrollTop = 0;
 }
@@ -178,6 +208,7 @@ const groups = computed<NavGroup[]>(() => {
     .map((g) => ({ ...g, items: g.items.filter((i) => level.value >= i.minLevel && permitted(i.perm)) }))
     .filter((g) => g.items.length > 0);
 });
+watch(groups, () => nextTick(updateSidebarSelection));
 
 function doLogout() {
   detail.close();
@@ -337,7 +368,8 @@ onBeforeUnmount(() => {
     </nav>
 
     <aside id="main-sidebar" class="sidebar" :aria-label="t('app.primaryNavigation')">
-      <div class="sidebar-scroll">
+      <div ref="sidebarScroll" class="sidebar-scroll">
+        <div class="sidebar-selection" :style="selectionStyle" aria-hidden="true"></div>
         <div v-for="g in groups" :key="g.label" class="nav-group">
           <div class="nav-group-label">{{ g.label }}</div>
           <router-link
@@ -472,13 +504,15 @@ onBeforeUnmount(() => {
   background: color-mix(in srgb, var(--color-bg-secondary) 94%, transparent);
   border-right: 1px solid var(--color-border-subtle);
 }
-.sidebar-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; display: flex; flex-direction: column; gap: 28px; padding: 20px 12px; }
-.nav-group { display: flex; flex-direction: column; gap: 4px; }
+.sidebar-scroll { position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; display: flex; flex-direction: column; gap: 28px; padding: 20px 12px; }
+.nav-group { position: relative; display: flex; flex-direction: column; gap: 4px; }
 .nav-group-label { color: var(--color-text-muted); font-size: 12px; font-weight: 600; padding: 0 14px 6px; }
 .side-link { position: relative; display: flex; align-items: center; gap: 14px; min-height: 40px; padding: 8px 14px; box-sizing: border-box; border-radius: 4px; color: var(--color-text-secondary); font-size: 14px; text-decoration: none; transition: background 160ms ease, color 160ms ease; }
 .side-link:hover { color: var(--color-text-primary); background: var(--color-bg-tertiary); }
-.side-link.active { color: var(--color-text-primary); background: var(--navigation-selection-fill); font-weight: 600; }
-.side-link.active::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 2px; background: var(--color-accent-primary); }
+.side-link.active { color: var(--color-text-primary); background: transparent; font-weight: 600; }
+.sidebar-selection { position: absolute; top: 0; pointer-events: none; border-radius: 4px; background: var(--navigation-selection-fill); transition: transform 260ms cubic-bezier(.16, 1, .3, 1), height 260ms ease, opacity 120ms ease; }
+.sidebar-selection::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 2px; background: var(--color-accent-primary); }
+@media (prefers-reduced-motion: reduce) { .sidebar-selection { transition: none; } }
 .side-link.active .es-icon { color: var(--color-accent-primary); }
 .sidebar-footer-spacer { flex-shrink: 0; }
 .main {
