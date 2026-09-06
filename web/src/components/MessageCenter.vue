@@ -4,6 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { type MessageKind, type MessagePresentation, type UserMessage, useAuth } from "../api";
 import Icon from "./Icon.vue";
+import { WinButton } from "../vendor/winui";
 
 const props = defineProps<{ isSuperAdmin: boolean; canManageUsers: boolean }>();
 const { t } = useI18n();
@@ -173,10 +174,10 @@ onBeforeUnmount(() => {
             </template>
           </div>
           <div class="message-center-header-actions">
-            <button v-if="activeView === 'compose'" type="button" class="message-center-refresh" :aria-label="t('messages.backToInbox')" :title="t('messages.backToInbox')" @click="activeView = 'inbox'"><Icon name="left" /></button>
-            <button v-else-if="props.canManageUsers" type="button" class="message-center-refresh" :aria-label="t('messages.send')" :title="t('messages.send')" @click="openComposer"><Icon name="edit" /></button>
-            <button v-if="activeView === 'inbox'" type="button" class="message-center-refresh" :disabled="loading" :aria-label="t('messages.refresh')" :title="t('messages.refresh')" @click="refresh"><Icon name="refresh" /></button>
-            <button type="button" class="message-center-close" :aria-label="t('common.close')" @click="closeCenter"><Icon name="cross" /></button>
+            <WinButton v-if="activeView === 'compose'" type="button" class="message-center-refresh" :aria-label="t('messages.backToInbox')" :title="t('messages.backToInbox')" @Click="activeView = 'inbox'"><Icon name="left" /></WinButton>
+            <WinButton v-else-if="props.canManageUsers" type="button" class="message-center-refresh" :aria-label="t('messages.send')" :title="t('messages.send')" @Click="openComposer"><Icon name="edit" /></WinButton>
+            <WinButton v-if="activeView === 'inbox'" type="button" class="message-center-refresh" :IsEnabled="!loading" :aria-label="t('messages.refresh')" :title="t('messages.refresh')" @Click="refresh"><Icon name="refresh" /></WinButton>
+            <WinButton type="button" class="message-center-close" :aria-label="t('common.close')" @Click="closeCenter"><Icon name="cross" /></WinButton>
           </div>
         </header>
         <p v-if="error" class="message-center-error" role="alert">{{ error }}</p>
@@ -231,8 +232,8 @@ onBeforeUnmount(() => {
               <span v-if="message.source === 'official'" class="message-card-source">{{ t('messages.official') }}</span>
               <span v-else class="message-card-source">{{ t('messages.service') }}</span>
               <span class="message-card-buttons">
-                <button v-if="!message.readAt" type="button" class="btn-secondary btn-sm" @click="read(message)">{{ t('messages.markRead') }}</button>
-                <button type="button" class="btn-secondary btn-sm" @click="dismiss(message)">{{ t('messages.dismiss') }}</button>
+                <WinButton v-if="!message.readAt" type="button" class="btn-secondary btn-sm" @Click="read(message)">{{ t('messages.markRead') }}</WinButton>
+                <WinButton type="button" class="btn-secondary btn-sm" @Click="dismiss(message)">{{ t('messages.dismiss') }}</WinButton>
               </span>
             </footer>
           </article>
@@ -253,7 +254,7 @@ onBeforeUnmount(() => {
         <h2>{{ modalMessage.title }}</h2>
         <div class="message-body" v-html="modalMessage.bodyHtml"></div>
         <div class="message-modal-actions">
-          <button type="button" class="btn-primary" @click="acknowledgeModal">{{ t('messages.acknowledge') }}</button>
+          <WinButton Style="AccentButtonStyle" type="button" class="btn-primary" @Click="acknowledgeModal">{{ t('messages.acknowledge') }}</WinButton>
         </div>
       </section>
     </div>

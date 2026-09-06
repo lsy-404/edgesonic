@@ -156,6 +156,16 @@ const server = await createServer({
           localStorage.removeItem('edgesonic_activation');
           localStorage.setItem('participate_work', 'false');
           const report = (kind, message) => fetch('/__fixture/events', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,message,scenario,href:location.href})});
+          const NativeAudio = window.Audio;
+          window.Audio = new Proxy(NativeAudio, {
+            construct(Target, args) {
+              const element = Reflect.construct(Target, args);
+              for (const event of ['volumechange', 'playing', 'pause', 'seeked']) {
+                element.addEventListener(event, () => report('audio', {event, volume:element.volume, time:element.currentTime, paused:element.paused}));
+              }
+              return element;
+            }
+          });
           addEventListener('error', e => report('error', e.message));
           addEventListener('unhandledrejection', e => report('rejection', String(e.reason)));
         `;
