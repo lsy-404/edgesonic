@@ -534,7 +534,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 
 @media (max-width: 960px) {
   :global(:root:has(.player-bar:not(.details-open))) { --player-h: 72px; }
-  :global(:root:has(.player-bar.details-open)) { --player-h: 120px; }
+  :global(:root:has(.player-bar.details-open)) { --player-h: 132px; }
   .player-bar { gap: 0.5rem; padding: 0 0.5rem; }
   .pb-track { width: auto; flex: 1; }
   .pb-right { width: auto; gap: 0.3rem; }

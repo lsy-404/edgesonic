@@ -164,7 +164,7 @@ const server = await createServer({
                 element.addEventListener(event, () => {
                   report('audio', {event, volume:element.volume, time:element.currentTime, paused:element.paused});
                   if (event === 'volumechange') requestAnimationFrame(() => {
-                    const label = document.querySelector('.player-volume__percent');
+                    const label = [...document.querySelectorAll('.player-volume__percent')].find(node => node.getBoundingClientRect().width > 0);
                     if (label) report('volume-readout', {text:label.textContent, bounds:label.getBoundingClientRect().toJSON()});
                   });
                 });
