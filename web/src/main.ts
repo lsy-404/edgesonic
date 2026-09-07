@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import { createApp, watch } from "vue";
+import { computed, createApp, watch } from "vue";
 import { createRouter, createWebHashHistory } from "vue-router";
 import { createPinia } from "pinia";
 import { i18n } from "./i18n";
@@ -32,6 +32,7 @@ import { useDemoMode } from "./stores/demoMode";
 import { initNetDiag } from "./lib/netDiag";
 import { fetchTextWithTimeout } from "./lib/requestLifecycle";
 import { WinToggleSwitch } from "./vendor/winui";
+import { createI18n as createWinI18n, i18nKey, type I18n } from "./vendor/winui/components/i18n";
 
 initNetDiag();
 const routes = [
@@ -128,6 +129,12 @@ app.use(router);
 const pinia = createPinia();
 app.use(pinia);
 app.use(i18n);
+const winuiLocale = computed(() => createWinI18n(i18n.global.locale.value));
+const winuiMessages: I18n = {
+  get locale() { return winuiLocale.value.locale; },
+  t: (key, values) => winuiLocale.value.t(key, values),
+};
+app.provide(i18nKey, winuiMessages);
 app.component("WinToggleSwitch", WinToggleSwitch);
 
 // The loaded bundle, not the first delayed API probe, defines the version
