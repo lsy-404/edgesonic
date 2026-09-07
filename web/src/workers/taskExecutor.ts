@@ -127,7 +127,7 @@ export function isMetaEmpty(m: Awaited<ReturnType<typeof parseBuffer>>): boolean
 // metadata — fetch the first 512KB of the source URI, parseBuffer it, return
 // the compact tag set that endpoints/tag/submit.ts expects.
 // ---------------------------------------------------------------------------
-async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
+export async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
   const sourceUri = String(payload.sourceUri || "");
   const instanceId = String(payload.instanceId || "");
   if (!sourceUri) throw new Error("metadata task missing sourceUri");
@@ -148,7 +148,8 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
   // (2MB for trailing id3/INFO chunks). Concatenate with a gap so
   // music-metadata sees both regions. For non-WAV the tail fetch is skipped
   // (FLAC/MP3/M4A tags are at the head).
-  const isWav = String(payload.suffix || "").toLowerCase() === "wav";
+  const suffix = String(payload.suffix || "").toLowerCase();
+  const isWav = suffix === "wav";
   const HEAD_BYTES = 2 * 1024 * 1024; // 2MB — covers large ID3v2 + APIC
   // 512KB used to be enough for a text-only trailing id3 chunk, but when that
   // same chunk also embeds cover art (very common) the chunk can run several
@@ -171,6 +172,10 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
   const totalSize = rangeTotalMatch
     ? parseInt(rangeTotalMatch[1], 10)
     : (Number(payload.size) || 0);
+  const isPartialMp3 = suffix === "mp3" &&
+    (headResp.status === 206 || (totalSize > 0 && buf.length < totalSize));
+  const FULL_FETCH_CAP_BYTES = 300 * 1024 * 1024;
+  let fullMp3DurationRead = !isPartialMp3;
 
   // music-metadata's WaveParser only reads from the head buffer, but the
   // ID3v2 parser inside it scans for "id3 " chunks which can be at the end.
@@ -199,7 +204,7 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
     } catch { /* tail fetch optional — head alone still works for duration */ }
   }
 
-  // 093e — parse WITH covers so we can extract the embedded album art and
+  // Parse with covers so we can extract embedded album art and
   // ship it back to the worker for R2 storage + album.cover_r2_key update.
   // skipCovers was previously true, which left every album with cover_r2_key
   // NULL → getCoverArt 404 for the whole library.
@@ -212,7 +217,7 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
     meta = await parseBuffer(buf, {
       mimeType,
       size: totalSize > buf.length ? totalSize : undefined,
-    }, { duration: true, skipCovers: false });
+    }, { duration: !isPartialMp3, skipCovers: false });
   } catch (parseErr) {
     // fMP4 crash — try without duration (avoids reading sample tables)
     try {
@@ -247,7 +252,28 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
     }
   }
 
-  // Last resort, ALL formats: if the head(+tail) window came back with
+  // A partial MP3 cannot yield a trustworthy duration: music-metadata
+  // estimates it from the incomplete frame sample even when given the full
+  // object size. Read the complete object before submitting a duration.
+  // If that read fails, `meta` was parsed with duration disabled, so the
+  // metadata apply path preserves any existing duration.
+  if (isPartialMp3 && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
+    try {
+      const fullResp = await fetch(streamUrl);
+      if (fullResp.status === 200) {
+        const fullBuf = new Uint8Array(await fullResp.arrayBuffer());
+        if (fullBuf.length === totalSize) {
+          meta = await parseBuffer(fullBuf, {
+            mimeType: fullResp.headers.get("content-type") || mimeType,
+            size: fullBuf.length,
+          }, { duration: true, skipCovers: false });
+          fullMp3DurationRead = true;
+        }
+      }
+    } catch { /* retain partial tags without a duration */ }
+  }
+
+  // Last resort, ALL non-MP3 formats: if the head(+tail) window came back with
   // literally nothing usable — no text tags, no picture, no lyrics — fetch
   // the whole file and re-parse before concluding it truly has no metadata.
   // A partial window can miss tags parked somewhere neither head nor tail
@@ -258,10 +284,9 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
   // totalSize that fits inside HEAD_BYTES) since a second identical fetch
   // would find nothing new; capped so a pathological multi-GB file can't OOM
   // the tab.
-  const FULL_FETCH_CAP_BYTES = 300 * 1024 * 1024; // 300MB
   const headAlreadyHadWholeFile =
     headResp.status === 200 || (totalSize > 0 && totalSize <= HEAD_BYTES);
-  if (isMetaEmpty(meta) && !headAlreadyHadWholeFile && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
+  if (!isPartialMp3 && isMetaEmpty(meta) && !headAlreadyHadWholeFile && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
     try {
       const fullResp = await fetch(streamUrl);
       if (fullResp.ok) {
@@ -302,6 +327,9 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
   // We strip the giant common.picture / native.* fields — they'd inflate the
   // result_json column past the 100KB cap in /work/submit. The cover goes in
   // a separate `cover` field (base64) so the worker can write it to R2.
+  const duration = fullMp3DurationRead && meta.format.duration
+    ? Math.round(meta.format.duration)
+    : undefined;
   return {
     instanceId,
     tags: {
@@ -317,14 +345,14 @@ async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
       // never got embedded lyrics into D1. lyricsTagsToText is
       // shared with the local-scan path (web/src/lib/metadata.ts).
       lyrics:      lyricsTagsToText(meta.common.lyrics) || nativeLyricsFallback(meta.native) || "",
-      duration:    meta.format.duration ? Math.round(meta.format.duration) : 0,
+      ...(duration ? { duration } : {}),
       bitrate:     meta.format.bitrate ? Math.round(meta.format.bitrate / 1000) : 0,
       sampleRate:  meta.format.sampleRate || 0,
       channels:    meta.format.numberOfChannels || 0,
       container:   meta.format.container || "",
       codec:       meta.format.codec || "",
     },
-    // 093e — embedded cover art. Worker decodes base64, writes to
+    // Embedded cover art. Worker decodes base64, writes to
     // covers/al-{albumId}, and updates albums.cover_r2_key. null when
     // the file has no embedded picture or the picture exceeds 200KB.
     cover: coverData ? { data: coverData, mime: coverMime } : null,
