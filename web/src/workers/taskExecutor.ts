@@ -181,9 +181,9 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
   // ID3v2 parser inside it scans for "id3 " chunks which can be at the end.
   // We append the tail bytes to the head buffer with a zero gap so the parser
   // can find trailing chunks via offset arithmetic.
-  if (isWav && totalSize > buf.length + TAIL_BYTES) {
+  if (isWav && totalSize > buf.length) {
     try {
-      const tailStart = totalSize - TAIL_BYTES;
+      const tailStart = Math.max(buf.length, totalSize - TAIL_BYTES);
       const tailResp = await fetch(streamUrl, {
         headers: { Range: `bytes=${tailStart}-${totalSize - 1}` },
       });
@@ -193,7 +193,7 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
         // so the WAV parser sees a valid (if padded) stream. music-metadata's
         // tokenizer will read chunk headers from both regions.
         const gap = totalSize - buf.length - tailBuf.length;
-        if (gap > 0 && gap < 100 * 1024 * 1024) { // sanity: don't alloc >100MB
+        if (gap >= 0 && gap < 100 * 1024 * 1024) { // sanity: don't alloc >100MB
           const combined = new Uint8Array(buf.length + gap + tailBuf.length);
           combined.set(buf, 0);
           // gap region stays zero-filled
@@ -252,11 +252,7 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
     }
   }
 
-  // A partial MP3 cannot yield a trustworthy duration: music-metadata
-  // estimates it from the incomplete frame sample even when given the full
-  // object size. Read the complete object before submitting a duration.
-  // If that read fails, `meta` was parsed with duration disabled, so the
-  // metadata apply path preserves any existing duration.
+  // Full-read partial MP3s before submitting duration; omitted duration preserves stored values.
   if (isPartialMp3 && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
     try {
       const fullResp = await fetch(streamUrl);

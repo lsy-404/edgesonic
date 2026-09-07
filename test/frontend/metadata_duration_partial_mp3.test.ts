@@ -12,6 +12,7 @@ function assert(condition: unknown, message: string) {
 
 const dir = mkdtempSync(join(tmpdir(), "edgesonic-metadata-duration-"));
 const fixture = join(dir, "partial-duration.mp3");
+const wavFixture = join(dir, "short-tail.wav");
 
 async function main() {
 try {
@@ -77,6 +78,40 @@ try {
     };
     const truncated = await runMetadata({ instanceId: "instance-truncated", sourceUri: "r2://music/test.mp3", streamUrl: "https://test/stream", suffix: "mp3", size: bytes.length }) as { tags: Record<string, unknown> };
     assert(!Object.hasOwn(truncated.tags, "duration"), "rejects a short 200 response as a duration source");
+
+    execFileSync("ffmpeg", [
+      "-hide_banner", "-loglevel", "error",
+      "-f", "lavfi", "-i", "sine=frequency=1000:sample_rate=44100:duration=20",
+      "-ac", "2", "-c:a", "pcm_s16le", "-metadata", "title=Range fixture", wavFixture, "-y",
+    ]);
+    const wavBytes = new Uint8Array(readFileSync(wavFixture));
+    let tailRequests = 0;
+    let wavFullRequests = 0;
+    globalThis.fetch = async (_input, init) => {
+      const range = new Headers(init?.headers).get("Range");
+      if (range === `bytes=0-${headBytes - 1}`) {
+        return new Response(wavBytes.subarray(0, headBytes), {
+          status: 206,
+          headers: { "Content-Range": `bytes 0-${headBytes - 1}/${wavBytes.length}`, "Content-Type": "audio/wav" },
+        });
+      }
+      if (range === `bytes=${headBytes}-${wavBytes.length - 1}`) {
+        tailRequests++;
+        return new Response(wavBytes.subarray(headBytes), {
+          status: 206,
+          headers: { "Content-Range": `bytes ${headBytes}-${wavBytes.length - 1}/${wavBytes.length}`, "Content-Type": "audio/wav" },
+        });
+      }
+      wavFullRequests++;
+      return new Response(wavBytes, { status: 200, headers: { "Content-Type": "audio/wav" } });
+    };
+    const wav = await runMetadata({ instanceId: "instance-wav", sourceUri: "r2://music/test.wav", streamUrl: "https://test/stream", suffix: "wav", size: wavBytes.length }) as { tags: Record<string, unknown> };
+    console.log("\nD. Short WAV tail completes the partial Range response:");
+    assert(wavBytes.length > headBytes && wavBytes.length < headBytes + 2 * 1024 * 1024,
+      "fixture has a remaining tail smaller than the tail window");
+    assert(tailRequests === 1, "requests the complete remaining WAV tail");
+    assert(wavFullRequests === 0, "does not rely on the metadata-empty full-file fallback");
+    assert(wav.tags.duration === 20, "submits the complete 20-second WAV duration");
   } finally {
     globalThis.fetch = originalFetch;
   }
