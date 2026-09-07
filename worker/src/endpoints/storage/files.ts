@@ -45,7 +45,7 @@ filesRoutes.use("*", async (c, next) => {
 // ── Upload (raw body stream — studio-style) ──────────────────────────────
 // POST /rest/files/upload?name=file.mp3&source=r2|webdav&path=music&conflict=error|overwrite|rename
 //
-// 093h — Upload goes directly to music/{path}/{name} on R2 (no more _uploads/
+// Upload goes directly to music/{path}/{name} on R2 (no more _uploads/
 // placeholder album). We create a song_instance row with tag_scanned=0 and
 // dispatch a metadata task so the browser worker pool parses the file's tags
 // and relinks it to the right master/album/artist via applyMetadataResult.
@@ -69,6 +69,21 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     return c.json({ ok: false, error: "Missing file body or name" }, 400);
   }
 
+  const contentLength = c.req.header("Content-Length");
+  let sizeHeader = parseInt(contentLength || "0", 10);
+  if (source === "r2") {
+    if (contentLength === undefined) {
+      return c.json({ ok: false, error: "Content-Length is required" }, 411);
+    }
+    if (!/^\d+$/.test(contentLength)) {
+      return c.json({ ok: false, error: "Invalid Content-Length" }, 400);
+    }
+    sizeHeader = Number(contentLength);
+    if (!Number.isSafeInteger(sizeHeader)) {
+      return c.json({ ok: false, error: "Invalid Content-Length" }, 400);
+    }
+  }
+
   const suffix = name.split(".").pop() || "bin";
   const contentType = normalizeUploadContentType(c.req.header("Content-Type"), suffix);
   // Lyric sidecars, text and images ride along with the music they belong to;
@@ -80,7 +95,6 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
 
   const db = env.DB;
   const now = Math.floor(Date.now() / 1000);
-  const sizeHeader = parseInt(c.req.header("Content-Length") || "0", 10);
   const cap = isDemoMode(env) ? demoMaxUploadBytes(env) : MAX_UPLOAD_BYTES;
   if (sizeHeader > cap) return c.json({ ok: false, error: "Payload too large" }, 413);
 
@@ -158,20 +172,23 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     let overflowed = false;
     let written;
     try {
-      written = await env.MUSIC_BUCKET.put(r2Key, limitReadableStream(rawBody, cap, undefined, () => { overflowed = true; }), {
-      httpMetadata: { contentType },
-      ...(target.policy === "overwrite" ? {} : { onlyIf: new Headers({ "If-None-Match": "*" }) }),
+      const body = limitReadableStream(rawBody, cap, undefined, () => { overflowed = true; })
+        .pipeThrough(new FixedLengthStream(sizeHeader));
+      written = await env.MUSIC_BUCKET.put(r2Key, body, {
+        httpMetadata: { contentType },
+        ...(target.policy === "overwrite" ? {} : { onlyIf: new Headers({ "If-None-Match": "*" }) }),
       });
     } catch (error) {
       if (overflowed || error instanceof PayloadTooLargeError) {
-        await env.MUSIC_BUCKET.delete(r2Key);
         return c.json({ ok: false, error: "Payload too large" }, 413);
+      }
+      if (isContentLengthMismatch(error)) {
+        return c.json({ ok: false, error: "Content-Length does not match request body" }, 400);
       }
       throw error;
     }
     if (written === null) return c.json(uploadConflict(source, r2Key), 409);
     if (overflowed || (written?.size ?? 0) > cap) {
-      await env.MUSIC_BUCKET.delete(r2Key);
       return c.json({ ok: false, error: "Payload too large" }, 413);
     }
   }
@@ -308,6 +325,12 @@ async function finishAudioUpload(
   }
 
   return c.json(uploadSuccess({ key: r2Key, id: instanceId, storageUri, source, target }));
+}
+
+function isContentLengthMismatch(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /^Attempt to (?:write too many bytes through|close a) (?:a )?FixedLengthStream/i.test(message)
+    || /^FixedLengthStream length mismatch:/i.test(message);
 }
 
 function isSafeUploadName(name: string): boolean {
@@ -679,7 +702,7 @@ filesRoutes.post("/files/copy", permissionMiddleware("upload"), async (c) => {
 //              already present. For WebDAV the path is relative to the
 //              source's root (as stored in the adapter credentials).
 //
-// 093f — Optional `registerInstance` body field (mirror-to-R2 flow): when
+// Optional `registerInstance` body field (mirror-to-R2 flow): when
 // present, the endpoint also INSERTs a song_instances row for the new R2
 // copy so /rest/stream can select it without waiting for a re-scan.
 // Shape: { masterId, suffix, contentType, size, sourceInstanceId }.
@@ -789,7 +812,7 @@ filesRoutes.post("/files/crossCopy", permissionMiddleware("upload"), async (c) =
     );
   }
 
-  // ── 4. Optional song_instance registration (093f mirror-to-R2) ─────────
+  // ── 4. Optional song_instance registration for mirrored objects ─────────
   // When the caller provides registerInstance, create a song_instances row
   // pointing at the new R2 copy so /rest/stream can select it immediately.
   let instanceId: string | undefined;

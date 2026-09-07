@@ -3,6 +3,9 @@
 
 import { Hono } from "hono";
 import { filesRoutes } from "../../worker/src/endpoints/storage/files";
+import { consumeReadableStream, installFixedLengthStream } from "../helpers/fixedLengthStream";
+
+installFixedLengthStream();
 
 declare global {
   type D1Database = unknown;
@@ -25,7 +28,10 @@ function makeBucket(entries: Array<string | [string, number]> = []) {
     puts,
     async head(key: string) { return objects.has(key) ? { key, size: sizes.get(key) || 0 } : null; },
     async get(key: string) { return objects.has(key) ? { key } : null; },
-    async put(key: string) { objects.add(key); sizes.set(key, 4); puts.push(key); return { key, size: 4 }; },
+    async put(key: string, body?: unknown) {
+      await consumeReadableStream(body);
+      objects.add(key); sizes.set(key, 4); puts.push(key); return { key, size: 4 };
+    },
     async delete(key: string) { objects.delete(key); sizes.delete(key); },
     async list() { return { objects: [...objects].map((key) => ({ key, size: sizes.get(key) || 0 })), truncated: false }; },
   };

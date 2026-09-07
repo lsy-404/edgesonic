@@ -39,6 +39,9 @@ import { preBakeProfile } from "../../worker/src/transcode/preBake";
 import { __setEngineFactoryForTest } from "../../worker/src/transcode/factory";
 import { BrowserPoolEngine } from "../../worker/src/transcode/browser_pool";
 import type { TranscodeEngine, TranscodeInput, TranscodeJobRow, TranscodeOutput, TranscodeProfile } from "../../worker/src/transcode/engine";
+import { consumeReadableStream, installFixedLengthStream } from "../helpers/fixedLengthStream";
+
+installFixedLengthStream();
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -149,7 +152,22 @@ function makeR2() {
       const v = map.get(key);
       return v ? { key, size: v.data.length, httpMetadata: { contentType: v.contentType } } : null;
     },
-    async put(key: string, data: ArrayBuffer | Uint8Array, opts?: { httpMetadata?: { contentType?: string } }) {
+    async put(key: string, data: ReadableStream<Uint8Array> | ArrayBuffer | Uint8Array, opts?: { httpMetadata?: { contentType?: string } }) {
+      if (data && typeof (data as { getReader?: unknown }).getReader === "function") {
+        const chunks: Uint8Array[] = [];
+        const reader = (data as ReadableStream<Uint8Array>).getReader();
+        for (;;) {
+          const next = await reader.read();
+          if (next.done) break;
+          chunks.push(next.value);
+        }
+        const bytes = new Uint8Array(chunks.reduce((size, chunk) => size + chunk.byteLength, 0));
+        let offset = 0;
+        for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+        map.set(key, { data: bytes, contentType: opts?.httpMetadata?.contentType || "application/octet-stream" });
+        return;
+      }
+      await consumeReadableStream(data);
       const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
       map.set(key, { data: bytes, contentType: opts?.httpMetadata?.contentType || "application/octet-stream" });
     },
