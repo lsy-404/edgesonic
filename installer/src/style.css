@@ -9,6 +9,43 @@
   --shadow-card: 0 1px 2px var(--ctrl-elevation-bottom, rgba(0, 0, 0, 0.08)), 0 8px 24px -12px rgba(0, 0, 0, 0.22);
   --font-sans: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --app-bg: #f3f3f3;
+  --card-bg: #ffffff;
+  --card-bg-secondary: #fbfbfb;
+  --card-stroke: rgba(0, 0, 0, 0.0578);
+  --flyout-bg: #fcfcfc;
+  --accent-base: #0067c0;
+  --accent-hover: #1975c5;
+  --accent-pressed: #005a9e;
+  --accent-text: #ffffff;
+  --ctrl-fill-default: #ffffff;
+  --ctrl-fill-secondary: #f6f6f6;
+  --ctrl-fill-tertiary: #ebebeb;
+  --ctrl-fill-disabled: #ebebeb;
+  --ctrl-fill-input-active: #ffffff;
+  --ctrl-border: rgba(0, 0, 0, 0.0578);
+  --text-primary: #1a1a1a;
+  --text-secondary: rgba(0, 0, 0, 0.72);
+}
+
+html.theme-dark {
+  --app-bg: #202020;
+  --card-bg: #292929;
+  --card-bg-secondary: #303030;
+  --card-stroke: rgba(255, 255, 255, 0.16);
+  --flyout-bg: #2c2c2c;
+  --accent-base: #4cc2ff;
+  --accent-hover: #60cdff;
+  --accent-pressed: #3f9fca;
+  --accent-text: #003544;
+  --ctrl-fill-default: #373737;
+  --ctrl-fill-secondary: #414141;
+  --ctrl-fill-tertiary: #303030;
+  --ctrl-fill-disabled: #303030;
+  --ctrl-fill-input-active: #292929;
+  --ctrl-border: rgba(255, 255, 255, 0.16);
+  --text-primary: #f4f4f4;
+  --text-secondary: #c4c4c4;
 }
 
 @media (prefers-color-scheme: dark) {

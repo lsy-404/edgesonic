@@ -63,10 +63,13 @@ watch(sidebarScroll, (element) => {
 }, { flush: "post" });
 onBeforeUnmount(() => sidebarObserver?.disconnect());
 const demoMode = useDemoMode();
-const fluentThemeMode = computed(() => {
-  const lightThemes = new Set(["white", "red", "green", "yellow", "color-scarlet", "color-ocean", "color-sky", "color-earth"]);
-  return lightThemes.has(activeTheme.value) ? "light" : "dark";
-});
+const fluentThemeMode = ref<"light" | "dark">("dark");
+watch(activeTheme, async () => {
+  await nextTick();
+  fluentThemeMode.value = getComputedStyle(document.documentElement).colorScheme.includes("light")
+    ? "light"
+    : "dark";
+}, { immediate: true, flush: "post" });
 
 // Inactive-session handling: with guest access on, the account degrades to
 // guest caps and we show a persistent "activation expired" banner; with guest

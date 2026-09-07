@@ -118,6 +118,25 @@
   --control-alt-fill-color-quarternary: light-dark(rgba(0, 0, 0, .09), rgba(255, 255, 255, .12));
 }
 
+.edgesonic-fluent-theme {
+  --fluent-bg: var(--app-bg);
+  --fluent-surface: var(--card-bg);
+  --fluent-mica: var(--layer-default);
+  --fluent-acrylic: var(--flyout-bg);
+  --fluent-text: var(--text-primary);
+  --fluent-muted: var(--text-secondary);
+  --fluent-accent: var(--accent-base);
+  --fluent-accent-text: var(--accent-text);
+  --fluent-control: var(--ctrl-fill-default);
+  --fluent-control-hover: var(--ctrl-fill-secondary);
+  --fluent-control-pressed: var(--ctrl-fill-tertiary);
+  --fluent-border: var(--ctrl-border);
+  --fluent-selection: var(--navigation-selection-fill);
+  --fluent-danger: var(--SystemFillColorCriticalBrush);
+  --fluent-success: var(--SystemFillColorSuccessBrush);
+  --fluent-warning: var(--SystemFillColorCautionBrush);
+}
+
 body { background: var(--app-bg); color: var(--text-primary); font-family: var(--ContentControlThemeFontFamily); }
 
 .win-switch-root { min-width: 0; }
