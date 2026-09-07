@@ -104,6 +104,20 @@
   --SystemFillColorAttentionBrush: var(--color-accent-primary);
 }
 
+:root[data-theme] {
+  --toggle-border: light-dark(rgba(0, 0, 0, .45), rgba(255, 255, 255, .54));
+  --toggle-thumb: light-dark(rgba(0, 0, 0, .61), rgba(255, 255, 255, .79));
+  --toggle-thumb-hover: light-dark(rgba(0, 0, 0, .89), #ffffff);
+  --toggle-on-thumb: var(--accent-text);
+  --ctrl-strong-fill: light-dark(#8a8a8a, #9d9d9d);
+  --ctrl-strong-stroke-disabled: light-dark(rgba(0, 0, 0, .22), rgba(255, 255, 255, .16));
+  --ctrl-solid-fill: light-dark(#ffffff, #454545);
+  --accent-fill-disabled: var(--ctrl-fill-disabled);
+  --control-alt-fill-color-secondary: light-dark(rgba(0, 0, 0, .024), rgba(255, 255, 255, .06));
+  --control-alt-fill-color-tertiary: light-dark(rgba(0, 0, 0, .06), rgba(255, 255, 255, .09));
+  --control-alt-fill-color-quarternary: light-dark(rgba(0, 0, 0, .09), rgba(255, 255, 255, .12));
+}
+
 body { background: var(--app-bg); color: var(--text-primary); font-family: var(--ContentControlThemeFontFamily); }
 
 .win-switch-root { min-width: 0; }
