@@ -1,4 +1,4 @@
-@import "./vendor/winui/styles/theme.css";
+@import "@lsypkg/fluent/style.css";
 
 :root {
   /* Standard Microsoft/WinUI look: theme.css's own accent (#0067C0 light /
@@ -21,11 +21,6 @@
   box-sizing: border-box;
 }
 
-/* theme.css (vendor/winui) styles its own demo shell as a fixed-viewport
-   app with `height: 100%; overflow: hidden` on html/body/#app — it manages
-   scrolling itself via internal regions. We're a normal scrolling document
-   (and #app is Vite's default mount id, so that rule targets us too), so
-   undo it here. */
 html,
 body,
 #app {
@@ -208,14 +203,13 @@ code {
 }
 
 /* Primary step navigation reads as more prominent than an inline control. */
-.step-actions .win-btn {
+.step-actions .fluent-button {
   padding: 10px 22px;
   min-height: 40px;
   font-size: 0.95rem;
 }
 
-/* Reserved for <a class="btn ..."> link-buttons (WinButton can't render an <a>).
-   Actual <button> elements use the WinButton component instead. */
+/* Reserved for link buttons. */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -474,18 +468,14 @@ code {
   margin-right: 3px;
 }
 
-/* WinCheckBox renders `display: inline-flex` (fine standalone, but several
-   in a row flow side by side with no line break). Stack them like the old
-   .check-row labels did. */
-.win-checkbox {
+/* Stack checkbox rows in wizard forms. */
+.fluent-checkbox {
   display: flex;
   margin-bottom: 12px;
 }
 
-/* WinInfoBar's own layout has no top/bottom padding — it relies on the
-   (16px-tall) severity icon's margin for vertical breathing room, which we
-   don't render (IsIconVisible="false", no bundled icon font). Add it back. */
-.win-infobar-layout {
+/* Keep notices aligned with the wizard card spacing. */
+.fluent-notice {
   padding-top: 10px !important;
   padding-bottom: 10px !important;
 }

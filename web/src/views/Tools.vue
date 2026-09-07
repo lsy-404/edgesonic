@@ -1615,11 +1615,11 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
                    available to any user; they land on the target chosen below. -->
               <div class="tc-row">
                 <span class="tc-key">{{ t("settings.common.clone.starredToggle") }}</span>
-                <WinToggleSwitch :aria-label="t('settings.common.clone.starredToggle')" v-model="cloneStarredEnabled" :disabled="cloneRunning" />
+                <FluentSwitch :aria-label="t('settings.common.clone.starredToggle')" v-model="cloneStarredEnabled" :disabled="cloneRunning" />
               </div>
               <div class="tc-row">
                 <span class="tc-key">{{ t("settings.common.clone.playlistsToggle") }}</span>
-                <WinToggleSwitch :aria-label="t('settings.common.clone.playlistsToggle')" v-model="clonePlaylistsEnabled" :disabled="cloneRunning" />
+                <FluentSwitch :aria-label="t('settings.common.clone.playlistsToggle')" v-model="clonePlaylistsEnabled" :disabled="cloneRunning" />
               </div>
 
               <label class="tc-row">
@@ -1653,13 +1653,13 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
               <template v-if="isAdmin">
                 <div class="tc-row">
                   <span class="tc-key">{{ t("settings.common.clone.metadataToggle") }}</span>
-                  <WinToggleSwitch :aria-label="t('settings.common.clone.metadataToggle')" v-model="cloneMetadataEnabled" :disabled="cloneRunning" />
+                  <FluentSwitch :aria-label="t('settings.common.clone.metadataToggle')" v-model="cloneMetadataEnabled" :disabled="cloneRunning" />
                 </div>
                 <p class="feature-desc tc-desc">{{ t("settings.common.clone.metadataToggleDesc") }}</p>
 
                 <div class="tc-row">
                   <span class="tc-key">{{ t("settings.common.clone.audioToggle") }}</span>
-                  <WinToggleSwitch :aria-label="t('settings.common.clone.audioToggle')" v-model="cloneAudioEnabled" :disabled="cloneRunning" />
+                  <FluentSwitch :aria-label="t('settings.common.clone.audioToggle')" v-model="cloneAudioEnabled" :disabled="cloneRunning" />
                 </div>
                 <p class="feature-desc tc-desc">{{ t("settings.common.clone.audioToggleDesc") }}</p>
 
@@ -1681,11 +1681,11 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
                 <!-- filters only appear once metadata or audio is enabled. -->
                 <div v-if="cloneMetadataEnabled || cloneAudioEnabled" class="clone-options">
                   <div class="tc-row">
-                    <WinToggleSwitch :aria-label="t('settings.common.clone.filterPlaylistOnly')" v-model="clonePlaylistOnly" />
+                    <FluentSwitch :aria-label="t('settings.common.clone.filterPlaylistOnly')" v-model="clonePlaylistOnly" />
                     <span class="tc-key">{{ t("settings.common.clone.filterPlaylistOnly") }}</span>
                   </div>
                   <div class="tc-row">
-                    <WinToggleSwitch :aria-label="t('settings.common.clone.filterStarredOnly')" v-model="cloneStarredOnly" />
+                    <FluentSwitch :aria-label="t('settings.common.clone.filterStarredOnly')" v-model="cloneStarredOnly" />
                     <span class="tc-key">{{ t("settings.common.clone.filterStarredOnly") }}</span>
                   </div>
                   <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.clone.filterDesc") }}</p>
@@ -1768,7 +1768,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
           <div class="sub-block">
             <div class="sub-header">
               <span class="mono-label">{{ t("settings.common.sync.title") }}</span>
-              <WinToggleSwitch :aria-label="t('settings.common.sync.title')" :model-value="syncEnabled" :disabled="syncBusy" :title="syncEnabled ? t('settings.common.sync.on') : t('settings.common.sync.off')" @update:model-value="saveSyncConfig($event)" />
+              <FluentSwitch :aria-label="t('settings.common.sync.title')" :model-value="syncEnabled" :disabled="syncBusy" :title="syncEnabled ? t('settings.common.sync.on') : t('settings.common.sync.off')" @update:model-value="saveSyncConfig($event)" />
             </div>
             <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.sync.desc") }}</p>
             <label class="tc-row">

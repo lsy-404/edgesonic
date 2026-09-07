@@ -20,10 +20,6 @@ export type ThemeMode = (typeof SUPPORTED_THEME_MODES)[number];
 
 const THEME_KEY = "edgesonic_installer_theme";
 
-// vendor/winui's theme.css ships `html.theme-light` / `html.theme-dark`
-// overrides (higher specificity than its `@media (prefers-color-scheme)`
-// block) for exactly this — forcing a mode regardless of the OS setting.
-// "auto" just means neither class is present, falling back to the media query.
 function applyTheme(mode: ThemeMode) {
   document.documentElement.classList.remove("theme-light", "theme-dark");
   if (mode !== "auto") document.documentElement.classList.add(`theme-${mode}`);

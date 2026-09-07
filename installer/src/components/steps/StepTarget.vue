@@ -9,7 +9,7 @@ import { listBucketNames } from "../../lib/deploy/r2";
 import { ADMIN_USERNAME_RE } from "../../lib/deploy/admin";
 import { callCfJson } from "../../lib/relay";
 import { describeCfError } from "../../lib/cf/errors";
-import { WinButton, WinCheckBox, WinProgressRing } from "../../vendor/winui";
+import { FluentButton, FluentCheckbox, FluentProgressRing } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -227,7 +227,7 @@ function goBack() {
     <p class="step-subtitle">{{ t("target.subtitle") }}</p>
 
     <div v-if="scanning" class="account-scan">
-      <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
+      <FluentProgressRing :size="20" />
       <span>{{ t("target.scanning") }}</span>
     </div>
 
@@ -247,15 +247,15 @@ function goBack() {
         </p>
       </div>
 
-      <WinCheckBox v-if="wizard.mode === 'overwrite' && collision === true" v-model="wizard.overwriteConfirmed">
+      <FluentCheckbox v-if="wizard.mode === 'overwrite' && collision === true" v-model="wizard.overwriteConfirmed">
         <span><span class="required-star" aria-hidden="true">*</span>{{ t("target.overwriteConfirm") }}</span>
-      </WinCheckBox>
-      <WinCheckBox v-if="wizard.mode === 'overwrite' && collision === true" v-model="wizard.resetAdmin">
+      </FluentCheckbox>
+      <FluentCheckbox v-if="wizard.mode === 'overwrite' && collision === true" v-model="wizard.resetAdmin">
         {{ t("target.resetAdmin") }}
-      </WinCheckBox>
-      <WinCheckBox v-if="wizard.mode === 'overwrite' && collision === true && wizard.overwriteConfirmed" v-model="wizard.fullRebuild">
+      </FluentCheckbox>
+      <FluentCheckbox v-if="wizard.mode === 'overwrite' && collision === true && wizard.overwriteConfirmed" v-model="wizard.fullRebuild">
         {{ t("target.fullRebuild") }}
-      </WinCheckBox>
+      </FluentCheckbox>
       <p v-if="wizard.fullRebuild" class="field-help" style="color: var(--SystemFillColorCautionBrush)">{{ t("target.fullRebuildHelp") }}</p>
       <div class="field">
         <label for="containerMode">{{ t("target.containerMode") }}</label>
@@ -326,9 +326,9 @@ function goBack() {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="goBack">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue()" @Click="goNext">{{ t("common.next") }}</WinButton>
+        <FluentButton tone="primary" :disabled="!canContinue()" @click="goNext">{{ t("common.next") }}</FluentButton>
       </div>
     </Teleport>
   </div>

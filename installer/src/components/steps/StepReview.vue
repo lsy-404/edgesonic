@@ -4,7 +4,7 @@ import { onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { DEFAULT_ADMIN_USERNAME } from "../../lib/deploy/admin";
-import { WinButton } from "../../vendor/winui";
+import { FluentButton } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -91,11 +91,11 @@ function goBack() {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="goBack">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="lockSecondsLeft <= 0" @Click="goNext">
+        <FluentButton tone="primary" :disabled="lockSecondsLeft > 0" @click="goNext">
           {{ lockSecondsLeft > 0 ? t("review.confirmWait", { seconds: lockSecondsLeft }) : t("review.confirm") }}
-        </WinButton>
+        </FluentButton>
       </div>
     </Teleport>
   </div>

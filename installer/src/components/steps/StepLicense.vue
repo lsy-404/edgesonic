@@ -5,7 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { GITHUB_REPO } from "../../../../shared/autoupdate";
 import officialLicense from "../../../../LICENSE?raw";
-import { WinButton } from "../../vendor/winui";
+import { FluentButton } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -37,9 +37,9 @@ function goBack() {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="goBack">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" @Click="goNext">{{ t("common.next") }}</WinButton>
+        <FluentButton tone="primary" @click="goNext">{{ t("common.next") }}</FluentButton>
       </div>
     </Teleport>
   </div>

@@ -76,7 +76,7 @@ const checks: Array<[string, boolean]> = [
     && en.target.dbCollisionWarning && en.target.bucketCollisionWarning
     && [en, zh].every((locale) => ["dbExists", "dbAbsent", "dbUnknown", "bucketExists", "bucketAbsent", "bucketUnknown"].every((key) => locale.target[key]))],
   ["the account is scanned behind a cover so the target form does not rewrite itself",
-    target.includes("scanning") && target.includes("WinProgressRing") && [en, zh].every((locale) => locale.target.scanning)],
+    target.includes("scanning") && target.includes("FluentProgressRing") && [en, zh].every((locale) => locale.target.scanning)],
   ["an account's own EdgeSonic D1/R2 are adopted over the generic defaults",
     target.includes("adoptExisting") && target.includes('ADOPT_KEYWORD = "edgesonic"')
     && [en, zh].every((locale) => locale.target.dbAdopted && locale.target.bucketAdopted)],

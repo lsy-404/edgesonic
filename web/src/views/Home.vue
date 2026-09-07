@@ -16,7 +16,7 @@ import {
 import { homeMessages } from "../locales/home";
 import { useDetailStore } from "../stores/detail";
 import { usePlayerStore } from "../stores/player";
-import { WinButton, WinProgressRing } from "../vendor/winui";
+import { FluentButton, FluentProgressRing } from "@lsypkg/fluent/vue";
 
 const { locale } = useI18n();
 const router = useRouter();
@@ -175,15 +175,15 @@ onBeforeUnmount(() => {
         <h1 id="home-title">{{ msg("title") }}</h1>
         <p>{{ msg("subtitle") }}</p>
       </div>
-      <WinButton
+      <FluentButton
         class="quiet"
-        :IsEnabled="!anyLoading"
+        :disabled="anyLoading"
         :aria-label="msg('refresh')"
-        @Click="loadAll"
+        @click="loadAll"
       >
-        <WinProgressRing v-if="anyLoading" :Width="16" :Height="16" :MinWidth="16" :MinHeight="16" />
+        <FluentProgressRing v-if="anyLoading" :Width="16" :Height="16" :MinWidth="16" :MinHeight="16" />
         <Icon v-else name="refresh" /><span>{{ msg("refresh") }}</span>
-      </WinButton>
+      </FluentButton>
     </header>
     <p v-if="playError" class="play-error" role="status">
       {{ msg("albumLoadFailed") }}
@@ -195,49 +195,47 @@ onBeforeUnmount(() => {
         </p>
         <strong>{{ currentTrack.title }}</strong
         ><span>{{ currentTrack.artist }} · {{ currentTrack.album }}</span
-        ><WinButton
+        ><FluentButton
           class="text-action"
-          Style="SubtleButtonStyle"
-          @Click="detail.openNowPlaying()"
+          tone="subtle"
+          @click="detail.openNowPlaying()"
         >
           <Icon name="headphones" />{{ msg("openNowPlaying") }}
-        </WinButton></template
+        </FluentButton></template
       >
       <template v-else-if="featured"
         ><p class="eyebrow"><Icon name="album" />{{ msg("featured") }}</p>
         <strong>{{ featured.name }}</strong
         ><span>{{ featured.artist }}</span
-        ><WinButton
+        ><FluentButton
           class="listen-action"
-          Style="AccentButtonStyle"
-          CornerRadius="4"
-          :IsEnabled="playingAlbum !== featured.id"
-          @Click="play(featured)"
-          ><Icon name="play" />{{ msg("play") }}</WinButton
+          tone="primary"
+          :disabled="playingAlbum === featured.id"
+          @click="play(featured)"
+          ><Icon name="play" />{{ msg("play") }}</FluentButton
         ></template
       >
     </section>
     <nav class="shortcuts" :aria-label="msg('shortcuts')">
-      <WinButton @Click="go('/library')">
-        <Icon name="library" />{{ msg("library") }}</WinButton
-      ><WinButton @Click="go('/starred')">
-        <Icon name="heart" />{{ msg("liked") }}</WinButton
-      ><WinButton @Click="go('/playlists')">
+      <FluentButton @click="go('/library')">
+        <Icon name="library" />{{ msg("library") }}</FluentButton
+      ><FluentButton @click="go('/starred')">
+        <Icon name="heart" />{{ msg("liked") }}</FluentButton
+      ><FluentButton @click="go('/playlists')">
         <Icon name="playlist" />{{ msg("playlists") }}
-      </WinButton>
+      </FluentButton>
     </nav>
     <section v-if="empty" class="empty-library">
       <span class="empty-icon"><Icon name="album" size="32" /></span>
       <h2>{{ msg("emptyTitle") }}</h2>
       <p>{{ msg("emptyBody") }}</p>
-      <WinButton
+      <FluentButton
         v-if="canAdd || canSources"
-        Style="AccentButtonStyle"
-        CornerRadius="4"
-        @Click="go(canAdd ? '/files' : '/sources')"
+        tone="primary"
+        @click="go(canAdd ? '/files' : '/sources')"
         ><Icon :name="canAdd ? 'upload' : 'tools'" />{{
           canAdd ? msg("addMusic") : msg("manageSources")
-        }}</WinButton
+        }}</FluentButton
       >
     </section>
     <div v-else class="sections">
@@ -272,9 +270,9 @@ onBeforeUnmount(() => {
         <template v-else
           ><div v-if="failed.has(section)" class="section-error" role="status">
             <span>{{ msg("sectionLoadFailed") }}</span
-            ><WinButton @Click="retry(section)">
+            ><FluentButton @click="retry(section)">
               {{ msg("retry") }}
-            </WinButton>
+            </FluentButton>
           </div>
           <p
             v-if="!albums[section].length && !failed.has(section)"

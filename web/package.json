@@ -10,6 +10,7 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@lsypkg/fluent": "https://github.com/lsy-404/platform-kit/releases/download/v0.1.1/platform-kit-fluent-0.1.1.tgz",
     "@clamber_l/crypto": "0.1.12",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@lucide/vue": "^1.41.0",

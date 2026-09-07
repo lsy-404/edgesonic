@@ -528,7 +528,7 @@ onBeforeUnmount(() => {
             <input v-model="createForm.comment" class="form-input" />
           </div>
           <div class="checkbox-row">
-            <WinToggleSwitch :aria-label="t('playlists.publicFlag')" v-model="createForm.public" />
+            <FluentSwitch :aria-label="t('playlists.publicFlag')" v-model="createForm.public" />
             <span>{{ t("playlists.publicFlag") }}</span>
           </div>
         </div>
@@ -559,7 +559,7 @@ onBeforeUnmount(() => {
             <input v-model="editForm.comment" class="form-input" />
           </div>
           <div class="checkbox-row">
-            <WinToggleSwitch :aria-label="t('playlists.publicFlag')" v-model="editForm.public" />
+            <FluentSwitch :aria-label="t('playlists.publicFlag')" v-model="editForm.public" />
             <span>{{ t("playlists.publicFlag") }}</span>
           </div>
         </div>

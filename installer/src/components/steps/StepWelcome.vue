@@ -3,7 +3,7 @@
 import { nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
-import { WinButton, WinCheckBox } from "../../vendor/winui";
+import { FluentButton, FluentCheckbox } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -81,18 +81,18 @@ function start() {
     </div>
 
     <div class="tos-accept-row">
-      <WinCheckBox v-model="accepted" :IsEnabled="tosRead" style="margin-top: 20px">
+      <FluentCheckbox v-model="accepted" :disabled="!tosRead" style="margin-top: 20px">
         <span><span class="required-star" aria-hidden="true">*</span>{{ t("welcome.acceptTerms") }}</span>
-      </WinCheckBox>
+      </FluentCheckbox>
       <span v-if="!tosRead" class="field-help tos-hint">{{ t("welcome.scrollToEnableTerms") }}</span>
     </div>
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="accepted && lockSecondsLeft <= 0" @Click="start">
+        <FluentButton tone="primary" :disabled="!accepted || lockSecondsLeft > 0" @click="start">
           {{ lockSecondsLeft > 0 ? t("welcome.startWait", { seconds: lockSecondsLeft }) : t("welcome.start") }}
-        </WinButton>
+        </FluentButton>
       </div>
     </Teleport>
   </div>

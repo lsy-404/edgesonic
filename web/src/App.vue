@@ -12,7 +12,7 @@ import Icon from "./components/Icon.vue";
 import MobileNavigation from "./components/MobileNavigation.vue";
 import DetailHost from "./components/DetailHost.vue";
 import { useDetailStore } from "./stores/detail";
-import { WinButton } from "./vendor/winui";
+import { FluentButton, FluentTheme } from "@lsypkg/fluent/vue";
 import { usePlayerStore } from "./stores/player";
 import { useDemoMode } from "./stores/demoMode";
 import { activeTheme, resetTheme, restoreSavedTheme } from "./theme";
@@ -63,6 +63,10 @@ watch(sidebarScroll, (element) => {
 }, { flush: "post" });
 onBeforeUnmount(() => sidebarObserver?.disconnect());
 const demoMode = useDemoMode();
+const fluentThemeMode = computed(() => {
+  const lightThemes = new Set(["white", "red", "green", "yellow", "color-scarlet", "color-ocean", "color-sky", "color-earth"]);
+  return lightThemes.has(activeTheme.value) ? "light" : "dark";
+});
 
 // Inactive-session handling: with guest access on, the account degrades to
 // guest caps and we show a persistent "activation expired" banner; with guest
@@ -250,6 +254,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <FluentTheme :mode="fluentThemeMode" class="edgesonic-fluent-theme">
   <template v-if="!isBare">
     <component :is="activeThemeDef?.background" v-if="activeThemeDef?.background" />
     <div v-else-if="activeThemeDef?.mountBackground" ref="bgHostEl" aria-hidden="true"></div>
@@ -362,7 +367,7 @@ onBeforeUnmount(() => {
         <span class="nav-username">{{ displayName }}</span>
         <span class="status-badge" :class="level >= 3 ? 'warning' : level >= 2 ? 'info' : 'muted'">{{ levelLabel }}</span>
         <MessageCenter :is-super-admin="level >= 3" :can-manage-users="hasPerm('manage_users')" />
-        <WinButton class="nav-logout" Style="SubtleButtonStyle" :title="t('app.logout')" :aria-label="t('app.logout')" @Click="doLogout"><Icon name="logout" :size="18" /><span>{{ t("app.logout") }}</span></WinButton>
+        <FluentButton class="nav-logout" tone="subtle" :title="t('app.logout')" :aria-label="t('app.logout')" @click="doLogout"><Icon name="logout" :size="18" /><span>{{ t("app.logout") }}</span></FluentButton>
       </div>
 
     </nav>
@@ -406,12 +411,14 @@ onBeforeUnmount(() => {
     <PlayerBar />
     <MobileNavigation :groups="groups" @navigate="detail.close()" />
   </div>
+  </FluentTheme>
 </template>
 
 <style>
 @import "./assets/palette.css";
 @import "./assets/decor.css";
-@import "./assets/winui.css";
+@import "@lsypkg/fluent/style.css";
+@import "./assets/fluent.css";
 
 /* === App shell === */
 .shell,

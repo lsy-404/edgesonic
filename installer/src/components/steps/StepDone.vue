@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { GITHUB_REPO } from "../../../../shared/autoupdate";
-import { WinButton, WinCheckBox, WinInfoBar } from "../../vendor/winui";
+import { FluentButton, FluentCheckbox, FluentNotice } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -94,47 +94,47 @@ function finish() {
 
     <p class="field-help">{{ t("done.urlLabel") }}</p>
     <p style="margin: 4px 0 16px; word-break: break-all">{{ instanceUrl }}</p>
-    <WinButton Style="AccentButtonStyle" style="width: 100%" @Click="openInstance">
+    <FluentButton tone="primary" style="width: 100%" @click="openInstance">
       {{ t("done.openLink") }} ↗
-    </WinButton>
+    </FluentButton>
 
-    <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false" style="margin-top: 16px">
+    <FluentNotice tone="info" style="margin-top: 16px">
       {{ t("done.propagationNotice") }}
-    </WinInfoBar>
+    </FluentNotice>
 
     <section v-if="wizard.result?.adminPassword" class="guide-card credential-card">
       <h3>{{ t("done.adminTitle") }}</h3>
       <div class="credential-row">
         <span class="credential-label">{{ t("done.adminUsername") }}</span>
         <span class="credential-value">{{ wizard.result?.adminUsername }}</span>
-        <WinButton style="padding: 2px 10px; font-size: 0.75rem" @Click="copy(wizard.result?.adminUsername || '', 'user')">
+        <FluentButton style="padding: 2px 10px; font-size: 0.75rem" @click="copy(wizard.result?.adminUsername || '', 'user')">
           {{ copiedField === "user" ? t("common.copied") : t("common.copy") }}
-        </WinButton>
+        </FluentButton>
       </div>
       <div class="credential-row">
         <span class="credential-label">{{ t("done.adminPassword") }}</span>
         <code class="credential-value">{{ wizard.result?.adminPassword }}</code>
-        <WinButton style="padding: 2px 10px; font-size: 0.75rem" @Click="copy(wizard.result?.adminPassword || '', 'pass')">
+        <FluentButton style="padding: 2px 10px; font-size: 0.75rem" @click="copy(wizard.result?.adminPassword || '', 'pass')">
           {{ copiedField === "pass" ? t("common.copied") : t("common.copy") }}
-        </WinButton>
+        </FluentButton>
       </div>
       <p style="margin: 10px 0 0">{{ t("done.saveWarning") }}</p>
-      <WinButton style="margin-top: 10px" @Click="downloadInfo">{{ t("done.downloadInfo") }}</WinButton>
+      <FluentButton style="margin-top: 10px" @click="downloadInfo">{{ t("done.downloadInfo") }}</FluentButton>
     </section>
 
-    <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false" style="margin-top: 16px">
+    <FluentNotice tone="info" style="margin-top: 16px">
       <strong>{{ t("done.nextStepsTitle") }}</strong>
       <p style="margin: 6px 0 0">{{ t("done.nextStepsDesc") }}</p>
       <a :href="`https://github.com/${GITHUB_REPO}/blob/${wizard.selectedTag}/worker/SECRETS.md`" target="_blank" rel="noreferrer">{{ t("done.secretsLink") }}</a>
-    </WinInfoBar>
+    </FluentNotice>
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
         <div class="spacer" />
-        <WinCheckBox v-model="clearCredentials" class="clear-credentials-check">
+        <FluentCheckbox v-model="clearCredentials" class="clear-credentials-check">
           <span>{{ t("done.clearCredentials") }}</span>
-        </WinCheckBox>
-        <WinButton Style="AccentButtonStyle" @Click="finish">{{ t("done.finish") }}</WinButton>
+        </FluentCheckbox>
+        <FluentButton tone="primary" @click="finish">{{ t("done.finish") }}</FluentButton>
       </div>
     </Teleport>
   </div>

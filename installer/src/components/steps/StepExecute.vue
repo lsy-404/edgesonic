@@ -6,7 +6,7 @@ import { useWizard } from "../../stores/wizard";
 import { runDeploy } from "../../lib/deploy/orchestrate";
 import { DeployError, type DeployTarget } from "../../lib/deploy/types";
 import { describeCfError } from "../../lib/cf/errors";
-import { WinButton, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
+import { FluentButton, FluentNotice, FluentProgressBar, FluentProgressRing } from "@lsypkg/fluent/vue";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -90,7 +90,7 @@ function retry() {
         <dt class="execute-step-label">
           <!-- MinWidth/MinHeight default to 16 and clamp Width/Height, so both
                have to be set for the ring to match the dot it replaces. -->
-          <WinProgressRing v-if="entry.status === 'running'" :Width="10" :Height="10" :MinWidth="10" :MinHeight="10" />
+          <FluentProgressRing v-if="entry.status === 'running'" :size="10" />
           <span v-else class="status-dot" :class="`status-dot-${entry.status}`" />
           {{ t(`execute.steps.${entry.step}`) }}
         </dt>
@@ -104,9 +104,9 @@ function retry() {
           <p v-if="entry.detail && entry.status === 'failed'" class="field-help" style="margin: 4px 0 0">{{ entry.detail }}</p>
           <!-- Only steps that transfer a known number of bytes get a bar; the
                rest are quick enough that the spinner alone reads better. -->
-          <WinProgressBar
+          <FluentProgressBar
             v-if="entry.status === 'running' && entry.progress !== undefined"
-            :Value="entry.progress * 100"
+            :value="entry.progress * 100"
             style="margin-top: 6px"
           />
         </dd>
@@ -114,17 +114,17 @@ function retry() {
     </ul>
 
     <div v-if="wizard.deployFailed" style="margin-top: 20px">
-      <WinInfoBar :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+      <FluentNotice tone="danger">
         <strong>{{ t("execute.failedTitle") }}</strong>
         <p style="margin: 6px 0 0">{{ t("execute.failedAt", { step: t(`execute.steps.${failedStep}`) }) }}</p>
         <p style="margin: 6px 0 0">{{ failedMessage }}</p>
-      </WinInfoBar>
+      </FluentNotice>
     </div>
 
     <Teleport defer to=".shell-card-actions">
       <div v-if="wizard.deployFailed && !running" class="step-actions">
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" @Click="retry">{{ t("common.retry") }}</WinButton>
+        <FluentButton tone="primary" @click="retry">{{ t("common.retry") }}</FluentButton>
       </div>
     </Teleport>
     <p v-if="wizard.deployFailed" class="field-help">{{ t("execute.retryFromHere") }}</p>

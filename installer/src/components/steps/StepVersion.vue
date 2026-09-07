@@ -5,7 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { fetchReleases } from "../../lib/github";
 import { buildReleaseOptions, ZERO_VERSION } from "../../../../shared/autoupdate";
-import { WinButton, WinInfoBar, WinProgressRing } from "../../vendor/winui";
+import { FluentButton, FluentNotice, FluentProgressRing } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -61,11 +61,11 @@ function goBack() {
     <p class="step-subtitle">{{ t("version.subtitle") }}</p>
 
     <div v-if="loading" class="version-loading">
-      <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
+      <FluentProgressRing :size="20" />
       <span>{{ t("common.loading") }}</span>
     </div>
-    <WinInfoBar v-else-if="errorMessage" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">{{ errorMessage }}</WinInfoBar>
-    <WinInfoBar v-else-if="wizard.releases.length === 0" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">{{ t("version.noneEligible") }}</WinInfoBar>
+    <FluentNotice v-else-if="errorMessage" tone="danger">{{ errorMessage }}</FluentNotice>
+    <FluentNotice v-else-if="wizard.releases.length === 0" tone="warning">{{ t("version.noneEligible") }}</FluentNotice>
 
     <template v-else>
       <button
@@ -85,13 +85,13 @@ function goBack() {
       </button>
     </template>
 
-    <WinButton style="margin-top: 8px" :IsEnabled="!loading" @Click="load">{{ t("version.reload") }}</WinButton>
+    <FluentButton style="margin-top: 8px" :disabled="loading" @click="load">{{ t("version.reload") }}</FluentButton>
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="goBack">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="goNext">{{ t("common.next") }}</WinButton>
+        <FluentButton tone="primary" :disabled="!canContinue" @click="goNext">{{ t("common.next") }}</FluentButton>
       </div>
     </Teleport>
   </div>

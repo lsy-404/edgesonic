@@ -1,4 +1,4 @@
-@import "../vendor/winui/styles/theme.css";
+@import "@lsypkg/fluent/style.css";
 
 /* WinUI 3 material bridge. Explicit application themes decide all colors;
    this file never follows the operating system's color preference. */

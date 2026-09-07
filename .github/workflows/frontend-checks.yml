@@ -1,0 +1,37 @@
+name: Frontend checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "installer/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/frontend-checks.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - "installer/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/frontend-checks.yml"
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Web and installer
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck -w web
+      - run: npm run build -w web
+      - run: npm run typecheck -w installer
+      - run: npm run build -w installer

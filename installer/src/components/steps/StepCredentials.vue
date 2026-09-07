@@ -7,7 +7,7 @@ import { callCfJson, verifyR2Keys } from "../../lib/relay";
 import { listBucketNames } from "../../lib/deploy/r2";
 import { describeCfError } from "../../lib/cf/errors";
 import { hasTokenPermission, readTokenPermissionGroups, TOKEN_PERMISSION_GROUPS } from "../../lib/cf/tokenPolicies";
-import { WinButton } from "../../vendor/winui";
+import { FluentButton } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -280,9 +280,9 @@ function goBack() {
         <li>
           <div class="permission-head">
             <span>{{ t("credentials.setupPermissions") }}</span>
-            <WinButton Style="SubtleButtonStyle" :IsEnabled="canVerify && !verifying" @Click="recheck">
+            <FluentButton tone="subtle" :disabled="!canVerify || verifying" @click="recheck">
               <span aria-hidden="true">⟳</span>{{ verifying ? t("credentials.verifying") : t("credentials.recheck") }}
-            </WinButton>
+            </FluentButton>
           </div>
           <div class="permission-table-wrap">
             <table class="permission-table">
@@ -366,9 +366,9 @@ function goBack() {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="goBack">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="goNext">{{ t("common.next") }}</WinButton>
+        <FluentButton tone="primary" :disabled="!canContinue" @click="goNext">{{ t("common.next") }}</FluentButton>
       </div>
     </Teleport>
   </div>

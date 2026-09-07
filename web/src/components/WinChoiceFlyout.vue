@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch, type CSSProperties } from "vue";
 import { isScrollInsideElement, placeFloatingMenu, type FloatingPlacement } from "../lib/floatingPlacement";
-import { WinButton } from "../vendor/winui";
+import { FluentButton } from "@lsypkg/fluent/vue";
 import Icon from "./Icon.vue";
 
 export interface WinChoice {
@@ -188,18 +188,18 @@ onBeforeUnmount(unbindListeners);
 
 <template>
   <div ref="triggerEl" class="win-choice" @focusout="onFocusOut">
-    <WinButton
+    <FluentButton
       class="win-choice-trigger"
       :aria-label="ariaLabel"
       aria-haspopup="listbox"
       :aria-expanded="open"
       :aria-controls="open ? listboxId : undefined"
-      @Click="toggleMenu"
+      @click="toggleMenu"
       @keydown="onTriggerKeydown"
     >
       <span class="win-choice-label">{{ selectedChoice?.label }}</span>
       <Icon class="win-choice-chevron" name="chevronDown" :size="14" />
-    </WinButton>
+    </FluentButton>
     <Teleport to="body">
       <div
         v-if="open"

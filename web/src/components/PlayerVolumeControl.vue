@@ -4,8 +4,7 @@ import { useI18n } from "vue-i18n";
 import { usePlayerStore } from "../stores/player";
 import Icon from "./Icon.vue";
 import { volumePercent, toggledVolume } from "./PlayerVolumeControl";
-import { WinButton } from "../vendor/winui";
-import WinSlider from "../vendor/winui/components/WinSlider.vue";
+import { FluentButton, FluentSlider } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const player = usePlayerStore();
@@ -116,29 +115,27 @@ onBeforeUnmount(() => {
 <template>
   <div class="player-volume">
     <div ref="trigger">
-      <WinButton
+      <FluentButton
         class="player-volume__button"
         :aria-label="t('player.volume')"
         :aria-expanded="popupOpen"
         :title="`${t('player.volume')} (↑ / ↓, M)`"
-        Width="28"
-        Height="28"
-        Padding="0"
-        @Click="onSoundButton"
+        style="width: 28px; height: 28px; min-height: 28px; padding: 0"
+        @click="onSoundButton"
       >
         <Icon :name="volumeIcon" :size="16" />
-      </WinButton>
+      </FluentButton>
     </div>
     <div class="player-volume__desktop-slider" role="slider" tabindex="0" :aria-label="t('player.volume')" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="player.volume" :aria-valuetext="`${percent}%`" @pointerdown.capture="adjusting = true" @pointerup.capture="adjusting = false" @pointercancel.capture="adjusting = false" @lostpointercapture.capture="adjusting = false" @keydown.capture="onRangeKeydown" @keyup.capture="adjusting = false" @focusout="onRangeFocusOut">
-      <WinSlider
+      <FluentSlider
         class="player-volume__range"
-        :Value="player.volume"
-        :Minimum="0"
-        :Maximum="1"
-        :StepFrequency="0.01"
-        :IsThumbToolTipEnabled="false"
-        Width="clamp(160px, 14vw, 200px)"
-        @update:Value="setVolume"
+        :model-value="player.volume"
+        :min="0"
+        :max="1"
+        :step="0.01"
+        style="width: clamp(160px, 14vw, 200px)"
+        :aria-label="t('player.volume')"
+        @update:model-value="setVolume"
       />
       <span v-if="adjusting" class="player-volume__percent" aria-live="polite">{{ percent }}%</span>
     </div>
@@ -150,15 +147,14 @@ onBeforeUnmount(() => {
         <span>{{ t('player.volume') }}</span>
       </div>
       <div ref="range" class="player-volume__popup-slider" role="slider" tabindex="0" :aria-label="t('player.volume')" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="player.volume" :aria-valuetext="`${percent}%`" @pointerdown.capture="adjusting = true" @pointerup.capture="adjusting = false" @pointercancel.capture="adjusting = false" @lostpointercapture.capture="adjusting = false" @keydown.capture="onRangeKeydown" @keyup.capture="adjusting = false" @focusout="onRangeFocusOut">
-        <WinSlider
+      <FluentSlider
           style="width: 100%"
-          :Value="player.volume"
-          :Minimum="0"
-          :Maximum="1"
-          :StepFrequency="0.01"
-        :IsThumbToolTipEnabled="false"
-          Width="100%"
-          @update:Value="setVolume"
+          :model-value="player.volume"
+          :min="0"
+          :max="1"
+          :step="0.01"
+          :aria-label="t('player.volume')"
+          @update:model-value="setVolume"
         />
         <span v-if="adjusting" class="player-volume__percent" aria-live="polite">{{ percent }}%</span>
       </div>

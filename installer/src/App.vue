@@ -1,6 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { FluentTheme } from "@lsypkg/fluent/vue";
+import { themeMode } from "./theme";
 import { useWizard } from "./stores/wizard";
 import WizardShell from "./components/WizardShell.vue";
 import StepWelcome from "./components/steps/StepWelcome.vue";
@@ -46,9 +48,11 @@ watch(
 </script>
 
 <template>
-  <WizardShell :step="Math.min(wizard.step, TOTAL_STEPS)" :total="TOTAL_STEPS">
-    <Transition :name="transitionName">
-      <component :is="current" :key="wizard.step" />
-    </Transition>
-  </WizardShell>
+  <FluentTheme :mode="themeMode === 'auto' ? 'system' : themeMode">
+    <WizardShell :step="Math.min(wizard.step, TOTAL_STEPS)" :total="TOTAL_STEPS">
+      <Transition :name="transitionName">
+        <component :is="current" :key="wizard.step" />
+      </Transition>
+    </WizardShell>
+  </FluentTheme>
 </template>
