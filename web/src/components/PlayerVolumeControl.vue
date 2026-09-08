@@ -167,10 +167,13 @@ onBeforeUnmount(() => {
 }
 .player-volume :deep(.player-volume__button:hover), .player-volume :deep(.player-volume__button:focus-visible) { color: var(--color-accent-primary); border-color: var(--color-accent-dim); }
 .player-volume__desktop-slider:focus-within, .player-volume__popup-slider:focus-within { outline: 2px solid var(--accent-base); outline-offset: 3px; border-radius: 4px; }
-.player-volume__desktop-slider { position: relative; display: flex; align-items: center; height: 28px; }
+.player-volume__desktop-slider {
+  position: relative; display: flex; align-items: center; height: 28px;
+  padding-right: 4.5ch; box-sizing: content-box;
+}
 .player-volume__percent {
-  position: absolute; left: calc(100% + 0.4rem); bottom: 50%; transform: translateY(50%);
-  width: 3ch; text-align: right;
+  position: absolute; right: 0; bottom: 50%; transform: translateY(50%);
+  width: 4ch; text-align: right;
   color: var(--color-text-muted); font-family: var(--font-mono); font-size: var(--fs-xs); line-height: 1;
 }
 .player-volume__popup {

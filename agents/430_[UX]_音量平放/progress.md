@@ -4,3 +4,4 @@
 - 2026-09-08：检查 `PlayerBar.vue`、`PlayerVolumeControl.vue`、`PlayerQualityControl.vue`，确认布局和显示状态的修改边界。
 - 2026-09-08：将 `.pb-audio-settings` 改为水平排列，将桌面音量百分比定位到滑条右侧；未改动 `.pb-progress` 或移动端布局规则。
 - 2026-09-08：`npm run typecheck -w web` 通过；`npm run build -w web` 通过，Vite 仅报告既有的大 chunk 警告。
+- 2026-09-08：复核并修正百分比槽位：桌面音量滑条固定预留 4.5ch，覆盖最长 `100%` 文本，避免并排音质控件重叠和布局跳动。
