@@ -7,6 +7,7 @@ import { useAuth } from "../api";
 import { activationDisplay, toDatetimeLocal, fromDatetimeLocal, type ActivationStatus } from "../lib/activation";
 import { defaultAvatarColor, defaultAvatarInitial } from "../../../shared/avatar";
 import Icon from "../components/Icon.vue";
+import { FluentSelect } from "@lsypkg/fluent/vue";
 
 const { t, locale } = useI18n();
 const { username: currentUsername, isAdmin, isSuperAdmin, hasPerm, edgesonicFetch, edgesonicPost, restUrl } = useAuth();
@@ -453,12 +454,7 @@ onMounted(load);
         <div class="form-group"><label class="form-label">{{ t("users.password") }}</label><input v-model="form.password" type="password" maxlength="256" class="form-input" /></div>
         <div class="form-group">
           <label class="form-label">{{ t("users.level") }}</label>
-          <select v-model="form.level" class="form-select">
-            <option v-if="isSuperAdmin" :value="3">3 — {{ t("users.levels.super") }}</option>
-            <option :value="2">2 — {{ t("users.levels.admin") }}</option>
-            <option :value="1">1 — {{ t("users.levels.user") }}</option>
-            <option :value="0">0 — {{ t("users.levels.guest") }}</option>
-          </select>
+          <FluentSelect :model-value="String(form.level)" :label="t('users.level')" :options="[{ value: '3', label: `3 — ${t('users.levels.super')}`, disabled: !isSuperAdmin }, { value: '2', label: `2 — ${t('users.levels.admin')}` }, { value: '1', label: `1 — ${t('users.levels.user')}` }, { value: '0', label: `0 — ${t('users.levels.guest')}` }]" @update:model-value="form.level = Number($event)" />
         </div>
         <button class="btn-primary" @click="addUser">{{ t("users.create") }}</button>
       </div>
@@ -560,9 +556,7 @@ onMounted(load);
         </span>
         <span class="user-name">{{ u.username }}</span>
         <span>
-          <select v-if="isSuperAdmin" :value="u.level" @change="changeLevel(u, parseInt(($event.target as HTMLSelectElement).value))" class="form-select level-select">
-            <option :value="3">{{ t("users.levels.super") }}</option><option :value="2">{{ t("users.levels.admin") }}</option><option :value="1">{{ t("users.levels.user") }}</option><option :value="0">{{ t("users.levels.guest") }}</option>
-          </select>
+          <FluentSelect v-if="isSuperAdmin" :model-value="String(u.level)" :label="t('users.level')" :options="[{ value: '3', label: t('users.levels.super') }, { value: '2', label: t('users.levels.admin') }, { value: '1', label: t('users.levels.user') }, { value: '0', label: t('users.levels.guest') }]" class="level-select" @update:model-value="changeLevel(u, Number($event))" />
           <span v-else :class="['status-badge', levelColors[u.level] || 'info']">{{ levelKeys[u.level] ? t(`users.levels.${levelKeys[u.level]}`) : u.level }}</span>
         </span>
         <span>
