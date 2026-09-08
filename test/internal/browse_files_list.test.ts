@@ -38,14 +38,18 @@ function assert(cond: unknown, msg: string) {
 // ---------------------------------------------------------------------------
 interface R2Item { key: string; size: number; contentType: string; uploaded: Date; bytes: Uint8Array }
 
-function makeR2Bucket() {
+function makeR2Bucket(pageResults?: Array<{ objects: unknown[]; delimitedPrefixes: string[]; truncated: boolean; cursor?: string }>) {
   const store = new Map<string, R2Item>();
+  const listCalls: { prefix: string; delimiter: string; cursor?: string }[] = [];
   return {
+    listCalls,
     async put(key: string, body: unknown, opts?: { httpMetadata?: { contentType?: string } }) {
       const bytes = body instanceof Uint8Array ? body : new Uint8Array([1, 2, 3, 4]);
       store.set(key, { key, size: bytes.byteLength, bytes, contentType: opts?.httpMetadata?.contentType || "application/octet-stream", uploaded: new Date("2026-08-25T12:34:56Z") });
     },
-    async list({ prefix, delimiter }: { prefix: string; delimiter: string }) {
+    async list({ prefix, delimiter, cursor }: { prefix: string; delimiter: string; cursor?: string }) {
+      listCalls.push({ prefix, delimiter, ...(cursor ? { cursor } : {}) });
+      if (pageResults) return pageResults[cursor ? 1 : 0];
       const objects: (R2Item & { httpMetadata: { contentType: string } })[] = [];
       const prefixSet = new Set<string>();
       for (const item of store.values()) {
@@ -113,6 +117,33 @@ async function main() {
     assert(j.ok, "ok=true");
     assert(j.dirs.some((d) => d.name === "newfolder"), `dirs includes 'newfolder' (got ${JSON.stringify(j.dirs)})`);
     assert(!j.files.some((f) => f.name === ".keep"), "no '.keep' leaked into the parent's file list");
+  }
+
+  console.log("\nfiles/list r2 → follows truncated pages and keeps all entries:");
+  {
+    const paginated = makeR2Bucket([
+      {
+        objects: [{ key: "music/first.flac", size: 10, httpMetadata: { contentType: "audio/flac" }, uploaded: new Date("2026-08-25T12:34:56Z") }],
+        delimitedPrefixes: ["music/album-a/"],
+        truncated: true,
+        cursor: "page-2",
+      },
+      {
+        objects: [
+          { key: "music/.keep", size: 0, httpMetadata: { contentType: "application/x-directory" }, uploaded: new Date("2026-08-25T12:34:56Z") },
+          { key: "music/second.flac", size: 20, httpMetadata: { contentType: "audio/flac" }, uploaded: new Date("2026-08-25T12:34:56Z") },
+        ],
+        delimitedPrefixes: ["music/album-b/"],
+        truncated: false,
+      },
+    ]);
+    const r = await makeApp(paginated).get("/storage/files/list?source=r2&path=music");
+    const j = await r.json<{ ok: boolean; dirs: { name: string }[]; files: { name: string; size: number }[] }>();
+    assert(j.ok, "paginated listing returns ok=true");
+    assert(j.dirs.map((d) => d.name).join(",") === "album-a,album-b", "directories from every page are returned");
+    assert(j.files.map((f) => f.name).join(",") === "first.flac,second.flac", "files from every page are returned and .keep stays hidden");
+    assert(paginated.listCalls.length === 2 && paginated.listCalls[0].prefix === "music/" && paginated.listCalls[0].delimiter === "/" && paginated.listCalls[1].cursor === "page-2",
+      `list() receives the preserved prefix/delimiter and continuation cursor (got ${JSON.stringify(paginated.listCalls)})`);
   }
 
   console.log("\nfiles/list r2 inside folder → .keep hidden, real file kept:");

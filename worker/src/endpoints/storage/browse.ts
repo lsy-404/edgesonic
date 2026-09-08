@@ -29,19 +29,31 @@ browseRoutes.get("/files/list", permissionMiddleware("download"), async (c) => {
 
   if (source === "r2") {
     const prefix = path ? `${path}/` : "";
-    const listing = await env.MUSIC_BUCKET.list({ prefix, delimiter: "/" });
+    const objects: R2Object[] = [];
+    const delimitedPrefixes: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const listing = await env.MUSIC_BUCKET.list({
+        prefix,
+        delimiter: "/",
+        ...(cursor ? { cursor } : {}),
+      });
+      objects.push(...listing.objects);
+      delimitedPrefixes.push(...listing.delimitedPrefixes);
+      cursor = listing.truncated ? listing.cursor : undefined;
+    } while (cursor);
     return c.json({
       ok: true,
       source: "r2",
       path,
-      dirs: listing.delimitedPrefixes.map((p) => ({
+      dirs: delimitedPrefixes.map((p) => ({
         name: p.substring(prefix.length).replace(/\/$/, ""),
         modifiedAt: null,
       })),
       // ".keep" is the 0-byte marker files/mkdir drops to make an otherwise
       // real-object-free R2 "folder" show up via the delimiter above — hide
       // it from the folder's own contents so it doesn't look like a stray file.
-      files: listing.objects
+      files: objects
         .filter((o) => o.key.substring(prefix.length) !== ".keep")
         .map((o) => ({
           name: o.key.substring(prefix.length),
