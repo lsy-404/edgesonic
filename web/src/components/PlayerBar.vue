@@ -427,9 +427,9 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   pointer-events: none;
 }
 
-/* --- right: volume above quality, queue alongside --- */
+/* --- right: volume and quality alongside queue --- */
 .pb-right { display: flex; align-items: center; gap: 0.6rem; width: 300px; flex-shrink: 0; justify-content: flex-end; }
-.pb-audio-settings { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-end; gap: 2px; }
+.pb-audio-settings { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: flex-end; gap: 0.55rem; }
 .pb-quality-wrap { display: flex; min-width: 0; }
 .pb-queue-btn {
   position: relative;
