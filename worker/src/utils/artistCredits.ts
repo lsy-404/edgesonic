@@ -24,6 +24,13 @@ export function parseArtistCredits(value: string | null | undefined): ArtistCred
   }));
 }
 
+export function parseAlbumArtistCredit(value: string | null | undefined): ArtistCredit | null {
+  if (!value?.trim()) return null;
+  const credits = parseArtistCredits(value);
+  const name = credits.map((credit) => credit.name).join(", ");
+  return { id: "ar-" + md5(name).substring(0, 10), name, position: 0 };
+}
+
 export function artistInsertStatements(
   db: D1Database,
   credits: ArtistCredit[],

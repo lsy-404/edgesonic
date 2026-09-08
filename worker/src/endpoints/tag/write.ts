@@ -18,6 +18,7 @@ import { permissionMiddleware } from "../../auth";
 import { md5 } from "../../utils/md5";
 import {
   artistInsertStatements,
+  parseAlbumArtistCredit,
   parseArtistCredits,
   songArtistStatements,
   UNUSED_ARTIST_CLEANUP_SQL,
@@ -392,17 +393,26 @@ async function applyTagsToSong(
   // fields (year/track) we don't accept `{null}` — cleanInput never passes
   // them through as keywords (only lyrics is keyword-enabled in cleanInput).
   const title = tags.title === KW_NULL ? "" : (tags.title || master.title);
+  const artistChanged = tags.artist !== undefined;
   const artistName = tags.artist === KW_NULL ? "Unknown Artist" : (tags.artist || curArtist?.name || "Unknown Artist");
-  const artistCredits = parseArtistCredits(artistName);
-  const albumArtistName = tags.albumArtist === KW_NULL ? "" : tags.albumArtist;
-  const albumArtistCredits = albumArtistName ? parseArtistCredits(albumArtistName) : [];
+  const artistCredits = artistChanged ? parseArtistCredits(artistName) : [];
+  const currentAlbumArtist = master.album_artist_id
+    ? await db.prepare("SELECT name FROM artists WHERE id = ?").bind(master.album_artist_id).first<{ name: string }>()
+    : null;
+  const albumArtistName = tags.albumArtist === undefined
+    ? currentAlbumArtist?.name
+    : tags.albumArtist === KW_NULL ? "" : tags.albumArtist;
+  const albumArtist = parseAlbumArtistCredit(albumArtistName);
+  const albumArtistCredits = albumArtist ? [albumArtist] : [];
   const primaryArtist = artistCredits[0];
-  const albumArtist = albumArtistCredits[0];
-  const linkArtistName = albumArtistName || primaryArtist.name;
+  const linkArtistName = albumArtist?.name || curArtist?.name || "Unknown Artist";
   const albumName = tags.album === KW_NULL ? "Unknown Album" : (tags.album || curAlbum?.name || "Unknown Album");
   const genreValue = tags.genre === KW_NULL ? "" : tags.genre;
-  const artistId = primaryArtist.id;
-  const albumId = "al-" + md5(linkArtistName + " " + albumName).substring(0, 10);
+  const artistId = primaryArtist?.id || master.artist_id;
+  const albumIdentityChanged = artistChanged || tags.albumArtist !== undefined || tags.album !== undefined;
+  const albumId = albumIdentityChanged
+    ? "al-" + md5(linkArtistName + " " + albumName).substring(0, 10)
+    : master.album_id;
   const now = Math.floor(Date.now() / 1000);
   const oldAlbumId = master.album_id;
 
@@ -426,7 +436,7 @@ async function applyTagsToSong(
          lyrics = COALESCE(?, lyrics), updated_at = ?
        WHERE id = ?`
     ).bind(albumId, artistId, tags.albumArtist !== undefined, albumArtist?.id ?? null, title, title.toLowerCase(), tags.track ?? null, genreValue ?? null, tags.lyrics ?? null, now, master.id),
-    ...songArtistStatements(db, master.id, artistCredits),
+    ...(artistChanged ? songArtistStatements(db, master.id, artistCredits) : []),
     // manual edits win over future scans
     db.prepare("UPDATE song_instances SET tag_scanned = 1 WHERE master_id = ?").bind(master.id),
   ]);

@@ -41,6 +41,7 @@ import { md5 } from "./md5";
 import { deriveBitrate } from "./audioMetrics";
 import {
   artistInsertStatements,
+  parseAlbumArtistCredit,
   parseArtistCredits,
   songArtistStatements,
   UNUSED_ARTIST_CLEANUP_SQL,
@@ -141,9 +142,9 @@ export async function applyMetadataResult(
   let masterId: string | undefined;
   if (hasLogical) {
     const master = await db.prepare(
-      "SELECT id, album_id, artist_id, title FROM song_masters WHERE id = ?",
+      "SELECT id, album_id, artist_id, album_artist_id, title FROM song_masters WHERE id = ?",
     ).bind(inst.master_id).first<{
-      id: string; album_id: string; artist_id: string; title: string;
+      id: string; album_id: string; artist_id: string; album_artist_id: string | null; title: string;
     }>();
     if (!master) return { updated: false, reason: "master not found" };
     await relinkArtistAlbum(db, master, tags);
@@ -224,7 +225,7 @@ export async function applyMetadataResult(
 // ---------------------------------------------------------------------------
 export async function relinkArtistAlbum(
   db: D1Database,
-  master: { id: string; album_id: string; artist_id: string; title: string },
+  master: { id: string; album_id: string; artist_id: string; album_artist_id: string | null; title: string },
   tags: SubmittedMetadata,
 ): Promise<{ albumId: string; artistId: string }> {
   const now = Math.floor(Date.now() / 1000);
@@ -235,17 +236,24 @@ export async function relinkArtistAlbum(
     .bind(master.artist_id).first<{ name: string }>();
   const curAlbum = await db.prepare("SELECT name FROM albums WHERE id = ?")
     .bind(master.album_id).first<{ name: string }>();
-
   const title = tags.title || master.title;
+  const artistChanged = tags.artist !== undefined;
   const artistName = tags.artist || curArtist?.name || "Unknown Artist";
-  const artistCredits = parseArtistCredits(artistName);
-  const albumArtistCredits = tags.albumArtist ? parseArtistCredits(tags.albumArtist) : [];
+  const artistCredits = artistChanged ? parseArtistCredits(artistName) : [];
+  const currentAlbumArtist = master.album_artist_id
+    ? await db.prepare("SELECT name FROM artists WHERE id = ?").bind(master.album_artist_id).first<{ name: string }>()
+    : null;
+  const albumArtistName = tags.albumArtist === undefined ? currentAlbumArtist?.name : tags.albumArtist;
+  const albumArtist = parseAlbumArtistCredit(albumArtistName);
+  const albumArtistCredits = albumArtist ? [albumArtist] : [];
   const primaryArtist = artistCredits[0];
-  const albumArtist = albumArtistCredits[0];
-  const linkArtistName = tags.albumArtist || primaryArtist.name;
+  const linkArtistName = albumArtist?.name || curArtist?.name || "Unknown Artist";
   const albumName = tags.album || curAlbum?.name || "Unknown Album";
-  const artistId = primaryArtist.id;
-  const albumId = "al-" + md5(linkArtistName + " " + albumName).substring(0, 10);
+  const artistId = primaryArtist?.id || master.artist_id;
+  const albumIdentityChanged = artistChanged || tags.albumArtist !== undefined || tags.album !== undefined;
+  const albumId = albumIdentityChanged
+    ? "al-" + md5(linkArtistName + " " + albumName).substring(0, 10)
+    : master.album_id;
   const oldAlbumId = master.album_id;
 
   await db.batch([
@@ -265,7 +273,7 @@ export async function relinkArtistAlbum(
       tags.genre ?? null, tags.duration ?? null,
       now, master.id,
     ),
-    ...songArtistStatements(db, master.id, artistCredits),
+    ...(artistChanged ? songArtistStatements(db, master.id, artistCredits) : []),
   ]);
 
   // Backfill year / genre onto the freshly anchored album row (INSERT OR IGNORE
