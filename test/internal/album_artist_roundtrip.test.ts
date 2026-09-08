@@ -7,6 +7,7 @@ import { Hono } from "hono";
 import { tagEditRoutes } from "../../worker/src/endpoints/tag/write";
 import { subsonicRoutes } from "../../worker/src/endpoints/subsonic";
 import { createQueries } from "../../worker/src/db/queries";
+import { applyMetadataResult } from "../../worker/src/utils/metadataApply";
 import { md5 } from "../../worker/src/utils/md5";
 
 let failures = 0;
@@ -140,6 +141,23 @@ async function main() {
   assert(artistOnly.status === 200, "artist-only write route succeeds");
   assert(artistOnlyRow.album_id === `al-${md5("New Singer Old Album").substring(0, 10)}`, "artist-only edit anchors album to the new artist");
   assert(artistOnlyRow.album_artist_id === null, "artist-only edit leaves album artist empty");
+
+  const scannedDb = buildDb();
+  const scan = await applyMetadataResult(d1(scannedDb), "inst-a", {
+    artist: "Singer A, Singer B", albumArtist: "Singer A, Singer B, Singer C", album: "Shared Album",
+  }, {});
+  const scanned = await createQueries(d1(scannedDb)).getSongMaster("sg-a");
+  assert(scan.updated && scanned?.album_artist_name === "Singer A, Singer B, Singer C", "metadata ingestion preserves the complete album artist");
+  assert(scanned?.artist_name === "Singer A, Singer B", "metadata ingestion preserves separate track credits");
+  await applyMetadataResult(d1(scannedDb), "inst-a", { track: 7 }, {});
+  const scanEdited = await createQueries(d1(scannedDb)).getSongMaster("sg-a");
+  assert(scanEdited?.track === 7 && scanEdited.album_id === scanned?.album_id, "partial metadata update changes track without splitting the album");
+  assert(scanEdited?.artist_name === scanned?.artist_name && scanEdited?.album_artist_name === scanned?.album_artist_name, "partial metadata update preserves both artist fields");
+  await applyMetadataResult(d1(scannedDb), "inst-b", { artist: "New Singer" }, {});
+  const newArtist = await createQueries(d1(scannedDb)).getSongMaster("sg-b");
+  assert(newArtist?.album_id === `al-${md5("New Singer Old Album").substring(0, 10)}`, "metadata artist-only update uses the new artist for album identity");
+  scannedDb.close();
+  sqlite.close();
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
   process.exit(failures ? 1 : 0);
