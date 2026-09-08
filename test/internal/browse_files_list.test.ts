@@ -38,7 +38,9 @@ function assert(cond: unknown, msg: string) {
 // ---------------------------------------------------------------------------
 interface R2Item { key: string; size: number; contentType: string; uploaded: Date; bytes: Uint8Array }
 
-function makeR2Bucket(pageResults?: Array<{ objects: unknown[]; delimitedPrefixes: string[]; truncated: boolean; cursor?: string }>) {
+interface R2Page { objects: unknown[]; delimitedPrefixes: string[]; truncated: boolean; cursor?: string }
+
+function makeR2Bucket(pageResults?: Record<string, R2Page>) {
   const store = new Map<string, R2Item>();
   const listCalls: { prefix: string; delimiter: string; cursor?: string }[] = [];
   return {
@@ -49,7 +51,7 @@ function makeR2Bucket(pageResults?: Array<{ objects: unknown[]; delimitedPrefixe
     },
     async list({ prefix, delimiter, cursor }: { prefix: string; delimiter: string; cursor?: string }) {
       listCalls.push({ prefix, delimiter, ...(cursor ? { cursor } : {}) });
-      if (pageResults) return pageResults[cursor ? 1 : 0];
+      if (pageResults) return pageResults[cursor || ""];
       const objects: (R2Item & { httpMetadata: { contentType: string } })[] = [];
       const prefixSet = new Set<string>();
       for (const item of store.values()) {
@@ -62,7 +64,7 @@ function makeR2Bucket(pageResults?: Array<{ objects: unknown[]; delimitedPrefixe
           objects.push({ ...item, httpMetadata: { contentType: item.contentType } });
         }
       }
-      return { objects, delimitedPrefixes: Array.from(prefixSet) };
+      return { objects, delimitedPrefixes: Array.from(prefixSet), truncated: false };
     },
     async get(key: string, opts?: { range?: { offset: number; length?: number } }) {
       const item = store.get(key);
@@ -121,28 +123,37 @@ async function main() {
 
   console.log("\nfiles/list r2 → follows truncated pages and keeps all entries:");
   {
-    const paginated = makeR2Bucket([
-      {
+    const paginated = makeR2Bucket({
+      "": {
         objects: [{ key: "music/first.flac", size: 10, httpMetadata: { contentType: "audio/flac" }, uploaded: new Date("2026-08-25T12:34:56Z") }],
         delimitedPrefixes: ["music/album-a/"],
         truncated: true,
         cursor: "page-2",
       },
-      {
+      "page-2": {
+        objects: [],
+        delimitedPrefixes: ["music/album-b/"],
+        truncated: true,
+        cursor: "page-3",
+      },
+      "page-3": {
         objects: [
           { key: "music/.keep", size: 0, httpMetadata: { contentType: "application/x-directory" }, uploaded: new Date("2026-08-25T12:34:56Z") },
           { key: "music/second.flac", size: 20, httpMetadata: { contentType: "audio/flac" }, uploaded: new Date("2026-08-25T12:34:56Z") },
         ],
-        delimitedPrefixes: ["music/album-b/"],
+        delimitedPrefixes: ["music/album-c/"],
         truncated: false,
       },
-    ]);
+    });
     const r = await makeApp(paginated).get("/storage/files/list?source=r2&path=music");
-    const j = await r.json<{ ok: boolean; dirs: { name: string }[]; files: { name: string; size: number }[] }>();
+    const j = await r.json<{ ok: boolean; dirs: { name: string }[]; files: { name: string; size: number; contentType: string | null; uri: string; modifiedAt: number | null }[] }>();
     assert(j.ok, "paginated listing returns ok=true");
-    assert(j.dirs.map((d) => d.name).join(",") === "album-a,album-b", "directories from every page are returned");
+    assert(j.dirs.map((d) => d.name).join(",") === "album-a,album-b,album-c", "directories from every page are returned, including an empty-file page");
     assert(j.files.map((f) => f.name).join(",") === "first.flac,second.flac", "files from every page are returned and .keep stays hidden");
-    assert(paginated.listCalls.length === 2 && paginated.listCalls[0].prefix === "music/" && paginated.listCalls[0].delimiter === "/" && paginated.listCalls[1].cursor === "page-2",
+    const secondFile = j.files.find((f) => f.name === "second.flac");
+    assert(secondFile?.size === 20 && secondFile.contentType === "audio/flac" && secondFile.uri === "r2://music/second.flac" && secondFile.modifiedAt === 1787661296,
+      "final-page file metadata and URI are preserved");
+    assert(paginated.listCalls.length === 3 && paginated.listCalls[0].prefix === "music/" && paginated.listCalls[0].delimiter === "/" && paginated.listCalls[1].cursor === "page-2" && paginated.listCalls[2].cursor === "page-3",
       `list() receives the preserved prefix/delimiter and continuation cursor (got ${JSON.stringify(paginated.listCalls)})`);
   }
 
