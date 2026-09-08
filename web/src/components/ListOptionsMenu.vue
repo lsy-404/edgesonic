@@ -107,6 +107,18 @@ onBeforeUnmount(unbindViewportListeners);
   border: 1px solid var(--color-border-subtle);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   padding: 0.25rem 0;
+  --fluent-text: var(--color-text-primary);
+  --fluent-muted: var(--color-text-muted);
+  --fluent-accent: var(--color-accent-primary);
+  --fluent-accent-hover: color-mix(in srgb, var(--color-accent-primary) 88%, white);
+  --fluent-accent-pressed: color-mix(in srgb, var(--color-accent-primary) 82%, black);
+  --fluent-accent-text: var(--color-text-inverse);
+  --fluent-control: var(--color-bg-elevated);
+  --fluent-control-hover: var(--color-bg-tertiary);
+  --fluent-control-pressed: var(--color-bg-primary);
+  --fluent-border: var(--color-border-subtle);
+  --fluent-fast: 160ms;
+  --fluent-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 .list-options-item {
   display: flex;
