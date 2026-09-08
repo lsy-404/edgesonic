@@ -202,7 +202,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
             :style="{ left: seg.left + '%', width: seg.width + '%' }"
           ></div>
           <div class="pb-progress-fill" :style="{ width: progressPct + '%' }"></div>
-          <div class="pb-progress-thumb" :class="{ active: dragging }" :style="{ left: progressPct + '%' }">
+          <div class="pb-progress-thumb" :class="{ active: dragging, 'pb-progress-thumb-custom': !!activeThemeDef?.progressThumb }" :style="{ left: progressPct + '%' }">
             <component :is="activeThemeDef?.progressThumb" v-if="activeThemeDef?.progressThumb" />
           </div>
           <div v-if="dragging" class="pb-progress-tooltip" :style="{ left: progressPct + '%' }">{{ fmtPrecise(displayTime) }}</div>
@@ -409,7 +409,11 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   background: var(--accent-base, var(--color-accent-primary));
   transform: scale(.86); transition: transform var(--fast-duration) var(--fast-out-slow-in);
 }
-.pb-progress-thumb > * { display: none; }
+.pb-progress-thumb-custom {
+  border: none; border-radius: 0; background: transparent; box-shadow: none;
+  pointer-events: none;
+}
+.pb-progress-thumb-custom::after { content: none; }
 .pb-progress:hover .pb-progress-thumb::after { background: var(--accent-hover, var(--color-accent-primary)); transform: scale(1.167); }
 .pb-progress-thumb.active::after { background: var(--accent-pressed, var(--color-accent-primary)); transform: scale(.71); }
 .pb-progress-tooltip {
