@@ -6,6 +6,7 @@ import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
 import Icon from "../components/Icon.vue";
+import { FluentSelect } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const { isAdmin, isSuperAdmin, storageFetch, storagePost, crossCopy } = useAuth();
@@ -578,11 +579,7 @@ onUnmounted(() => {
       <div class="form-grid-2">
         <div class="form-group">
           <label class="form-label">{{ t("sources.type") }}</label>
-          <select v-model="form.type" class="form-select">
-            <option value="webdav">WebDAV</option>
-            <option value="subsonic">Subsonic</option>
-            <option value="s3">{{ t("sources.typeS3") }}</option>
-          </select>
+          <FluentSelect v-model="form.type" class="form-select" :aria-label="t('sources.type')" :options="[{ value: 'webdav', label: 'WebDAV' }, { value: 'subsonic', label: 'Subsonic' }, { value: 's3', label: t('sources.typeS3') }]" />
         </div>
         <div class="form-group"><label class="form-label">{{ t("sources.alias") }}</label><input v-model="form.name" maxlength="256" class="form-input" :placeholder="t('sources.aliasPlaceholder')" /></div>
         <div class="form-group">
@@ -605,10 +602,7 @@ onUnmounted(() => {
         <!-- P4: mode selector -->
         <div class="form-group span-all">
           <label class="form-label">{{ t("sources.mode.label") }}</label>
-          <select v-model="form.mode" class="form-select">
-            <option value="library">{{ t("sources.mode.library") }}</option>
-            <option value="sync_only">{{ t("sources.mode.syncOnly") }}</option>
-          </select>
+          <FluentSelect v-model="form.mode" class="form-select" :aria-label="t('sources.mode.label')" :options="[{ value: 'library', label: t('sources.mode.library') }, { value: 'sync_only', label: t('sources.mode.syncOnly') }]" />
           <span class="field-hint">{{ t("sources.mode.hint") }}</span>
         </div>
         <div v-if="form.type === 'webdav'" class="form-group span-all">
@@ -620,11 +614,7 @@ onUnmounted(() => {
         <!-- cache tier selector (webdav only — the only scheme hotcache.ts caches today) -->
         <div v-if="form.type === 'webdav'" class="form-group span-all">
           <label class="form-label">{{ t("sources.cacheTier.label") }}</label>
-          <select v-model="form.cache_tier" class="form-select">
-            <option value="off">{{ t("sources.cacheTier.off") }}</option>
-            <option value="standard">{{ t("sources.cacheTier.standard") }}</option>
-            <option value="extended">{{ t("sources.cacheTier.extended") }}</option>
-          </select>
+          <FluentSelect v-model="form.cache_tier" class="form-select" :aria-label="t('sources.cacheTier.label')" :options="[{ value: 'off', label: t('sources.cacheTier.off') }, { value: 'standard', label: t('sources.cacheTier.standard') }, { value: 'extended', label: t('sources.cacheTier.extended') }]" />
           <span class="field-hint">{{ t("sources.cacheTier.hint") }}</span>
         </div>
         <button class="btn-primary span-all" @click="addSource">{{ t("sources.save") }}</button>
@@ -802,20 +792,13 @@ onUnmounted(() => {
           <!-- P4: mode selector in edit modal -->
           <div class="form-group span-all">
             <label class="form-label">{{ t("sources.mode.label") }}</label>
-            <select v-model="editForm.mode" class="form-select">
-              <option value="library">{{ t("sources.mode.library") }}</option>
-              <option value="sync_only">{{ t("sources.mode.syncOnly") }}</option>
-            </select>
+            <FluentSelect v-model="editForm.mode" class="form-select" :aria-label="t('sources.mode.label')" :options="[{ value: 'library', label: t('sources.mode.library') }, { value: 'sync_only', label: t('sources.mode.syncOnly') }]" />
             <span class="field-hint">{{ t("sources.mode.hint") }}</span>
           </div>
           <!-- cache tier selector in edit modal (webdav only) -->
           <div v-if="editing?.type === 'webdav'" class="form-group span-all">
             <label class="form-label">{{ t("sources.cacheTier.label") }}</label>
-            <select v-model="editForm.cacheTier" class="form-select">
-              <option value="off">{{ t("sources.cacheTier.off") }}</option>
-              <option value="standard">{{ t("sources.cacheTier.standard") }}</option>
-              <option value="extended">{{ t("sources.cacheTier.extended") }}</option>
-            </select>
+            <FluentSelect v-model="editForm.cacheTier" class="form-select" :aria-label="t('sources.cacheTier.label')" :options="[{ value: 'off', label: t('sources.cacheTier.off') }, { value: 'standard', label: t('sources.cacheTier.standard') }, { value: 'extended', label: t('sources.cacheTier.extended') }]" />
             <span class="field-hint">{{ t("sources.cacheTier.hint") }}</span>
           </div>
           <!-- region field in edit modal (shown for all types; only meaningful for s3) -->

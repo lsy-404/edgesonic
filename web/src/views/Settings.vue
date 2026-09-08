@@ -13,6 +13,7 @@ import { getTheme, registeredThemeIds, externalThemeIds, loadExternalTheme, unre
 import { audioCacheStats, clearAudioCache, audioCacheMaxMb, setAudioCacheMaxMb } from "../lib/audioCache";
 import PermissionsMatrix from "../components/PermissionsMatrix.vue";
 import Icon from "../components/Icon.vue";
+import { FluentSelect } from "@lsypkg/fluent/vue";
 import { useWorkSocket } from "../stores/workSocket";
 import {
   buildReleaseOptions,
@@ -277,8 +278,8 @@ async function onClearCache() {
 onMounted(() => { void refreshCacheStats(); });
 
 const localeLabels: Record<AppLocale, string> = { "zh-CN": "中文（简体）", en: "English" };
-function onLocaleChange(e: Event) {
-  setLocale((e.target as HTMLSelectElement).value as AppLocale);
+function onLocaleChange(value: string) {
+  setLocale(value as AppLocale);
 }
 
 function onThemeChange(next: AppTheme) {
@@ -1782,9 +1783,7 @@ onMounted(() => {
           <div class="sub-header"><span class="mono-label">{{ t("settings.common.language") }}</span></div>
           <div class="lang-row">
             <span class="feature-desc">{{ t("settings.common.languageDesc") }}</span>
-            <select class="form-select lang-select" :value="locale" @change="onLocaleChange">
-              <option v-for="l in SUPPORTED_LOCALES" :key="l" :value="l">{{ localeLabels[l] }}</option>
-            </select>
+            <FluentSelect class="form-select lang-select" :model-value="locale" :aria-label="t('settings.common.language')" :options="SUPPORTED_LOCALES.map(value => ({ value, label: localeLabels[value] }))" @update:model-value="onLocaleChange" />
           </div>
         </div>
 
@@ -1986,15 +1985,7 @@ onMounted(() => {
 
         <label class="tc-row">
           <span class="tc-key">{{ t("settings.audioCache.capLabel") }}</span>
-          <select v-model.number="cacheCapMb" class="form-input cache-cap-select" @change="onCacheCapChange">
-            <option :value="256">256 MB</option>
-            <option :value="512">512 MB</option>
-            <option :value="1024">1 GB</option>
-            <option :value="2048">2 GB</option>
-            <option :value="4096">4 GB</option>
-            <option :value="8192">8 GB</option>
-            <option :value="16384">16 GB</option>
-          </select>
+          <FluentSelect :model-value="String(cacheCapMb)" :aria-label="t('settings.audioCache.capLabel')" class="cache-cap-select" :options="[256,512,1024,2048,4096,8192,16384].map(value => ({ value: String(value), label: value < 1024 ? `${value} MB` : `${value / 1024} GB` }))" @update:model-value="cacheCapMb = Number($event); onCacheCapChange()" />
         </label>
 
         <div class="tc-actions">
@@ -2045,22 +2036,13 @@ onMounted(() => {
             <!-- Engine -->
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.transcode.engine") }}</span>
-              <select v-model="transcodeEngine" class="form-select" :disabled="!canManageSettings">
-                <option value="disabled">{{ t("settings.common.transcode.engineDisabled") }}</option>
-                <option value="sandbox">{{ t("settings.common.transcode.engineSandbox") }}</option>
-                <option value="external">{{ t("settings.common.transcode.engineExternal") }}</option>
-                <option value="browser_pool">{{ t("settings.common.transcode.engineBrowserPool") }}</option>
-              </select>
+              <FluentSelect v-model="transcodeEngine" class="form-select" :aria-label="t('settings.common.transcode.engine')" :disabled="!canManageSettings" :options="[{ value: 'disabled', label: t('settings.common.transcode.engineDisabled') }, { value: 'sandbox', label: t('settings.common.transcode.engineSandbox') }, { value: 'external', label: t('settings.common.transcode.engineExternal') }, { value: 'browser_pool', label: t('settings.common.transcode.engineBrowserPool') }]" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.transcode.engineDesc") }}</p>
 
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.transcode.idleTimeout") }}</span>
-              <select v-model="sandboxIdleTimeout" class="form-select" :disabled="!canManageSettings">
-                <option value="15">{{ t("settings.common.transcode.idle15") }}</option>
-                <option value="150">{{ t("settings.common.transcode.idle150") }}</option>
-                <option value="300">{{ t("settings.common.transcode.idle300") }}</option>
-              </select>
+              <FluentSelect v-model="sandboxIdleTimeout" class="form-select" :aria-label="t('settings.common.transcode.idleTimeout')" :disabled="!canManageSettings" :options="[{ value: '15', label: t('settings.common.transcode.idle15') }, { value: '150', label: t('settings.common.transcode.idle150') }, { value: '300', label: t('settings.common.transcode.idle300') }]" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.transcode.idleTimeoutDesc") }}</p>
 
@@ -2181,11 +2163,7 @@ onMounted(() => {
             <!-- Rescan strategy -->
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.scan.strategy") }}</span>
-              <select v-model="scanRescanStrategy" class="form-select" :disabled="!canManageSettings">
-                <option value="auto">{{ t("settings.common.scan.strategyAuto") }}</option>
-                <option value="worker">{{ t("settings.common.scan.strategyWorker") }}</option>
-                <option value="browser">{{ t("settings.common.scan.strategyBrowser") }}</option>
-              </select>
+              <FluentSelect v-model="scanRescanStrategy" class="form-select" :aria-label="t('settings.common.scan.strategy')" :disabled="!canManageSettings" :options="[{ value: 'auto', label: t('settings.common.scan.strategyAuto') }, { value: 'worker', label: t('settings.common.scan.strategyWorker') }, { value: 'browser', label: t('settings.common.scan.strategyBrowser') }]" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.scan.strategyDesc") }}</p>
 
@@ -2312,11 +2290,7 @@ onMounted(() => {
             <p class="feature-desc tc-desc">{{ t("settings.common.cf.currentVersion", { ver: cfUpdates.currentVersion }) }}</p>
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.cf.targetVersion") }}</span>
-              <select v-model="cfUpdateTag" class="form-input" :disabled="cfUpdateBusy || !cfUpdates.releases.length" @change="cfMajorConfirmed = false">
-                <option v-for="release in cfUpdates.releases" :key="release.tag" :value="release.tag">
-                  v{{ release.version }}{{ release.prerelease ? ` (${t("settings.common.cf.prerelease")})` : "" }}{{ release.tag === cfUpdates.defaultTag ? ` (${t("settings.common.cf.latest")})` : "" }}
-                </option>
-              </select>
+              <FluentSelect v-model="cfUpdateTag" class="form-input" :aria-label="t('settings.common.cf.targetVersion')" :disabled="cfUpdateBusy || !cfUpdates.releases.length" :options="(cfUpdates?.releases || []).map(release => ({ value: release.tag, label: `v${release.version}${release.prerelease ? ` (${t('settings.common.cf.prerelease')})` : ''}${release.tag === cfUpdates?.defaultTag ? ` (${t('settings.common.cf.latest')})` : ''}` }))" @change="cfMajorConfirmed = false" />
             </label>
             <p v-if="selectedCfUpdate && !selectedCfUpdate.eligible && (!selectedCfUpdate.isMajor || !selectedCfUpdate.hasArtifact)" class="feature-desc tc-desc">
               {{ t(`settings.common.cf.${cfUpdateReasonKey(selectedCfUpdate.reason)}`) }}
@@ -3189,13 +3163,13 @@ onMounted(() => {
             <!-- per-credential stream proxy strategy. 302 direct-stream
                  can be toggled per client for backward compatibility. -->
             <span class="session-strategy">
-              <select
+              <FluentSelect
                 class="form-input cred-strategy-select"
-                :value="cr.streamProxyStrategy"
-                @change="updateCredentialStrategy(cr, ($event.target as HTMLSelectElement).value)"
-              >
-               <option v-for="opt in STRATEGY_OPTIONS" :key="opt.value" :value="opt.value">{{ t(opt.key) }}</option>
-              </select>
+                :model-value="cr.streamProxyStrategy"
+                :aria-label="t('settings.clients.colStrategy')"
+                :options="STRATEGY_OPTIONS.map(opt => ({ value: opt.value, label: t(opt.key) }))"
+                @update:model-value="updateCredentialStrategy(cr, $event)"
+              />
             </span>
             <span><button class="btn-danger btn-sm" @click="deleteCredential(cr.id)">{{ t("common.delete") }}</button></span>
           </div>
