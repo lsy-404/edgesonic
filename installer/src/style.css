@@ -499,6 +499,36 @@ code {
   background: var(--SystemFillColorCriticalBrush);
 }
 
+/* Wizard-native controls follow the same input, choice and focus contract. */
+.field :where(input, select, textarea):focus-visible,
+.btn:focus-visible,
+.card-option:focus-visible { outline: 2px solid var(--accent-base); outline-offset: 2px; }
+.field :where(input, select, textarea):hover:not(:disabled):not([readonly]) { background: var(--ctrl-fill-secondary); }
+.field :where(input, textarea):invalid { border-color: var(--SystemFillColorCriticalBrush); box-shadow: inset 0 -1px var(--SystemFillColorCriticalBrush); }
+.field :where(input, textarea)[readonly] { color: var(--text-secondary); background: var(--ctrl-fill-disabled); }
+.field :where(input, select, textarea):disabled { cursor: not-allowed; }
+.field :where(input[type="checkbox"], input[type="radio"]) {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 8px 0 0;
+  border: 1px solid var(--ctrl-border);
+  background: var(--ctrl-fill-default);
+  color: var(--accent-text);
+}
+.field input[type="checkbox"] { border-radius: 3px; }
+.field input[type="radio"] { border-radius: 50%; }
+.field input[type="checkbox"]::before { width: 8px; height: 4px; content: ""; border: solid currentColor; border-width: 0 0 2px 2px; transform: rotate(-45deg) scale(0); }
+.field input[type="radio"]::before { width: 7px; height: 7px; content: ""; border-radius: 50%; background: currentColor; transform: scale(0); }
+.field :where(input[type="checkbox"], input[type="radio"]):checked { border-color: var(--accent-base); background: var(--accent-base); }
+.field input[type="checkbox"]:checked::before { transform: rotate(-45deg) scale(1); }
+.field input[type="radio"]:checked::before { transform: scale(1); }
+@media (forced-colors: active) { .field :where(input, select, textarea, button) { forced-color-adjust: auto; } }
+@media (prefers-reduced-motion: reduce) { .field :where(input, select, textarea, button), .btn, .card-option { transition-duration: 0ms; } }
+
 .required-star {
   color: var(--SystemFillColorCriticalBrush);
   font-weight: 700;
