@@ -9,7 +9,7 @@ import { listBucketNames } from "../../lib/deploy/r2";
 import { ADMIN_USERNAME_RE } from "../../lib/deploy/admin";
 import { callCfJson } from "../../lib/relay";
 import { describeCfError } from "../../lib/cf/errors";
-import { FluentButton, FluentCheckbox, FluentProgressRing } from "@lsypkg/fluent/vue";
+import { FluentButton, FluentCheckbox, FluentProgressRing, FluentSelect } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -259,11 +259,7 @@ function goBack() {
       <p v-if="wizard.fullRebuild" class="field-help" style="color: var(--SystemFillColorCautionBrush)">{{ t("target.fullRebuildHelp") }}</p>
       <div class="field">
         <label for="containerMode">{{ t("target.containerMode") }}</label>
-        <select id="containerMode" v-model="wizard.containerMode">
-          <option value="keep">{{ t("target.containerKeep") }}</option>
-          <option value="deploy">{{ t("target.containerDeploy") }}</option>
-          <option value="off">{{ t("target.containerOff") }}</option>
-        </select>
+        <FluentSelect id="containerMode" v-model="wizard.containerMode" :label="t('target.containerMode')" :options="[{ value: 'keep', label: t('target.containerKeep') }, { value: 'deploy', label: t('target.containerDeploy') }, { value: 'off', label: t('target.containerOff') }]" />
         <p class="field-help">{{ t("target.containerModeHelp") }}</p>
       </div>
 
