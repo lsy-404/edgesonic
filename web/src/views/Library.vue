@@ -18,6 +18,7 @@ import { showInfo } from "../stores/toast";
 import { isInstrumentalTitle } from "../lib/instrumental";
 import type { ScrapeResult } from "../lib/scrape";
 import { buildLibrarySearchParams, buildLibrarySearchRoute } from "../lib/librarySearch";
+import { FluentSelect } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 
@@ -1379,14 +1380,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       </div>
       <label class="sort-control">
         <span class="mono-label">{{ t("library.sortLabel") }}</span>
-        <select v-model="sortMode" class="form-input sort-select">
-          <option value="newest">{{ t(starredOnly ? "library.sortNewest" : "library.sortNewestAdded") }}</option>
-          <option v-if="starredOnly" value="oldestStarred">{{ t("library.sortOldestStarred") }}</option>
-          <option v-if="starredOnly" value="newestAdded">{{ t("library.sortNewestAdded") }}</option>
-          <option value="oldestAdded">{{ t("library.sortOldestAdded") }}</option>
-          <option value="nameAsc">{{ t("library.sortNameAsc") }}</option>
-          <option value="nameDesc">{{ t("library.sortNameDesc") }}</option>
-        </select>
+        <FluentSelect :model-value="sortMode" class="form-input sort-select" :aria-label="t('library.sortLabel')" :options="[{ value: 'newest', label: t(starredOnly ? 'library.sortNewest' : 'library.sortNewestAdded') }, ...(starredOnly ? [{ value: 'oldestStarred', label: t('library.sortOldestStarred') }, { value: 'newestAdded', label: t('library.sortNewestAdded') }] : []), { value: 'oldestAdded', label: t('library.sortOldestAdded') }, { value: 'nameAsc', label: t('library.sortNameAsc') }, { value: 'nameDesc', label: t('library.sortNameDesc') }]" @update:model-value="sortMode = $event as SortMode" />
       </label>
       <button class="btn-secondary btn-sm locate-current-btn" :disabled="locatingCurrent" @click="locateCurrentSong">
         {{ locatingCurrent ? t("library.locatingCurrent") : t("library.locateCurrent") }}

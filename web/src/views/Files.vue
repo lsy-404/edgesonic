@@ -18,6 +18,7 @@ import { extractMetadata } from "../lib/metadata";
 import { isScrollInsideElement, placeFloatingPoint } from "../lib/floatingPlacement";
 import Icon from "../components/Icon.vue";
 import { usePlayerStore, type Track } from "../stores/player";
+import { FluentSelect } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, checkUploadConflicts, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitMetadata } = useAuth();
@@ -1483,10 +1484,7 @@ onBeforeUnmount(() => {
           <label class="form-label">{{ t("files.file") }}</label>
           <div class="upload-file-row">
             <input ref="uploadInput" type="file" multiple :accept="uploadAccept" class="form-input" :disabled="uploadBusy" @change="onUploadFile" />
-            <select v-if="canSelectAllFiles" v-model="uploadAcceptMode" class="form-input upload-type-select" :aria-label="t('files.fileTypeFilter')">
-              <option value="music">{{ t("files.fileTypeMusic") }}</option>
-              <option value="all">{{ t("files.fileTypeAll") }}</option>
-            </select>
+            <FluentSelect v-if="canSelectAllFiles" :model-value="uploadAcceptMode" class="form-input upload-type-select" :aria-label="t('files.fileTypeFilter')" :options="[{ value: 'music', label: t('files.fileTypeMusic') }, { value: 'all', label: t('files.fileTypeAll') }]" @update:model-value="uploadAcceptMode = $event as 'music' | 'all'" />
           </div>
         </div>
         <button class="btn-primary" :disabled="(!activeUploadItems.length && !uploadQueue.some(isEncryptedUploadIncluded)) || uploadBusy" @click="doUpload">
@@ -1594,12 +1592,7 @@ onBeforeUnmount(() => {
         <span class="browser-stats">{{ t("files.stats", { dirs: dirs.length, files: files.length }) }}</span>
         <div class="file-sort-controls">
           <label>{{ t("files.sortBy") }}</label>
-          <select v-model="fileSortKey" class="form-input" :aria-label="t('files.sortBy')">
-            <option value="name">{{ t("files.sortName") }}</option>
-            <option value="size">{{ t("files.sortSize") }}</option>
-            <option value="type">{{ t("files.sortType") }}</option>
-            <option value="modified">{{ t("files.sortModified") }}</option>
-          </select>
+          <FluentSelect :model-value="fileSortKey" class="form-input" :aria-label="t('files.sortBy')" :options="[{ value: 'name', label: t('files.sortName') }, { value: 'size', label: t('files.sortSize') }, { value: 'type', label: t('files.sortType') }, { value: 'modified', label: t('files.sortModified') }]" @update:model-value="fileSortKey = $event as FileSortKey" />
           <button class="btn-secondary sort-direction" @click="fileSortDirection = fileSortDirection === 'asc' ? 'desc' : 'asc'">{{ fileSortDirection === "asc" ? t("files.sortAscending") : t("files.sortDescending") }}</button>
           <button class="btn-secondary sort-direction" @click="foldersFirst = !foldersFirst">{{ foldersFirst ? t("files.foldersFirst") : t("files.foldersLast") }}</button>
         </div>
@@ -1866,10 +1859,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="form-group" style="margin-top:0.75rem">
           <label class="form-label">{{ t("files.source") }}</label>
-          <select v-model="crossCopyDestSource" class="form-input" :disabled="crossCopyBusy">
-            <option value="r2">{{ t("files.localR2") }}</option>
-            <option v-for="s in sources" :key="s.id" :value="s.id">{{ s.name || s.id }}</option>
-          </select>
+          <FluentSelect v-model="crossCopyDestSource" class="form-input" :aria-label="t('files.source')" :disabled="crossCopyBusy" :options="[{ value: 'r2', label: t('files.localR2') }, ...sources.map(source => ({ value: source.id, label: source.name || source.id }))]" />
         </div>
         <div class="form-group" style="margin-top:0.75rem">
           <label class="form-label">{{ t("files.crossCopyDestDir") }}</label>

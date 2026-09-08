@@ -4,7 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { type MessageKind, type MessagePresentation, type UserMessage, useAuth } from "../api";
 import Icon from "./Icon.vue";
-import { FluentButton } from "@lsypkg/fluent/vue";
+import { FluentButton, FluentSelect } from "@lsypkg/fluent/vue";
 
 const props = defineProps<{ isSuperAdmin: boolean; canManageUsers: boolean }>();
 const { t } = useI18n();
@@ -197,18 +197,11 @@ onBeforeUnmount(() => {
           <div class="message-compose-options">
             <label>
               <span>{{ t('messages.kind') }}</span>
-              <select v-model="compose.kind" class="form-input">
-              <option value="info">{{ t('messages.kinds.info') }}</option>
-              <option value="notice">{{ t('messages.kinds.notice') }}</option>
-              <option value="warning">{{ t('messages.kinds.warning') }}</option>
-              </select>
+              <FluentSelect :model-value="compose.kind" class="form-input" :aria-label="t('messages.kind')" :options="[{ value: 'info', label: t('messages.kinds.info') }, { value: 'notice', label: t('messages.kinds.notice') }, { value: 'warning', label: t('messages.kinds.warning') }]" @update:model-value="compose.kind = $event as MessageKind" />
             </label>
             <label>
               <span>{{ t('messages.presentation') }}</span>
-              <select v-model="compose.presentation" class="form-input">
-              <option value="inbox">{{ t('messages.presentations.inbox') }}</option>
-              <option value="modal">{{ t('messages.presentations.modal') }}</option>
-              </select>
+              <FluentSelect :model-value="compose.presentation" class="form-input" :aria-label="t('messages.presentation')" :options="[{ value: 'inbox', label: t('messages.presentations.inbox') }, { value: 'modal', label: t('messages.presentations.modal') }]" @update:model-value="compose.presentation = $event as MessagePresentation" />
             </label>
             <button type="submit" class="btn-primary" :disabled="composeBusy">{{ t('messages.send') }}</button>
           </div>
