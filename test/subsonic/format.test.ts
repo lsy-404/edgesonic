@@ -156,16 +156,18 @@ assert(lyr.artist === "A", "lyrics attrs kept");
 
 // ---------------------------------------------------------------------------
 section("7. mapSong: album NAME not id, albumId/artistId/type/created present");
-const songRow: SongMaster & { artist_name?: string | null; album_name?: string | null } = {
+const songRow: SongMaster & { artist_name?: string | null; album_name?: string | null; album_artist_name?: string | null } = {
   id: "sm-1", album_id: "al-9", artist_id: "ar-7", album_artist_id: null,
   title: "Song", sort_title: null, track: 3, disc: 1, duration: 200,
   genre: "Rock", compilation: 0, participants: null, lyrics: null,
   created_at: 1750000000, updated_at: 1750000000,
   artist_name: "The Band", album_name: "The Album",
+  album_artist_name: "The Album Artist",
 };
 const child = mapSong(songRow, "al-9");
 assert(child.album === "The Album", "mapSong album is name");
 assert(child.artist === "The Band", "mapSong artist is name");
+assert(child.albumArtist === "The Album Artist", "mapSong album artist is name");
 assert(child.albumId === "al-9", "mapSong albumId");
 assert(child.artistId === "ar-7", "mapSong artistId");
 assert(child.discNumber === 1, "mapSong discNumber");
@@ -173,6 +175,9 @@ assert(child.type === "music", "mapSong type music");
 assert(typeof child.created === "string" && child.created.startsWith("2025"), "mapSong created ISO");
 const bare = mapSong({ ...songRow, artist_name: undefined, album_name: undefined }, "al-9");
 assert(bare.album === undefined, "no name join → album omitted (never the raw id)");
+assert(bare.albumArtist === "The Album Artist", "album artist remains independent of album/artist joins");
+const emptyAlbumArtist = mapSong({ ...songRow, album_artist_name: null }, "al-9");
+assert(emptyAlbumArtist.albumArtist === undefined, "null album artist stays empty");
 
 // ---------------------------------------------------------------------------
 section("8. source checks: auth error envelope + middleware mount order");
