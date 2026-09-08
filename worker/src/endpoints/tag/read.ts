@@ -22,6 +22,7 @@ import { parseTags } from "../../utils/tags";
 import { fetchSlices, type SourceRow } from "../../utils/slices";
 import {
   artistInsertStatements,
+  parseAlbumArtistCredit,
   parseArtistCredits,
   songArtistStatements,
   UNUSED_ARTIST_CLEANUP_SQL,
@@ -68,10 +69,10 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           // it NULL for ordinary (non-compilation) rips, same as relinkArtistAlbum.
           const artistName = tags.artist || "Unknown Artist";
           const artistCredits = parseArtistCredits(artistName);
-          const albumArtistCredits = tags.albumArtist ? parseArtistCredits(tags.albumArtist) : [];
+          const albumArtist = parseAlbumArtistCredit(tags.albumArtist);
+          const albumArtistCredits = albumArtist ? [albumArtist] : [];
           const primaryArtist = artistCredits[0];
-          const albumArtist = albumArtistCredits[0];
-          const linkArtistName = tags.albumArtist || primaryArtist.name;
+          const linkArtistName = albumArtist?.name || primaryArtist.name;
           const albumName = tags.album || "Unknown Album";
           const artistId = primaryArtist.id;
           const albumId = "al-" + md5(linkArtistName + " " + albumName).substring(0, 10);

@@ -45,10 +45,11 @@ function buildDb(): DatabaseSync {
     CREATE TABLE user_permissions (level INTEGER, permission TEXT, enabled INTEGER, max_rph INTEGER, PRIMARY KEY(level, permission));
     INSERT INTO users VALUES ('alice','x',2,1,0,0);
     INSERT INTO user_permissions VALUES (2,'edit_tags',1,0);
-    INSERT INTO artists(id,name,sort_name) VALUES ('ar-track-a','Track A','track a'), ('ar-track-b','Track B','track b');
+    INSERT INTO artists(id,name,sort_name) VALUES ('ar-track-a','Singer A','singer a'), ('ar-track-b','Singer B','singer b');
     INSERT INTO albums(id,name,sort_name) VALUES ('al-old','Old Album','old album');
     INSERT INTO song_masters(id,album_id,artist_id,title,sort_title,track,disc,duration,created_at,updated_at)
       VALUES ('sg-a','al-old','ar-track-a','Same Title','same title',1,1,10,1,1), ('sg-b','al-old','ar-track-b','Same Title','same title',2,1,10,2,2);
+    INSERT INTO song_artists(song_id,artist_id,position) VALUES ('sg-a','ar-track-a',0), ('sg-a','ar-track-b',1), ('sg-b','ar-track-b',0);
     INSERT INTO song_instances(id,master_id,source_id,source_type,storage_uri,suffix,content_type,size,bit_rate,duration,created_at,updated_at)
       VALUES ('inst-a','sg-a','r2-local','original','r2://music/a.mp3','mp3','audio/mpeg',4,128,10,1,1), ('inst-b','sg-b','r2-local','original','r2://music/b.mp3','mp3','audio/mpeg',4,128,10,2,2);
   `);
@@ -80,29 +81,45 @@ async function main() {
   const write = await call("/tag/write", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id: "sg-a", tags: { albumArtist: "Album Artist" } }),
+    body: JSON.stringify({ id: "sg-a", tags: { albumArtist: "Singer A, Singer B, Singer C" } }),
   });
   assert(write.status === 200, "album artist write route succeeds");
   const stored = sqlite.prepare("SELECT album_artist_id, artist_id FROM song_masters WHERE id = 'sg-a'").get() as { album_artist_id: string | null; artist_id: string };
   const other = sqlite.prepare("SELECT album_artist_id, artist_id FROM song_masters WHERE id = 'sg-b'").get() as { album_artist_id: string | null; artist_id: string };
   assert(stored.album_artist_id !== null, "album artist id is persisted");
   const storedArtist = sqlite.prepare("SELECT name FROM artists WHERE id = ?").get(stored.artist_id) as { name: string };
-  assert(storedArtist.name === "Track A", "track artist remains unchanged");
+  assert(storedArtist.name === "Singer A", "track artist remains unchanged");
+  const songArtists = sqlite.prepare("SELECT ar.name FROM song_artists sa JOIN artists ar ON ar.id = sa.artist_id WHERE sa.song_id = 'sg-a' ORDER BY sa.position").all() as Array<{ name: string }>;
+  assert(songArtists.map((row) => row.name).join(", ") === "Singer A, Singer B", "multi-artist track credits remain complete");
   assert(other.album_artist_id === null && other.artist_id === "ar-track-b", "same-title song remains independent");
 
   const song = await call("/rest/getSong?id=sg-a");
   const songXml = await song.text();
-  assert(song.status === 200 && /albumArtist="Album Artist"/.test(songXml), "getSong returns persisted album artist");
-  assert(/artist="Track A"/.test(songXml), "getSong keeps track artist");
+  assert(song.status === 200 && /albumArtist="Singer A, Singer B, Singer C"/.test(songXml), "getSong returns persisted album artist");
+  assert(/artist="Singer A, Singer B"/.test(songXml), "getSong keeps track artist");
 
   const search = await call("/rest/search3?query=Same%20Title&songCount=10&artistCount=0&albumCount=0");
   const searchXml = await search.text();
-  assert(search.status === 200 && /albumArtist="Album Artist"/.test(searchXml), "search3 returns album artist");
+  assert(search.status === 200 && /albumArtist="Singer A, Singer B, Singer C"/.test(searchXml), "search3 returns album artist");
   assert((searchXml.match(/title="Same Title"/g) ?? []).length === 2, "search3 keeps both same-title songs");
 
   const q = createQueries(d1(sqlite));
-  const top = await q.getTopSongsByArtist("Track A", 10);
-  assert(top.length === 1 && top[0].album_artist_name === "Album Artist", "getTopSongsByArtist includes album artist join");
+  const top = await q.getTopSongsByArtist("Singer A", 10);
+  assert(top.length === 1 && top[0].album_artist_name === "Singer A, Singer B, Singer C", "getTopSongsByArtist includes album artist join");
+
+  const beforeTrackOnly = sqlite.prepare("SELECT album_id, album_artist_id FROM song_masters WHERE id = 'sg-a'").get() as { album_id: string; album_artist_id: string | null };
+  await call("/tag/write", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: "sg-a", tags: { title: "Renamed", track: 3 } }),
+  });
+  const afterTrackOnly = sqlite.prepare("SELECT album_id, album_artist_id, title FROM song_masters WHERE id = 'sg-a'").get() as { album_id: string; album_artist_id: string | null; title: string };
+  assert(afterTrackOnly.title === "Renamed", "track-only edit is applied");
+  assert(afterTrackOnly.album_id === beforeTrackOnly.album_id && afterTrackOnly.album_artist_id === beforeTrackOnly.album_artist_id, "track-only edit preserves album linkage");
+  const preservedAlbumArtist = sqlite.prepare("SELECT name FROM artists WHERE id = ?").get(afterTrackOnly.album_artist_id) as { name: string };
+  assert(preservedAlbumArtist.name === "Singer A, Singer B, Singer C", "track-only edit preserves complete album artist");
+  const preservedCredits = sqlite.prepare("SELECT ar.name FROM song_artists sa JOIN artists ar ON ar.id = sa.artist_id WHERE sa.song_id = 'sg-a' ORDER BY sa.position").all() as Array<{ name: string }>;
+  assert(preservedCredits.map((row) => row.name).join(", ") === "Singer A, Singer B", "track-only edit preserves multi-artist credits");
 
   await call("/tag/write", {
     method: "POST",
