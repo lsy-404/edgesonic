@@ -247,7 +247,7 @@ export async function relinkArtistAlbum(
   const albumArtist = parseAlbumArtistCredit(albumArtistName);
   const albumArtistCredits = albumArtist ? [albumArtist] : [];
   const primaryArtist = artistCredits[0];
-  const linkArtistName = albumArtist?.name || curArtist?.name || "Unknown Artist";
+  const linkArtistName = albumArtist?.name || primaryArtist?.name || curArtist?.name || "Unknown Artist";
   const albumName = tags.album || curAlbum?.name || "Unknown Album";
   const artistId = primaryArtist?.id || master.artist_id;
   const albumIdentityChanged = artistChanged || tags.albumArtist !== undefined || tags.album !== undefined;

@@ -7,6 +7,7 @@ import { Hono } from "hono";
 import { tagEditRoutes } from "../../worker/src/endpoints/tag/write";
 import { subsonicRoutes } from "../../worker/src/endpoints/subsonic";
 import { createQueries } from "../../worker/src/db/queries";
+import { md5 } from "../../worker/src/utils/md5";
 
 let failures = 0;
 function assert(value: unknown, message: string) {
@@ -129,6 +130,16 @@ async function main() {
   const cleared = await call("/rest/getSong?id=sg-a");
   const clearedXml = await cleared.text();
   assert(!/albumArtist=/.test(clearedXml), "cleared album artist is omitted from getSong");
+
+  const artistOnly = await call("/tag/write", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: "sg-a", tags: { artist: "New Singer" } }),
+  });
+  const artistOnlyRow = sqlite.prepare("SELECT album_id, album_artist_id FROM song_masters WHERE id = 'sg-a'").get() as { album_id: string; album_artist_id: string | null };
+  assert(artistOnly.status === 200, "artist-only write route succeeds");
+  assert(artistOnlyRow.album_id === `al-${md5("New Singer Old Album").substring(0, 10)}`, "artist-only edit anchors album to the new artist");
+  assert(artistOnlyRow.album_artist_id === null, "artist-only edit leaves album artist empty");
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
   process.exit(failures ? 1 : 0);
