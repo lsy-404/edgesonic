@@ -119,10 +119,15 @@ assert(
   "player controls disclose every supported shortcut group",
 );
 assert(
-  volumeControlSource.includes(':StepFrequency="0.01"')
+  volumeControlSource.includes(':step="0.01"')
     && volumeControlSource.includes('player.setVolume(value)')
     && volumeControlSource.includes('watch(() => player.volume'),
   "the extracted volume control preserves precise input and external volume synchronization",
+);
+assert(
+  !/role="slider"\s+tabindex="0"/.test(volumeControlSource)
+    && volumeControlSource.includes('querySelector<HTMLInputElement>("input[type=\'range\']")?.focus()'),
+  "the real range input is the only slider focus target, including the mobile popup",
 );
 
 process.exit(failures ? 1 : 0);

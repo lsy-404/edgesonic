@@ -47,7 +47,7 @@ async function openPopup() {
   placePopup();
   popupOpen.value = true;
   await nextTick();
-  range.value?.focus();
+  range.value?.querySelector<HTMLInputElement>("input[type='range']")?.focus();
 }
 
 function onSoundButton() {
@@ -86,16 +86,6 @@ function onRangeFocusOut(event: FocusEvent) {
   if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) adjusting.value = false;
 }
 
-function onRangeKeydown(event: KeyboardEvent) {
-  const delta = event.key === "ArrowUp" || event.key === "ArrowRight" ? 0.01
-    : event.key === "ArrowDown" || event.key === "ArrowLeft" ? -0.01 : 0;
-  if (!delta && event.key !== "Home" && event.key !== "End") return;
-  event.preventDefault();
-  event.stopPropagation();
-  adjusting.value = true;
-  player.setVolume(event.key === "Home" ? 0 : event.key === "End" ? 1 : Math.min(1, Math.max(0, player.volume + delta)));
-}
-
 watch(() => player.volume, (value) => {
   if (value > 0) lastAudible.value = value;
 }, { immediate: true });
@@ -126,7 +116,7 @@ onBeforeUnmount(() => {
         <Icon :name="volumeIcon" :size="16" />
       </FluentButton>
     </div>
-    <div class="player-volume__desktop-slider" role="slider" tabindex="0" :aria-label="t('player.volume')" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="player.volume" :aria-valuetext="`${percent}%`" @pointerdown.capture="adjusting = true" @pointerup.capture="adjusting = false" @pointercancel.capture="adjusting = false" @lostpointercapture.capture="adjusting = false" @keydown.capture="onRangeKeydown" @keyup.capture="adjusting = false" @focusout="onRangeFocusOut">
+    <div class="player-volume__desktop-slider" @focusin="adjusting = true" @focusout="onRangeFocusOut">
       <FluentSlider
         class="player-volume__range"
         :model-value="player.volume"
@@ -135,6 +125,10 @@ onBeforeUnmount(() => {
         :step="0.01"
         style="width: clamp(160px, 14vw, 200px)"
         :aria-label="t('player.volume')"
+        @pointerdown="adjusting = true"
+        @pointerup="adjusting = false"
+        @pointercancel="adjusting = false"
+        @lostpointercapture="adjusting = false"
         @update:model-value="setVolume"
       />
       <span v-if="adjusting" class="player-volume__percent" aria-live="polite">{{ percent }}%</span>
@@ -146,7 +140,7 @@ onBeforeUnmount(() => {
       <div class="player-volume__popup-header">
         <span>{{ t('player.volume') }}</span>
       </div>
-      <div ref="range" class="player-volume__popup-slider" role="slider" tabindex="0" :aria-label="t('player.volume')" :aria-valuemin="0" :aria-valuemax="1" :aria-valuenow="player.volume" :aria-valuetext="`${percent}%`" @pointerdown.capture="adjusting = true" @pointerup.capture="adjusting = false" @pointercancel.capture="adjusting = false" @lostpointercapture.capture="adjusting = false" @keydown.capture="onRangeKeydown" @keyup.capture="adjusting = false" @focusout="onRangeFocusOut">
+      <div ref="range" class="player-volume__popup-slider" @focusin="adjusting = true" @focusout="onRangeFocusOut">
       <FluentSlider
           style="width: 100%"
           :model-value="player.volume"
@@ -154,6 +148,10 @@ onBeforeUnmount(() => {
           :max="1"
           :step="0.01"
           :aria-label="t('player.volume')"
+          @pointerdown="adjusting = true"
+          @pointerup="adjusting = false"
+          @pointercancel="adjusting = false"
+          @lostpointercapture="adjusting = false"
           @update:model-value="setVolume"
         />
         <span v-if="adjusting" class="player-volume__percent" aria-live="polite">{{ percent }}%</span>
@@ -168,7 +166,7 @@ onBeforeUnmount(() => {
   color: var(--color-text-secondary); border-color: var(--color-border-subtle);
 }
 .player-volume :deep(.player-volume__button:hover), .player-volume :deep(.player-volume__button:focus-visible) { color: var(--color-accent-primary); border-color: var(--color-accent-dim); }
-.player-volume__desktop-slider:focus-visible, .player-volume__popup-slider:focus-visible { outline: 2px solid var(--accent-base); outline-offset: 3px; border-radius: 4px; }
+.player-volume__desktop-slider:focus-within, .player-volume__popup-slider:focus-within { outline: 2px solid var(--accent-base); outline-offset: 3px; border-radius: 4px; }
 .player-volume__desktop-slider { position: relative; display: flex; align-items: flex-start; height: 42px; }
 .player-volume__percent {
   position: absolute; right: 0; bottom: 0;
