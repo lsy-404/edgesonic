@@ -2,7 +2,7 @@
 import { computed, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePlayerStore } from "../stores/player";
-import WinChoiceFlyout, { type WinChoice } from "./WinChoiceFlyout.vue";
+import { FluentSelect, type FluentSelectOption } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const player = usePlayerStore();
@@ -17,19 +17,19 @@ const QUALITY_SELECT_OPTIONS = [
   { id: "wav", mime: "audio/wav" },
 ];
 
-const supportedQualityOptions = computed<WinChoice[]>(() => QUALITY_SELECT_OPTIONS
+const supportedQualityOptions = computed<FluentSelectOption[]>(() => QUALITY_SELECT_OPTIONS
   .filter((option) => !option.mime || typeof Audio === "undefined" || new Audio().canPlayType(option.mime) !== "")
-  .map((option) => ({ id: option.id, label: t(`player.quality.${option.id}`) })));
+  .map((option) => ({ value: option.id, label: t(`player.quality.${option.id}`) })));
 
 watch(supportedQualityOptions, (options) => {
-  if (!options.some((option) => option.id === player.playbackQuality)) player.playbackQuality = "auto";
+  if (!options.some((option) => option.value === player.playbackQuality)) player.playbackQuality = "auto";
 }, { immediate: true });
 </script>
 
 <template>
-  <WinChoiceFlyout
+  <FluentSelect
     v-model="player.playbackQuality"
-    :choices="supportedQualityOptions"
-    :ariaLabel="t('player.quality.title')"
+    :options="supportedQualityOptions"
+    :aria-label="t('player.quality.title')"
   />
 </template>
