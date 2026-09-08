@@ -19,6 +19,7 @@ import { advanceLyricsSearchIndex, lyricsSearchGrams, normalizeLyricsSearchQuery
 export interface SongNames {
   artist_name: string | null;
   album_name: string | null;
+  album_artist_name: string | null;
 }
 
 // onto song_masters rows. Subsonic clients gate playback decisions on
@@ -43,11 +44,13 @@ const SONG_ROW_COLS = `sm.*,
          WHERE sa.song_id = sm.id ORDER BY sa.position
        )), ar.name) AS artist_name,
        al.name AS album_name,
+       aar.name AS album_artist_name,
        si.suffix AS inst_suffix, si.content_type AS inst_content_type,
        si.bit_rate AS inst_bit_rate, si.size AS inst_size,
        si.duration AS inst_duration, si.storage_uri AS inst_storage_uri`;
 
 const SONG_ROW_JOINS = `LEFT JOIN artists ar ON ar.id = sm.artist_id
+       LEFT JOIN artists aar ON aar.id = sm.album_artist_id
        LEFT JOIN albums al ON al.id = sm.album_id
        LEFT JOIN song_instances si ON si.id = (
          SELECT id FROM song_instances
@@ -606,6 +609,7 @@ export function createQueries(db: D1Database) {
                 COALESCE(SUM(an.play_count), 0) AS total_plays
          FROM song_masters sm
          JOIN artists ar ON ar.id = sm.artist_id
+         LEFT JOIN artists aar ON aar.id = sm.album_artist_id
          LEFT JOIN albums al ON al.id = sm.album_id
          LEFT JOIN song_instances si ON si.id = (
            SELECT id FROM song_instances

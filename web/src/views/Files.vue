@@ -9,7 +9,6 @@ import { mapConcurrent } from "../lib/concurrency";
 import { audioKindAtIndex, classifyUploadItems, ENCRYPTED_AUDIO_EXTENSIONS, isUploadIncluded, normalizeAudioOrder, suffixOf, uploadPathFor, type UploadItem } from "../lib/uploadQueue";
 import { convertEncryptedFile, LocalFileConversionError } from "../lib/localAudioConvert";
 import { ConversionMemoryLimitError, runUploadPipeline } from "../lib/uploadPipeline";
-import { normalizeForMatch } from "../lib/trackMatch";
 import { compareDirectoryEntries, compareFileEntries, type FileSortDirection, type FileSortKey } from "../lib/fileSort";
 import TagEditor from "../components/TagEditor.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
@@ -1031,13 +1030,11 @@ async function resolveFileTrack(f: FileEntry): Promise<Partial<Track> | null> {
   };
 }
 
-async function lookupSongByFilename(f: FileEntry, songCount = 5): Promise<Record<string, string> | null> {
-  const stem = f.name.replace(/\.[^.]+$/, "");
-  const searchStem = normalizeForMatch(stem);
-  const xml = await authFetch("search3", { query: searchStem, songCount: String(songCount), artistCount: "0", albumCount: "0" });
-  const songs = parseXmlAttrs(xml, "song");
-  if (!songs.length) return null;
-  return songs.find((s) => normalizeForMatch(s.title) === searchStem) || songs[0];
+async function lookupSongByFile(f: FileEntry): Promise<Record<string, string> | null> {
+  const details = await resolveFileTrack(f);
+  if (!details?.libraryId) return null;
+  const xml = await authFetch("getSong", { id: details.libraryId });
+  return parseXmlAttrs(xml, "song")[0] || null;
 }
 
 async function playFile(f: FileEntry) {
@@ -1054,7 +1051,7 @@ async function playFile(f: FileEntry) {
 
 async function openTagEditor(f: FileEntry) {
   try {
-    const hit = await lookupSongByFilename(f, 20);
+    const hit = await lookupSongByFile(f);
     if (!hit) {
       showToast(t("files.editLookupFailed"), "error");
       return;
@@ -1085,7 +1082,7 @@ async function openBatchTagEditor() {
   const ids: string[] = [];
   for (const f of targets) {
     try {
-      const hit = await lookupSongByFilename(f);
+      const hit = await lookupSongByFile(f);
       if (hit?.id) ids.push(hit.id);
     } catch {
       // skip — partial coverage is still useful
@@ -1152,15 +1149,13 @@ const tidyTargetIds = ref<string[]>([]);
 const canTidy = computed(() => hasPerm("manage_files"));
 
 async function openTidyFolder() {
-  // Resolve master_ids for every audio file in the current dir, the same way
-  // we resolve them for the single-track tag editor (search3 on the filename
-  // stem). Anything that doesn't resolve is silently dropped — the user has
-  // already been told to run a scan first via the editor's affordance.
+  // Resolve master_ids for every audio file in the current dir by exact
+  // storage URI. Anything that doesn't resolve is silently dropped.
   const ids: string[] = [];
   for (const f of files.value) {
     if (!isAudio(f.name)) continue;
     try {
-      const hit = await lookupSongByFilename(f);
+      const hit = await lookupSongByFile(f);
       if (hit?.id) ids.push(hit.id);
     } catch {
       // skip — partial coverage is still useful

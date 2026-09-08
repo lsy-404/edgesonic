@@ -44,7 +44,7 @@ export interface SubsonicAlbum {
 
 export interface SubsonicChild {
   id: string; parent: string; isDir: boolean;
-  title: string; album?: string; artist?: string;
+  title: string; album?: string; artist?: string; albumArtist?: string;
   albumId?: string; artistId?: string;
   track?: number; discNumber?: number; year?: number; genre?: string;
   coverArt?: string; size?: number; contentType?: string;
@@ -98,7 +98,7 @@ export function mapAlbum(a: Album, artistName?: string, annotation?: AnnotationL
 // bitRate/size/path, so emit them whenever the row has them.
 export function mapSong(
   s: SongMaster & {
-    artist_name?: string | null; album_name?: string | null;
+    artist_name?: string | null; album_name?: string | null; album_artist_name?: string | null;
     inst_suffix?: string | null; inst_content_type?: string | null;
     inst_bit_rate?: number | null; inst_size?: number | null;
     inst_duration?: number | null; inst_storage_uri?: string | null;
@@ -111,6 +111,7 @@ export function mapSong(
     title: s.title,
     album: s.album_name ?? undefined,
     artist: s.artist_name ?? undefined,
+    albumArtist: s.album_artist_name ?? undefined,
     albumId: s.album_id,
     artistId: s.artist_id || undefined,
     track: s.track ?? undefined,

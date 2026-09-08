@@ -33,6 +33,16 @@ function assert(cond: unknown, msg: string) {
 const ROOT = join(__dirname, "..", "..");
 const SRC = readFileSync(join(ROOT, "web", "src", "views", "Files.vue"), "utf8");
 
+console.log("tag editors resolve the exact file before loading metadata:");
+{
+  const resolver = SRC.match(/async function lookupSongByFile\([\s\S]*?\n}/)?.[0] ?? "";
+  assert(/resolveFileTrack\(f\)/.test(resolver), "tag lookup starts from the file resolver");
+  assert(/authFetch\("getSong", \{ id: details\.libraryId \}\)/.test(resolver), "tag lookup reads the exact song by id");
+  assert(!resolver.includes("search3"), "tag lookup does not select a fuzzy search result");
+  assert(/openTagEditor[\s\S]*?lookupSongByFile\(f\)/.test(SRC), "single editor uses exact lookup");
+  assert(/openBatchTagEditor[\s\S]*?lookupSongByFile\(f\)/.test(SRC), "batch editor uses exact lookup");
+}
+
 console.log("right-click reaches every part of the list:");
 {
   assert(

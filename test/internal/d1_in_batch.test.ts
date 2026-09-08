@@ -285,6 +285,25 @@ async function run() {
   }
 
   // ---------------------------------------------------------------------------
+  // Song reads include the persisted album artist independently of track artist.
+  // ---------------------------------------------------------------------------
+  console.log("\ngetSongMaster/search include album artist:");
+  {
+    const row = { id: "sm-1", artist_name: "Track Artist", album_artist_name: "Album Artist" };
+    const { db, calls } = makeSpyDb((call) => {
+      if (call.sql.includes("FROM song_masters sm")) return { first: row, results: [row] };
+      return {};
+    });
+    const q = createQueries(db as D1Database);
+    const song = await q.getSongMaster("sm-1");
+    assert(song?.album_artist_name === "Album Artist", "getSongMaster returns album artist name");
+    assert(calls[0].sql.includes("aar.name AS album_artist_name"), "song query selects album artist name");
+    assert(calls[0].sql.includes("LEFT JOIN artists aar ON aar.id = sm.album_artist_id"), "song query joins album artist id");
+    const search = await q.search("same title", { songCount: 10 });
+    assert(search.songs[0]?.album_artist_name === "Album Artist", "search returns album artist name");
+  }
+
+  // ---------------------------------------------------------------------------
   // computePlaylistTotals — via createPlaylist (200 songs → 3 batches)
   // ---------------------------------------------------------------------------
   console.log("\ncomputePlaylistTotals (200 songs → 3 batches):");
