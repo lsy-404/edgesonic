@@ -405,7 +405,7 @@ async function applyTagsToSong(
   const albumArtist = parseAlbumArtistCredit(albumArtistName);
   const albumArtistCredits = albumArtist ? [albumArtist] : [];
   const primaryArtist = artistCredits[0];
-  const linkArtistName = albumArtist?.name || curArtist?.name || "Unknown Artist";
+  const linkArtistName = albumArtist?.name || primaryArtist?.name || curArtist?.name || "Unknown Artist";
   const albumName = tags.album === KW_NULL ? "Unknown Album" : (tags.album || curAlbum?.name || "Unknown Album");
   const genreValue = tags.genre === KW_NULL ? "" : tags.genre;
   const artistId = primaryArtist?.id || master.artist_id;
