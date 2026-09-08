@@ -12,7 +12,7 @@
     "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.worker.json"
   },
   "dependencies": {
-    "@lsypkg/fluent": "https://github.com/lsy-404/platform-kit/releases/download/v0.2.0/platform-kit-fluent-0.2.0.tgz",
+    "@lsypkg/fluent": "https://github.com/lsy-404/platform-kit/releases/download/v0.2.1/platform-kit-fluent-0.2.1.tgz",
     "@vitejs/plugin-vue": "^6.0.7",
     "aws4fetch": "^1.0.20",
     "hono": "^4.12.22",
