@@ -454,7 +454,7 @@ onMounted(load);
         <div class="form-group"><label class="form-label">{{ t("users.password") }}</label><input v-model="form.password" type="password" maxlength="256" class="form-input" /></div>
         <div class="form-group">
           <label class="form-label">{{ t("users.level") }}</label>
-          <FluentSelect :model-value="String(form.level)" :label="t('users.level')" :options="[{ value: '3', label: `3 — ${t('users.levels.super')}`, disabled: !isSuperAdmin }, { value: '2', label: `2 — ${t('users.levels.admin')}` }, { value: '1', label: `1 — ${t('users.levels.user')}` }, { value: '0', label: `0 — ${t('users.levels.guest')}` }]" @update:model-value="form.level = Number($event)" />
+          <FluentSelect :model-value="String(form.level)" :aria-label="t('users.level')" :options="[{ value: '3', label: `3 — ${t('users.levels.super')}`, disabled: !isSuperAdmin }, { value: '2', label: `2 — ${t('users.levels.admin')}` }, { value: '1', label: `1 — ${t('users.levels.user')}` }, { value: '0', label: `0 — ${t('users.levels.guest')}` }]" @update:model-value="form.level = Number($event)" />
         </div>
         <button class="btn-primary" @click="addUser">{{ t("users.create") }}</button>
       </div>
