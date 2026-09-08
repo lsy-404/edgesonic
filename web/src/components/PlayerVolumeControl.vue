@@ -181,6 +181,18 @@ onBeforeUnmount(() => {
   width: min(352px, calc(100vw - 32px)); padding: 0.9rem 1rem 1rem;
   background: var(--color-bg-elevated); border: 1px solid var(--color-border-strong);
   border-radius: 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --fluent-text: var(--color-text-primary);
+  --fluent-muted: var(--color-text-muted);
+  --fluent-accent: var(--color-accent-primary);
+  --fluent-accent-hover: color-mix(in srgb, var(--color-accent-primary) 88%, white);
+  --fluent-accent-pressed: color-mix(in srgb, var(--color-accent-primary) 82%, black);
+  --fluent-accent-text: var(--color-text-inverse);
+  --fluent-control: var(--color-bg-elevated);
+  --fluent-control-hover: var(--color-bg-tertiary);
+  --fluent-control-pressed: var(--color-bg-primary);
+  --fluent-border: var(--color-border-subtle);
+  --fluent-fast: 160ms;
+  --fluent-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 .player-volume__popup-header { display: flex; justify-content: space-between; margin-bottom: 0.6rem; color: var(--color-text-primary); font-size: var(--fs-sm); }
 .player-volume__popup-slider {
