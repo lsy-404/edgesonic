@@ -428,7 +428,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 }
 
 /* --- right: volume and quality alongside queue --- */
-.pb-right { display: flex; align-items: center; gap: 0.6rem; width: 300px; flex-shrink: 0; justify-content: flex-end; }
+.pb-right { display: flex; align-items: center; gap: 0.6rem; width: 430px; flex-shrink: 0; justify-content: flex-end; }
 .pb-audio-settings { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: flex-end; gap: 0.55rem; }
 .pb-quality-wrap { display: flex; min-width: 0; }
 .pb-queue-btn {

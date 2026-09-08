@@ -183,6 +183,9 @@ onBeforeUnmount(() => {
   border-radius: 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
 }
 .player-volume__popup-header { display: flex; justify-content: space-between; margin-bottom: 0.6rem; color: var(--color-text-primary); font-size: var(--fs-sm); }
-.player-volume__popup-slider { position: relative; min-height: 48px; }
+.player-volume__popup-slider {
+  position: relative; min-height: 48px;
+  padding-right: 4.5ch; box-sizing: border-box;
+}
 @media (max-width: 960px) { .player-volume__desktop-slider { display: none; } }
 </style>
