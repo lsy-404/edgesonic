@@ -238,8 +238,7 @@ button.btn-primary:disabled, button.btn-secondary:disabled, button.btn-danger:di
 .edgesonic-fluent-theme :where(input[type="checkbox"], input[type="radio"]):disabled { opacity: .55; cursor: not-allowed; }
 .edgesonic-fluent-theme input[type="range"] { accent-color: var(--accent-base); }
 .edgesonic-fluent-theme input[type="range"]:focus-visible { outline: 2px solid var(--accent-base); outline-offset: 3px; }
-.edgesonic-fluent-theme .seg-btn.active,
-.edgesonic-fluent-theme [aria-pressed="true"] { border-color: var(--accent-base); background: var(--accent-base); color: var(--accent-text); }
+.edgesonic-fluent-theme .seg-btn.active { border-color: var(--accent-base); background: var(--accent-base); color: var(--accent-text); }
 @media (forced-colors: active) {
   .edgesonic-fluent-theme :where(button, input, textarea, select) { forced-color-adjust: auto; }
   .edgesonic-fluent-theme :where(input[type="checkbox"], input[type="radio"]):checked { color: HighlightText; background: Highlight; }

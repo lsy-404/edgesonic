@@ -82,7 +82,7 @@ async function toggle() {
   transition: color 0.15s, border-color 0.15s, background 0.15s, opacity 0.15s;
 }
 .star-button svg { width: 15px; height: 15px; }
-.star-button:hover:not(:disabled) { color: var(--color-accent-primary); background: var(--color-bg-tertiary); }
+.star-button:hover:not(:disabled) { background: var(--color-bg-tertiary); }
 .star-button.active { color: var(--color-accent-primary); border-color: var(--color-accent-dim); }
 .star-button.busy { opacity: 0.55; cursor: wait; }
 </style>

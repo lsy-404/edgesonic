@@ -89,7 +89,9 @@ onBeforeUnmount(unbindViewportListeners);
             {{ t("library.hideInstrumental") }}
             <span class="list-options-hint">{{ t("library.hideInstrumentalHint") }}</span>
           </span>
-          <FluentSwitch :aria-label="t('library.hideInstrumental')" :model-value="hideInstrumental" @click.stop @update:model-value="emit('update:hideInstrumental', $event)" />
+          <span @click.stop>
+            <FluentSwitch :aria-label="t('library.hideInstrumental')" :model-value="hideInstrumental" @update:model-value="emit('update:hideInstrumental', $event)" />
+          </span>
         </div>
       </div>
     </Teleport>

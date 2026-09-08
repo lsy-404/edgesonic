@@ -82,6 +82,10 @@ function onWindowResize() {
   else closePopup();
 }
 
+function finishAdjustment(event: Event) {
+  adjusting.value = event.currentTarget === document.activeElement;
+}
+
 function onRangeFocusOut(event: FocusEvent) {
   if (!(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) adjusting.value = false;
 }
@@ -126,9 +130,9 @@ onBeforeUnmount(() => {
         style="width: clamp(160px, 14vw, 200px)"
         :aria-label="t('player.volume')"
         @pointerdown="adjusting = true"
-        @pointerup="adjusting = false"
-        @pointercancel="adjusting = false"
-        @lostpointercapture="adjusting = false"
+        @pointerup="finishAdjustment"
+        @pointercancel="finishAdjustment"
+        @lostpointercapture="finishAdjustment"
         @update:model-value="setVolume"
       />
       <span v-if="adjusting" class="player-volume__percent" aria-live="polite">{{ percent }}%</span>
@@ -149,9 +153,9 @@ onBeforeUnmount(() => {
           :step="0.01"
           :aria-label="t('player.volume')"
           @pointerdown="adjusting = true"
-          @pointerup="adjusting = false"
-          @pointercancel="adjusting = false"
-          @lostpointercapture="adjusting = false"
+          @pointerup="finishAdjustment"
+          @pointercancel="finishAdjustment"
+          @lostpointercapture="finishAdjustment"
           @update:model-value="setVolume"
         />
         <span v-if="adjusting" class="player-volume__percent" aria-live="polite">{{ percent }}%</span>
@@ -196,7 +200,7 @@ onBeforeUnmount(() => {
 }
 .player-volume__popup-header { display: flex; justify-content: space-between; margin-bottom: 0.6rem; color: var(--color-text-primary); font-size: var(--fs-sm); }
 .player-volume__popup-slider {
-  position: relative; min-height: 48px;
+  position: relative; display: flex; align-items: center; min-height: 48px;
   padding-right: 4.5ch; box-sizing: border-box;
 }
 @media (max-width: 960px) { .player-volume__desktop-slider { display: none; } }
