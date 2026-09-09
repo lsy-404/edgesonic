@@ -15,9 +15,11 @@ EdgeSonic is a Subsonic-compatible streaming server that runs entirely on Cloudf
 
 💸 R2 storage on the Free plan: **100 GB WAV + 20% pre-transcodes ≈ $1.65/month** · **500 GB ≈ $8.85/month** · no egress fees
 
-🔄 Migrate from an existing server or push stars and playlists back upstream
+☁️ **Serverless by design** — no host to patch, maintain, or keep online; Cloudflare's global edge delivers efficient access worldwide while reducing infrastructure attack surface
 
-🖥️ Zero-code guided deployment from your browser
+🖥️ **Zero-code guided deployment** — use a browser-only GUI to provision and deploy; never run a command or touch project code
+
+🔄 Migrate from an existing server or push stars and playlists back upstream
 
 ▶ **[Try the live demo](https://edgesonic.lsy-demo.workers.dev/#/login)** — opens directly as `admin`
 
