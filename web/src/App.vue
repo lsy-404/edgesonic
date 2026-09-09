@@ -601,7 +601,9 @@ onBeforeUnmount(() => {
   z-index: 2000;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
+  max-width: calc(100vw - 1rem);
   padding: 0.25rem 0.6rem;
   background: rgba(255, 165, 0, 0.85);
   color: #1a1a1a;
@@ -611,7 +613,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
   pointer-events: none;
 }
-.demo-badge-text { white-space: nowrap; }
+.demo-badge-text { white-space: nowrap; text-align: center; }
 .demo-badge-deploy {
   pointer-events: auto;
   white-space: nowrap;
@@ -620,6 +622,8 @@ onBeforeUnmount(() => {
   text-underline-offset: 2px;
 }
 .demo-badge-authenticated { top: calc(var(--nav-h) + 0.45rem); }
-.demo-shell .sidebar { top: calc(var(--nav-h) + 2.25rem); }
-.demo-shell .main { padding-top: 60px; }
+@media (max-width: 480px) {
+  .demo-badge { gap: 0.25rem; padding: 0.2rem 0.45rem; font-size: 0.68rem; }
+  .demo-badge-text, .demo-badge-deploy { white-space: normal; }
+}
 </style>
