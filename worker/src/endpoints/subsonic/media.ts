@@ -168,7 +168,7 @@ export async function openSourceForTranscode(
 // GET /rest/stream
 // ----------------------------------------------------------------------------
 // Query params:
-//   format             — target codec/container; 'raw' to skip transcoding
+//   format             — target codec/container; 'raw' or 'auto' skips transcoding
 //   maxBitRate         — kbps cap; triggers transcode when exceeded
 //   timeOffset         — seconds; **accepted but not honoured** in v1 (the
 //                        engine interface has no offset parameter).
@@ -181,11 +181,27 @@ export async function openSourceForTranscode(
 // original instance instead of failing. The Subsonic spec calls this out as
 // the correct behaviour ("ignored when the server doesn't support it").
 // ============================================================================
+export function resolveStreamRequest(
+  rawFormat: string | null | undefined,
+  rawMaxBitRate: string | null | undefined,
+): { format: string; maxBitRate: number } {
+  const requestedFormat = (rawFormat || "raw").trim().toLowerCase();
+  // "auto" is a delivery policy, not a codec. Ignore a carried-over bitrate
+  // cap too, otherwise a saved automatic preference can still request a transcode.
+  if (!requestedFormat || requestedFormat === "auto") return { format: "raw", maxBitRate: 0 };
+  return {
+    format: requestedFormat,
+    maxBitRate: parseInt(rawMaxBitRate || "0", 10) || 0,
+  };
+}
+
 const streamHandler = async (c: Context) => {
   const id = c.req.query("id");
   const source = c.req.query("source") || undefined;
-  const format = c.req.query("format") || "raw";
-  const maxBitRate = parseInt(c.req.query("maxBitRate") || "0", 10) || 0;
+  const { format, maxBitRate } = resolveStreamRequest(
+    c.req.query("format"),
+    c.req.query("maxBitRate"),
+  );
   const timeOffset = parseInt(c.req.query("timeOffset") || "0", 10) || 0;
   const estimateContentLength =
     (c.req.query("estimateContentLength") || "").toLowerCase() === "true";

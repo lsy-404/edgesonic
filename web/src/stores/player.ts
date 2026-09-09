@@ -25,6 +25,11 @@ import { extractEmbeddedCover } from "../lib/embeddedCover";
 import { i18n } from "../i18n";
 import { showError } from "./toast";
 import { setupMediaSession, syncMediaSession, clearMediaSession } from "../lib/mediaSession";
+import {
+  isAutomaticPlaybackQuality,
+  normalizePlaybackQuality,
+  streamQualityParamsForQuality,
+} from "../lib/playbackQuality";
 
 export interface Track {
   id: string;
@@ -93,30 +98,14 @@ export const usePlayerStore = defineStore("player", () => {
     localStorage.getItem("edgesonic_volume") ||
     "0.8"
   ));
-  // Playback quality — a persistent personal preference like volume, not
-  // per-session playback state. "auto" means no format/maxBitRate params:
-  // the server serves the stored instance as-is. Any other value maps to a
-  // /rest/stream format+maxBitRate pair (see QUALITY_OPTIONS); the server
-  // gracefully falls back to raw when the engine can't honour it, so an
-  // invalid/stale saved preference is never a hard failure.
-  const QUALITY_OPTIONS: Record<string, { format?: string; maxBitRate?: number }> = {
-    auto: {},
-    "mp3-128": { format: "mp3", maxBitRate: 128 },
-    "mp3-192": { format: "mp3", maxBitRate: 192 },
-    "aac-128": { format: "aac", maxBitRate: 128 },
-    "opus-128": { format: "opus", maxBitRate: 128 },
-    flac: { format: "flac" },
-    wav: { format: "wav" },
-  };
+  // Playback quality is a persistent personal preference like volume, not
+  // per-session playback state. Automatic quality is an explicit raw stream;
+  // every other value requests its matching codec/bitrate target.
   const playbackQuality = ref(
-    (() => {
-      const saved = localStorage.getItem("edgesonic:playbackQuality") || "auto";
-      return saved in QUALITY_OPTIONS ? saved : "auto";
-    })(),
+    normalizePlaybackQuality(localStorage.getItem("edgesonic:playbackQuality")),
   );
-  function streamQualityParams(): { format?: string; maxBitRate?: number } | undefined {
-    const opts = QUALITY_OPTIONS[playbackQuality.value];
-    return opts && Object.keys(opts).length ? opts : undefined;
+  function streamQualityParams(): { format?: string; maxBitRate?: number } {
+    return streamQualityParamsForQuality(playbackQuality.value);
   }
   // The IndexedDB blob cache (audioCache.ts) is keyed by whatever string we
   // hand it — folding the quality selection in means a cached blob is never
@@ -509,12 +498,13 @@ export const usePlayerStore = defineStore("player", () => {
     // expired can hang the fetch indefinitely; without a timeout the
     // background-download slot leaks and the next-track preload starves.
     const ATTEMPT_TIMEOUT_MS = 60_000;
-    const quality = streamQualityParams();
     const track = trackForId(trackId);
     const attempts: Array<readonly [string, string]> = [["stream-full", sourceUrlForId(trackId)]];
     // Download always returns the original file, so it is only a valid retry
     // when the user explicitly selected automatic/original quality.
-    if (!track?.streamUrl && !quality) attempts.push(["download-full", downloadUrl(trackId)]);
+    if (!track?.streamUrl && isAutomaticPlaybackQuality(playbackQuality.value)) {
+      attempts.push(["download-full", downloadUrl(trackId)]);
+    }
     for (const [label, url] of attempts) {
       const attemptController = new AbortController();
       let timedOut = false;

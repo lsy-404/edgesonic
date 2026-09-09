@@ -20,7 +20,7 @@ const checks: [string, boolean][] = [
   ["cache lookup rejects lower quality", player.includes("QUALITY_RANK[candidate] >= minRank")],
   ["unknown auto quality is not substituted", player.includes('candidate === "auto"') && player.includes('requested === "auto"')],
   ["higher-quality cache hits require browser support", player.includes("canUseCachedQuality(candidate, quality)")],
-  ["original-file retry is restricted to automatic quality", player.includes('if (!track?.streamUrl && !quality) attempts.push(["download-full", downloadUrl(trackId)]);')],
+  ["original-file retry is restricted to automatic quality", player.includes("isAutomaticPlaybackQuality(playbackQuality.value)")],
   ["quality changes discard old preloads", /watch\(playbackQuality,[\s\S]*?invalidatePreload\(\);/.test(player)],
   ["quality changes reload active playback", /watch\(playbackQuality,[\s\S]*?loadCurrent\(shouldPlay\);/.test(player)],
   ["stale quality cache lookups cannot replace playback", player.includes("playbackQuality.value !== requestedQuality")],

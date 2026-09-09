@@ -33,7 +33,7 @@
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
-import { mediaRoutes } from "../../worker/src/endpoints/subsonic/media";
+import { mediaRoutes, resolveStreamRequest } from "../../worker/src/endpoints/subsonic/media";
 import { filesRoutes } from "../../worker/src/endpoints/storage/files";
 import { preBakeProfile } from "../../worker/src/transcode/preBake";
 import { __setEngineFactoryForTest } from "../../worker/src/transcode/factory";
@@ -185,6 +185,13 @@ function makeCtx() {
 }
 
 async function main() {
+  console.log("0. automatic stream mode — normalizes to an unrestricted raw stream");
+  {
+    const automatic = resolveStreamRequest("auto", "128");
+    assert(automatic.format === "raw", `automatic format resolves to raw (got ${automatic.format})`);
+    assert(automatic.maxBitRate === 0, `automatic ignores carried bitrate caps (got ${automatic.maxBitRate})`);
+  }
+
   console.log("1. /rest/stream?format=wav — real-time transcode via sandbox engine");
   {
     const sqlite = buildDb();
