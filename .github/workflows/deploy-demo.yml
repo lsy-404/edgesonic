@@ -443,7 +443,7 @@ jobs:
               -c "$COOKIE_JAR" \
               -X POST "$BASE/edgesonic/auth/demo-login")
             if [ "$LOGIN" = "200" ]; then break; fi
-            if [ "$LOGIN" != "500" ] || ! grep -q 'has been deleted' /tmp/demo-login.json; then
+            if [ "$LOGIN" != "500" ] && ! grep -qE 'has been deleted|Missing username' /tmp/demo-login.json; then
               echo "::error::Demo login failed (HTTP $LOGIN): $(cat /tmp/demo-login.json)"
               exit 1
             fi
