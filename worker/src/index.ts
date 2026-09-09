@@ -45,6 +45,18 @@ export { WorkCoordinator } from "./coordinator/workCoordinator";
 
 const app = new Hono();
 
+app.use("*", async (c, next) => {
+  const legacyHost = (c.env as Env).LEGACY_REDIRECT_HOST;
+  const canonicalHost = (c.env as Env).CANONICAL_HOST;
+  const url = new URL(c.req.url);
+  if (legacyHost && canonicalHost && url.hostname === legacyHost) {
+    url.protocol = "https:";
+    url.hostname = canonicalHost;
+    return c.redirect(url.toString(), 308);
+  }
+  return next();
+});
+
 // ./middleware/cross_origin_isolation so the test suite can import it without
 // dragging in the @cloudflare/sandbox container binding from this file's
 // top-level re-export.

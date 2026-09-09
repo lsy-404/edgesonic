@@ -29,6 +29,8 @@ interface Env {
   ASSETS: Fetcher;
   INSTANCE_ID: string;
   MAX_PROXY_DEPTH?: string;
+  CANONICAL_HOST?: string;
+  LEGACY_REDIRECT_HOST?: string;
   // (pushed dynamically via /edgesonic/cf/setToken using the CF API itself,
   // not declared in wrangler.toml). Unset until the admin runs first-time
   // setup from the Settings page.

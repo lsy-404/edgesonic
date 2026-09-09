@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy --containers-rollout=none",
     "typecheck": "tsc --noEmit",
     "db:migrate:local": "wrangler d1 execute edgesonic-db --local --file",
     "db:migrate:remote": "wrangler d1 execute edgesonic-db --remote --file",
