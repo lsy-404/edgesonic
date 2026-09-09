@@ -39,24 +39,24 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Pin an exact release tag (e.g. v1.2.3). Defaults to the latest stable release.'
+        description: "Pin an exact release tag (e.g. v1.2.3). Defaults to the latest stable release."
         required: false
-        default: ''
+        default: ""
         type: string
       source_repo:
-        description: 'Repo to download the precompiled release package from.'
+        description: "Repo to download the precompiled release package from."
         required: false
-        default: 'lsy-404/edgesonic'
+        default: "lsy-404/edgesonic"
         type: string
       demo_max_upload_bytes:
-        description: 'Per-upload byte cap (default 52428800 = 50 MiB). Leave empty to read from .github/demo/env.'
+        description: "Per-upload byte cap (default 52428800 = 50 MiB). Leave empty to read from .github/demo/env."
         required: false
-        default: ''
+        default: ""
         type: string
       r2_max_limit:
-        description: 'Total R2 storage ceiling in bytes (default 104857600 = 100 MiB). Leave empty to read from .github/demo/env.'
+        description: "Total R2 storage ceiling in bytes (default 104857600 = 100 MiB). Leave empty to read from .github/demo/env."
         required: false
-        default: ''
+        default: ""
         type: string
 
 jobs:
@@ -102,7 +102,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
 
       - name: Install wrangler
         run: npm install -g wrangler@4.94.0
@@ -155,7 +155,7 @@ jobs:
       - name: Provision Cloudflare resources
         id: provision
         env:
-          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
@@ -203,9 +203,9 @@ jobs:
       - name: Generate demo wrangler.toml
         env:
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          DB_ID:   ${{ steps.provision.outputs.db_id }}
+          DB_ID: ${{ steps.provision.outputs.db_id }}
           R2_NAME: edgesonic-demo-music
-          INST:    ${{ steps.provision.outputs.inst }}
+          INST: ${{ steps.provision.outputs.inst }}
         run: |
           set -euo pipefail
           # The release package ships worker/wrangler.toml.example. We sed the
@@ -231,7 +231,7 @@ jobs:
 
       - name: Apply DB schema + seed demo superadmin
         env:
-          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
@@ -352,7 +352,8 @@ jobs:
           # Repo path .github/demo/data/<path> → R2 key <path>. The demo data
           # already lives under music/ in the repo, so the R2 key preserves
           # that structure and the app serves it from the same music/ prefix.
-          COUNT=0
+          UPLOADED=0
+          AUDIO_COUNT=0
           while IFS= read -r -d '' FILE; do
             # Skip macOS .DS_Store metadata files.
             case "$(basename "$FILE")" in .DS_Store) continue;; esac
@@ -367,10 +368,13 @@ jobs:
               --config edgesonic-release/worker/wrangler.toml \
               --file "$FILE" \
               --content-type "$CONTENT_TYPE" >/dev/null
-            COUNT=$((COUNT + 1))
+            UPLOADED=$((UPLOADED + 1))
+            case "${FILE##*.}" in
+              mp3|flac|m4a|aac|ogg|opus|wav|ape|wma|aiff|alac|dsf) AUDIO_COUNT=$((AUDIO_COUNT + 1));;
+            esac
           done < <(find .github/demo/data -type f -print0)
-          echo "::notice::Uploaded $COUNT files into $R2_NAME/"
-          echo "file_count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "::notice::Uploaded $UPLOADED files ($AUDIO_COUNT audio tracks) into $R2_NAME/"
+          echo "audio_count=$AUDIO_COUNT" >> "$GITHUB_OUTPUT"
 
       - name: Deploy demo Worker
         env:
@@ -414,7 +418,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          EXPECTED_FILES: ${{ steps.reupload.outputs.file_count }}
+          EXPECTED_FILES: ${{ steps.reupload.outputs.audio_count }}
         run: |
           set -euo pipefail
           # Resolve the account's workers.dev subdomain rather than assuming
@@ -523,9 +527,25 @@ jobs:
           RESTORED=0
           while IFS= read -r TRACK; do
             URI=$(echo "$TRACK" | jq -r '.uri')
-            LOOKUP=$(curl -sS -f -b "$COOKIE_JAR" --get \
-              --data-urlencode "uri=$URI" \
-              "$BASE/tag/findInstanceByUri")
+            LOOKUP_HTTP=""
+            for _ in $(seq 1 20); do
+              LOOKUP_HTTP=$(curl -sS -o /tmp/demo-restore-lookup.json -w '%{http_code}' \
+                -b "$COOKIE_JAR" --get \
+                --data-urlencode "uri=$URI" \
+                "$BASE/tag/findInstanceByUri")
+              if [ "$LOOKUP_HTTP" = "200" ]; then break; fi
+              if [ "$LOOKUP_HTTP" != "500" ] || ! grep -q 'has been deleted' /tmp/demo-restore-lookup.json; then
+                echo "::error::Could not look up $URI (HTTP $LOOKUP_HTTP): $(cat /tmp/demo-restore-lookup.json)"
+                exit 1
+              fi
+              echo "Waiting for the new D1 binding to reach this edge..."
+              sleep 3
+            done
+            if [ "$LOOKUP_HTTP" != "200" ]; then
+              echo "::error::Could not look up $URI after waiting: $(cat /tmp/demo-restore-lookup.json)"
+              exit 1
+            fi
+            LOOKUP=$(cat /tmp/demo-restore-lookup.json)
             INSTANCE_ID=$(echo "$LOOKUP" | jq -r '.instanceId // empty')
             if [ -z "$INSTANCE_ID" ]; then
               echo "::error::No demo instance found for $URI"
