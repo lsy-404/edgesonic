@@ -1,6 +1,6 @@
 name: Deploy EdgeSonic Demo
 
-# Deploys a fully isolated demo Worker (edgesonic-demo) that runs with
+# Deploys the public demo Worker (edgesonic) that runs with
 # DEMO_MODE=1 so all demo guards engage (locked superadmin password,
 # disabled dangerous perms, capped upload size).
 #
@@ -15,7 +15,7 @@ name: Deploy EdgeSonic Demo
 #   4. Redeploys the Worker.
 #
 # Resources are auto-provisioned on first run:
-#   - Worker script: edgesonic-demo
+#   - Worker script: edgesonic
 #   - D1 database:   edgesonic-demo-db
 #   - R2 bucket:     edgesonic-demo-music
 #
@@ -217,11 +217,8 @@ jobs:
             -e "s|<YOUR_R2_BUCKET_NAME>|${R2_NAME}|g" \
             -e "s|<GENERATE_A_UUID>|${INST}|g" \
             edgesonic-release/worker/wrangler.toml.example > edgesonic-release/worker/wrangler.toml
-          # No custom domain — use edgesonic-demo.<account>.workers.dev.
+          # No custom domain — use edgesonic.<account>.workers.dev.
           sed -i '/^routes/,/^\]/d' edgesonic-release/worker/wrangler.toml
-          # Rename the Worker script to edgesonic-demo so it's isolated from
-          # any production deploy on the same account.
-          sed -i 's|^name = "edgesonic"|name = "edgesonic-demo"|' edgesonic-release/worker/wrangler.toml
           # Containers need the Workers Paid plan. The demo account is on Free,
           # so drop the container app together with the Sandbox DO binding and
           # its migration — the three tables are contiguous at the end of the
@@ -407,7 +404,7 @@ jobs:
             VAR_FLAGS+=(--var "${KEY}:${VAL}")
           done <<< "$DEMO_VARS"
 
-          echo "Deploying demo Worker edgesonic-demo with ${#VAR_FLAGS[@]} var flags"
+          echo "Deploying demo Worker edgesonic with ${#VAR_FLAGS[@]} var flags"
           wrangler deploy \
             --config edgesonic-release/worker/wrangler.toml \
             "${VAR_FLAGS[@]}"
@@ -433,7 +430,7 @@ jobs:
             echo "::error::Could not resolve workers.dev subdomain."
             exit 1
           fi
-          BASE="https://edgesonic-demo.${SUBDOMAIN}.workers.dev"
+          BASE="https://edgesonic.${SUBDOMAIN}.workers.dev"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
           COOKIE_JAR=$(mktemp)
           trap 'rm -f "$COOKIE_JAR"' EXIT
