@@ -138,7 +138,7 @@ export function createQueries(db: D1Database) {
         genre?: string;
         musicFolderId?: string;
       } = {},
-    ): Promise<Array<Album & { artist_name: string | null; artist_id: string | null }>> {
+    ): Promise<Array<Album & { artist_name: string | null; artist_id: string | null; storage_uri: string | null }>> {
       // ORDER BY is selected by type. WHERE is composed from opts so any type
       // may be filtered further (genre / musicFolderId / etc).
       let order: string;
@@ -259,6 +259,12 @@ export function createQueries(db: D1Database) {
           (SELECT ar.sort_name FROM song_masters sm JOIN artists ar ON ar.id = sm.artist_id
            WHERE sm.album_id = a.id LIMIT 1) AS artist_sort,
           (SELECT sm.artist_id FROM song_masters sm WHERE sm.album_id = a.id LIMIT 1) AS artist_id,
+          (SELECT si.storage_uri FROM song_masters sm
+           JOIN song_instances si ON si.master_id = sm.id AND si.missing = 0
+           WHERE sm.album_id = a.id
+           ORDER BY CASE WHEN si.storage_uri LIKE 'r2://%' THEN 0 ELSE 1 END ASC,
+                    si.bit_rate DESC
+           LIMIT 1) AS storage_uri,
           COALESCE((SELECT AVG(an.rating) FROM annotations an
                     WHERE an.item_id = a.id AND an.item_type = 'album' AND an.rating IS NOT NULL), 0) AS avg_rating,
           COALESCE((SELECT SUM(an.play_count) FROM annotations an
@@ -275,7 +281,7 @@ export function createQueries(db: D1Database) {
 
       const result = await db.prepare(sql)
         .bind(...binds, size, offset)
-        .all<Album & { artist_name: string | null; artist_id: string | null }>();
+        .all<Album & { artist_name: string | null; artist_id: string | null; storage_uri: string | null }>();
       return result.results;
     },
 

@@ -135,8 +135,7 @@ function decodeID3Text(body: Uint8Array, preferShiftJis = false): string {
 }
 
 // Encoding sniff for fields with unreliable declared encodings:
-// strict UTF-8 → recognizable Shift-JIS → strict GB18030 (superset of GBK)
-// → Latin1 as a lossless fallback.
+// strict UTF-8 → recognizable Shift-JIS → best CJK legacy candidate → Latin1.
 function smartDecode(data: Uint8Array, preferShiftJis = false): string {
   try { return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(data); } catch { /* not utf-8 */ }
   const shiftJis = tryDecode(data, "shift_jis");
@@ -146,10 +145,24 @@ function smartDecode(data: Uint8Array, preferShiftJis = false): string {
   // A sibling field with full-width Japanese kana identifies this legacy tag
   // as Shift-JIS, which also resolves otherwise ambiguous all-kanji names.
   if (preferShiftJis && shiftJis && !/[\uff61-\uff9f]/.test(shiftJis)) return shiftJis;
-  const gb18030 = tryDecode(data, "gb18030");
-  if (gb18030) return gb18030;
+  const legacy = [tryDecode(data, "gb18030"), tryDecode(data, "big5"), tryDecode(data, "euc-jp"), tryDecode(data, "euc-kr")]
+    .filter((value): value is string => !!value)
+    .sort((a, b) => textQuality(b) - textQuality(a));
+  if (legacy[0]) return legacy[0];
   if (shiftJis) return shiftJis;
   return new TextDecoder("latin1").decode(data);
+}
+
+function textQuality(value: string): number {
+  let score = 0;
+  for (const char of value) {
+    const code = char.codePointAt(0) || 0;
+    if (code === 0xfffd || (code >= 0xe000 && code <= 0xf8ff) || code < 0x20) score -= 12;
+    else if ((code >= 0x3040 && code <= 0x30ff) || (code >= 0xff66 && code <= 0xff9d)) score += 4;
+    else if (code >= 0x3400 && code <= 0x9fff) score += 3;
+    else if (/[A-Za-z0-9]/.test(char)) score += 1;
+  }
+  return score;
 }
 
 function hasShiftJisKana(buf: Uint8Array, start: number, end: number, major: number): boolean {

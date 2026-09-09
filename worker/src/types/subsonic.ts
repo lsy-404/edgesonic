@@ -14,6 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import type { Artist, Album, SongMaster, Playlist, Bookmark, PlayQueue, InternetRadioStation, Share, PodcastChannel, PodcastEpisode } from "./entities";
+import { recoverMetadataFromStoragePath } from "../utils/storageMetadata";
 
 // All three mapXxx functions accept this as an optional 3rd arg so existing
 // callers (detail maps, etc.) compile unchanged.
@@ -79,10 +80,14 @@ export function mapArtist(a: Artist, annotation?: AnnotationLite): SubsonicArtis
   return applyAnnotation(obj, annotation);
 }
 
-export function mapAlbum(a: Album, artistName?: string, annotation?: AnnotationLite): SubsonicAlbum {
+export function mapAlbum(a: Album, artistName?: string, annotation?: AnnotationLite, storageUri?: string | null): SubsonicAlbum {
+  const display = recoverMetadataFromStoragePath(storageUri || "", {
+    album: a.name,
+    artist: artistName,
+  });
   const obj: SubsonicAlbum = {
-    id: a.id, name: a.name,
-    artist: artistName ?? undefined,
+    id: a.id, name: display.album || a.name,
+    artist: display.artist ?? undefined,
     // Always advertise a coverArt id — getCoverArt resolves & caches on demand
     coverArt: a.id.startsWith("al-") ? a.id : `al-${a.id}`,
     songCount: a.song_count, duration: a.duration,
@@ -106,12 +111,18 @@ export function mapSong(
   parentId: string,
   annotation?: AnnotationLite,
 ): SubsonicChild {
+  const display = recoverMetadataFromStoragePath(s.inst_storage_uri || "", {
+    title: s.title,
+    artist: s.artist_name ?? undefined,
+    album: s.album_name ?? undefined,
+    albumArtist: s.album_artist_name ?? undefined,
+  });
   const obj: SubsonicChild = {
     id: s.id, parent: parentId, isDir: false,
-    title: s.title,
-    album: s.album_name ?? undefined,
-    artist: s.artist_name ?? undefined,
-    albumArtist: s.album_artist_name ?? undefined,
+    title: display.title || s.title,
+    album: display.album ?? undefined,
+    artist: display.artist ?? undefined,
+    albumArtist: display.albumArtist ?? undefined,
     albumId: s.album_id,
     artistId: s.artist_id || undefined,
     track: s.track ?? undefined,

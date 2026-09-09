@@ -7,7 +7,7 @@ const root = fileURLToPath(new URL("../../", import.meta.url));
 const fixturePort = Number(process.env.EDGESONIC_UI_FIXTURE_PORT || 5199);
 const dependencyRoot = dirname(await realpath(`${root}node_modules`));
 const albums = [
-  ["a1", "Night Signals", "Glass Harbour", "#2c5568", "#b3cd9a"],
+  ["a1", "从众效应Conformity", "Unknown Artist", "#2c5568", "#b3cd9a"],
   ["a2", "Soft Current", "Low Tide", "#ab6549", "#edd6aa"],
   ["a3", "Quiet Geometry", "Open Field", "#6a5a86", "#e7b9aa"],
   ["a4", "Blue Hour", "Glass Harbour", "#163e67", "#9caac2"],

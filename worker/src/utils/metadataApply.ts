@@ -46,6 +46,7 @@ import {
   songArtistStatements,
   UNUSED_ARTIST_CLEANUP_SQL,
 } from "./artistCredits";
+import { recoverMetadataFromStoragePath } from "./storageMetadata";
 
 // ---------------------------------------------------------------------------
 // SubmittedMetadata — the /tag/submit wire shape, also reused as the merged form that
@@ -123,7 +124,7 @@ export async function applyMetadataResult(
   // Merge common + format into the SubmittedMetadata shape that relinkArtist
   // Album already speaks. We re-coerce every scalar so a worker that emits
   // year:"2024" (string) lands the same as a caller emitting year:2024.
-  const tags = mergeToSubmitted(common ?? {}, format ?? {});
+  let tags = mergeToSubmitted(common ?? {}, format ?? {});
 
   // Even if no useful field came through, we still want to flip tag_scanned.
   // A row that was seen by the browser parser and produced nothing of value
@@ -135,9 +136,10 @@ export async function applyMetadataResult(
        tags.genre || tags.year || tags.track || tags.disc);
 
   const inst = await db.prepare(
-    "SELECT id, master_id, size FROM song_instances WHERE id = ?",
-  ).bind(instanceId).first<{ id: string; master_id: string; size: number | null }>();
+    "SELECT id, master_id, size, storage_uri FROM song_instances WHERE id = ?",
+  ).bind(instanceId).first<{ id: string; master_id: string; size: number | null; storage_uri: string }>();
   if (!inst) return { updated: false, reason: "instance not found" };
+  tags = recoverMetadataFromStoragePath(inst.storage_uri, tags);
 
   let masterId: string | undefined;
   if (hasLogical) {

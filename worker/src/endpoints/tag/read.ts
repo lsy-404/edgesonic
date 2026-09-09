@@ -20,6 +20,7 @@ import { permissionMiddleware } from "../../auth";
 import { md5 } from "../../utils/md5";
 import { parseTags } from "../../utils/tags";
 import { fetchSlices, type SourceRow } from "../../utils/slices";
+import { recoverMetadataFromStoragePath } from "../../utils/storageMetadata";
 import {
   artistInsertStatements,
   parseAlbumArtistCredit,
@@ -60,7 +61,8 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
     try {
       const slices = await fetchSlices(env, sources, row.storage_uri, row.suffix);
       if (slices) {
-        const tags = parseTags(slices.head, slices.tail);
+        const parsed = parseTags(slices.head, slices.tail);
+        const tags = parsed && recoverMetadataFromStoragePath(row.storage_uri, parsed);
         if (tags && (tags.title || tags.artist || tags.album)) {
           // the pre-existing behaviour; album_artist_id is a SEPARATE column
           // that was never populated by this endpoint even though the schema
