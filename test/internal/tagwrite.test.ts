@@ -49,6 +49,14 @@ function makeMp3(): Uint8Array {
   return new Uint8Array([...tag, ...audio]);
 }
 
+function makeLegacyEncodedMp3(frames: Array<{ id: string; bytes: number[] }>): Uint8Array {
+  const frameBytes = frames.flatMap(({ id, bytes }) => {
+    const body = [0, ...bytes];
+    return [...Array.from(new TextEncoder().encode(id)), ...be32Bytes(body.length), 0, 0, ...body];
+  });
+  return new Uint8Array([0x49, 0x44, 0x33, 3, 0, 0, ...syncsafeBytes(frameBytes.length), ...frameBytes]);
+}
+
 // --- synthetic FLAC ---
 function makeFlac(): Uint8Array {
   const enc = (s: string) => Array.from(new TextEncoder().encode(s));
@@ -103,6 +111,21 @@ console.log("bare mp3 (no existing tag):");
   const after = parseTags(out);
   assert(after?.title === "Fresh", "tag prepended");
   assert(out.subarray(out.length - 7).every((b, i) => b === bare[i]), "audio preserved");
+}
+
+console.log("legacy single-byte encodings:");
+{
+  const file = makeLegacyEncodedMp3([
+    // Shift-JIS: 恋愛サーキュレーション / 花澤香菜
+    { id: "TIT2", bytes: [0x97, 0xf6, 0x88, 0xa4, 0x83, 0x54, 0x81, 0x5b, 0x83, 0x4c, 0x83, 0x85, 0x83, 0x8c, 0x81, 0x5b, 0x83, 0x56, 0x83, 0x87, 0x83, 0x93] },
+    { id: "TPE1", bytes: [0x89, 0xd4, 0xe0, 0x56, 0x8d, 0x81, 0x8d, 0xd8] },
+    // GBK: 音乐测试
+    { id: "TALB", bytes: [0xd2, 0xf4, 0xc0, 0xd6, 0xb2, 0xe2, 0xca, 0xd4] },
+  ]);
+  const tags = parseTags(file);
+  assert(tags?.title === "恋愛サーキュレーション", "Shift-JIS title does not become GB18030 mojibake");
+  assert(tags?.artist === "花澤香菜", "Shift-JIS artist does not become GB18030 mojibake");
+  assert(tags?.album === "音乐测试", "GBK album remains correctly decoded");
 }
 
 console.log("FLAC:");

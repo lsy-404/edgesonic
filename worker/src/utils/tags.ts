@@ -64,6 +64,7 @@ function parseID3v2(buf: Uint8Array): SongTags | null {
     pos += extSize + (major === 4 ? 0 : 4);
   }
   const end = Math.min(10 + size, buf.length);
+  const preferShiftJis = hasShiftJisKana(buf, pos, end, major);
   const tags: SongTags = {};
   let found = false;
 
@@ -73,7 +74,7 @@ function parseID3v2(buf: Uint8Array): SongTags | null {
     const frameSize = major === 4 ? syncsafe(buf, pos + 4) : be32(buf, pos + 4);
     if (frameSize <= 0 || pos + 10 + frameSize > buf.length) break;
     const body = buf.subarray(pos + 10, pos + 10 + frameSize);
-    const text = () => decodeID3Text(body);
+    const text = () => decodeID3Text(body, preferShiftJis);
     switch (id) {
       case "TIT2": tags.title = text(); found = true; break;
       case "TPE1": tags.artist = text(); found = true; break;
@@ -120,13 +121,13 @@ function concatEncByte(enc: number, data: Uint8Array): Uint8Array {
   return out;
 }
 
-function decodeID3Text(body: Uint8Array): string {
+function decodeID3Text(body: Uint8Array, preferShiftJis = false): string {
   if (body.length < 2) return "";
   const enc = body[0];
   const data = body.subarray(1);
   try {
     // enc=0 is nominally Latin1, but Chinese rips routinely stuff GBK bytes in it
-    if (enc === 0) return smartDecode(data).replace(/\0+$/, "").trim();
+    if (enc === 0) return smartDecode(data, preferShiftJis).replace(/\0+$/, "").trim();
     if (enc === 1) return new TextDecoder("utf-16").decode(data).replace(/\0+$/, "").trim();
     if (enc === 2) return new TextDecoder("utf-16be").decode(data).replace(/\0+$/, "").trim();
     return new TextDecoder("utf-8").decode(data).replace(/\0+$/, "").trim();
@@ -134,11 +135,39 @@ function decodeID3Text(body: Uint8Array): string {
 }
 
 // Encoding sniff for fields with unreliable declared encodings:
-// strict UTF-8 → strict GB18030 (superset of GBK) → Latin1 as a lossless fallback.
-function smartDecode(data: Uint8Array): string {
+// strict UTF-8 → recognizable Shift-JIS → strict GB18030 (superset of GBK)
+// → Latin1 as a lossless fallback.
+function smartDecode(data: Uint8Array, preferShiftJis = false): string {
   try { return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(data); } catch { /* not utf-8 */ }
-  try { return new TextDecoder("gb18030", { fatal: true, ignoreBOM: false }).decode(data); } catch { /* not gbk or unsupported */ }
+  const shiftJis = tryDecode(data, "shift_jis");
+  // GB18030 accepts many Shift-JIS byte sequences and produces plausible but
+  // incorrect CJK ideographs. Kana is an unambiguous signal to keep Shift-JIS.
+  if (shiftJis && /[\u3040-\u30ff]/.test(shiftJis)) return shiftJis;
+  // A sibling field with full-width Japanese kana identifies this legacy tag
+  // as Shift-JIS, which also resolves otherwise ambiguous all-kanji names.
+  if (preferShiftJis && shiftJis && !/[\uff61-\uff9f]/.test(shiftJis)) return shiftJis;
+  const gb18030 = tryDecode(data, "gb18030");
+  if (gb18030) return gb18030;
+  if (shiftJis) return shiftJis;
   return new TextDecoder("latin1").decode(data);
+}
+
+function hasShiftJisKana(buf: Uint8Array, start: number, end: number, major: number): boolean {
+  let pos = start;
+  while (pos + 10 <= end) {
+    const id = String.fromCharCode(buf[pos], buf[pos + 1], buf[pos + 2], buf[pos + 3]);
+    if (!/^T[A-Z0-9]{3}$/.test(id)) break;
+    const frameSize = major === 4 ? syncsafe(buf, pos + 4) : be32(buf, pos + 4);
+    if (frameSize <= 1 || pos + 10 + frameSize > buf.length) break;
+    const body = buf.subarray(pos + 10, pos + 10 + frameSize);
+    if (body[0] === 0 && /[\u3040-\u30ff]/.test(tryDecode(body.subarray(1), "shift_jis") || "")) return true;
+    pos += 10 + frameSize;
+  }
+  return false;
+}
+
+function tryDecode(data: Uint8Array, encoding: string): string | null {
+  try { return new TextDecoder(encoding, { fatal: true, ignoreBOM: false }).decode(data); } catch { return null; }
 }
 
 function syncsafe(buf: Uint8Array, off: number): number {
