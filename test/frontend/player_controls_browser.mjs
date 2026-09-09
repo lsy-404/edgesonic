@@ -11,6 +11,18 @@ try {
  const fixture = fileURLToPath(new URL('./player_controls_browser.html',import.meta.url));
  await page.goto(`${process.env.WEB_BASE_URL || 'http://127.0.0.1:5187'}/@fs${fixture}`);
  await page.waitForFunction(() => !!window.setTheme);
+ const playMode = page.locator('.pb-mode');
+ const restingModeBox = await playMode.boundingBox();
+ await playMode.hover();
+ await page.mouse.down();
+ const pressedModeBox = await playMode.boundingBox();
+ assert.ok(Math.abs((pressedModeBox.y - restingModeBox.y) - 1) < 0.5, 'play-mode press keeps its centered position and moves only one pixel');
+ await page.mouse.up();
+ assert.equal(await page.evaluate(() => window.player.playMode), 'single', 'one click advances sequential mode to repeat-one');
+ await playMode.click();
+ assert.equal(await page.evaluate(() => window.player.playMode), 'shuffle', 'the next click advances repeat-one to shuffle');
+ await playMode.click();
+ assert.equal(await page.evaluate(() => window.player.playMode), 'sequential', 'the next click advances shuffle to sequential');
  for (const theme of ['sp-ark','sp-earth','sp-gold','sp-ocean','sp-scarlet','sp-sky','sp-crimson','sp-end','black','white','sp-ark']) {
   await page.evaluate(async t => await window.setTheme(t),theme);
   await page.waitForTimeout(180);

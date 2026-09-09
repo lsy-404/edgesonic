@@ -352,6 +352,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   transform: translateY(-50%);
   margin-left: 0.6rem;
 }
+.pb-mode:active:not(:disabled) { transform: translateY(calc(-50% + 1px)); }
 /* pb-fav mirrors pb-mode on the opposite side, same reasoning. */
 .pb-fav {
   position: absolute;

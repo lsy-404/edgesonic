@@ -11,6 +11,7 @@ import { usePlayerStore } from '../../web/src/stores/player';
 import '../../web/src/assets/palette.css';
 import '../../web/src/assets/decor.css';
 import '../../web/src/assets/fluent.css';
+sessionStorage.setItem('edgesonic:playMode', 'sequential');
 const pinia = createPinia();
 const starred = ref(false);
 const menuOpen = ref(false);
