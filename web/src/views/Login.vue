@@ -7,7 +7,7 @@ import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
 
 const { t } = useI18n();
-const { login, guestLogin, isLoggedIn, getLoginConfig, probeGuestEnabled } = useAuth();
+const { login, guestLogin, demoLogin, isLoggedIn, getLoginConfig, probeGuestEnabled } = useAuth();
 const router = useRouter();
 const route = useRoute();
 
@@ -71,16 +71,24 @@ onMounted(async () => {
   const queryPassword = route.query.p ?? route.query.password;
   if (typeof queryUsername === "string") username.value = queryUsername;
   if (typeof queryPassword === "string") password.value = queryPassword;
-  await Promise.all([
-    probeGuestEnabled().then((enabled) => { guestEnabled.value = enabled; }),
-    getLoginConfig().then((cfg) => {
-      noticeText.value = cfg.noticeText;
-      backgroundUrl.value = cfg.backgroundUrl;
-      registrationEnabled.value = cfg.registrationEnabled;
-      passwordResetEnabled.value = cfg.passwordResetEnabled;
-      isDemo.value = cfg.isDemo;
-    }),
-  ]);
+  const [guest, config] = await Promise.all([probeGuestEnabled(), getLoginConfig()]);
+  guestEnabled.value = guest;
+  noticeText.value = config.noticeText;
+  backgroundUrl.value = config.backgroundUrl;
+  registrationEnabled.value = config.registrationEnabled;
+  passwordResetEnabled.value = config.passwordResetEnabled;
+  isDemo.value = config.isDemo;
+  if (!config.isDemo || isLoggedIn.value) return;
+  loading.value = true;
+  try {
+    const result = await demoLogin();
+    if (result.ok) await router.replace("/");
+    else error.value = result.error || t("login.failed");
+  } catch {
+    error.value = t("login.failed");
+  } finally {
+    loading.value = false;
+  }
 });
 </script>
 

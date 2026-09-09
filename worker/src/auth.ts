@@ -99,6 +99,7 @@ const NO_AUTH_PATHS = new Set([
   "/edgesonic/auth/login",
   "/edgesonic/auth/logout",
   "/edgesonic/auth/guest",
+  "/edgesonic/auth/demo-login",
   // build version and isolate start time (non-sensitive); the SPA polls it
   // every 5 minutes including AFTER the session has expired so the "refresh
   // me" banner still appears on stale tabs.

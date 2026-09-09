@@ -94,6 +94,7 @@ function buildDb(): DatabaseSync {
     CREATE TABLE guest_tokens (token TEXT PRIMARY KEY, expires_at INTEGER);
     INSERT INTO users (username, master_password, level, enabled) VALUES ('alice', 'hash', 2, 1);
     INSERT INTO users (username, master_password, level, enabled) VALUES ('bob', 'hash', 1, 1);
+    INSERT INTO users (username, master_password, level, enabled) VALUES ('admin', 'hash', 3, 1);
     INSERT INTO users (username, master_password, level, enabled) VALUES ('anonymous', '', 0, 1);
     INSERT INTO users (username, master_password, level, enabled) VALUES ('guest', '', 0, 1);
     INSERT INTO user_permissions (level, permission, enabled) VALUES (0, 'browse', 1);
@@ -108,7 +109,7 @@ function insertSession(sqlite: DatabaseSync, token: string, username: string, ex
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeApp(sqlite: DatabaseSync): any {
+function makeApp(sqlite: DatabaseSync, envOverrides: Record<string, unknown> = {}): any {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.route("/", webLoginRoutes);
@@ -122,7 +123,7 @@ function makeApp(sqlite: DatabaseSync): any {
   app.get("/tag/whoami", ok);
   app.get("/storage/whoami", ok);
   app.get("/edgesonic/whoami", ok);
-  const env = { DB: makeD1(sqlite), INSTANCE_ID: "test" };
+  const env = { DB: makeD1(sqlite), INSTANCE_ID: "test", ...envOverrides };
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async get(path: string, qs: string, cookie?: string): Promise<any> {
@@ -149,6 +150,9 @@ function makeApp(sqlite: DatabaseSync): any {
     },
     async postGuest(): Promise<any> {
       return app.fetch(new Request("http://test/edgesonic/auth/guest", { method: "POST" }), env as any);
+    },
+    async postDemoLogin(): Promise<any> {
+      return app.fetch(new Request("http://test/edgesonic/auth/demo-login", { method: "POST" }), env as any);
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async postLogout(cookie?: string): Promise<any> {
@@ -304,6 +308,23 @@ async function main() {
     sqlite.prepare("UPDATE user_permissions SET enabled = 0 WHERE level = 0 AND permission = 'browse'").run();
     const disabled = await postGuest();
     assert(disabled.status === 403, `disabled guest login returns 403 (got ${disabled.status})`);
+  }
+
+  console.log("\ndemo login issues an admin cookie only in demo mode:");
+  {
+    const sqlite = buildDb();
+    const { postDemoLogin } = makeApp(sqlite, { DEMO_MODE: "1" });
+    const r = await postDemoLogin();
+    assert(r.status === 200, `demo login 200 (got ${r.status})`);
+    const body = await r.json() as { username?: string; level?: number };
+    assert(body.username === "admin" && body.level === 3, "demo login selects the fixed admin account");
+    assert((r.headers.get("Set-Cookie") || "").includes("HttpOnly"), "demo login sets an HttpOnly cookie");
+    const sessions = sqlite.prepare("SELECT COUNT(*) AS n FROM sessions WHERE username = 'admin'").get() as { n: number };
+    assert(sessions.n === 1, "demo login creates one admin session");
+
+    const { postDemoLogin: unavailable } = makeApp(buildDb());
+    const nonDemo = await unavailable();
+    assert(nonDemo.status === 404, `non-demo demo-login returns 404 (got ${nonDemo.status})`);
   }
 
   console.log("\nlogout endpoint wipes the cookie & drops the session row:");

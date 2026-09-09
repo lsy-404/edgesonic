@@ -237,6 +237,25 @@ export function useAuth() {
     return { ok: false, error: data.error || "Guest login failed" };
   }
 
+  async function demoLogin(): Promise<LoginResult> {
+    const data = await requestJson<{ ok?: boolean; username?: string; level?: number; error?: string }>(`${EDGESONIC_BASE}/auth/demo-login`, {
+      method: "POST",
+      headers: deviceHeaders(),
+      credentials: "same-origin",
+    });
+    if (data.ok) {
+      token.value = "1";
+      username.value = data.username || "";
+      level.value = data.level ?? 0;
+      localStorage.setItem("edgesonic_logged_in", "1");
+      localStorage.setItem("edgesonic_user", data.username || "");
+      localStorage.setItem("edgesonic_level", String(data.level ?? 0));
+      await fetchMe();
+      return { ok: true, name: data.username, level: data.level };
+    }
+    return { ok: false, error: data.error || "Demo login failed" };
+  }
+
   interface LoginConfig {
     noticeText: string; backgroundUrl: string; registrationEnabled: boolean;
     // Password reset has its own switch on top of "is email configured
@@ -821,7 +840,7 @@ export function useAuth() {
     activation, fetchActivationStatus, redeemActivationCode, probeGuestEnabled,
     fetchMe, getMessages, markMessageRead, dismissMessage, sendUserMessage,
     updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
-    login, guestLogin, logout, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
+    login, guestLogin, demoLogin, logout, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
     getLoginConfig, register, requestPasswordReset, confirmPasswordReset, confirmEmailVerify,
     tagFetch, tagPost, storageFetch, storagePost, edgesonicFetch, edgesonicPost,
     readTags, writeTags, batchWriteTags, rescanSongs, submitMetadata, tidyFolder,

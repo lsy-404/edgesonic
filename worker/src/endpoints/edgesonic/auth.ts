@@ -192,6 +192,38 @@ webLoginRoutes.post("/edgesonic/auth/guest", async (c) => {
   return c.json({ ok: true, username: user.username, level: user.level, expiresAt });
 });
 
+// The demo-only public route issues sessions for fixed admin without accepting credentials.
+webLoginRoutes.post("/edgesonic/auth/demo-login", async (c) => {
+  if (!isDemoMode(c.env)) {
+    return c.json({ ok: false, error: "Demo login is unavailable" }, 404);
+  }
+  if (!(await rateLimitAllowed(c.env.AUTH_RATE_LIMITER, await authenticationRateLimitKey(c.req.raw, "login", "admin")))) {
+    return rateLimitExceededResponse();
+  }
+
+  const user = await c.env.DB
+    .prepare("SELECT username, level, enabled FROM users WHERE username = ? AND level = 3 AND enabled = 1")
+    .bind("admin")
+    .first<{ username: string; level: number; enabled: number }>();
+  if (!user) {
+    return c.json({ ok: false, error: "Demo administrator is unavailable" }, 503);
+  }
+
+  const sessionId = crypto.randomUUID();
+  const sessionToken = crypto.randomUUID().replace(/-/g, "");
+  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SEC;
+  await c.env.DB
+    .prepare(
+      "INSERT INTO sessions (id, username, token, user_agent, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+    )
+    .bind(sessionId, user.username, sessionToken, c.req.header("User-Agent") || "", expiresAt, Math.floor(Date.now() / 1000))
+    .run();
+
+  const isHttps = new URL(c.req.url).protocol === "https:";
+  c.header("Set-Cookie", buildSessionCookieHeader(sessionToken, SESSION_TTL_SEC) + (isHttps ? "; Secure" : ""));
+  return c.json({ ok: true, username: user.username, level: user.level, expiresAt });
+});
+
 webLoginRoutes.post("/edgesonic/auth/logout", async (c) => {
   const db = c.env.DB;
 

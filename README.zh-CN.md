@@ -4,7 +4,21 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-完全运行在 **Cloudflare Workers** 上的无服务器（Serverless）Subsonic 兼容音乐流媒体服务器。不需要独立主机，不需要常驻进程——部署一次，随处播放。
+**把整个音乐库托管在 Cloudflare 上：无需服务器、VPS 或常驻进程。**
+
+EdgeSonic 是完全运行在 Cloudflare Workers 上的 Subsonic 兼容音乐流媒体服务器。可搭配 DSub、Symfonium、Substreamer、Sonixd 及任意 Subsonic 客户端使用。
+
+**几分钟内在浏览器完成部署——不用命令行、不用本地工具链、更不用写代码。** Overture 会逐步引导，并自动创建所需的 Cloudflare 资源。
+
+**已经在使用 Navidrome 或其他 Subsonic 服务器？** 可一次迁移曲目、歌单、用户与收藏；中断后会从浏览器缓存继续。
+
+💸 R2 Free 存储：**100 GB WAV + 20% 预转码约 $1.65/月** · **500 GB 约 $8.85/月** · 无出站流量费
+
+🔄 从现有服务器迁移，或将收藏和歌单推送回上游
+
+🖥️ 浏览器内零代码、全程引导部署
+
+▶ **[立即体验在线 demo](https://edgesonic.lsy-demo.workers.dev/#/login)** —— 自动以 `admin` 身份进入
 
 ### 🚀 [打开 Overture，部署你自己的 EdgeSonic →](https://overture.voidcarve.com/?src=lsy-404%2Fedgesonic)
 
@@ -12,7 +26,7 @@
 
 ## 在线演示
 
-在线 demo 地址：**<https://edgesonic.lsy-demo.workers.dev/#/login>** —— 登录账号 `admin` / `demo`。
+在线 demo 地址：**<https://edgesonic.lsy-demo.workers.dev/#/login>**，会自动以 `admin` 身份进入。
 
 该 demo 以 `DEMO_MODE=1` 运行：危险权限（用户/存储源管理、删除、Cloudflare 设置）已被锁定，上传有大小上限，媒体库会在每次部署时从固定曲目集重置。其余功能——浏览、播放、标签编辑、浏览器工作池——均完整可用。
 

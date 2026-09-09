@@ -5,7 +5,21 @@
 [English](README.md) | [简体中文](README.zh-CN.md)
 
 
-Serverless Subsonic-compatible music streaming server running entirely on **Cloudflare Workers**. No dedicated host, no always-on process — deploy once, stream anywhere.
+**Host your entire music library on Cloudflare with no server, VPS, or always-on process to manage.**
+
+EdgeSonic is a Subsonic-compatible streaming server that runs entirely on Cloudflare Workers. Use it with DSub, Symfonium, Substreamer, Sonixd, or any Subsonic client.
+
+**Deploy from your browser in minutes — no command line, local toolchain, or code required.** Overture guides every step and provisions the required Cloudflare resources.
+
+**Already running Navidrome or another Subsonic server?** Migrate tracks, playlists, users, and stars in one flow; interrupted migrations resume from the browser cache.
+
+💸 R2 storage on the Free plan: **100 GB WAV + 20% pre-transcodes ≈ $1.65/month** · **500 GB ≈ $8.85/month** · no egress fees
+
+🔄 Migrate from an existing server or push stars and playlists back upstream
+
+🖥️ Zero-code guided deployment from your browser
+
+▶ **[Try the live demo](https://edgesonic.lsy-demo.workers.dev/#/login)** — opens directly as `admin`
 
 ### 🚀 [Open Overture and deploy your own EdgeSonic →](https://overture.voidcarve.com/?src=lsy-404%2Fedgesonic)
 
@@ -13,7 +27,7 @@ Deploys in a few minutes from your browser — see "Quick start" below for detai
 
 ## Live demo
 
-A live demo is hosted at **<https://edgesonic.lsy-demo.workers.dev/#/login>** — log in with `admin` / `demo`.
+A live demo is hosted at **<https://edgesonic.lsy-demo.workers.dev/#/login>** and opens directly as `admin`.
 
 The demo runs in `DEMO_MODE=1`: dangerous permissions (user/source management, delete, Cloudflare settings) are locked, uploads are capped, and the library is reset from a fixed set of tracks on every deploy. Everything else — browsing, playback, tag editing, the worker pool — is fully functional.
 
