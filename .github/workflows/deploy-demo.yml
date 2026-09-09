@@ -46,7 +46,7 @@ on:
       source_repo:
         description: 'Repo to download the precompiled release package from.'
         required: false
-        default: 'wuyilingwei/edgesonic'
+        default: 'lsy-404/edgesonic'
         type: string
       demo_max_upload_bytes:
         description: 'Per-upload byte cap (default 52428800 = 50 MiB). Leave empty to read from .github/demo/env.'
@@ -111,7 +111,7 @@ jobs:
         id: tag
         env:
           GH_TOKEN: ${{ github.token }}
-          SRC: ${{ github.event.inputs.source_repo || 'wuyilingwei/edgesonic' }}
+          SRC: ${{ github.event.inputs.source_repo || 'lsy-404/edgesonic' }}
           PIN: ${{ github.event.inputs.release_tag || '' }}
         run: |
           set -euo pipefail
@@ -134,7 +134,7 @@ jobs:
       - name: Download & extract release package
         env:
           GH_TOKEN: ${{ github.token }}
-          SRC: ${{ github.event.inputs.source_repo || 'wuyilingwei/edgesonic' }}
+          SRC: ${{ github.event.inputs.source_repo || 'lsy-404/edgesonic' }}
         run: |
           set -euo pipefail
           TAG="${{ steps.tag.outputs.tag }}"

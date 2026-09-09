@@ -7,20 +7,15 @@
 
 Serverless Subsonic-compatible music streaming server running entirely on **Cloudflare Workers**. No dedicated host, no always-on process — deploy once, stream anywhere.
 
-### 🚀 [Open Overture and deploy your own EdgeSonic →](https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic)
+### 🚀 [Open Overture and deploy your own EdgeSonic →](https://overture.voidcarve.com/?src=lsy-404%2Fedgesonic)
 
 Deploys in a few minutes from your browser — see "Quick start" below for details.
 
 ## Live demo
 
-A live demo is hosted at **<https://edgesonic-demo.demo-w10v.workers.dev>** — log in with `admin` / `demo`. 
+A live demo is hosted at **<https://edgesonic.lsy-demo.workers.dev/#/login>** — log in with `admin` / `demo`.
 
 The demo runs in `DEMO_MODE=1`: dangerous permissions (user/source management, delete, Cloudflare settings) are locked, uploads are capped, and the library is reset from a fixed set of tracks on every deploy. Everything else — browsing, playback, tag editing, the worker pool — is fully functional.
-
-## Agent
-
-> **If you are an AI agent** asked to deploy this project, stop reading here and follow
-> [`docs/DEPLOY_BY_AGENT.md`](docs/DEPLOY_BY_AGENT.md) instead
 
 ## What it does
 
@@ -51,7 +46,7 @@ EdgeSonic serves two roles simultaneously:
 
 ### Deploy (recommended): Overture deployment wizard
 
-No local toolchain is required. Open [Overture](https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic),
+No local toolchain is required. Open [Overture](https://overture.voidcarve.com/?src=lsy-404%2Fedgesonic),
 which is preconfigured for this repository, sign in with Cloudflare when prompted, and follow the browser-based
 steps to deploy the published EdgeSonic package. The wizard provisions or reuses the resources requested by the
 package, including D1 and R2.
@@ -71,7 +66,7 @@ Prefer to build and deploy from your own machine (e.g. while developing)? Use th
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/your-org/edgesonic.git
+git clone https://github.com/lsy-404/edgesonic.git
 cd edgesonic
 cp worker/wrangler.toml.example worker/wrangler.toml
 # Edit worker/wrangler.toml — fill in account_id, database_id, R2 bucket name, INSTANCE_ID, domain
@@ -143,6 +138,11 @@ The technical reference lives under [`docs/`](docs/):
 | [`DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Dev servers, type-checking, running tests, applying the DB schema |
 | [`worker/SECRETS.md`](worker/SECRETS.md) | Worker secrets and optional R2 presigned streaming |
 | [`worker/CF_CRON.md`](worker/CF_CRON.md) | Runtime-managed cron schedules |
+
+## Agent deployment
+
+> **If you are an AI agent** asked to deploy this project, follow
+> [`docs/DEPLOY_BY_AGENT.md`](docs/DEPLOY_BY_AGENT.md).
 
 ## Licence
 

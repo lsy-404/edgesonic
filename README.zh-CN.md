@@ -6,20 +6,15 @@
 
 完全运行在 **Cloudflare Workers** 上的无服务器（Serverless）Subsonic 兼容音乐流媒体服务器。不需要独立主机，不需要常驻进程——部署一次，随处播放。
 
-### 🚀 [打开 Overture，部署你自己的 EdgeSonic →](https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic)
+### 🚀 [打开 Overture，部署你自己的 EdgeSonic →](https://overture.voidcarve.com/?src=lsy-404%2Fedgesonic)
 
 几分钟内在浏览器中完成部署，细节见下方「快速开始」。
 
 ## 在线演示
 
-在线 demo 地址：**<https://edgesonic-demo.demo-w10v.workers.dev>** —— 登录账号 `admin` / `demo`。
+在线 demo 地址：**<https://edgesonic.lsy-demo.workers.dev/#/login>** —— 登录账号 `admin` / `demo`。
 
 该 demo 以 `DEMO_MODE=1` 运行：危险权限（用户/存储源管理、删除、Cloudflare 设置）已被锁定，上传有大小上限，媒体库会在每次部署时从固定曲目集重置。其余功能——浏览、播放、标签编辑、浏览器工作池——均完整可用。
-
-## 智能体
-
-> **如果你是一个 AI agent**，被要求部署本项目，请不要继续往下读，直接遵循
-> [`docs/DEPLOY_BY_AGENT.md`](docs/DEPLOY_BY_AGENT.md)
 
 ## 它是什么
 
@@ -50,7 +45,7 @@ EdgeSonic 同时承担两个角色：
 
 ### 部署（推荐）：Overture 部署向导
 
-无需本地工具链。打开已预选本项目的 [Overture](https://overture.demo-w10v.workers.dev/?src=lsy-404%2Fedgesonic)，
+无需本地工具链。打开已预选本项目的 [Overture](https://overture.voidcarve.com/?src=lsy-404%2Fedgesonic)，
 按提示使用 Cloudflare 登录，并在浏览器中完成已发布 EdgeSonic 软件包的部署。向导会按软件包声明创建或复用所需资源，
 包括 D1 和 R2。
 
@@ -69,7 +64,7 @@ EdgeSonic 同时承担两个角色：
 ### 1. 克隆并配置
 
 ```bash
-git clone https://github.com/your-org/edgesonic.git
+git clone https://github.com/lsy-404/edgesonic.git
 cd edgesonic
 cp worker/wrangler.toml.example worker/wrangler.toml
 # 编辑 worker/wrangler.toml —— 填入 account_id、database_id、R2 bucket 名称、INSTANCE_ID、域名
@@ -141,6 +136,11 @@ npx wrangler d1 execute edgesonic-db --remote --command \
 | [`DEVELOPMENT.md`](docs/DEVELOPMENT.md) | 开发服务器、类型检查、运行测试、应用数据库 Schema |
 | [`worker/SECRETS.md`](worker/SECRETS.md) | Worker Secrets 与可选 R2 预签名播放 |
 | [`worker/CF_CRON.md`](worker/CF_CRON.md) | 运行时管理的 Cron 计划 |
+
+## Agent 部署
+
+> **如果你是一个 AI agent**，被要求部署本项目，请遵循
+> [`docs/DEPLOY_BY_AGENT.md`](docs/DEPLOY_BY_AGENT.md)。
 
 ## 许可证
 
