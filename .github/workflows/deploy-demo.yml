@@ -493,12 +493,61 @@ jobs:
                 exit 1
               fi
               echo "R2 scan finished: $STATUS"
-              exit 0
+              SCAN_FINISHED=1
+              break
             fi
             sleep 3
           done
-          echo "::error::R2 scan did not finish within 90 seconds."
-          exit 1
+          if [ "${SCAN_FINISHED:-}" != "1" ]; then
+            echo "::error::R2 scan did not finish within 90 seconds."
+            exit 1
+          fi
+
+      - name: Restore demo library metadata
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BASE: ${{ steps.scan.outputs.base }}
+        run: |
+          set -euo pipefail
+          COOKIE_JAR=$(mktemp)
+          trap 'rm -f "$COOKIE_JAR"' EXIT
+          LOGIN=$(curl -sS -o /tmp/demo-restore-login.json -w '%{http_code}' \
+            -c "$COOKIE_JAR" \
+            -X POST "$BASE/edgesonic/auth/demo-login")
+          if [ "$LOGIN" != "200" ]; then
+            echo "::error::Demo login for metadata restoration failed (HTTP $LOGIN): $(cat /tmp/demo-restore-login.json)"
+            exit 1
+          fi
+
+          RESTORED=0
+          while IFS= read -r TRACK; do
+            URI=$(echo "$TRACK" | jq -r '.uri')
+            LOOKUP=$(curl -sS -f -b "$COOKIE_JAR" --get \
+              --data-urlencode "uri=$URI" \
+              "$BASE/tag/findInstanceByUri")
+            INSTANCE_ID=$(echo "$LOOKUP" | jq -r '.instanceId // empty')
+            if [ -z "$INSTANCE_ID" ]; then
+              echo "::error::No demo instance found for $URI"
+              exit 1
+            fi
+            PAYLOAD=$(echo "$TRACK" | jq -c --arg instanceId "$INSTANCE_ID" '{ instanceId: $instanceId, tags: .tags }')
+            curl -sS -f -b "$COOKIE_JAR" -H 'Content-Type: application/json' \
+              -X POST "$BASE/tag/submit" --data "$PAYLOAD" > /tmp/demo-restore-result.json
+            if ! jq -e '.ok == true' /tmp/demo-restore-result.json > /dev/null; then
+              echo "::error::Could not restore metadata for $URI: $(cat /tmp/demo-restore-result.json)"
+              exit 1
+            fi
+            RESTORED=$((RESTORED + 1))
+          done < <(jq -c '.tracks[]' .github/demo/metadata.json)
+
+          if [ "$RESTORED" -eq 0 ]; then
+            echo "::error::Demo metadata manifest has no tracks."
+            exit 1
+          fi
+          wrangler d1 execute edgesonic-demo-db --remote \
+            --command "UPDATE work_queue SET status = 'completed', error_message = NULL, claimed_by = NULL, claimed_at = NULL, heartbeat_at = unixepoch() WHERE task_type = 'metadata' AND status = 'queued';"
+          echo "::notice::Restored metadata for $RESTORED demo tracks."
 
       - name: Post-deploy reminder
         run: |

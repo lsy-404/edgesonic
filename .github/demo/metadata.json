@@ -1,0 +1,20 @@
+{
+  "tracks": [
+    {
+      "uri": "r2://music/Minecraft - C418.flac",
+      "tags": { "title": "Minecraft", "artist": "C418", "album": "Minecraft - Volume Alpha", "duration": 254 }
+    },
+    {
+      "uri": "r2://music/Not Alone - Forgét Mej.flac",
+      "tags": { "title": "Not Alone", "artist": "Forgét Mej", "album": "Stellaris", "duration": 163 }
+    },
+    {
+      "uri": "r2://music/万象霜天 - 祖娅纳惜.mp3",
+      "tags": { "title": "万象霜天", "artist": "祖娅纳惜", "album": "万象霜天", "duration": 241 }
+    },
+    {
+      "uri": "r2://music/再次呼唤我的名字吧.flac",
+      "tags": { "title": "再次呼唤我的名字吧。", "artist": "奥莉安多", "album": "再次呼唤我的名字吧。", "duration": 176 }
+    }
+  ]
+}
