@@ -137,7 +137,7 @@
     "forgotPassword": "Forgot password?",
     "noAccount": "No account?",
     "registerLink": "Register",
-    "demoNotice": "This is a public demo — log in with admin / demo",
+    "demoNotice": "This is a public demo — signing in automatically",
     "poweredBy": "Powered by"
   },
   "register": {

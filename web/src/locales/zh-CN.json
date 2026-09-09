@@ -138,7 +138,7 @@
     "forgotPassword": "忘记密码？",
     "noAccount": "还没有账号？",
     "registerLink": "注册",
-    "demoNotice": "这是一个公开演示实例 — 使用 admin / demo 登录",
+    "demoNotice": "这是一个公开演示实例 — 正在自动登录",
     "poweredBy": "Powered by"
   },
   "register": {

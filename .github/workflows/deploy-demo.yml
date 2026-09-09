@@ -249,7 +249,7 @@ jobs:
             --command 'SELECT COUNT(*) AS c FROM users' --json \
             | jq -r '.[0].results[0].c')
           if [ "$USER_COUNT" = "0" ]; then
-            echo "Seeding demo superadmin (admin / demo)..."
+            echo "Seeding demo superadmin..."
             PASS_HASH=$(node -e 'const c=require("crypto");console.log(c.createHash("sha256").update("demo").digest("hex"))')
             wrangler d1 execute "$DB_NAME" --remote \
               --config edgesonic-release/worker/wrangler.toml \
@@ -503,5 +503,5 @@ jobs:
       - name: Post-deploy reminder
         run: |
           echo "::notice::Demo Worker deployed at ${{ steps.scan.outputs.base }}"
-          echo "::notice::Login: admin / demo"
+          echo "::notice::The demo opens directly as admin."
           echo "::notice::After first deploy, sign in and open Settings → Cloudflare → 'Ensure default cron' so cron-driven tasks (podcast refresh, scan, guest token reap) run."
