@@ -411,6 +411,7 @@ img { max-width: 100%; display: block; }
 .status-badge.error { color: var(--color-status-error); border-color: var(--color-status-error); background: rgba(248, 81, 73, 0.1); }
 .status-badge.warning { color: var(--color-status-warning); border-color: var(--color-status-warning); background: rgba(240, 136, 62, 0.1); }
 .status-badge.info { color: var(--color-status-info); border-color: var(--color-status-info); background: rgba(88, 166, 255, 0.1); }
+.status-badge.accent { color: var(--color-accent-primary); border-color: var(--color-accent-primary); background: var(--color-accent-dim); }
 .status-badge.muted { color: var(--color-text-muted); border-color: var(--color-text-muted); background: transparent; }
 
 /* --- Modal --- */

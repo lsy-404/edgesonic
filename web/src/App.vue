@@ -368,7 +368,7 @@ onBeforeUnmount(() => {
 
       <div class="nav-user">
         <span class="nav-username">{{ displayName }}</span>
-        <span class="status-badge" :class="level >= 3 ? 'warning' : level >= 2 ? 'info' : 'muted'">{{ levelLabel }}</span>
+        <span class="status-badge" :class="level >= 3 ? 'accent' : level >= 2 ? 'info' : 'muted'">{{ levelLabel }}</span>
         <MessageCenter :is-super-admin="level >= 3" :can-manage-users="hasPerm('manage_users')" />
         <FluentButton class="nav-logout" tone="subtle" :title="t('app.logout')" :aria-label="t('app.logout')" @click="doLogout"><Icon name="logout" :size="18" /><span>{{ t("app.logout") }}</span></FluentButton>
       </div>
@@ -497,7 +497,7 @@ onBeforeUnmount(() => {
 .nav-global-search-submit svg { width: 17px; height: 17px; }
 .nav-user { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-left: auto; min-width: 0; }
 .nav-username { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--color-text-secondary); }
-.nav-logout { display: flex; gap: 7px; }
+.nav-logout { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; min-height: 36px; padding: 7px; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
 .icon-button:hover { color: var(--color-text-primary); background: var(--color-bg-tertiary); }
