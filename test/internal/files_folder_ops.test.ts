@@ -38,6 +38,36 @@
 import { Hono } from "hono";
 import { filesRoutes } from "../../worker/src/endpoints/storage/files";
 
+const FIXED_LENGTH_BODY = Symbol("fixed-length-body");
+
+class TestFixedLengthStream extends TransformStream<Uint8Array, Uint8Array> {
+  constructor(expectedLength: number | bigint) {
+    const expected = Number(expectedLength);
+    let actual = 0;
+    super({
+      transform(chunk, controller) {
+        actual += chunk.byteLength;
+        if (actual > expected) {
+          controller.error(new Error(`FixedLengthStream length mismatch: expected ${expected} bytes, got ${actual}`));
+          return;
+        }
+        controller.enqueue(chunk);
+      },
+      flush(controller) {
+        if (actual !== expected) {
+          controller.error(new Error(`FixedLengthStream length mismatch: expected ${expected} bytes, got ${actual}`));
+        }
+      },
+    });
+    Object.defineProperty(this.readable, FIXED_LENGTH_BODY, { value: true });
+  }
+}
+
+Object.defineProperty(globalThis, "FixedLengthStream", {
+  configurable: true,
+  value: TestFixedLengthStream,
+});
+
 declare global {
   type D1Database = unknown;
   type D1PreparedStatement = unknown;
@@ -58,19 +88,77 @@ interface R2Item { key: string; body: Uint8Array; contentType: string }
 
 function makeR2Bucket(pageLimit = 1000) {
   const store = new Map<string, R2Item>();
+  let transientPutFailures = 0;
+  let putAttempts = 0;
+  let putDelayMs = 0;
+  let activePuts = 0;
+  let maxConcurrentPuts = 0;
+
+  async function readBody(body: unknown): Promise<Uint8Array> {
+    if (body instanceof ArrayBuffer) return new Uint8Array(body);
+    if (body instanceof Uint8Array) return new Uint8Array(body);
+    if (body && typeof (body as { getReader?: unknown }).getReader === "function") {
+      const reader = (body as ReadableStream<Uint8Array>).getReader();
+      const chunks: Uint8Array[] = [];
+      let total = 0;
+      for (;;) {
+        const next = await reader.read();
+        if (next.done) break;
+        const chunk = next.value instanceof Uint8Array ? next.value : new Uint8Array(next.value);
+        chunks.push(chunk);
+        total += chunk.byteLength;
+      }
+      const result = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        result.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      return result;
+    }
+    return new Uint8Array(0);
+  }
+
   return {
     store,
+    get putAttempts() { return putAttempts; },
+    get maxConcurrentPuts() { return maxConcurrentPuts; },
+    failNextPuts(count: number) { transientPutFailures = count; putAttempts = 0; },
+    delayPuts(delayMs: number) { putDelayMs = delayMs; maxConcurrentPuts = 0; },
     async put(key: string, body: unknown, opts?: { httpMetadata?: { contentType?: string } }) {
-      let buf: Uint8Array;
-      if (body instanceof ArrayBuffer) buf = new Uint8Array(body);
-      else if (body instanceof Uint8Array) buf = body;
-      else buf = new Uint8Array(0);
-      store.set(key, { key, body: buf, contentType: opts?.httpMetadata?.contentType || "application/octet-stream" });
+      putAttempts++;
+      activePuts++;
+      maxConcurrentPuts = Math.max(maxConcurrentPuts, activePuts);
+      try {
+        if (putDelayMs) await new Promise((resolve) => setTimeout(resolve, putDelayMs));
+        if (transientPutFailures > 0) {
+          transientPutFailures--;
+          throw new Error("put: We encountered an internal error. Please try again. (10001)");
+        }
+        if (body && typeof (body as { getReader?: unknown }).getReader === "function" && !(body as Record<symbol, unknown>)[FIXED_LENGTH_BODY]) {
+          throw new Error("put: stream length is unknown");
+        }
+        const buf = await readBody(body);
+        store.set(key, { key, body: buf, contentType: opts?.httpMetadata?.contentType || "application/octet-stream" });
+      } finally {
+        activePuts--;
+      }
     },
     async get(key: string) {
       const item = store.get(key);
       if (!item) return null;
-      return { key, body: item.body, httpMetadata: { contentType: item.contentType }, customMetadata: {} };
+      return {
+        key,
+        size: item.body.byteLength,
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(item.body);
+            controller.close();
+          },
+        }),
+        httpMetadata: { contentType: item.contentType },
+        customMetadata: {},
+      };
     },
     async delete(keys: string | string[]) {
       for (const k of Array.isArray(keys) ? keys : [keys]) store.delete(k);
@@ -223,15 +311,18 @@ async function main() {
       [],
     );
     const app = makeApp(bucket, db);
+    bucket.failNextPuts(2);
     const r = await app.post("/storage/files/moveFolder", { path: "music/a", dest: "music/b/a" });
     assert(r.status === 200, `200 (got ${r.status})`);
     const j = await r.json<{ ok: boolean; moved: number }>();
     assert(j.ok && j.moved === 3, `moved=3 (got ${j.moved})`);
+    assert(bucket.putAttempts === 5, `two transient failures retried (put attempts=${bucket.putAttempts})`);
     assert(bucket.store.has("music/b/a/.keep"), ".keep marker travelled along");
     assert(bucket.store.has("music/b/a/t1.mp3") && bucket.store.has("music/b/a/sub/t2.flac"), "nested objects re-homed");
     assert(!Array.from(bucket.store.keys()).some((k) => k.startsWith("music/a/")), "source prefix emptied");
     assert(bucket.store.has("music/aa/other.mp3"), "sibling prefix 'music/aa' untouched (no prefix over-match)");
     assert(bucket.store.get("music/b/a/t1.mp3")?.contentType === "audio/mpeg", "httpMetadata preserved");
+    assert(Array.from(bucket.store.get("music/b/a/t1.mp3")?.body || []).join(",") === "1", "object bytes preserved through stream copy");
     assert(db.instances.find((i) => i.id === "i1")?.storage_uri === "r2://music/b/a/t1.mp3", "i1 storage_uri rewritten");
     assert(db.instances.find((i) => i.id === "i2")?.storage_uri === "r2://music/b/a/sub/t2.flac", "i2 storage_uri rewritten");
     assert(db.instances.find((i) => i.id === "i3")?.storage_uri === "r2://music/aa/other.mp3", "i3 (sibling) untouched");
@@ -242,11 +333,13 @@ async function main() {
   {
     const bucket = makeR2Bucket(2);
     for (let i = 0; i < 5; i++) await bucket.put(`music/big/f${i}.mp3`, new Uint8Array([i]), { httpMetadata: { contentType: "audio/mpeg" } });
+    bucket.delayPuts(10);
     const db = makeD1([], []);
     const app = makeApp(bucket, db);
     const r = await app.post("/storage/files/moveFolder", { path: "music/big", dest: "music/moved" });
     const j = await r.json<{ ok: boolean; moved: number }>();
     assert(j.ok && j.moved === 5, `moved=5 across pages (got ${j.moved})`);
+    assert(bucket.maxConcurrentPuts > 1 && bucket.maxConcurrentPuts <= 4, `page copies are bounded and concurrent (max=${bucket.maxConcurrentPuts})`);
     assert(!Array.from(bucket.store.keys()).some((k) => k.startsWith("music/big/")), "source emptied across pages");
     assert(Array.from(bucket.store.keys()).filter((k) => k.startsWith("music/moved/")).length === 5, "all 5 objects at dest");
   }
@@ -284,6 +377,27 @@ async function main() {
     const j = await r.json<{ ok: boolean }>();
     assert(j.ok, "ok=true");
     assert(bucket.store.has("music/t.mp3"), "object still exists after self-move");
+  }
+
+  // ── files/move + files/copy: fixed-length stream path ────────────────────
+  console.log("\nfiles/move + files/copy → preserve bytes with R2 response streams:");
+  {
+    const bucket = makeR2Bucket();
+    await bucket.put("music/from.mp3", new Uint8Array([4, 5]), { httpMetadata: { contentType: "audio/mpeg" } });
+    const db = makeD1([{ id: "i1", master_id: "m1", storage_uri: "r2://music/from.mp3" }], []);
+    const app = makeApp(bucket, db);
+    const moved = await app.post("/storage/files/move", { key: "music/from.mp3", dest: "music/moved.mp3" });
+    const movedJson = await moved.json<{ ok: boolean }>();
+    assert(movedJson.ok, "single-file move succeeds");
+    assert(!bucket.store.has("music/from.mp3") && bucket.store.has("music/moved.mp3"), "single-file move re-homes object");
+    assert(Array.from(bucket.store.get("music/moved.mp3")?.body || []).join(",") === "4,5", "single-file move preserves bytes");
+    assert(db.instances[0]?.storage_uri === "r2://music/moved.mp3", "single-file move rewrites storage_uri");
+
+    const copied = await app.post("/storage/files/copy", { key: "music/moved.mp3", dest: "music/copied.mp3" });
+    const copiedJson = await copied.json<{ ok: boolean }>();
+    assert(copiedJson.ok, "single-file copy succeeds");
+    assert(bucket.store.has("music/moved.mp3") && bucket.store.has("music/copied.mp3"), "single-file copy keeps source");
+    assert(Array.from(bucket.store.get("music/copied.mp3")?.body || []).join(",") === "4,5", "single-file copy preserves bytes");
   }
 
   // ── deleteFolder: recursive delete + D1 cascade ───────────────────────────

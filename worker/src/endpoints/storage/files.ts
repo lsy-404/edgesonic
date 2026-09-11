@@ -529,6 +529,63 @@ function normalizeFolderPath(p: string | undefined): string | null {
   return path;
 }
 
+const R2_COPY_RETRY_DELAYS_MS = [100, 250];
+const R2_COPY_CONCURRENCY = 4;
+
+function isRetryableR2CopyError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /\b10001\b/.test(message) || (/internal error/i.test(message) && /try again/i.test(message));
+}
+
+function waitForR2CopyRetry(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+// R2 does not expose a native rename in the Worker binding. A GET body is an
+// unknown-length stream, so wrap it before PUT or R2 may reject the copy.
+async function copyR2Object(bucket: R2Bucket, sourceKey: string, destKey: string): Promise<boolean> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= R2_COPY_RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      const obj = await bucket.get(sourceKey);
+      if (!obj || !("body" in obj) || !obj.body) return false;
+      await bucket.put(destKey, obj.body.pipeThrough(new FixedLengthStream(obj.size)), {
+        httpMetadata: obj.httpMetadata,
+        customMetadata: obj.customMetadata,
+      });
+      return true;
+    } catch (error) {
+      lastError = error;
+      const delayMs = R2_COPY_RETRY_DELAYS_MS[attempt];
+      if (!isRetryableR2CopyError(error) || delayMs === undefined) throw error;
+      await waitForR2CopyRetry(delayMs);
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
+async function copyR2Page(
+  bucket: R2Bucket,
+  objects: R2Object[],
+  sourcePrefix: string,
+  destPrefix: string,
+): Promise<Array<{ sourceKey: string; destKey: string }>> {
+  const copied: Array<{ sourceKey: string; destKey: string }> = [];
+  let nextIndex = 0;
+  async function worker() {
+    for (;;) {
+      const index = nextIndex++;
+      if (index >= objects.length) return;
+      const sourceKey = objects[index].key;
+      const destKey = destPrefix + sourceKey.substring(sourcePrefix.length);
+      if (await copyR2Object(bucket, sourceKey, destKey)) copied.push({ sourceKey, destKey });
+    }
+  }
+  const workerCount = Math.min(R2_COPY_CONCURRENCY, objects.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return copied;
+}
+
 // POST /rest/files/delete body: { key: "music/file.mp3" }
 filesRoutes.post("/files/delete", permissionMiddleware("delete"), async (c) => {
   const user = c.get("user");
@@ -621,19 +678,12 @@ filesRoutes.post("/files/moveFolder", permissionMiddleware("upload"), async (c) 
   let cursor: string | undefined;
   do {
     const listing = await env.MUSIC_BUCKET.list({ prefix, cursor, limit: 1000 });
-    const movedKeys: string[] = [];
-    const uriUpdates: D1PreparedStatement[] = [];
-    for (const meta of listing.objects) {
-      const obj = await env.MUSIC_BUCKET.get(meta.key);
-      if (!obj) continue; // raced away mid-listing — nothing left to move
-      const destKey = destPrefix + meta.key.substring(prefix.length);
-      await env.MUSIC_BUCKET.put(destKey, obj.body, { httpMetadata: obj.httpMetadata, customMetadata: obj.customMetadata });
-      movedKeys.push(meta.key);
-      uriUpdates.push(
-        db.prepare("UPDATE song_instances SET storage_uri = ?, updated_at = ? WHERE storage_uri = ?")
-          .bind(`r2://${destKey}`, now, `r2://${meta.key}`),
-      );
-    }
+    const copied = await copyR2Page(env.MUSIC_BUCKET, listing.objects, prefix, destPrefix);
+    const movedKeys = copied.map(({ sourceKey }) => sourceKey);
+    const uriUpdates = copied.map(({ sourceKey, destKey }) =>
+      db.prepare("UPDATE song_instances SET storage_uri = ?, updated_at = ? WHERE storage_uri = ?")
+        .bind(`r2://${destKey}`, now, `r2://${sourceKey}`),
+    );
     if (movedKeys.length) {
       await env.MUSIC_BUCKET.delete(movedKeys);
       await db.batch(uriUpdates);
@@ -657,10 +707,9 @@ filesRoutes.post("/files/move", permissionMiddleware("upload"), async (c) => {
   // the move dialog defaults its folder picker to the current directory).
   if (dest === key) return c.json({ ok: true });
 
-  const obj = await env.MUSIC_BUCKET.get(key);
-  if (!obj) return c.json({ ok: false, error: "Source not found" }, 404);
-
-  await env.MUSIC_BUCKET.put(dest, obj.body, { httpMetadata: obj.httpMetadata, customMetadata: obj.customMetadata });
+  if (!await copyR2Object(env.MUSIC_BUCKET, key, dest)) {
+    return c.json({ ok: false, error: "Source not found" }, 404);
+  }
   await env.MUSIC_BUCKET.delete(key);
 
   await env.DB.prepare("UPDATE song_instances SET storage_uri = ?, updated_at = ? WHERE storage_uri = ?")
@@ -676,10 +725,9 @@ filesRoutes.post("/files/copy", permissionMiddleware("upload"), async (c) => {
   const { key, dest } = body;
   if (!key || !dest) return c.json({ ok: false, error: "Missing key or dest" }, 400);
 
-  const obj = await env.MUSIC_BUCKET.get(key);
-  if (!obj) return c.json({ ok: false, error: "Source not found" }, 404);
-
-  await env.MUSIC_BUCKET.put(dest, obj.body, { httpMetadata: obj.httpMetadata, customMetadata: obj.customMetadata });
+  if (!await copyR2Object(env.MUSIC_BUCKET, key, dest)) {
+    return c.json({ ok: false, error: "Source not found" }, 404);
+  }
   return c.json({ ok: true });
 });
 
