@@ -13,6 +13,7 @@ import ScrapeButton from "../components/ScrapeButton.vue";
 import SongRowMenu from "../components/SongRowMenu.vue";
 import ListOptionsMenu from "../components/ListOptionsMenu.vue";
 import StarButton from "../components/StarButton.vue";
+import ShareDialog from "../components/ShareDialog.vue";
 import BudgetedImage from "../components/BudgetedImage.vue";
 import { showInfo } from "../stores/toast";
 import { isInstrumentalTitle } from "../lib/instrumental";
@@ -22,7 +23,7 @@ import { FluentSelect } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 
-const { authFetch, writeTags, batchWriteTags, rescanSongs, coverArtUrl, downloadUrl, isAdmin } = useAuth();
+const { authFetch, writeTags, batchWriteTags, rescanSongs, coverArtUrl, downloadUrl, isAdmin, hasPerm } = useAuth();
 const player = usePlayerStore();
 const detail = useDetailStore();
 const BATCH_MAX = 50;
@@ -33,6 +34,8 @@ const props = withDefaults(defineProps<{
   detailTarget?: { kind: "album" | "artist"; id: string };
 }>(), { starredOnly: false, embedded: false, detailTarget: undefined });
 const starredOnly = props.starredOnly;
+const canManageFiles = computed(() => hasPerm("manage_files"));
+const canShare = computed(() => hasPerm("share"));
 
 interface Artist { id: string; name: string; albumCount: string; starred: boolean; starredAt?: string; createdAt?: string; }
 interface Album {
@@ -758,6 +761,28 @@ async function openArtistById(artistId: string, artistName: string) {
   await openArtist(artist);
 }
 
+async function openSongInFiles(song: Track) {
+  if (!canManageFiles.value) return;
+  try {
+    const xml = await authFetch("getSong", { id: song.id, includeSources: "true" });
+    const attrs = parseXmlAttrs(xml, "song")[0];
+    const filePath = attrs?.path?.replace(/^\/+|\/+$/g, "") || "";
+    if (!filePath) {
+      showInfo(t("library.fileLocationUnavailable"));
+      return;
+    }
+    const fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+    const folder = filePath.substring(0, filePath.lastIndexOf("/"));
+    const sourceAttr = parseXmlAttrs(xml, "source")[0];
+    const source = sourceAttr?.sourceId && sourceAttr.sourceId !== "r2-local"
+      ? sourceAttr.sourceId
+      : "r2";
+    await router.push({ path: "/files", query: { source, path: folder, file: fileName } });
+  } catch {
+    showInfo(t("library.fileLocationUnavailable"));
+  }
+}
+
 function parseArtists(artistStr: string): string[] {
   return artistStr.split(/,|;/).map(a => a.trim()).filter(a => a.length > 0);
 }
@@ -1075,54 +1100,47 @@ onUnmounted(() => {
 });
 
 const shareOpen = ref(false);
-const shareTarget = ref<{ kind: "song" | "album"; id: string; label: string } | null>(null);
-const shareBatchIds = ref<string[] | null>(null);
-const shareDescription = ref("");
-const shareExpiresType = ref<"never" | "days" | "datetime">("never");
-const shareExpiresDays = ref(7);
-const shareExpiresAt = ref("");
-const shareBusy = ref(false);
-const shareError = ref("");
-const shareCreatedUrl = ref("");
+const shareSongIds = ref<string[]>([]);
+const shareLabel = ref("");
+const sharePreparing = ref(false);
+const clearSelectionAfterShare = ref(false);
 
-function openShare(kind: "song" | "album", id: string, label: string) {
-  shareTarget.value = { kind, id, label };
-  shareBatchIds.value = null;
-  shareDescription.value = "";
-  shareExpiresType.value = "never";
-  shareExpiresDays.value = 7;
-  shareExpiresAt.value = "";
-  shareError.value = "";
-  shareCreatedUrl.value = "";
+function openShareWithIds(ids: string[], label: string, options?: { clearSelection?: boolean }) {
+  const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+  if (!uniqueIds.length) {
+    showInfo(t("library.shareCreateFailed"));
+    return;
+  }
+  clearSelectionAfterShare.value = options?.clearSelection === true;
+  shareSongIds.value = uniqueIds;
+  shareLabel.value = label;
   shareOpen.value = true;
 }
+
+async function openShare(kind: "song" | "album", id: string, label: string) {
+  if (sharePreparing.value) return;
+  sharePreparing.value = true;
+  try {
+    const ids = kind === "album" ? await resolveAlbumSongIds(id) : [id];
+    openShareWithIds(ids, label);
+  } catch {
+    showInfo(t("library.shareCreateFailed"));
+  } finally {
+    sharePreparing.value = false;
+  }
+}
+
 function openBatchShare() {
-  if (!selectedIds.value.length) return;
-  shareTarget.value = { kind: "song", id: selectedIds.value[0], label: t("library.selected", { n: selectedIds.value.length }) };
-  shareBatchIds.value = [...selectedIds.value];
-  shareDescription.value = "";
-  shareExpiresType.value = "never";
-  shareExpiresDays.value = 7;
-  shareExpiresAt.value = "";
-  shareError.value = "";
-  shareCreatedUrl.value = "";
-  shareOpen.value = true;
+  openShareWithIds(selectedIds.value, t("library.selected", { n: selectedIds.value.length }), { clearSelection: true });
 }
 function closeShare() {
   shareOpen.value = false;
-  shareTarget.value = null;
-  shareBatchIds.value = null;
-  shareCreatedUrl.value = "";
+  shareSongIds.value = [];
+  shareLabel.value = "";
+  clearSelectionAfterShare.value = false;
 }
-function shareFailed(xml: string): boolean { return /status="failed"/.test(xml); }
-function shareExtractError(xml: string): string | null {
-  const m = /<error[^>]+message="([^"]+)"/.exec(xml);
-  return m ? m[1] : null;
-}
-function shareExtractUrl(xml: string): string {
-  // <share id="..." url="https://host/share/xx" .../>
-  const m = /<share\s+[^>]*\burl="([^"]+)"/.exec(xml);
-  return m ? m[1].replace(/&amp;/g, "&") : "";
+function onShareCreated() {
+  if (clearSelectionAfterShare.value) clearSelection();
 }
 // Album ids can collide with song ids (albums cloned from an upstream Subsonic
 // server carry bare numeric ids that overlap the song_master id space), so the
@@ -1133,53 +1151,6 @@ async function resolveAlbumSongIds(albumId: string): Promise<string[]> {
   return parseXmlAttrs(xml, "song").map((s) => s.id || "").filter(Boolean);
 }
 
-async function submitShare() {
-  if (!shareTarget.value) return;
-  shareBusy.value = true;
-  shareError.value = "";
-  shareCreatedUrl.value = "";
-  try {
-    let ids: string | string[];
-    if (shareBatchIds.value) {
-      ids = shareBatchIds.value;
-    } else if (shareTarget.value.kind === "album") {
-      ids = await resolveAlbumSongIds(shareTarget.value.id);
-      if (!ids.length) {
-        shareError.value = t("library.shareCreateFailed");
-        shareBusy.value = false;
-        return;
-      }
-    } else {
-      ids = shareTarget.value.id;
-    }
-    const params: Record<string, string | string[]> = { id: ids };
-    const desc = shareDescription.value.trim();
-    if (desc) params.description = desc;
-    if (shareExpiresType.value === "days") {
-      const d = Number(shareExpiresDays.value);
-      if (Number.isFinite(d) && d > 0) {
-        params.expires = String(Date.now() + Math.floor(d * 86400000));
-      }
-    } else if (shareExpiresType.value === "datetime" && shareExpiresAt.value) {
-      const ts = Date.parse(shareExpiresAt.value);
-      if (Number.isFinite(ts) && ts > Date.now()) params.expires = String(ts);
-    }
-    const xml = await authFetch("createShare", params);
-    if (shareFailed(xml)) {
-      shareError.value = shareExtractError(xml) || t("library.shareCreateFailed");
-    } else {
-      shareCreatedUrl.value = shareExtractUrl(xml);
-      if (shareBatchIds.value) clearSelection();
-    }
-  } catch {
-    shareError.value = t("library.shareCreateFailed");
-  }
-  shareBusy.value = false;
-}
-async function copyShareUrl() {
-  if (!shareCreatedUrl.value) return;
-  try { await navigator.clipboard.writeText(shareCreatedUrl.value); } catch { /* silent */ }
-}
 
 interface AddPlaylistRow {
   id: string;
@@ -1339,6 +1310,13 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           @close="optionsOpen = false"
         />
       </div>
+      <div v-else-if="starredOnly && canShare" class="detail-actions">
+        <button
+          class="btn-secondary"
+          :disabled="!starredLists.songs.length"
+          @click="openShareWithIds(starredLists.songs.map((song) => song.id), t('library.starredTitle'))"
+        ><Icon name="up" /> {{ t("library.share") }}</button>
+      </div>
     </div>
 
     <!-- Library-wide search — always visible, independent of tabs/drilldown. -->
@@ -1435,11 +1413,13 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
             :title="s.title"
             :starred="!!s.starred"
             :is-admin="isAdmin"
+            :can-manage-files="canManageFiles"
           :open="openMenuId === s.id"
           @toggle="toggleRowMenu(s.id)"
           @close="closeRowMenu"
            @edit="openEditor(s)"
            @share="openShare('song', s.id, s.title)"
+           @view-file="openSongInFiles(s)"
            @add-playlist="openAddToPlaylist(s.id, s.title)"
            @play-next="queueNext(s)"
            @update:starred="onStarChanged('song', s, $event)"
@@ -1593,11 +1573,13 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
            :title="s.title"
            :starred="!!s.starred"
            :is-admin="isAdmin"
+           :can-manage-files="canManageFiles"
             :open="openMenuId === s.id"
             @toggle="toggleRowMenu(s.id)"
             @close="closeRowMenu"
             @edit="openEditor(s)"
            @share="openShare('song', s.id, s.title)"
+           @view-file="openSongInFiles(s)"
            @add-playlist="openAddToPlaylist(s.id, s.title)"
            @play-next="queueNext(s)"
            @update:starred="onStarChanged('song', s, $event)"
@@ -1753,11 +1735,13 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
             :title="s.title"
              :starred="!!s.starred"
             :is-admin="isAdmin"
+            :can-manage-files="canManageFiles"
             :open="openMenuId === s.id"
             @toggle="toggleRowMenu(s.id)"
             @close="closeRowMenu"
             @edit="openEditor(s)"
             @share="openShare('song', s.id, s.title)"
+            @view-file="openSongInFiles(s)"
             @add-playlist="openAddToPlaylist(s.id, s.title)"
            @play-next="queueNext(s)"
             @update:starred="onStarChanged('song', s, $event)"
@@ -1793,7 +1777,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               v-for="a in searchResults.artists"
               :key="a.id"
               class="card hoverable artist-card"
-              @click="openArtist(a); clearSearch()"
+              @click="openArtist(a)"
             >
               <div class="artist-glyph">{{ a.name.charAt(0).toUpperCase() || "?" }}</div>
               <div class="artist-name">{{ a.name }}</div>
@@ -1819,7 +1803,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               v-for="al in searchResults.albums"
               :key="al.id"
               class="card hoverable album-card"
-              @click="openAlbum(al); clearSearch()"
+              @click="openAlbum(al)"
             >
               <div class="album-cover">
                 <BudgetedImage v-if="al.coverArt" :src="coverArtUrl(al.coverArt, 256)" :alt="al.name" @error="al.coverArt = ''" />
@@ -1880,11 +1864,13 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
                 :title="s.title"
                 :starred="!!s.starred"
                 :is-admin="isAdmin"
+                :can-manage-files="canManageFiles"
                 :open="openMenuId === s.id"
                 @toggle="toggleRowMenu(s.id)"
                 @close="closeRowMenu"
                 @edit="openEditor(s)"
             @share="openShare('song', s.id, s.title)"
+            @view-file="openSongInFiles(s)"
             @add-playlist="openAddToPlaylist(s.id, s.title)"
            @play-next="queueNext(s)"
              @update:starred="onStarChanged('song', s, $event)"
@@ -1925,50 +1911,16 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
     </TagEditor>
     </Teleport>
 
-    <!-- Share modal. Lightweight standalone (no extra component) — opens
-         on row/card share button click; on success, shows the public URL with
-         a copy button. -->
-    <Teleport to="body">
-    <div v-if="shareOpen" class="modal-backdrop" @click.self="closeShare">
-      <div class="modal share-modal">
-        <div class="modal-title">{{ t("library.share") }} — {{ shareTarget?.label }}</div>
-        <div v-if="!shareCreatedUrl" style="display:flex; flex-direction:column; gap:0.7rem">
-          <div class="form-group">
-            <label class="form-label">{{ t("shares.description") }} <span class="optional">({{ t("shares.optional") }})</span></label>
-            <input v-model="shareDescription" class="form-input" :placeholder="t('shares.descriptionPlaceholder')" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">{{ t("shares.expires") }}</label>
-            <div class="seg-row">
-              <button type="button" :class="['seg-btn', { active: shareExpiresType === 'never' }]" @click="shareExpiresType = 'never'">{{ t("shares.expiresNever") }}</button>
-              <button type="button" :class="['seg-btn', { active: shareExpiresType === 'days' }]" @click="shareExpiresType = 'days'">{{ t("shares.expiresIn") }}</button>
-              <button type="button" :class="['seg-btn', { active: shareExpiresType === 'datetime' }]" @click="shareExpiresType = 'datetime'">{{ t("shares.expiresAt") }}</button>
-            </div>
-            <div v-if="shareExpiresType === 'days'" style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem">
-              <input v-model.number="shareExpiresDays" type="number" min="1" max="3650" class="form-input" style="max-width:100px" />
-              <span class="mono-label">{{ t("shares.days") }}</span>
-            </div>
-            <input v-if="shareExpiresType === 'datetime'" v-model="shareExpiresAt" type="datetime-local" class="form-input" style="margin-top:0.5rem" />
-          </div>
-          <div v-if="shareError" class="status-badge error">{{ shareError }}</div>
-        </div>
-        <div v-else class="share-created">
-          <div class="mono-label">{{ t("shares.publicUrl") }}:</div>
-          <div class="share-url-box">{{ shareCreatedUrl }}</div>
-          <button class="btn-secondary btn-sm" @click="copyShareUrl">{{ t("shares.copyUrl") }}</button>
-        </div>
-        <div class="modal-actions">
-          <button class="btn-secondary" @click="closeShare">{{ shareCreatedUrl ? t("common.close") : t("shares.cancel") }}</button>
-          <button v-if="!shareCreatedUrl" class="btn-primary" :disabled="shareBusy" @click="submitShare">
-            {{ shareBusy ? t("common.loading") : t("shares.save") }}
-          </button>
-        </div>
-        <div class="corner corner-tl"></div>
-        <div class="corner corner-br"></div>
-      </div>
-    </div>
+    <ShareDialog
+      :open="shareOpen"
+      :song-ids="shareSongIds"
+      :label="shareLabel"
+      @close="closeShare"
+      @created="onShareCreated"
+    />
 
-    <!-- Add-to-playlist modal. Singleton at root, mirrors the share-modal
+    <Teleport to="body">
+    <!-- Add-to-playlist modal. Singleton at root, mirrors the shared modal
          pattern — opens on the per-song [＋] button. Lists existing playlists
          and exposes a "create new" sentinel that round-trips through
          createPlaylist with the seed song. -->
@@ -2326,36 +2278,6 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
   transition: background 0.15s;
 }
 .album-share-btn:hover { background: var(--color-bg-tertiary); }
-
-/* Share modal (singleton at root) */
-.share-modal { max-width: 480px; }
-.seg-row { display: inline-flex; border: 1px solid var(--color-border-subtle); }
-.seg-row .seg-btn {
-  background: none; border: none; padding: 0.35rem 0.85rem; cursor: pointer;
-  font-family: var(--font-mono); font-size: var(--fs-xs);
-  letter-spacing: 0.05em; text-transform: uppercase;
-  color: var(--color-text-secondary);
-  border-right: 1px solid var(--color-border-subtle);
-}
-.seg-row .seg-btn:last-child { border-right: none; }
-.seg-row .seg-btn:hover { color: var(--color-text-primary); }
-.seg-row .seg-btn.active { background: var(--color-accent-dim); color: var(--color-accent-primary); }
-.share-created { display: flex; flex-direction: column; gap: 0.45rem; }
-.share-url-box {
-  padding: 0.5rem 0.65rem;
-  background: var(--color-bg-tertiary);
-  border-left: 2px solid var(--color-accent-primary);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--color-accent-primary);
-  word-break: break-all;
-}
-.optional {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  color: var(--color-text-muted);
-  letter-spacing: 0.05em;
-}
 
 .add-playlist-modal { max-width: 480px; }
 .add-playlist-list {

@@ -7,9 +7,10 @@ import { useAuth, parseXmlAttrs, formatDuration } from "../api";
 import { usePlayerStore, type Track } from "../stores/player";
 import { useDetailStore } from "../stores/detail";
 import Icon from "../components/Icon.vue";
+import ShareDialog from "../components/ShareDialog.vue";
 
 const { t } = useI18n();
-const { authFetch, coverArtUrl, username } = useAuth();
+const { authFetch, coverArtUrl, username, hasPerm } = useAuth();
 const player = usePlayerStore();
 const detail = useDetailStore();
 
@@ -37,6 +38,29 @@ const entries = ref<PlaylistEntry[]>([]);
 const detailLoading = ref(false);
 let playlistRequest = 0;
 let playlistFocus: HTMLElement | null = null;
+const canShare = computed(() => hasPerm("share"));
+
+const shareOpen = ref(false);
+const shareSongIds = ref<string[]>([]);
+const shareLabel = ref("");
+
+function openPlaylistShare() {
+  if (!currentPlaylist.value) return;
+  const ids = Array.from(new Set(entries.value.map((entry) => entry.id).filter(Boolean)));
+  if (!ids.length) {
+    showToast(t("shares.addFailed"), "error");
+    return;
+  }
+  shareSongIds.value = ids;
+  shareLabel.value = currentPlaylist.value.name;
+  shareOpen.value = true;
+}
+
+function closeShare() {
+  shareOpen.value = false;
+  shareSongIds.value = [];
+  shareLabel.value = "";
+}
 
 const showCreate = ref(false);
 const createForm = ref({ name: "", comment: "", public: false });
@@ -467,6 +491,10 @@ onBeforeUnmount(() => {
             <Icon name="play" />
             {{ t("playlists.playAll") }}
           </button>
+          <button v-if="canShare && entries.length" class="btn-secondary" style="margin-top: 0.75rem; margin-left: 0.5rem" @click="openPlaylistShare">
+            <Icon name="up" />
+            {{ t("playlists.share") }}
+          </button>
         </div>
       </div>
 
@@ -615,6 +643,13 @@ onBeforeUnmount(() => {
     </dialog>
 
     </Teleport>
+
+    <ShareDialog
+      :open="shareOpen"
+      :song-ids="shareSongIds"
+      :label="shareLabel"
+      @close="closeShare"
+    />
 
     <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">{{ toast.msg }}</div>
   </div>

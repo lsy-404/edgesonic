@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue";
 import type { CSSProperties } from "vue";
+import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatSize } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
@@ -16,21 +17,31 @@ import type { ScrapeResult } from "../lib/scrape";
 import { extractMetadata } from "../lib/metadata";
 import { isScrollInsideElement, placeFloatingPoint } from "../lib/floatingPlacement";
 import Icon from "../components/Icon.vue";
+import ShareDialog from "../components/ShareDialog.vue";
 import { usePlayerStore, type Track } from "../stores/player";
 import { FluentSelect } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, checkUploadConflicts, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitMetadata } = useAuth();
 const player = usePlayerStore();
+const route = useRoute();
 
 interface StorageSource { id: string; type: string; name: string; baseUrl: string; }
 interface DirEntry { name: string; modifiedAt: number | null; }
 interface FileEntry { name: string; size: number; contentType: string | null; uri: string; modifiedAt: number | null; }
 
 const sources = ref<StorageSource[]>([]);
-const currentSource = ref("r2");
+const requestedSource = typeof route.query.source === "string" ? route.query.source : "r2";
+const currentSource = ref(requestedSource || "r2");
 
-const path = ref("music");
+function routePath(value: unknown, source: string): string {
+  if (typeof value !== "string" || !value.trim()) return source === "r2" ? "music" : "";
+  const segments = value.split("/").filter((segment) => segment && segment !== "." && segment !== "..");
+  return segments.join("/");
+}
+
+const path = ref(routePath(route.query.path, currentSource.value));
+const locateFileName = ref(typeof route.query.file === "string" ? route.query.file : "");
 const dirs = ref<DirEntry[]>([]);
 const files = ref<FileEntry[]>([]);
 const loading = ref(false);
@@ -147,6 +158,8 @@ const PRE_TRANSCODE_PROFILES: { id: string; label: string }[] = [
 
 const canUpload = computed(() => hasPerm("upload"));
 const canScan = computed(() => hasPerm("manage_files"));
+const canManageFiles = computed(() => hasPerm("manage_files"));
+const canShare = computed(() => hasPerm("share"));
 const isR2 = computed(() => currentSource.value === "r2");
 const crumbs = computed(() => (path.value ? path.value.split("/") : []));
 const uploadTarget = computed(() => (currentSource.value === "r2" ? "r2" : "webdav"));
@@ -219,6 +232,7 @@ async function loadDir() {
     dirs.value = (data.dirs || []).slice();
     files.value = (data.files || []).slice();
     applyFileSort();
+    void revealRequestedFile();
   } catch {
     dirs.value = [];
     files.value = [];
@@ -981,6 +995,7 @@ const editExistingCoverUrl = computed(() => editCoverArt.value ? coverArtUrl(edi
 const canEditTags = computed(() => hasPerm("edit_tags"));
 const isAudio = (name: string) => /\.(mp3|flac|wav|ogg|opus|m4a|aac|mp4|m4b|aiff|aif|wma|alac|webm)$/i.test(name);
 const isPlayableAudio = (file: FileEntry) => isAudio(file.name) || file.contentType?.startsWith("audio/") === true;
+const shareableFiles = computed(() => files.value.filter((file) => isPlayableAudio(file)));
 
 function toTrack(song: Record<string, string>): Track {
   return {
@@ -1028,6 +1043,73 @@ async function resolveFileTrack(f: FileEntry): Promise<Partial<Track> | null> {
     coverArt: data.song.coverArt || undefined,
     duration: data.song.duration || 0,
   };
+}
+
+const shareOpen = ref(false);
+const shareSongIds = ref<string[]>([]);
+const shareLabel = ref("");
+const sharePreparing = ref(false);
+
+async function openFileShare(targets: FileEntry[], label: string) {
+  if (sharePreparing.value) return;
+  const audioTargets = targets.filter((file) => isPlayableAudio(file));
+  if (!audioTargets.length) {
+    showToast(t("files.shareNoSongs"), "error");
+    return;
+  }
+  sharePreparing.value = true;
+  const ids: string[] = [];
+  for (const file of audioTargets) {
+    try {
+      const details = await resolveFileTrack(file);
+      if (details?.libraryId) ids.push(details.libraryId);
+    } catch {
+      // A file can remain playable before the metadata worker has indexed it.
+    }
+  }
+  sharePreparing.value = false;
+  const uniqueIds = Array.from(new Set(ids));
+  if (!uniqueIds.length) {
+    showToast(t("files.shareNoSongs"), "error");
+    return;
+  }
+  if (uniqueIds.length < audioTargets.length) {
+    showToast(t("files.sharePartial", { n: audioTargets.length - uniqueIds.length }), "info");
+  }
+  shareSongIds.value = uniqueIds;
+  shareLabel.value = label;
+  shareOpen.value = true;
+}
+
+function openFolderShare() {
+  void openFileShare(shareableFiles.value, path.value || t("files.root"));
+}
+
+function openSelectedShare() {
+  if (hasDirSelection.value) return;
+  void openFileShare(selectedFileEntries.value, t("files.shareSelected"));
+}
+
+function closeShare() {
+  shareOpen.value = false;
+  shareSongIds.value = [];
+  shareLabel.value = "";
+}
+
+async function revealRequestedFile() {
+  if (!locateFileName.value) return;
+  await nextTick();
+  const row = Array.from(document.querySelectorAll<HTMLElement>(".file-row[data-file-name]"))
+    .find((item) => item.dataset.fileName === locateFileName.value);
+  if (!row) {
+    locateFileName.value = "";
+    showToast(t("files.fileNotFound"), "error");
+    return;
+  }
+  row.scrollIntoView({ behavior: "smooth", block: "center" });
+  row.classList.add("file-row-located");
+  locateFileName.value = "";
+  setTimeout(() => row.classList.remove("file-row-located"), 1800);
 }
 
 async function lookupSongByFile(f: FileEntry): Promise<Record<string, string> | null> {
@@ -1447,6 +1529,9 @@ onBeforeUnmount(() => {
         <span v-if="pendingCount > 0" class="pending-badge" :title="t('files.pendingBadgeTitle')">
           {{ t("files.pendingBadge", { n: pendingCount }) }}
         </span>
+        <button v-if="canShare" class="btn-secondary" :disabled="sharePreparing || !shareableFiles.length" @click="openFolderShare">
+          <Icon name="up" /> {{ t("files.share") }}
+        </button>
         <button v-if="canScan" class="btn-secondary" :disabled="scanning" @click="runTagScan">{{ t("files.scanTags") }}</button>
         <button v-if="canTidy" class="btn-secondary" :disabled="scanning || tidyBusy" @click="openTidyFolder">{{ t("files.tidy") }}</button>
         <button v-if="canUpload" class="btn-primary" @click="showUpload = !showUpload">{{ t("files.upload") }}</button>
@@ -1602,22 +1687,31 @@ onBeforeUnmount(() => {
            every source, matching their existing per-row buttons — but grey
            out while a folder is selected (they have no folder semantic).
            Move/Delete handle folders recursively via moveFolder/deleteFolder. -->
-      <div v-if="canUpload && selectedTotal > 0" class="batch-actions-bar">
+      <div v-if="(canUpload || canShare) && selectedTotal > 0" class="batch-actions-bar">
         <span class="batch-actions-count">{{ t("files.selectedCount", { n: selectedTotal }) }}</span>
         <button
+          v-if="canUpload"
           class="btn-secondary"
           :disabled="hasDirSelection"
           :title="hasDirSelection ? t('files.filesOnlyAction') : ''"
           @click="openBatchTagEditor"
         >{{ t("files.batchEditTags") }}</button>
-        <button v-if="isR2" class="btn-secondary" @click="openBatchMoveModal">{{ t("files.batchMove") }}</button>
-        <button v-if="isR2" class="btn-danger" @click="openBatchDeleteConfirm">{{ t("files.batchDelete") }}</button>
+        <button v-if="canUpload && isR2" class="btn-secondary" @click="openBatchMoveModal">{{ t("files.batchMove") }}</button>
+        <button v-if="canUpload && isR2" class="btn-danger" @click="openBatchDeleteConfirm">{{ t("files.batchDelete") }}</button>
         <button
+          v-if="canUpload"
           class="btn-secondary"
           :disabled="hasDirSelection"
           :title="hasDirSelection ? t('files.filesOnlyAction') : ''"
           @click="openCrossModalBatch"
         >{{ t("files.crossCopyBtn") }}</button>
+        <button
+          v-if="canShare"
+          class="btn-secondary"
+          :disabled="hasDirSelection || sharePreparing"
+          :title="hasDirSelection ? t('files.filesOnlyAction') : ''"
+          @click="openSelectedShare"
+        >{{ t("files.shareSelected") }}</button>
         <button class="btn-secondary batch-actions-clear" @click="clearSelection()">{{ t("files.clearSelection") }}</button>
       </div>
 
@@ -1626,7 +1720,7 @@ onBeforeUnmount(() => {
         <template v-else>
           <!-- Select-all header: checked when every dir+file is selected,
                indeterminate while only some are. -->
-          <label v-if="canUpload && dirs.length + files.length > 0" class="entry-row select-all-row">
+          <label v-if="canManageFiles && dirs.length + files.length > 0" class="entry-row select-all-row">
             <input
               type="checkbox"
               class="cross-select-box"
@@ -1650,7 +1744,7 @@ onBeforeUnmount(() => {
             @touchcancel="cancelLongPress"
           >
             <input
-              v-if="canUpload"
+              v-if="canManageFiles"
               type="checkbox"
               class="cross-select-box"
               :checked="selectedDirs.has(d.name)"
@@ -1685,6 +1779,7 @@ onBeforeUnmount(() => {
             :key="`f-${f.name}`"
             class="entry-row file-row"
             :class="{ 'row-renaming': renamingFile === f.name }"
+            :data-file-name="f.name"
             @contextmenu="onRowContextMenu($event, { kind: 'file', file: f })"
             @touchstart.passive="onRowTouchStart($event, { kind: 'file', file: f })"
             @touchmove.passive="onRowTouchMove"
@@ -1692,7 +1787,7 @@ onBeforeUnmount(() => {
             @touchcancel="cancelLongPress"
           >
             <input
-              v-if="canUpload"
+              v-if="canManageFiles"
               type="checkbox"
               class="cross-select-box"
               :checked="selectedFiles.has(f.uri)"
@@ -1992,19 +2087,27 @@ onBeforeUnmount(() => {
         <template v-if="ctxOnSelection">
           <div class="ctx-header">{{ t("files.selectedCount", { n: selectedTotal }) }}</div>
           <button
+            v-if="canUpload"
             class="ctx-item"
             :disabled="hasDirSelection"
             :title="hasDirSelection ? t('files.filesOnlyAction') : ''"
             @click="ctxRun(openBatchTagEditor)"
           ><Icon name="note" /> {{ t("files.batchEditTags") }}</button>
-          <button v-if="isR2" class="ctx-item" @click="ctxRun(openBatchMoveModal)"><Icon name="right" /> {{ t("files.batchMove") }}</button>
+          <button v-if="canUpload && isR2" class="ctx-item" @click="ctxRun(openBatchMoveModal)"><Icon name="right" /> {{ t("files.batchMove") }}</button>
           <button
+            v-if="canUpload"
             class="ctx-item"
             :disabled="hasDirSelection"
             :title="hasDirSelection ? t('files.filesOnlyAction') : ''"
             @click="ctxRun(openCrossModalBatch)"
           ><Icon name="copy" /> {{ t("files.crossCopySelected", { n: selectedTotal }) }}</button>
-          <button v-if="isR2" class="ctx-item ctx-danger" @click="ctxRun(openBatchDeleteConfirm)"><Icon name="cross" /> {{ t("files.batchDelete") }}</button>
+          <button
+            v-if="canShare"
+            class="ctx-item"
+            :disabled="hasDirSelection || sharePreparing"
+            @click="ctxRun(openSelectedShare)"
+          ><Icon name="up" /> {{ t("files.shareSelected") }}</button>
+          <button v-if="canUpload && isR2" class="ctx-item ctx-danger" @click="ctxRun(openBatchDeleteConfirm)"><Icon name="cross" /> {{ t("files.batchDelete") }}</button>
           <div class="ctx-sep"></div>
           <button class="ctx-item" @click="ctxRun(clearSelection)"><Icon name="empty" /> {{ t("files.clearSelection") }}</button>
         </template>
@@ -2012,6 +2115,7 @@ onBeforeUnmount(() => {
         <template v-else-if="ctxFile">
           <div class="ctx-header">{{ ctxFile.name }}</div>
           <button v-if="isPlayableAudio(ctxFile)" class="ctx-item" @click="ctxRun(() => playFile(ctxFile!))"><Icon name="play" /> {{ t("files.play") }}</button>
+          <button v-if="canShare && isPlayableAudio(ctxFile)" class="ctx-item" @click="ctxRun(() => openFileShare([ctxFile!], ctxFile!.name))"><Icon name="up" /> {{ t("library.share") }}</button>
           <button
             v-if="canEditTags && isAudio(ctxFile.name)"
             class="ctx-item"
@@ -2026,7 +2130,7 @@ onBeforeUnmount(() => {
             <button class="ctx-item ctx-danger" :disabled="opBusy" @click="ctxRun(() => openDeleteConfirm(ctxFile!))"><Icon name="cross" /> {{ t("files.deleteFile") }}</button>
           </template>
           <div class="ctx-sep"></div>
-          <button v-if="canUpload" class="ctx-item" @click="ctxRun(() => toggleCrossSelect(ctxFile!))">
+          <button v-if="canManageFiles" class="ctx-item" @click="ctxRun(() => toggleCrossSelect(ctxFile!))">
             <Icon name="check" /> {{ selectedFiles.has(ctxFile.uri) ? t("files.deselect") : t("files.select") }}
           </button>
           <button class="ctx-item" @click="ctxRun(loadDir)"><Icon name="refresh" /> {{ t("files.refresh") }}</button>
@@ -2044,7 +2148,7 @@ onBeforeUnmount(() => {
             <button class="ctx-item ctx-danger" :disabled="opBusy" @click="ctxRun(() => openDirDeleteConfirm(ctxDir!))"><Icon name="cross" /> {{ t("files.deleteFolder") }}</button>
           </template>
           <div class="ctx-sep"></div>
-          <button v-if="canUpload" class="ctx-item" @click="ctxRun(() => toggleDirSelect(ctxDir!))">
+          <button v-if="canManageFiles" class="ctx-item" @click="ctxRun(() => toggleDirSelect(ctxDir!))">
             <Icon name="check" /> {{ selectedDirs.has(ctxDir.name) ? t("files.deselect") : t("files.select") }}
           </button>
           <button class="ctx-item" @click="ctxRun(loadDir)"><Icon name="refresh" /> {{ t("files.refresh") }}</button>
@@ -2063,6 +2167,13 @@ onBeforeUnmount(() => {
         </template>
       </div>
     </Teleport>
+
+    <ShareDialog
+      :open="shareOpen"
+      :song-ids="shareSongIds"
+      :label="shareLabel"
+      @close="closeShare"
+    />
 
     <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">{{ toast.msg }}</div>
   </div>
@@ -2371,6 +2482,7 @@ onBeforeUnmount(() => {
   color: var(--color-accent-primary);
 }
 .row-renaming { background: var(--color-bg-tertiary); border-left-color: var(--color-accent-primary); }
+.file-row-located { background: var(--color-accent-dim); border-left-color: var(--color-accent-primary); }
 .entry-icon { flex-shrink: 0; }
 .file-icon { color: var(--color-text-muted); }
 .entry-name {

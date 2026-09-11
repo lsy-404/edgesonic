@@ -13,12 +13,14 @@ const props = defineProps<{
   starred: boolean;
   open: boolean;
   isAdmin: boolean;
+  canManageFiles: boolean;
 }>();
 const emit = defineEmits<{
   toggle: [];
   close: [];
   edit: [];
   share: [];
+  "view-file": [];
   addPlaylist: [];
   playNext: [];
   "update:starred": [value: boolean];
@@ -83,12 +85,13 @@ watch(() => props.open, (open) => {
 
 onBeforeUnmount(unbindViewportListeners);
 
-function pick(action: "edit" | "share" | "addPlaylist" | "playNext") {
+function pick(action: "edit" | "share" | "viewFile" | "addPlaylist" | "playNext") {
   // emit()'s per-event overloads don't distribute over a union-typed
   // argument, so dispatch with a literal in each branch instead of
   // `emit(action)` directly.
   if (action === "edit") emit("edit");
   else if (action === "share") emit("share");
+  else if (action === "viewFile") emit("view-file");
   else if (action === "playNext") emit("playNext");
   else emit("addPlaylist");
   emit("close");
@@ -120,6 +123,7 @@ async function toggleStar() {
         <button class="row-menu-item" @click="pick('playNext')"><Icon name="queueNext" /> {{ t("library.playNext") }}</button>
         <button v-if="props.isAdmin" class="row-menu-item" @click="pick('edit')"><Icon name="edit" /> {{ t("library.editSong") }}</button>
         <button class="row-menu-item" @click="pick('share')"><Icon name="up" /> {{ t("library.share") }}</button>
+        <button v-if="props.canManageFiles" class="row-menu-item" @click="pick('viewFile')"><Icon name="folder" /> {{ t("library.viewInFiles") }}</button>
         <button class="row-menu-item" @click="pick('addPlaylist')"><Icon name="check" /> {{ t("library.addToPlaylist") }}</button>
         <a class="row-menu-item" :href="downloadUrl(props.songId)" :download="props.title" @click="emit('close')"><Icon name="download" /> {{ t("library.download") }}</a>
       </div>
