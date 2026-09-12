@@ -167,6 +167,12 @@ async function main() {
   assert.equal(configBody.passwordResetEnabled, false);
   assert.equal(configBody.ssoCallbackUrl, "https://music.example/edgesonic/auth/sso/callback");
 
+  env.SSO_ISSUER = "not-an-issuer";
+  const unavailableStart = await app.fetch(new Request("https://music.example/edgesonic/auth/sso/start"), env);
+  assert.equal(unavailableStart.status, 303);
+  assert.match(unavailableStart.headers.get("Location") || "", /sso_error=unavailable/);
+  assert.match(unavailableStart.headers.get("Location") || "", /no_auto_sso=1/);
+
   env.SSO_CLIENT_SECRET = "";
   assert.equal((await request(app, env, "/edgesonic/protected", "sso-token")).status, 503);
   env.SSO_MODE = "not-a-mode";

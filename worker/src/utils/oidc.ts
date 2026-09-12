@@ -25,7 +25,7 @@ import {
   type UserInfoResponse,
 } from "openid-client";
 import { CompactSign, calculateJwkThumbprint, importJWK } from "jose";
-import { hashWebPassword, SESSION_TTL_SEC } from "../auth";
+import { SESSION_TTL_SEC } from "../auth";
 import type { User } from "../types/entities";
 import { clampTtlToActivation, resolveActivation } from "./activation";
 import { getFeature } from "./features";
@@ -620,21 +620,12 @@ async function findMappedUser(db: D1Database, issuer: string, subject: string): 
   return row ? toUser(row) : null;
 }
 
-function profileName(idToken: IDToken, userInfo: UserInfoResponse): string | null {
-  for (const value of [userInfo.preferred_username, userInfo.name, idToken.preferred_username, idToken.name]) {
-    if (typeof value !== "string") continue;
-    const normalized = value.trim().slice(0, 64);
-    if (normalized) return normalized;
-  }
-  return null;
-}
-
 async function resolveIdentity(
   env: OidcEnv,
   issuer: string,
   subject: string,
-  idToken: IDToken,
-  userInfo: UserInfoResponse,
+  _idToken: IDToken,
+  _userInfo: UserInfoResponse,
 ): Promise<User> {
   await ensureSsoSchema(env);
   const existing = await findMappedUser(env.DB, issuer, subject);
@@ -644,42 +635,7 @@ async function resolveIdentity(
     ).bind(Math.floor(Date.now() / 1000), issuer, subject).run();
     return existing;
   }
-
-  await ensureActivationSchema(env);
-  const now = Math.floor(Date.now() / 1000);
-  const username = `sso_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
-  const password = await hashWebPassword(bytesToBase64Url(crypto.getRandomValues(new Uint8Array(32))));
-  const activationStatus = await getFeature(env, "enable_activation") ? "disabled" : "permanent";
-  const nickname = profileName(idToken, userInfo);
-
-  try {
-    await env.DB.batch([
-      env.DB.prepare(
-        `INSERT INTO users
-          (username, master_password, level, enabled, nickname, activation_status, created_at, updated_at)
-         VALUES (?, ?, 1, 1, ?, ?, ?, ?)`,
-      ).bind(username, password, nickname, activationStatus, now, now),
-      env.DB.prepare(
-        `INSERT INTO oidc_identities (issuer, subject, username, created_at, last_login_at)
-         VALUES (?, ?, ?, ?, ?)`,
-      ).bind(issuer, subject, username, now, now),
-    ]);
-  } catch (error) {
-    const raced = await findMappedUser(env.DB, issuer, subject);
-    if (raced) return raced;
-    throw error;
-  }
-
-  return {
-    username,
-    password,
-    level: 1,
-    enabled: 1,
-    activation_status: activationStatus,
-    activated_until: null,
-    created_at: now,
-    updated_at: now,
-  };
+  throw new OidcFlowError("identity_not_mapped");
 }
 
 function callbackBase(url: URL): string {

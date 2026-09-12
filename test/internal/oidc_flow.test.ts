@@ -114,6 +114,8 @@ function buildDatabase(): DatabaseSync {
     INSERT INTO users
       (username, master_password, level, enabled, email, activation_status, created_at, updated_at)
       VALUES ('existing-admin', 'x', 3, 1, 'same@example.com', 'permanent', unixepoch(), unixepoch());
+    INSERT INTO oidc_identities (issuer, subject, username, created_at, last_login_at)
+      VALUES ('https://identity.example', 'person-123', 'existing-admin', unixepoch(), unixepoch());
   `);
   return sqlite;
 }
@@ -281,7 +283,7 @@ async function main() {
   assert.equal(authorizationUrl.origin, "https://identity.example");
   assert.equal(authorizationUrl.pathname, "/oauth/authorize");
   assert.equal(authorizationUrl.searchParams.get("response_type"), "code");
-  assert.equal(authorizationUrl.searchParams.get("scope"), "openid profile email");
+  assert.equal(authorizationUrl.searchParams.get("scope"), "openid profile email offline_access");
   assert.equal(authorizationUrl.searchParams.get("code_challenge_method"), "S256");
   assert.equal(authorizationUrl.searchParams.get("redirect_uri"), CALLBACK);
   assert.ok(authorizationUrl.searchParams.get("state"));
@@ -299,8 +301,8 @@ async function main() {
     authorizationUrl.searchParams.get("state") as string,
     cookie,
   );
-  assert.equal(result.level, 1, "upstream administrator claims must not elevate the local user");
-  assert.notEqual(result.username, "existing-admin", "matching email must not merge accounts");
+  assert.equal(result.level, 3, "the mapped local user keeps its existing level");
+  assert.equal(result.username, "existing-admin", "OIDC login must use the explicit identity mapping");
   assert.ok(currentProvider.receivedVerifier.length >= 43);
   assert.ok(currentProvider.calls.includes("/oauth/token"));
   assert.ok(currentProvider.calls.includes("/oauth/jwks"));
@@ -310,18 +312,14 @@ async function main() {
     "SELECT username FROM oidc_identities WHERE issuer = ? AND subject = ?",
   ).get(ISSUER, "person-123") as { username: string };
   assert.equal(mapped.username, result.username);
-  const created = sqlite.prepare("SELECT level, email FROM users WHERE username = ?").get(result.username) as {
-    level: number; email: string | null;
-  };
-  assert.equal(created.level, 1);
-  assert.equal(created.email, null, "userinfo email is not copied into the unique local email field");
   assert.equal((sqlite.prepare("SELECT level FROM users WHERE username = 'existing-admin'").get() as { level: number }).level, 3);
+  assert.equal((sqlite.prepare("SELECT COUNT(*) AS count FROM users WHERE username LIKE 'sso_%'").get() as { count: number }).count, 0);
   assert.equal((sqlite.prepare("SELECT auth_source FROM sessions WHERE token = ?").get(result.sessionToken) as { auth_source: string }).auth_source, "sso");
 
   const second = await begin(currentProvider, env);
   const repeated = await complete(currentProvider, env, second.authorizationUrl.searchParams.get("state") as string, second.cookie);
   assert.equal(repeated.username, result.username);
-  assert.equal((sqlite.prepare("SELECT COUNT(*) AS count FROM users").get() as { count: number }).count, 2);
+  assert.equal((sqlite.prepare("SELECT COUNT(*) AS count FROM users").get() as { count: number }).count, 1);
 
   const stateProvider = provider();
   const stateStart = await begin(stateProvider, env);
@@ -373,6 +371,16 @@ async function main() {
     () => complete(signatureProvider, env, signatureStart.authorizationUrl.searchParams.get("state") as string, signatureStart.cookie),
     "an ID Token signed outside the discovered RS256 JWKS must fail",
   );
+
+  sqlite.prepare("DELETE FROM oidc_identities WHERE issuer = ? AND subject = ?").run(ISSUER, "person-123");
+  const unmappedProvider = provider();
+  const unmappedStart = await begin(unmappedProvider, env);
+  await assert.rejects(
+    () => complete(unmappedProvider, env, unmappedStart.authorizationUrl.searchParams.get("state") as string, unmappedStart.cookie),
+    (error: unknown) => error instanceof OidcFlowError && error.code === "identity_not_mapped",
+    "an unmapped OIDC identity must be rejected without creating a synthetic user",
+  );
+  assert.equal((sqlite.prepare("SELECT COUNT(*) AS count FROM users WHERE username LIKE 'sso_%'").get() as { count: number }).count, 0);
 
   assert.match(clearOidcTransactionCookie(`${APP_ORIGIN}/callback`), /Max-Age=0/);
   console.log("OIDC authorization, verification, mapping, and transaction-cookie checks passed");

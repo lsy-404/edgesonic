@@ -5,6 +5,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
+import { shouldAutoStartSso } from "../utils/sso";
 
 const { t } = useI18n();
 const { login, guestLogin, demoLogin, completeSsoLogin, isLoggedIn, getLoginConfig, probeGuestEnabled } = useAuth();
@@ -111,6 +112,17 @@ onMounted(async () => {
   ssoConfigurationError.value = config.ssoError;
   authenticationBlocked.value = config.authenticationBlocked;
   checkingConfig.value = false;
+  if (shouldAutoStartSso({
+    mode: ssoMode.value,
+    available: ssoAvailable.value,
+    loading: loading.value,
+    hasCallbackResult: route.query.sso === "complete",
+    hasCallbackError: typeof route.query.sso_error === "string",
+    optedOut: route.query.no_auto_sso === "1",
+  })) {
+    startSso();
+    return;
+  }
   if (!config.isDemo || isLoggedIn.value) return;
   loading.value = true;
   try {

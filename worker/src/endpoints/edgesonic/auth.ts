@@ -72,9 +72,10 @@ function localAuthenticationBlock(policy: SsoPolicy): { status: 403 | 503; error
   return null;
 }
 
-function loginPageLocation(requestUrl: string, parameter: "sso" | "sso_error", value: string): string {
+function loginPageLocation(requestUrl: string, parameter: "sso" | "sso_error", value: string, noAutoSso = false): string {
   const origin = new URL(requestUrl).origin;
-  return `${origin}/#/login?${parameter}=${encodeURIComponent(value)}`;
+  const suffix = noAutoSso ? "&no_auto_sso=1" : "";
+  return `${origin}/#/login?${parameter}=${encodeURIComponent(value)}${suffix}`;
 }
 
 webLoginRoutes.get("/edgesonic/auth/sso/start", async (c) => {
@@ -83,7 +84,7 @@ webLoginRoutes.get("/edgesonic/auth/sso/start", async (c) => {
     c.header("Set-Cookie", started.transactionCookie);
     return c.redirect(started.authorizationUrl, 302);
   } catch {
-    return c.redirect(loginPageLocation(c.req.url, "sso_error", "unavailable"), 303);
+    return c.redirect(loginPageLocation(c.req.url, "sso_error", "unavailable", true), 303);
   }
 });
 
@@ -100,7 +101,7 @@ webLoginRoutes.get("/edgesonic/auth/sso/callback", async (c) => {
     c.header("Set-Cookie", buildSessionCookieHeader(result.sessionToken, Math.max(0, result.expiresAt - Math.floor(Date.now() / 1000))) + secure, { append: true });
     return c.redirect(loginPageLocation(c.req.url, "sso", "complete"), 303);
   } catch {
-    return c.redirect(loginPageLocation(c.req.url, "sso_error", "callback"), 303);
+    return c.redirect(loginPageLocation(c.req.url, "sso_error", "callback", true), 303);
   }
 });
 
