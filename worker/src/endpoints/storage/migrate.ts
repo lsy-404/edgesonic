@@ -97,8 +97,10 @@ async function migrateLegacyObject(env: Env, object: R2Object, deleteLegacy: boo
     ).bind(oldUri, R2_SOURCE_ID).first<{ id: string; storage_uri: string }>();
     if (known && existing) {
       if (existing.size !== object.size) throw new Error(`target size mismatch: ${existing.size} != ${object.size}`);
-      if (!instance) return { copied: 0, skipped: 1, deleted: 0 };
-      if (instance.storage_uri === `r2://${targetKey}`) return { copied: 0, skipped: 1, deleted: 0 };
+      if (!instance || instance.storage_uri === `r2://${targetKey}`) {
+        if (deleteLegacy && targetKey !== object.key) await env.MUSIC_BUCKET.delete(object.key);
+        return { copied: 0, skipped: 1, deleted: deleteLegacy ? 1 : 0 };
+      }
     }
     let copied = 0;
     let skipped = 0;
