@@ -11,7 +11,7 @@
     "dev:worker": "npm run dev -w worker",
     "dev:web": "npm run dev -w web",
     "build:web": "npm run build -w web",
-    "test:sso": "tsx --test test/internal/oidc_flow.test.ts test/internal/sso_modes.test.ts",
+    "test:sso": "tsx --test test/internal/oidc_flow.test.ts test/internal/sso_modes.test.ts test/internal/login_sso_behavior.test.ts test/internal/personal_sso_mapping.test.ts",
     "typecheck": "npm run typecheck -w worker && npm run typecheck -w web && npm run typecheck -w installer",
     "deploy": "npm run build:web && npm run deploy -w worker",
     "postinstall": "patch-package"

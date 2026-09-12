@@ -28,8 +28,7 @@ import { CompactSign, calculateJwkThumbprint, importJWK } from "jose";
 import { SESSION_TTL_SEC } from "../auth";
 import type { User } from "../types/entities";
 import { clampTtlToActivation, resolveActivation } from "./activation";
-import { getFeature } from "./features";
-import { ensureActivationSchema, ensureSsoSchema } from "./schema_patch";
+import { ensureSsoSchema } from "./schema_patch";
 import { resolveSsoPolicy, type SsoEnvironment, type SsoPolicy } from "./ssoPolicy";
 
 export const OIDC_TRANSACTION_COOKIE = "edgesonic_oidc_transaction";
