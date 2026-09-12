@@ -20,6 +20,7 @@ import {
   randomNonce,
   randomPKCECodeVerifier,
   randomState,
+  useJwtResponseMode,
   type CustomFetch,
   type IDToken,
   type UserInfoResponse,
@@ -312,10 +313,10 @@ function requireConfiguredSso(env: SsoEnvironment, requestUrl: string): SsoPolic
   return policy;
 }
 
-async function oidcConfiguration(policy: SsoPolicy, fetcher: CustomFetch) {
+async function oidcConfiguration(policy: SsoPolicy, fetcher: CustomFetch, useJarm = false) {
   const options = {
     [customFetch]: fetcher,
-    execute: [enableNonRepudiationChecks],
+    execute: useJarm ? [enableNonRepudiationChecks, useJwtResponseMode] : [enableNonRepudiationChecks],
   };
   let config = await discovery(
     new URL(policy.issuer as string),
@@ -670,7 +671,7 @@ export async function completeOidcAuthorization(
     throw new OidcFlowError("transaction_context_mismatch");
   }
 
-  const config = await oidcConfiguration(policy, fetcher);
+  const config = await oidcConfiguration(policy, fetcher, transaction.useJarm);
   const dpopHandle = await dpopHandleFromTransaction(transaction, config);
   const tokens = await authorizationCodeGrant(config, currentUrl, {
     expectedState: transaction.state,
