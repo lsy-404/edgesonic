@@ -91,6 +91,15 @@ async function migrateLegacyObject(env: Env, object: R2Object, deleteLegacy: boo
     ).bind(object.key).first<{ id: string; physical_key: string }>();
     const targetKey = known?.physical_key || stableKey;
     const existing = await env.MUSIC_BUCKET.head(targetKey);
+    const oldUri = `r2://${object.key}`;
+    const instance = await env.DB.prepare(
+      "SELECT id, storage_uri FROM song_instances WHERE storage_uri = ? AND source_id = ? LIMIT 1",
+    ).bind(oldUri, R2_SOURCE_ID).first<{ id: string; storage_uri: string }>();
+    if (known && existing) {
+      if (existing.size !== object.size) throw new Error(`target size mismatch: ${existing.size} != ${object.size}`);
+      if (!instance) return { copied: 0, skipped: 1, deleted: 0 };
+      if (instance.storage_uri === `r2://${targetKey}`) return { copied: 0, skipped: 1, deleted: 0 };
+    }
     let copied = 0;
     let skipped = 0;
     if (!existing) {
@@ -107,10 +116,6 @@ async function migrateLegacyObject(env: Env, object: R2Object, deleteLegacy: boo
       skipped++;
     }
 
-    const oldUri = `r2://${object.key}`;
-    const instance = await env.DB.prepare(
-      "SELECT id FROM song_instances WHERE storage_uri = ? AND source_id = ? LIMIT 1",
-    ).bind(oldUri, R2_SOURCE_ID).first<{ id: string }>();
     await registerR2Object(env.DB, {
       objectId: known?.id || objectId,
       physicalKey: targetKey,
