@@ -62,8 +62,8 @@ assert(songResponse.title === "大风歌20XX" && songResponse.album === "从众�
 const questionOnlyAlbum = mapAlbum({
   id: "al-question", name: "？？xx? Conformity", sort_name: null, year: null, genre: null,
   cover_r2_key: null, song_count: 1, duration: 0, size: 0, compilation: 0, created_at: 0, updated_at: 0,
-}, "Unknown Artist", undefined, uri);
-assert(questionOnlyAlbum.name === "从众效应Conformity", "repeated full-width or ASCII question marks trigger path recovery");
+}, "Unknown Artist", undefined, "r2://从众效应Conformity（wav）/wav/08 大风歌20XX.wav");
+assert(questionOnlyAlbum.name === "从众效应Conformity", "repeated full-width or ASCII question marks recover from an R2 root album path");
 
 const clean = recoverMetadataFromStoragePath(
   "r2://music/专辑/别名（wav）/01 不应替换.wav",

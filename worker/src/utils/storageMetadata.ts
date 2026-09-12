@@ -16,7 +16,9 @@ export function recoverMetadataFromStoragePath<T extends StorageMetadata>(
   const segments = path.split("/").map(decodeSegment);
   const filename = segments.at(-1) || "";
   const albumAt = segments.indexOf("专辑");
-  const album = albumAt >= 0 ? cleanAlbumName(segments[albumAt + 1] || "") : "";
+  const album = albumAt >= 0
+    ? cleanAlbumName(segments[albumAt + 1] || "")
+    : rootAlbumName(segments);
   const title = cleanTrackName(filename);
 
   if (looksLossy(result.title) && title) result.title = title;
@@ -45,6 +47,12 @@ function cleanAlbumName(value: string): string {
   return value
     .replace(/\s*[（(［\[]\s*(?:wav|flac|mp3|m4a|aac|ape|ogg|opus)\s*[）)］\]]$/i, "")
     .trim();
+}
+
+function rootAlbumName(segments: string[]): string {
+  const root = segments[0] || "";
+  if (!root || ["music", "covers", "cache", "transcoded"].includes(root.toLowerCase())) return "";
+  return cleanAlbumName(root);
 }
 
 function cleanTrackName(filename: string): string {
