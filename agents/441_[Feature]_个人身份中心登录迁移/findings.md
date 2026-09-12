@@ -18,3 +18,5 @@
 - 登录页仅在 required、SSO 可用且没有回调结果/错误或 `no_auto_sso=1` 时自动启动。
 - OIDC 未找到 `(issuer, subject)` 显式映射时返回 `identity_not_mapped`，不创建用户、不按邮箱或用户名猜测。
 - 首轮测试发现现有 OIDC 测试仍断言旧 scope；当前实现已包含刷新令牌所需的 `offline_access`，断言已同步。
+- 映射迁移为现有身份账号批量建表，并通过触发器覆盖未来身份账号。
+- 同 Cloudflare 区域的身份服务调用使用公开网络解析兼容标志，避免 Worker 子请求回源到自身。
