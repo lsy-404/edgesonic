@@ -100,7 +100,11 @@ webLoginRoutes.get("/edgesonic/auth/sso/callback", async (c) => {
     const secure = new URL(c.req.url).protocol === "https:" ? "; Secure" : "";
     c.header("Set-Cookie", buildSessionCookieHeader(result.sessionToken, Math.max(0, result.expiresAt - Math.floor(Date.now() / 1000))) + secure, { append: true });
     return c.redirect(loginPageLocation(c.req.url, "sso", "complete"), 303);
-  } catch {
+  } catch (error) {
+    const code = error instanceof Error && "code" in error
+      ? String((error as { code?: unknown }).code || "unknown")
+      : error instanceof Error ? error.name : "unknown";
+    console.error("SSO callback failed", code);
     return c.redirect(loginPageLocation(c.req.url, "sso_error", "callback", true), 303);
   }
 });
