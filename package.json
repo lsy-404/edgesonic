@@ -14,6 +14,7 @@
     "test:sso": "tsx --test test/internal/oidc_flow.test.ts test/internal/sso_modes.test.ts test/internal/login_sso_behavior.test.ts test/internal/personal_sso_mapping.test.ts",
     "typecheck": "npm run typecheck -w worker && npm run typecheck -w web && npm run typecheck -w installer",
     "deploy": "npm run build:web && npm run deploy -w worker",
+    "deploy:personal-sso": "npm run build:web && npm run db:migrate:personal-sso -w worker && npm run deploy -w worker",
     "postinstall": "patch-package"
   },
   "devDependencies": {
