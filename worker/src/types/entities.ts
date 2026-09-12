@@ -66,6 +66,7 @@ export interface SongInstance {
   source_dedup_key: string | null;
   parent_instance_id: string | null;
   storage_uri: string;
+  storage_object_id: string | null;
   transcode_profile: string | null;
   suffix: string;
   content_type: string | null;
@@ -78,6 +79,35 @@ export interface SongInstance {
   missing: number;
   expires_at: number | null;
   last_accessed_at: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface StorageObject {
+  id: string;
+  physical_key: string;
+  legacy_key: string | null;
+  suffix: string;
+  content_type: string | null;
+  size: number;
+  etag: string | null;
+  last_modified: number | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export type StorageEntryKind = "folder" | "file";
+
+export interface StorageEntry {
+  id: string;
+  source_id: string;
+  parent_id: string | null;
+  path: string;
+  display_name: string;
+  kind: StorageEntryKind;
+  object_id: string | null;
+  instance_id: string | null;
+  companion_of: string | null;
   created_at: number;
   updated_at: number;
 }
