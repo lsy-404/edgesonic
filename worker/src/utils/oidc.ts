@@ -111,6 +111,18 @@ export class OidcFlowError extends Error {
   }
 }
 
+async function callbackStage<T>(stage: string, operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    const code = error instanceof Error && "code" in error
+      ? String((error as { code?: unknown }).code || "unknown")
+      : error instanceof Error ? error.name : "unknown";
+    console.error("OIDC callback stage failed", stage, code);
+    throw error;
+  }
+}
+
 const runtimeFetch: CustomFetch = (url, options) => fetch(url, options);
 
 function bytesToBase64Url(bytes: Uint8Array): string {
@@ -671,14 +683,14 @@ export async function completeOidcAuthorization(
     throw new OidcFlowError("transaction_context_mismatch");
   }
 
-  const config = await oidcConfiguration(policy, fetcher, transaction.useJarm);
-  const dpopHandle = await dpopHandleFromTransaction(transaction, config);
-  const tokens = await authorizationCodeGrant(config, currentUrl, {
+  const config = await callbackStage("configuration", () => oidcConfiguration(policy, fetcher, transaction.useJarm));
+  const dpopHandle = await callbackStage("dpop_key_import", () => dpopHandleFromTransaction(transaction, config));
+  const tokens = await callbackStage("token_grant", () => authorizationCodeGrant(config, currentUrl, {
     expectedState: transaction.state,
     expectedNonce: transaction.nonce,
     pkceCodeVerifier: transaction.codeVerifier,
     idTokenExpected: true,
-  }, undefined, dpopHandle ? { DPoP: dpopHandle } : undefined);
+  }, undefined, dpopHandle ? { DPoP: dpopHandle } : undefined));
   validateDpopTokenResponse(tokens.token_type, tokens.cnf, transaction.dpopJkt);
   const claims = tokens.claims();
   if (!claims || typeof claims.sub !== "string" || !claims.sub || claims.iss !== policy.issuer) {
@@ -689,8 +701,8 @@ export async function completeOidcAuthorization(
     || claims.exp <= Math.floor(Date.now() / 1000) || claims.nonce !== transaction.nonce) {
     throw new OidcFlowError("invalid_id_token");
   }
-  const userInfo = await fetchUserInfo(config, tokens.access_token, claims.sub, dpopHandle ? { DPoP: dpopHandle } : undefined);
-  const user = await resolveIdentity(env, claims.iss, claims.sub, claims, userInfo);
+  const userInfo = await callbackStage("userinfo", () => fetchUserInfo(config, tokens.access_token, claims.sub, dpopHandle ? { DPoP: dpopHandle } : undefined));
+  const user = await callbackStage("identity_mapping", () => resolveIdentity(env, claims.iss, claims.sub, claims, userInfo));
   if (!user.enabled || user.level < 1) throw new OidcFlowError("account_disabled");
 
   const activation = await resolveActivation(env, user);
@@ -704,7 +716,7 @@ export async function completeOidcAuthorization(
     : null;
   const tokenExpiresAt = Math.floor(Date.now() / 1000) + (typeof tokens.expires_in === "number" ? tokens.expires_in : 300);
   const refreshExpiresAt = refreshToken ? Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 : null;
-  await env.DB.prepare(
+  await callbackStage("session_persist", () => env.DB.prepare(
     `INSERT INTO sessions
       (id, username, token, auth_source, user_agent, sso_refresh_token, sso_id_token,
        sso_token_expires_at, sso_refresh_expires_at, sso_issuer, sso_client_id, sso_dpop_key,
@@ -724,7 +736,7 @@ export async function completeOidcAuthorization(
     dpopKey,
     expiresAt,
     Math.floor(Date.now() / 1000),
-  ).run();
+  ).run());
 
   return {
     username: user.username,
