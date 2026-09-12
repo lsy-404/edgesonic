@@ -340,6 +340,22 @@
       {
         "name": "WORKER_NAME",
         "value": "${worker}"
+      },
+      {
+        "name": "SSO_MODE",
+        "value": "${input:sso_mode}"
+      },
+      {
+        "name": "SSO_ISSUER",
+        "value": "${input:sso_issuer}"
+      },
+      {
+        "name": "SSO_CLIENT_ID",
+        "value": "${input:sso_client_id}"
+      },
+      {
+        "name": "SSO_PROVIDER_NAME",
+        "value": "${input:sso_provider_name}"
       }
     ],
     "containers": [
@@ -405,6 +421,96 @@
       "help": {
         "en": "Leave empty to generate a random password. It is shown once on the final page and never saved in plaintext.",
         "zh-CN": "留空会生成随机密码。密码仅在最后一页显示一次，绝不会以明文保存。"
+      }
+    },
+    {
+      "id": "sso_mode",
+      "kind": "select",
+      "default": "disabled",
+      "required": true,
+      "options": [
+        {
+          "value": "disabled",
+          "label": {
+            "en": "Off — local authentication only",
+            "zh-CN": "关闭 — 仅本地认证"
+          }
+        },
+        {
+          "value": "optional",
+          "label": {
+            "en": "Optional — local authentication and SSO",
+            "zh-CN": "可选 — 本地认证与 SSO 并存"
+          }
+        },
+        {
+          "value": "required",
+          "label": {
+            "en": "SSO only",
+            "zh-CN": "仅 SSO"
+          }
+        }
+      ],
+      "label": {
+        "en": "Single sign-on mode",
+        "zh-CN": "单点登录模式"
+      },
+      "help": {
+        "en": "Off is the default. New SSO identities are regular users; promote the intended administrator while Optional is active before enforcing SSO only.",
+        "zh-CN": "默认关闭。新 SSO 身份是普通用户；强制仅 SSO 前，请先在可选模式下登录并提升目标管理员。"
+      }
+    },
+    {
+      "id": "sso_issuer",
+      "kind": "text",
+      "placeholder": {
+        "en": "https://id.example.com",
+        "zh-CN": "https://id.example.com"
+      },
+      "label": {
+        "en": "OIDC issuer",
+        "zh-CN": "OIDC issuer"
+      },
+      "help": {
+        "en": "Required unless SSO is off. Discovery uses /.well-known/openid-configuration.",
+        "zh-CN": "SSO 未关闭时必填；通过 /.well-known/openid-configuration 发现配置。"
+      }
+    },
+    {
+      "id": "sso_client_id",
+      "kind": "text",
+      "label": {
+        "en": "OIDC client ID",
+        "zh-CN": "OIDC client ID"
+      },
+      "help": {
+        "en": "Required unless SSO is off.",
+        "zh-CN": "SSO 未关闭时必填。"
+      }
+    },
+    {
+      "id": "sso_client_secret",
+      "kind": "password",
+      "label": {
+        "en": "OIDC client secret",
+        "zh-CN": "OIDC client secret"
+      },
+      "help": {
+        "en": "Required unless SSO is off. Written only to the target Worker's encrypted Secrets store.",
+        "zh-CN": "SSO 未关闭时必填；只写入目标 Worker 的加密 Secrets。"
+      }
+    },
+    {
+      "id": "sso_provider_name",
+      "kind": "text",
+      "default": "SSO",
+      "label": {
+        "en": "Provider display name",
+        "zh-CN": "提供方显示名称"
+      },
+      "help": {
+        "en": "Optional label used on the EdgeSonic login button.",
+        "zh-CN": "可选；显示在 EdgeSonic 登录按钮上。"
       }
     },
     {

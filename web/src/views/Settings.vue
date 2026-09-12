@@ -30,9 +30,9 @@ const route = useRoute();
 const { t, locale } = useI18n();
 const {
   isSuperAdmin, isGuest, hasPerm, edgesonicFetch, edgesonicPost, logout,
-  username, nickname, avatarKey, email, emailVerified, restUrl,
+  username, nickname, avatarKey, email, emailVerified, authSource, restUrl,
   updateNickname, requestEmailChange, changeOwnPassword, updateOwnAvatar, handleAuthError,
-  activation, fetchActivationStatus, redeemActivationCode,
+  activation, fetchActivationStatus, redeemActivationCode, getLoginConfig,
 } = useAuth();
 const workPool = useWorkSocket();
 
@@ -845,6 +845,20 @@ const resendTestResult = ref("");
 const loginNoticeText = ref("");
 const loginBackgroundUrl = ref("");
 const loginConfigBusy = ref(false);
+const ssoMode = ref<"disabled" | "optional" | "required">("disabled");
+const ssoProviderName = ref("SSO");
+const ssoCallbackUrl = ref("");
+const ssoConfigured = ref(false);
+const ssoConfigurationError = ref("");
+
+async function loadSsoStatus() {
+  const config = await getLoginConfig();
+  ssoMode.value = config.ssoMode;
+  ssoProviderName.value = config.ssoProviderName;
+  ssoCallbackUrl.value = config.ssoCallbackUrl;
+  ssoConfigured.value = config.ssoAvailable;
+  ssoConfigurationError.value = config.ssoError;
+}
 
 // Email templates — super-admin only (enforced server-side too; see
 // features.ts SUPER_ADMIN_ONLY_STRING_KEYS). Defaults come from D1 seeding,
@@ -1495,7 +1509,7 @@ async function copyInstanceId() {
   } catch { showToast(t("settings.common.copyFailed"), "error"); }
 }
 
-interface Session { id: string; userAgent: string; createdAt: number; expiresAt: number; }
+interface Session { id: string; authSource: "local" | "sso"; userAgent: string; createdAt: number; expiresAt: number; }
 const sessions = ref<Session[]>([]);
 const sessionsLoading = ref(true);
 const sessionsError = ref("");
@@ -1517,6 +1531,7 @@ async function loadSessions(): Promise<boolean> {
     }
     sessions.value = parseXmlAttrs(xml, "session").map((s) => ({
       id: s.id || "",
+      authSource: s.authSource === "sso" ? "sso" : "local",
       userAgent: s.userAgent || "—",
       createdAt: parseInt(s.createdAt || "0"),
       expiresAt: parseInt(s.expiresAt || "0"),
@@ -1656,6 +1671,7 @@ async function copyText(text: string) {
 onMounted(() => {
   if (route.query.section === "clients") void locateClientsSection();
   if (canManageSettings.value) loadFeatures();
+  if (canManageSettings.value) void loadSsoStatus();
   loadSessions();
   if (!isGuest.value) loadCredentials();
   if (canManageSettings.value) loadWorkerStatus();
@@ -1716,6 +1732,11 @@ onMounted(() => {
                   {{ t("settings.account.saveNickname") }}
                 </button>
               </div>
+
+              <label class="tc-row">
+                <span class="tc-key">{{ t("settings.account.authSource") }}</span>
+                <input :value="t(`settings.sessions.sources.${authSource}`)" type="text" class="form-input" disabled />
+              </label>
 
               <label class="tc-row">
                 <span class="tc-key">
@@ -2653,6 +2674,33 @@ onMounted(() => {
         </div>
 
         <div class="sub-block">
+          <div class="sub-header">
+            <span class="mono-label">{{ t("settings.common.email.ssoTitle") }}</span>
+            <span class="status-badge" :class="ssoConfigured ? 'success' : (ssoConfigurationError ? 'error' : 'muted')">
+              {{ ssoConfigured ? t("settings.common.email.configured") : t("settings.common.email.unconfigured") }}
+            </span>
+          </div>
+          <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.email.ssoDesc") }}</p>
+          <div class="transcode-grid">
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.ssoMode") }}</span>
+              <input :value="t(`login.ssoModes.${ssoMode}`)" type="text" class="form-input" disabled />
+            </label>
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.email.ssoProvider") }}</span>
+              <input :value="ssoProviderName" type="text" class="form-input" disabled />
+            </label>
+            <label class="tc-row tc-row-block">
+              <span class="tc-key">{{ t("settings.common.email.ssoCallback") }}</span>
+              <input :value="ssoCallbackUrl || '—'" type="text" class="form-input" disabled />
+            </label>
+            <p v-if="ssoConfigurationError" class="feature-desc tc-desc" style="grid-column: 1 / -1; margin-left:0; color: var(--color-status-error)">
+              {{ t("settings.common.email.ssoConfigurationError") }}
+            </p>
+          </div>
+        </div>
+
+        <div class="sub-block">
           <div class="sub-header"><span class="mono-label">{{ t("settings.common.email.loginPageTitle") }}</span></div>
           <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.email.loginPageDesc") }}</p>
           <div class="transcode-grid">
@@ -3057,9 +3105,10 @@ onMounted(() => {
           <div>{{ t("settings.sessions.empty") }}</div>
         </div>
 
-        <div v-else class="table-wrap session-table" style="--grid-cols: 1fr 1.6fr 1fr 1fr auto">
+        <div v-else class="table-wrap session-table" style="--grid-cols: 1fr 0.7fr 1.6fr 1fr 1fr auto">
           <div class="table-header">
             <span>{{ t("settings.sessions.colId") }}</span>
+            <span>{{ t("settings.sessions.colSource") }}</span>
             <span>{{ t("settings.sessions.colUserAgent") }}</span>
             <span>{{ t("settings.sessions.colCreatedAt") }}</span>
             <span>{{ t("settings.sessions.colExpiresAt") }}</span>
@@ -3067,6 +3116,7 @@ onMounted(() => {
           </div>
           <div v-for="s in sessions" :key="s.id" class="table-row">
             <span class="session-id" :title="s.id">{{ s.id }}</span>
+            <span>{{ t(`settings.sessions.sources.${s.authSource}`) }}</span>
             <span class="session-ua" :title="s.userAgent">{{ s.userAgent }}</span>
             <span class="session-time">{{ formatTs(s.createdAt) }}</span>
             <span class="session-time">{{ formatTs(s.expiresAt) }}</span>

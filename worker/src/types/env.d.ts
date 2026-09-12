@@ -31,6 +31,13 @@ interface Env {
   MAX_PROXY_DEPTH?: string;
   CANONICAL_HOST?: string;
   LEGACY_REDIRECT_HOST?: string;
+  // OIDC web authentication policy. SSO_CLIENT_SECRET must be stored as a
+  // Worker Secret; the other values are non-secret deployment variables.
+  SSO_MODE?: "disabled" | "optional" | "required";
+  SSO_ISSUER?: string;
+  SSO_CLIENT_ID?: string;
+  SSO_CLIENT_SECRET?: string;
+  SSO_PROVIDER_NAME?: string;
   // (pushed dynamically via /edgesonic/cf/setToken using the CF API itself,
   // not declared in wrangler.toml). Unset until the admin runs first-time
   // setup from the Settings page.

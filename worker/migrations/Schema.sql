@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   username TEXT NOT NULL,
   token TEXT NOT NULL UNIQUE,                         -- session token (also valid as Subsonic "password")
+  auth_source TEXT NOT NULL DEFAULT 'local' CHECK (auth_source IN ('local', 'sso')),
   user_agent TEXT,                                   -- browser/client info
   ip_address TEXT,                                   -- client IP at creation
   expires_at INTEGER NOT NULL,                       -- unix timestamp
@@ -121,6 +122,18 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_username ON sessions(username);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS oidc_identities (
+  issuer TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  username TEXT NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  last_login_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  PRIMARY KEY (issuer, subject),
+  FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_oidc_identities_username ON oidc_identities(username);
+
 
 CREATE TABLE IF NOT EXISTS login_rate_limits (
   key TEXT PRIMARY KEY,

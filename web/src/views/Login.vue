@@ -7,7 +7,7 @@ import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
 
 const { t } = useI18n();
-const { login, guestLogin, demoLogin, isLoggedIn, getLoginConfig, probeGuestEnabled } = useAuth();
+const { login, guestLogin, demoLogin, completeSsoLogin, isLoggedIn, getLoginConfig, probeGuestEnabled } = useAuth();
 const router = useRouter();
 const route = useRoute();
 
@@ -16,6 +16,7 @@ const password = ref("");
 const error = ref("");
 const loading = ref(false);
 const guestEnabled = ref(false);
+const checkingConfig = ref(true);
 
 // System-level login page customization (Settings → email sub-section) +
 // self-service entry points, hydrated from the public /auth/loginConfig
@@ -25,6 +26,11 @@ const backgroundUrl = ref("");
 const registrationEnabled = ref(false);
 const passwordResetEnabled = ref(false);
 const isDemo = ref(false);
+const ssoMode = ref<"disabled" | "optional" | "required">("disabled");
+const ssoAvailable = ref(false);
+const ssoProviderName = ref("SSO");
+const ssoConfigurationError = ref("");
+const authenticationBlocked = ref(false);
 
 // Demo deployments show a login-hint fallback when the operator hasn't set
 // a custom notice — self-hosters see nothing until they configure one.
@@ -32,6 +38,8 @@ const displayNotice = computed(() => noticeText.value || (isDemo.value ? t("logi
 const backgroundStyle = computed(() =>
   backgroundUrl.value ? { backgroundImage: `url(${backgroundUrl.value})` } : undefined,
 );
+const showLocalAuthentication = computed(() => !authenticationBlocked.value && ssoMode.value !== "required");
+const ssoModeLabel = computed(() => t(`login.ssoModes.${ssoMode.value}`));
 
 if (isLoggedIn.value) router.push("/");
 
@@ -63,6 +71,11 @@ async function loginAsGuest() {
   }
 }
 
+function startSso() {
+  if (!ssoAvailable.value || loading.value) return;
+  window.location.assign("/edgesonic/auth/sso/start");
+}
+
 onMounted(async () => {
   // Demo/share links may prefill credentials with either short (`u` / `p`)
   // or descriptive (`username` / `password`) query keys. This only fills the
@@ -71,6 +84,20 @@ onMounted(async () => {
   const queryPassword = route.query.p ?? route.query.password;
   if (typeof queryUsername === "string") username.value = queryUsername;
   if (typeof queryPassword === "string") password.value = queryPassword;
+  if (route.query.sso === "complete") {
+    loading.value = true;
+    const result = await completeSsoLogin();
+    loading.value = false;
+    if (result.ok) {
+      await router.replace("/");
+      return;
+    }
+    error.value = t("login.ssoCallbackFailed");
+  } else if (typeof route.query.sso_error === "string") {
+    error.value = route.query.sso_error === "unavailable"
+      ? t("login.ssoUnavailable")
+      : t("login.ssoCallbackFailed");
+  }
   const [guest, config] = await Promise.all([probeGuestEnabled(), getLoginConfig()]);
   guestEnabled.value = guest;
   noticeText.value = config.noticeText;
@@ -78,6 +105,12 @@ onMounted(async () => {
   registrationEnabled.value = config.registrationEnabled;
   passwordResetEnabled.value = config.passwordResetEnabled;
   isDemo.value = config.isDemo;
+  ssoMode.value = config.ssoMode;
+  ssoAvailable.value = config.ssoAvailable;
+  ssoProviderName.value = config.ssoProviderName;
+  ssoConfigurationError.value = config.ssoError;
+  authenticationBlocked.value = config.authenticationBlocked;
+  checkingConfig.value = false;
   if (!config.isDemo || isLoggedIn.value) return;
   loading.value = true;
   try {
@@ -105,11 +138,35 @@ onMounted(async () => {
 
       <p v-if="displayNotice" class="login-notice">{{ displayNotice }}</p>
 
-      <form @submit.prevent="submit" class="login-form">
-        <div v-if="error" class="login-error" role="alert">
+      <div class="sso-mode-row">
+        <span>{{ t("login.ssoMode") }}</span>
+        <strong>{{ ssoModeLabel }}</strong>
+      </div>
+
+      <div v-if="error" class="login-error login-top-error" role="alert">
           <span class="login-error-mark" aria-hidden="true">!</span>
           <span>{{ error }}</span>
-        </div>
+      </div>
+
+      <div v-if="checkingConfig" class="login-form">
+        <p class="login-config-hint">{{ t("common.loading") }}</p>
+      </div>
+
+      <div v-else class="login-form">
+        <button
+          v-if="ssoMode !== 'disabled'"
+          type="button"
+          class="btn-primary login-btn"
+          :disabled="loading || !ssoAvailable"
+          @click="startSso"
+        >
+          {{ t("login.ssoContinue", { provider: ssoProviderName }) }}
+        </button>
+        <p v-if="ssoConfigurationError" class="login-config-hint login-config-error">
+          {{ t("login.ssoConfigurationError") }}
+        </p>
+
+        <form v-if="showLocalAuthentication" @submit.prevent="submit" class="local-login-form">
 
         <div class="form-group">
           <label class="form-label">{{ t("login.username") }}</label>
@@ -130,9 +187,10 @@ onMounted(async () => {
         <button v-if="guestEnabled" type="button" class="btn-secondary login-btn" :disabled="loading" @click="loginAsGuest">
           {{ t("login.guest") }}
         </button>
-      </form>
+        </form>
+      </div>
 
-      <p v-if="registrationEnabled" class="login-register-hint">
+      <p v-if="showLocalAuthentication && registrationEnabled" class="login-register-hint">
         {{ t("login.noAccount") }} <router-link to="/register">{{ t("login.registerLink") }}</router-link>
       </p>
 
@@ -226,6 +284,27 @@ onMounted(async () => {
   flex-direction: column;
   gap: 1rem;
 }
+
+.local-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sso-mode-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1rem 2rem 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs, 0.75rem);
+}
+
+.sso-mode-row strong { color: var(--color-text-primary); }
+.login-top-error { margin: 1rem 2rem 0; }
+.login-config-hint { margin: 0; color: var(--color-text-secondary); text-align: center; font-size: var(--fs-sm); }
+.login-config-error { color: var(--color-status-error); }
 
 .login-error {
   display: flex;

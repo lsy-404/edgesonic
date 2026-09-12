@@ -52,6 +52,7 @@ export interface DeployCredentials {
  * a machine with Docker, so "deploy" needs one to already exist for the class.
  */
 export type ContainerMode = "keep" | "deploy" | "off";
+export type SsoMode = "disabled" | "optional" | "required";
 
 export interface DeployTarget {
   mode: "fresh" | "overwrite";
@@ -65,6 +66,11 @@ export interface DeployTarget {
   containerMode: ContainerMode;
   adminUsername?: string;
   adminPassword?: string;
+  ssoMode: SsoMode;
+  ssoIssuer: string;
+  ssoClientId: string;
+  ssoClientSecret: string;
+  ssoProviderName: string;
 }
 
 export interface DeployResult {

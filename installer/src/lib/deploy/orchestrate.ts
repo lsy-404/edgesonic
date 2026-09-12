@@ -22,7 +22,7 @@ import { fetchManifestAndArtifact } from "./manifest";
 import { hasTokenPermission, readTokenPermissionGroups } from "../cf/tokenPolicies";
 import { unpackArtifact, textFile } from "./tar";
 import { uploadAssets, type AssetManifest } from "./assets";
-import { uploadWorkerVersion, switchTraffic, readCrons } from "./workerVersion";
+import { uploadWorkerVersion, switchTraffic, readCrons, type SsoRuntimeBindings } from "./workerVersion";
 import { deleteScript, listCustomDomains, readScriptFacts, restoreCustomDomains, type CustomDomain } from "./rebuild";
 import { pushSecret } from "./secrets";
 import { setCron, DEFAULT_CRON } from "./cron";
@@ -38,6 +38,36 @@ export type ProgressReporter = (step: DeployStep, fraction: number) => void;
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function validateSsoTarget(target: DeployTarget): { runtime: SsoRuntimeBindings; clientSecret: string } {
+  if (target.ssoMode === "disabled") {
+    return { runtime: { mode: "disabled", issuer: "", clientId: "", providerName: "" }, clientSecret: "" };
+  }
+  const issuer = target.ssoIssuer.trim();
+  const clientId = target.ssoClientId.trim();
+  const clientSecret = target.ssoClientSecret;
+  if (!issuer || !clientId || !clientSecret) {
+    throw new Error("SSO issuer, client id, and client secret are required when SSO is enabled");
+  }
+  let issuerUrl: URL;
+  try {
+    issuerUrl = new URL(issuer);
+  } catch {
+    throw new Error("SSO issuer must be a valid HTTPS URL");
+  }
+  if (issuerUrl.protocol !== "https:" || issuerUrl.username || issuerUrl.password || issuerUrl.search || issuerUrl.hash) {
+    throw new Error("SSO issuer must be a valid HTTPS URL without credentials, query, or fragment");
+  }
+  return {
+    runtime: {
+      mode: target.ssoMode,
+      issuer: issuerUrl.href,
+      clientId,
+      providerName: target.ssoProviderName.trim().slice(0, 80) || "SSO",
+    },
+    clientSecret,
+  };
 }
 
 async function guarded<T>(step: DeployStep, report: StepReporter, run: () => Promise<T>): Promise<T> {
@@ -109,7 +139,9 @@ export async function runDeploy(
   const tag = release.tag_name || target.releaseTag;
 
   report("preflight", "running");
+  let sso: ReturnType<typeof validateSsoTarget>;
   try {
+    sso = validateSsoTarget(target);
     const detail = await verifyDeploymentAccess(creds);
     report("preflight", "success", detail);
   } catch (error) {
@@ -197,6 +229,7 @@ export async function runDeploy(
       compatibilityFlags: manifest.compatibilityFlags,
       mode: rebuilding ? "fresh" : target.mode,
       declareContainer,
+      sso: sso.runtime,
       fresh:
         target.mode === "fresh" || rebuilding
           ? {
@@ -208,6 +241,7 @@ export async function runDeploy(
               // Keeping the identity keeps the D1 rows that attribute song
               // sources to this instance pointing at it.
               instanceId: facts.instanceId || crypto.randomUUID(),
+              sso: sso.runtime,
             }
           : undefined,
       overwriteVersion: target.mode === "overwrite" && !rebuilding ? { version: manifest.version, buildTime: manifest.buildTime } : undefined,
@@ -225,6 +259,9 @@ export async function runDeploy(
     await pushSecret(apiToken, accountId, script, "WORK_UPLOAD_HMAC_KEY", generateHmacKeyBase64());
     await pushSecret(apiToken, accountId, script, "CF_ACCOUNT_ID", accountId);
     await pushSecret(apiToken, accountId, script, "CF_API_TOKEN", apiToken);
+    if (sso.runtime.mode !== "disabled") {
+      await pushSecret(apiToken, accountId, script, "SSO_CLIENT_SECRET", sso.clientSecret);
+    }
     // Optional R2 keys enable direct presigned playback. Without them the
     // complete installation still uses the normal Worker proxy path.
     if (creds.r2AccessKeyId && creds.r2SecretAccessKey) {

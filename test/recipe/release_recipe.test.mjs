@@ -31,11 +31,24 @@ assert.match(inputs[1].help.en, /Chinese|non-Latin/i);
 assert.match(inputs[2].help.en, /empty.*random.*shown once.*final page.*never saved/i);
 const apiToken = recipe.hostSecrets.find((secret) => secret.name === "CF_API_TOKEN");
 assert.deepEqual(apiToken.placeholder, { en: "cfat_…", "zh-CN": "cfat_…" });
+const ssoMode = inputs.find((input) => input.id === "sso_mode");
+assert.equal(ssoMode.kind, "select");
+assert.equal(ssoMode.default, "disabled");
+assert.deepEqual(ssoMode.options.map((option) => option.value), ["disabled", "optional", "required"]);
+assert.equal(inputs.find((input) => input.id === "sso_client_secret").kind, "password");
+assert.deepEqual(
+  recipe.worker.vars.filter((entry) => entry.name.startsWith("SSO_")).map((entry) => entry.name),
+  ["SSO_MODE", "SSO_ISSUER", "SSO_CLIENT_ID", "SSO_PROVIDER_NAME"],
+);
+assert.equal(recipe.worker.vars.some((entry) => entry.name === "SSO_CLIENT_SECRET"), false);
 
 assert.match(recipeSource, /if \(mode === "fresh" \|\| resetAdmin\)/);
 assert.match(recipeSource, /Existing superadmin preserved/);
 assert.match(recipeSource, /ctx\.result\(\{\s*credentials:/s);
 assert.match(recipeSource, /preserveLiveVars: \["INSTANCE_ID"\]/);
+assert.match(recipeSource, /ctx\.secrets\.put\("SSO_CLIENT_SECRET", sso\.clientSecret\)/);
+assert.doesNotMatch(recipeSource, /SSO_CLIENT_SECRET.*worker\.vars/s);
+assert.doesNotMatch(recipeSource, /stardust/i);
 assert.doesNotMatch(recipeSource, /extraVars:\s*\{\s*INSTANCE_ID:/, "live INSTANCE_ID must be preserved by the host");
 assert.match(recipeSource, /instanceId\s*\?\s*\{ assets, preserveLiveVars: \["INSTANCE_ID"\] \}\s*:\s*\{ assets \}/s);
 assert.deepEqual(

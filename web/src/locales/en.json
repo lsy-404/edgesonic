@@ -138,6 +138,16 @@
     "noAccount": "No account?",
     "registerLink": "Register",
     "demoNotice": "This is a public demo — signing in automatically",
+    "ssoMode": "Single sign-on",
+    "ssoModes": {
+      "disabled": "Off",
+      "optional": "Optional",
+      "required": "SSO only"
+    },
+    "ssoContinue": "CONTINUE WITH {provider}",
+    "ssoUnavailable": "The SSO provider is currently unavailable.",
+    "ssoCallbackFailed": "SSO login could not be verified. Please try again.",
+    "ssoConfigurationError": "SSO is enabled but its server configuration is incomplete or invalid.",
     "poweredBy": "Powered by"
   },
   "register": {
@@ -147,6 +157,7 @@
     "submitting": "REGISTERING…",
     "failed": "Registration failed",
     "disabled": "Self-service registration is currently disabled on this server.",
+    "ssoOnly": "This server only allows SSO sign-in.",
     "backToLogin": "Back to login",
     "passwordMismatch": "Passwords do not match",
     "inviteCode": "Invite code",
@@ -837,6 +848,7 @@
     "readOnly": "READ ONLY — LEVEL 3 REQUIRED",
     "account": {
       "title": "Account",
+      "authSource": "Authentication source",
       "nickname": "Nickname",
       "saveNickname": "Save Nickname",
       "nicknameSaved": "Nickname updated",
@@ -951,6 +963,12 @@
         "keyCleared": "Resend API key cleared",
         "fromSaved": "Sender details saved",
         "saveFailed": "Save failed",
+        "ssoTitle": "OpenID Connect SSO",
+        "ssoDesc": "Read-only deployment status. Change the mode and provider values in the Worker deployment configuration; keep SSO_CLIENT_SECRET in Worker Secrets.",
+        "ssoMode": "Mode",
+        "ssoProvider": "Provider",
+        "ssoCallback": "Registered callback URI",
+        "ssoConfigurationError": "The active SSO configuration is incomplete or invalid. Required mode remains fail-closed.",
         "loginPageTitle": "Login Page",
         "loginPageDesc": "Optional line of text and background image shown on the login page. Leave blank to keep the default grid background.",
         "noticeText": "Notice text",
@@ -1281,6 +1299,7 @@
       "title": "Sessions",
       "desc": "Active login sessions for this account",
       "colId": "Session ID",
+      "colSource": "Source",
       "colUserAgent": "Client",
       "colCreatedAt": "Created",
       "colExpiresAt": "Expires",
@@ -1289,7 +1308,11 @@
       "loadFailed": "Failed to load sessions",
       "revoked": "Session revoked",
       "revokeFailed": "Failed to revoke session",
-      "confirmRevoke": "Revoke this session? You will be logged out if it is the current one."
+      "confirmRevoke": "Revoke this session? You will be logged out if it is the current one.",
+      "sources": {
+        "local": "Local",
+        "sso": "SSO"
+      }
     },
     "permissions": {
       "title": "Permissions",

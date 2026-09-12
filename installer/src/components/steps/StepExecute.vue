@@ -47,6 +47,11 @@ async function start() {
     containerMode: wizard.containerMode,
     adminUsername: wizard.adminUsername.trim(),
     adminPassword: wizard.adminPassword,
+    ssoMode: wizard.ssoMode,
+    ssoIssuer: wizard.ssoIssuer.trim(),
+    ssoClientId: wizard.ssoClientId.trim(),
+    ssoClientSecret: wizard.ssoClientSecret,
+    ssoProviderName: wizard.ssoProviderName.trim(),
   };
 
   try {

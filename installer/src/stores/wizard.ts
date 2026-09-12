@@ -16,7 +16,7 @@
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import type { GithubRelease, ReleaseOption } from "../../../shared/autoupdate";
-import { DEPLOY_STEPS, type ContainerMode, type DeployCredentials, type DeployResult, type DeployStep, type StepState, type StepStatus } from "../lib/deploy/types";
+import { DEPLOY_STEPS, type ContainerMode, type DeployCredentials, type DeployResult, type DeployStep, type SsoMode, type StepState, type StepStatus } from "../lib/deploy/types";
 
 const CREDS_KEY = "edgesonic_installer_creds";
 
@@ -82,6 +82,11 @@ export const useWizard = defineStore("wizard", () => {
   const domain = ref("");
   const adminUsername = ref("");
   const adminPassword = ref("");
+  const ssoMode = ref<SsoMode>("disabled");
+  const ssoIssuer = ref("");
+  const ssoClientId = ref("");
+  const ssoClientSecret = ref("");
+  const ssoProviderName = ref("");
 
   // Only follows workerName while the db/bucket fields still hold the
   // previous auto-derived default — once someone edits either by hand, this
@@ -158,6 +163,11 @@ export const useWizard = defineStore("wizard", () => {
     domain,
     adminUsername,
     adminPassword,
+    ssoMode,
+    ssoIssuer,
+    ssoClientId,
+    ssoClientSecret,
+    ssoProviderName,
     releases,
     rawReleases,
     selectedTag,

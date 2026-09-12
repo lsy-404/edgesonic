@@ -139,6 +139,16 @@
     "noAccount": "还没有账号？",
     "registerLink": "注册",
     "demoNotice": "这是一个公开演示实例 — 正在自动登录",
+    "ssoMode": "单点登录",
+    "ssoModes": {
+      "disabled": "关闭",
+      "optional": "可选",
+      "required": "仅 SSO"
+    },
+    "ssoContinue": "使用 {provider} 继续",
+    "ssoUnavailable": "SSO 提供方当前不可用。",
+    "ssoCallbackFailed": "无法验证 SSO 登录，请重试。",
+    "ssoConfigurationError": "SSO 已启用，但服务端配置缺失或无效。",
     "poweredBy": "Powered by"
   },
   "register": {
@@ -148,6 +158,7 @@
     "submitting": "注册中…",
     "failed": "注册失败",
     "disabled": "此服务器当前未开放自助注册。",
+    "ssoOnly": "此服务器仅允许使用 SSO 登录。",
     "backToLogin": "返回登录",
     "passwordMismatch": "两次输入的密码不一致",
     "inviteCode": "邀请码",
@@ -834,6 +845,7 @@
     "readOnly": "只读 — 需要等级 3",
     "account": {
       "title": "账户",
+      "authSource": "认证来源",
       "nickname": "昵称",
       "saveNickname": "保存昵称",
       "nicknameSaved": "昵称已更新",
@@ -948,6 +960,12 @@
         "keyCleared": "Resend API key 已清除",
         "fromSaved": "发件信息已保存",
         "saveFailed": "保存失败",
+        "ssoTitle": "OpenID Connect SSO",
+        "ssoDesc": "这里只读展示部署状态。请在 Worker 部署配置中修改模式和提供方参数，并只用 Worker Secrets 保存 SSO_CLIENT_SECRET。",
+        "ssoMode": "模式",
+        "ssoProvider": "提供方",
+        "ssoCallback": "注册回调 URI",
+        "ssoConfigurationError": "当前 SSO 配置缺失或无效；仅 SSO 模式会继续失败关闭。",
         "loginPageTitle": "登录页",
         "loginPageDesc": "登录页可选的提示文字和背景图。留空则保留默认网格背景。",
         "noticeText": "提示文字",
@@ -1264,6 +1282,7 @@
       "title": "会话",
       "desc": "当前账户的活动登录会话",
       "colId": "会话 ID",
+      "colSource": "来源",
       "colUserAgent": "客户端",
       "colCreatedAt": "创建时间",
       "colExpiresAt": "过期时间",
@@ -1272,7 +1291,11 @@
       "loadFailed": "无法加载会话列表",
       "revoked": "会话已撤销",
       "revokeFailed": "撤销失败",
-      "confirmRevoke": "撤销此会话？若撤销的是当前会话将被登出。"
+      "confirmRevoke": "撤销此会话？若撤销的是当前会话将被登出。",
+      "sources": {
+        "local": "本地",
+        "sso": "SSO"
+      }
     },
     "permissions": {
       "title": "权限",

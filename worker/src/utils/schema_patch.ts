@@ -204,3 +204,42 @@ export async function ensureCacheTierColumns(env: { DB: D1Database }): Promise<v
   }
   if (allDone) cacheTierColumnsEnsured = true;
 }
+
+const ssoSchemaByDatabase = new WeakMap<object, Promise<void>>();
+
+export function ensureSsoSchema(env: { DB: D1Database }): Promise<void> {
+  const database = env.DB as unknown as object;
+  const existing = ssoSchemaByDatabase.get(database);
+  if (existing) return existing;
+
+  const pending = (async () => {
+    try {
+      await env.DB.prepare(
+        "ALTER TABLE sessions ADD COLUMN auth_source TEXT NOT NULL DEFAULT 'local' CHECK (auth_source IN ('local', 'sso'))",
+      ).run();
+    } catch (error) {
+      if (!/duplicate column/i.test(error instanceof Error ? error.message : String(error))) throw error;
+    }
+    await env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS oidc_identities (
+        issuer TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        username TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        last_login_at INTEGER NOT NULL DEFAULT (unixepoch()),
+        PRIMARY KEY (issuer, subject),
+        FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+      )`,
+    ).run();
+    await env.DB.prepare(
+      "CREATE INDEX IF NOT EXISTS idx_oidc_identities_username ON oidc_identities(username)",
+    ).run();
+  })();
+
+  const retriable = pending.catch((error) => {
+    ssoSchemaByDatabase.delete(database);
+    throw error;
+  });
+  ssoSchemaByDatabase.set(database, retriable);
+  return retriable;
+}

@@ -24,6 +24,23 @@ interface FreshBindingsInput {
   version: string;
   buildTime: string;
   instanceId: string;
+  sso: SsoRuntimeBindings;
+}
+
+export interface SsoRuntimeBindings {
+  mode: "disabled" | "optional" | "required";
+  issuer: string;
+  clientId: string;
+  providerName: string;
+}
+
+function ssoBindings(input: SsoRuntimeBindings): Binding[] {
+  return [
+    { type: "plain_text", name: "SSO_MODE", text: input.mode },
+    { type: "plain_text", name: "SSO_ISSUER", text: input.issuer },
+    { type: "plain_text", name: "SSO_CLIENT_ID", text: input.clientId },
+    { type: "plain_text", name: "SSO_PROVIDER_NAME", text: input.providerName },
+  ];
 }
 
 // A brand-new script has no previously-deployed version to inherit bindings
@@ -49,6 +66,7 @@ export function freshBindings(input: FreshBindingsInput): Binding[] {
     { type: "plain_text", name: "EDGESONIC_VERSION", text: input.version },
     { type: "plain_text", name: "EDGESONIC_BUILD_TIME", text: input.buildTime },
     { type: "plain_text", name: "WORKER_NAME", text: input.workerName },
+    ...ssoBindings(input.sso),
     { type: "images", name: "IMAGES" },
     { type: "assets", name: "ASSETS" },
   ];
@@ -71,6 +89,7 @@ interface UploadVersionInput {
   declareContainer?: boolean;
   fresh?: FreshBindingsInput;
   overwriteVersion?: { version: string; buildTime: string };
+  sso: SsoRuntimeBindings;
 }
 
 export async function uploadWorkerVersion(input: UploadVersionInput): Promise<string> {
@@ -85,6 +104,7 @@ export async function uploadWorkerVersion(input: UploadVersionInput): Promise<st
           // recovery install self-heals this var even if the instance being
           // recovered predates it, or was renamed away from the default.
           { type: "plain_text", name: "R2_BUCKET_NAME", text: input.bucketName },
+          ...ssoBindings(input.sso),
           { type: "assets", name: "ASSETS" },
         ];
 

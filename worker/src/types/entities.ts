@@ -138,10 +138,19 @@ export interface Session {
   id: string;
   username: string;
   token: string;
+  auth_source: "local" | "sso";
   user_agent: string | null;
   ip_address: string | null;
   expires_at: number;
   created_at: number;
+}
+
+export interface OidcIdentity {
+  issuer: string;
+  subject: string;
+  username: string;
+  created_at: number;
+  last_login_at: number;
 }
 
 export interface SubsonicCredential {

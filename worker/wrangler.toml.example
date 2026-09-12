@@ -32,6 +32,14 @@ MAX_PROXY_DEPTH = "3"
 # Subsonic/OpenSubsonic serverVersion 会回退到发布版本且不会暴露 dev 标记。
 WORKER_VERSION = "dev"
 EDGESONIC_VERSION = "dev"
+# Browser authentication mode: disabled | optional | required.
+SSO_MODE = "disabled"
+# Set these plain-text values when SSO_MODE is optional or required.
+# SSO_ISSUER = "https://id.example.com"
+# SSO_CLIENT_ID = "edgesonic"
+# SSO_PROVIDER_NAME = "Single Sign-On"
+# Keep SSO_CLIENT_SECRET out of this file:
+#   npx wrangler secret put SSO_CLIENT_SECRET
 # R2Bucket bindings don't expose their own bucket name at runtime, so this
 # must mirror the [[r2_buckets]] bucket_name below exactly — it drives the R2
 # detail card in Settings and is the bucket name signed into R2 presigned
@@ -124,7 +132,7 @@ tag = "v1-sandbox"
 new_sqlite_classes = ["Sandbox"]
 
 # ---------------------------------------------------------------------------
-# Cron 触发器由 Cloudflare API 动态管理（067），此处不声明静态 [triggers]，
+# Cron 触发器由 Cloudflare API 动态管理，此处不声明静态 [triggers]，
 # 以免 `wrangler deploy` 覆盖运行时配置的计划任务。部署后到
 # Settings → Cloudflare → "Ensure default cron" 重新应用。详见 worker/CF_CRON.md。
 # ---------------------------------------------------------------------------

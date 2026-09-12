@@ -22,7 +22,8 @@ import { md5 } from "./utils/md5";
 import { getServerRelayPolicy, parseChain } from "./utils/features";
 import { hasPermission } from "./utils/permissions";
 import { resolveActivation, clampExpiryToActivation, clampTtlToActivation, isGuestAccessEnabled, type ActivationState } from "./utils/activation";
-import { ensureActivationSchema, ensureSubsonicMasterPasswordNoticeColumn } from "./utils/schema_patch";
+import { ensureActivationSchema, ensureSsoSchema, ensureSubsonicMasterPasswordNoticeColumn } from "./utils/schema_patch";
+import { resolveSsoPolicy } from "./utils/ssoPolicy";
 import { SERVER_TYPE, SERVER_VERSION } from "./utils/xml";
 import type { User } from "./types/entities";
 
@@ -65,15 +66,22 @@ export function buildSessionCookieHeader(token: string, maxAgeSec: number): stri
 async function findSessionByCookie(
   db: D1Database,
   cookieToken: string,
-): Promise<{ credential: string; id: string; kind: "session"; streamProxyStrategy: string } | null> {
+): Promise<{ credential: string; id: string; kind: "session"; authSource: "local" | "sso"; streamProxyStrategy: string } | null> {
+  await ensureSsoSchema({ DB: db });
   const row = await db
-    .prepare("SELECT id, token FROM sessions WHERE token = ? AND expires_at > ?")
+    .prepare("SELECT id, token, auth_source FROM sessions WHERE token = ? AND expires_at > ?")
     .bind(cookieToken, Math.floor(Date.now() / 1000))
-    .first<{ id: string; token: string }>();
+    .first<{ id: string; token: string; auth_source: "local" | "sso" }>();
   if (!row) return null;
   // Renewal happens later in authMiddleware, once the user row (and its
   // activation state) is loaded, so the renewed expiry can be clamped.
-  return { credential: row.token, id: row.id, kind: "session", streamProxyStrategy: "always" };
+  return {
+    credential: row.token,
+    id: row.id,
+    kind: "session",
+    authSource: row.auth_source === "sso" ? "sso" : "local",
+    streamProxyStrategy: "always",
+  };
 }
 
 // ============================================================================
@@ -368,7 +376,7 @@ async function lookupUser(db: D1Database, username: string): Promise<User | null
 // ============================================================================
 export const authMiddleware = createMiddleware<{
   Bindings: Env;
-  Variables: { user: User; authMethod: AuthMethod; authSource?: "cookie" | "query"; streamProxyStrategy?: string; rateLimitDeviceId?: string };
+  Variables: { user: User; authMethod: AuthMethod; authSource?: "cookie" | "query"; sessionAuthSource?: "local" | "sso"; streamProxyStrategy?: string; rateLimitDeviceId?: string };
 }>(async (c, next) => {
   const path = new URL(c.req.url).pathname;
 
@@ -379,7 +387,7 @@ export const authMiddleware = createMiddleware<{
   const isMgmt = path.startsWith("/edgesonic/") || path.startsWith("/tag/") || path.startsWith("/storage/");
   // BEFORE this auth middleware in index.ts) converts to JSON when the
   // client sends f=json, keeping a single XML→JSON conversion point.
-  const authFail = (code: number, message: string, status: 401 | 403) =>
+  const authFail = (code: number, message: string, status: 401 | 403 | 503) =>
     isMgmt
       ? c.json({ ok: false, error: message }, status)
       : c.text(subsonicError(code, message), status, {
@@ -418,6 +426,11 @@ export const authMiddleware = createMiddleware<{
     return next();
   }
 
+  const ssoPolicy = resolveSsoPolicy(c.env, c.req.url);
+  if (ssoPolicy.failClosed) {
+    return authFail(0, "Authentication is unavailable because SSO is not configured correctly", 503);
+  }
+
   const q = c.req.query();
   let username = q.u;
   const token = q.t;
@@ -449,7 +462,7 @@ export const authMiddleware = createMiddleware<{
   // D1 round-trip for requests that actually came from the SPA — and it's
   // skipped entirely when an apiKey path is in play.
   const cookieToken = parseSessionCookie(c.req.header("Cookie") || "");
-  let cookieSession: { credential: string; id: string; kind: "session"; streamProxyStrategy: string } | null = null;
+  let cookieSession: { credential: string; id: string; kind: "session"; authSource: "local" | "sso"; streamProxyStrategy: string } | null = null;
   let cookieUsername: string | null = null;
   if (cookieToken && !apiKey) {
     cookieSession = await findSessionByCookie(db, cookieToken);
@@ -560,6 +573,17 @@ export const authMiddleware = createMiddleware<{
     }
   }
 
+  if (authMethod === "session") {
+    const sessionAuthSource = cookieSession?.authSource || "local";
+    if ((ssoPolicy.mode === "disabled" && sessionAuthSource === "sso")
+      || (ssoPolicy.mode === "required" && sessionAuthSource !== "sso")) {
+      return authFail(40, "This session authentication source is not allowed", 401);
+    }
+    c.set("sessionAuthSource", sessionAuthSource);
+  } else if (ssoPolicy.mode === "required") {
+    return authFail(50, "SSO authentication is required", 403);
+  }
+
   // --- Credential-source guard ---
   // Built-in management APIs (/tag /storage /edgesonic) are browser-only and
   // require the HttpOnly cookie session. /rest/* remains protocol-compatible:
@@ -640,7 +664,7 @@ export const authMiddleware = createMiddleware<{
 export const permissionMiddleware = (requiredPermission: string) =>
   createMiddleware<{
     Bindings: Env;
-    Variables: { user: User; authMethod: AuthMethod; authSource?: "cookie" | "query"; streamProxyStrategy?: string };
+    Variables: { user: User; authMethod: AuthMethod; authSource?: "cookie" | "query"; sessionAuthSource?: "local" | "sso"; streamProxyStrategy?: string };
   }>(async (c, next) => {
     const user = c.get("user");
     const enabled = await hasPermission(c.env, user, requiredPermission);

@@ -148,6 +148,19 @@ onMounted(async () => {
 
 const adminSetupApplies = computed(() => wizard.mode === "fresh" || wizard.resetAdmin);
 const adminUsernameValid = computed(() => !wizard.adminUsername.trim() || ADMIN_USERNAME_RE.test(wizard.adminUsername.trim()));
+const ssoSettingsValid = computed(() => {
+  if (wizard.ssoMode === "disabled") return true;
+  if (!wizard.ssoClientId.trim() || !wizard.ssoClientSecret.trim()) return false;
+  try {
+    const issuer = new URL(wizard.ssoIssuer.trim());
+    return issuer.protocol === "https:" && !issuer.username && !issuer.password && !issuer.search && !issuer.hash;
+  } catch {
+    return false;
+  }
+});
+const ssoCallbackPreview = computed(() => wizard.domain.trim()
+  ? `https://${wizard.domain.trim()}/edgesonic/auth/sso/callback`
+  : "");
 
 interface ZoneLookup {
   status: "idle" | "checking" | "found" | "not-found";
@@ -209,6 +222,7 @@ watch(
 );
 
 const canContinue = () => wizard.workerName.trim().length > 0
+  && ssoSettingsValid.value
   && (wizard.mode === "fresh"
     ? collision.value === false
     : collision.value === true && wizard.overwriteConfirmed);
@@ -318,6 +332,48 @@ function goBack() {
         </template>
         <p v-else-if="transformations === 'unavailable'" class="field-help">{{ t("target.transformationsUnavailable") }}</p>
       </div>
+
+      <div class="field">
+        <label for="ssoMode">{{ t("target.ssoMode") }}</label>
+        <FluentSelect
+          id="ssoMode"
+          v-model="wizard.ssoMode"
+          :label="t('target.ssoMode')"
+          :options="[
+            { value: 'disabled', label: t('target.ssoDisabled') },
+            { value: 'optional', label: t('target.ssoOptional') },
+            { value: 'required', label: t('target.ssoRequired') },
+          ]"
+        />
+        <p class="field-help">{{ t("target.ssoModeHelp") }}</p>
+        <p v-if="wizard.ssoMode === 'required'" class="field-help tone-warn">{{ t("target.ssoRequiredHelp") }}</p>
+      </div>
+
+      <template v-if="wizard.ssoMode !== 'disabled'">
+        <div class="field">
+          <label for="ssoIssuer">{{ t("target.ssoIssuer") }}</label>
+          <input id="ssoIssuer" v-model.trim="wizard.ssoIssuer" type="url" maxlength="2048" class="form-input" placeholder="https://id.example.com" autocomplete="off" spellcheck="false" />
+          <p class="field-help">{{ t("target.ssoIssuerHelp") }}</p>
+        </div>
+        <div class="field">
+          <label for="ssoClientId">{{ t("target.ssoClientId") }}</label>
+          <input id="ssoClientId" v-model.trim="wizard.ssoClientId" type="text" maxlength="512" class="form-input" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="field">
+          <label for="ssoClientSecret">{{ t("target.ssoClientSecret") }}</label>
+          <input id="ssoClientSecret" v-model="wizard.ssoClientSecret" type="password" maxlength="4096" class="form-input" autocomplete="new-password" spellcheck="false" />
+          <p class="field-help">{{ t("target.ssoClientSecretHelp") }}</p>
+        </div>
+        <div class="field">
+          <label for="ssoProviderName">{{ t("target.ssoProviderName") }}<span class="field-tag optional">{{ t("common.optional") }}</span></label>
+          <input id="ssoProviderName" v-model.trim="wizard.ssoProviderName" type="text" maxlength="80" class="form-input" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>{{ t("target.ssoCallback") }}</label>
+          <input :value="ssoCallbackPreview || t('target.ssoCallbackRuntime')" type="text" class="form-input" disabled />
+          <p class="field-help">{{ t("target.ssoCallbackHelp") }}</p>
+        </div>
+      </template>
     </template>
 
     <Teleport defer to=".shell-card-actions">

@@ -26,6 +26,29 @@ function trimmed(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function oidcInputs(inputs) {
+  const mode = trimmed(inputs.sso_mode) || "disabled";
+  if (!["disabled", "optional", "required"].includes(mode)) {
+    throw new Error("Invalid single sign-on mode");
+  }
+  const issuer = trimmed(inputs.sso_issuer);
+  const clientId = trimmed(inputs.sso_client_id);
+  const clientSecret = typeof inputs.sso_client_secret === "string" ? inputs.sso_client_secret : "";
+  if (mode !== "disabled") {
+    if (!issuer || !clientId || !clientSecret) throw new Error("OIDC configuration is incomplete");
+    let issuerUrl;
+    try {
+      issuerUrl = new URL(issuer);
+    } catch {
+      throw new Error("OIDC issuer must be a valid HTTPS URL");
+    }
+    if (issuerUrl.protocol !== "https:" || issuerUrl.username || issuerUrl.password || issuerUrl.search || issuerUrl.hash) {
+      throw new Error("OIDC issuer must be a valid HTTPS URL");
+    }
+  }
+  return { mode, clientSecret };
+}
+
 /**
  * Optional host secrets have no value when the user left the fields empty, and
  * the script cannot see which. A rejected push is the only signal, so it is
@@ -44,6 +67,7 @@ async function pushOptionalHostValues(ctx, names) {
 
 export async function deploy(ctx) {
   const { mode, fullRebuild, live, domain, workerName, inputs } = ctx.ctx;
+  const sso = oidcInputs(inputs);
 
   await ctx.step("d1", "running");
   await ctx.d1.provision("db");
@@ -111,6 +135,9 @@ export async function deploy(ctx) {
   await ctx.secrets.put("WORK_UPLOAD_HMAC_KEY", await ctx.crypto.randomBase64(48));
   await ctx.secrets.putHostValue("CF_ACCOUNT_ID");
   await ctx.secrets.putHostValue("CF_API_TOKEN");
+  if (sso.mode !== "disabled") {
+    await ctx.secrets.put("SSO_CLIENT_SECRET", sso.clientSecret);
+  }
   const presign = await pushOptionalHostValues(ctx, ["R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"]);
   if (presign) {
     // The Worker reads the bucket name from the R2_BUCKET_NAME var, so presign

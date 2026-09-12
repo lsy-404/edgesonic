@@ -11,11 +11,13 @@
     "dev:worker": "npm run dev -w worker",
     "dev:web": "npm run dev -w web",
     "build:web": "npm run build -w web",
+    "test:sso": "tsx --test test/internal/oidc_flow.test.ts test/internal/sso_modes.test.ts",
     "typecheck": "npm run typecheck -w worker && npm run typecheck -w web && npm run typecheck -w installer",
     "deploy": "npm run build:web && npm run deploy -w worker",
     "postinstall": "patch-package"
   },
   "devDependencies": {
-    "patch-package": "^8.0.1"
+    "patch-package": "^8.0.1",
+    "tsx": "^4.23.13"
   }
 }

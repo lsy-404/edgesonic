@@ -136,6 +136,7 @@ const nickname = ref(localStorage.getItem("edgesonic_nickname") || "");
 const avatarKey = ref(localStorage.getItem("edgesonic_avatar_key") || "");
 const email = ref(localStorage.getItem("edgesonic_email") || "");
 const emailVerified = ref(localStorage.getItem("edgesonic_email_verified") === "1");
+const authSource = ref<"local" | "sso">(localStorage.getItem("edgesonic_auth_source") === "sso" ? "sso" : "local");
 export type SubsonicMasterPasswordNotice = "create_client_password" | "clients_not_enabled";
 const subsonicMasterPasswordNotice = ref<SubsonicMasterPasswordNotice | null>(null);
 
@@ -266,6 +267,12 @@ export function useAuth() {
     // is true Register.vue shows the invite-code field and gate-mode hint.
     activationEnabled: boolean;
     registrationGateMode: "all" | "any";
+    ssoMode: "disabled" | "optional" | "required";
+    ssoAvailable: boolean;
+    ssoProviderName: string;
+    ssoCallbackUrl: string;
+    ssoError: string;
+    authenticationBlocked: boolean;
   }
 
   // Public — no session required. Drives Login.vue's notice line, optional
@@ -275,6 +282,8 @@ export function useAuth() {
       noticeText: "", backgroundUrl: "", registrationEnabled: false,
       passwordResetEnabled: false, emailEnabled: false, isDemo: false,
       activationEnabled: false, registrationGateMode: "all",
+      ssoMode: "disabled", ssoAvailable: false, ssoProviderName: "SSO",
+      ssoCallbackUrl: "", ssoError: "", authenticationBlocked: false,
     };
     try {
       const data = await requestJson<Partial<LoginConfig> & { ok?: boolean }>(`${EDGESONIC_BASE}/auth/loginConfig`, { credentials: "same-origin" });
@@ -288,6 +297,12 @@ export function useAuth() {
         isDemo: !!data.isDemo,
         activationEnabled: !!data.activationEnabled,
         registrationGateMode: data.registrationGateMode === "any" ? "any" : "all",
+        ssoMode: data.ssoMode === "optional" || data.ssoMode === "required" ? data.ssoMode : "disabled",
+        ssoAvailable: !!data.ssoAvailable,
+        ssoProviderName: data.ssoProviderName || "SSO",
+        ssoCallbackUrl: data.ssoCallbackUrl || "",
+        ssoError: data.ssoError || "",
+        authenticationBlocked: !!data.authenticationBlocked,
       };
     } catch { return fallback; }
   }
@@ -340,6 +355,7 @@ export function useAuth() {
     token.value = ""; username.value = ""; level.value = 0;
     permissions.value = {}; nickname.value = ""; avatarKey.value = "";
     email.value = ""; emailVerified.value = false;
+    authSource.value = "local";
     subsonicMasterPasswordNotice.value = null;
     localStorage.removeItem("edgesonic_logged_in");
     localStorage.removeItem("edgesonic_user");
@@ -349,6 +365,7 @@ export function useAuth() {
     localStorage.removeItem("edgesonic_avatar_key");
     localStorage.removeItem("edgesonic_email");
     localStorage.removeItem("edgesonic_email_verified");
+    localStorage.removeItem("edgesonic_auth_source");
     activation.value = { ...DEFAULT_ACTIVATION };
     localStorage.removeItem("edgesonic_activation");
     // Best-effort: clear the cookie + delete the session row server-side.
@@ -507,16 +524,23 @@ export function useAuth() {
   // Refresh the current user's effective permissions + profile. Called after
   // login and on app mount; a 401 flows through handleAuthError (logout), any
   // other failure keeps the cached values so the UI stays usable offline.
-  async function fetchMe(): Promise<void> {
+  async function fetchMe(): Promise<boolean> {
     try {
       const data = JSON.parse(await edgesonicFetch("auth/me")) as {
-        ok: boolean; level?: number; nickname?: string | null; avatarKey?: string | null;
+        ok: boolean; username?: string; level?: number; authSource?: "local" | "sso";
+        nickname?: string | null; avatarKey?: string | null;
         email?: string | null; emailVerified?: boolean;
         permissions?: Record<string, boolean>;
         subsonicMasterPasswordNotice?: SubsonicMasterPasswordNotice | null;
         activation?: unknown;
       };
-      if (!data.ok) return;
+      if (!data.ok) return false;
+      token.value = "1";
+      username.value = data.username || username.value;
+      authSource.value = data.authSource === "sso" ? "sso" : "local";
+      localStorage.setItem("edgesonic_logged_in", "1");
+      localStorage.setItem("edgesonic_user", username.value);
+      localStorage.setItem("edgesonic_auth_source", authSource.value);
       // Absent on older backends → parseActivation degrades to "everyone
       // active", so the guard/banner stay dormant until the field ships.
       storeActivation(parseActivation(data.activation));
@@ -538,9 +562,18 @@ export function useAuth() {
       localStorage.setItem("edgesonic_email", email.value);
       localStorage.setItem("edgesonic_email_verified", emailVerified.value ? "1" : "0");
       localStorage.setItem("edgesonic_perms", JSON.stringify(permissions.value));
+      return true;
     } catch (e) {
       handleAuthError(e);
+      return false;
     }
+  }
+
+  async function completeSsoLogin(): Promise<LoginResult> {
+    const restored = await fetchMe();
+    return restored
+      ? { ok: true, name: username.value, level: level.value }
+      : { ok: false, error: "SSO login failed" };
   }
 
   async function getMessages(): Promise<MessageFeed> {
@@ -834,13 +867,13 @@ export function useAuth() {
     subsonicMasterPasswordNotice.value = null;
   }
 
-  return { token, username, level, salt, isLoggedIn, isAdmin, isSuperAdmin, isGuest, isUser,
+  return { token, username, level, authSource, salt, isLoggedIn, isAdmin, isSuperAdmin, isGuest, isUser,
     permissions, hasPerm, nickname, avatarKey, email, emailVerified, displayName,
     subsonicMasterPasswordNotice, dismissSubsonicMasterPasswordNotice,
     activation, fetchActivationStatus, redeemActivationCode, probeGuestEnabled,
     fetchMe, getMessages, markMessageRead, dismissMessage, sendUserMessage,
     updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
-    login, guestLogin, demoLogin, logout, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
+    login, guestLogin, demoLogin, completeSsoLogin, logout, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
     getLoginConfig, register, requestPasswordReset, confirmPasswordReset, confirmEmailVerify,
     tagFetch, tagPost, storageFetch, storagePost, edgesonicFetch, edgesonicPost,
     readTags, writeTags, batchWriteTags, rescanSongs, submitMetadata, tidyFolder,

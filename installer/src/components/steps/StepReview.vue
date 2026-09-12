@@ -61,6 +61,28 @@ function goBack() {
         <dd>{{ wizard.domain || t("review.domainNone") }}</dd>
       </div>
       <div class="kv-row">
+        <dt>{{ t("review.ssoModeLabel") }}</dt>
+        <dd>{{ t(wizard.ssoMode === "disabled" ? "target.ssoDisabled" : wizard.ssoMode === "optional" ? "target.ssoOptional" : "target.ssoRequired") }}</dd>
+      </div>
+      <template v-if="wizard.ssoMode !== 'disabled'">
+        <div class="kv-row">
+          <dt>{{ t("review.ssoProviderLabel") }}</dt>
+          <dd>{{ wizard.ssoProviderName || "SSO" }}</dd>
+        </div>
+        <div class="kv-row">
+          <dt>{{ t("review.ssoIssuerLabel") }}</dt>
+          <dd>{{ wizard.ssoIssuer }}</dd>
+        </div>
+        <div class="kv-row">
+          <dt>{{ t("review.ssoClientIdLabel") }}</dt>
+          <dd>{{ wizard.ssoClientId }}</dd>
+        </div>
+        <div class="kv-row">
+          <dt>{{ t("review.ssoClientSecretLabel") }}</dt>
+          <dd>{{ t("review.ssoClientSecretConfigured") }}</dd>
+        </div>
+      </template>
+      <div class="kv-row">
         <dt>{{ t("review.versionLabel") }}</dt>
         <dd>{{ wizard.selectedTag }}</dd>
       </div>

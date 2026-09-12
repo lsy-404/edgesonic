@@ -21,7 +21,7 @@ import { permissionMiddleware, subsonicError, hashWebPassword, verifyWebPassword
 import { subsonicOK } from "../../utils/xml";
 import { recoverCronIfStale } from "../../utils/cronRecovery";
 import { getEffectivePermissions, hasPermission } from "../../utils/permissions";
-import { ensureNicknameColumn, ensureEmailColumns, ensureActivationSchema, ensureSubsonicMasterPasswordNoticeColumn } from "../../utils/schema_patch";
+import { ensureNicknameColumn, ensureEmailColumns, ensureActivationSchema, ensureSsoSchema, ensureSubsonicMasterPasswordNoticeColumn } from "../../utils/schema_patch";
 import { getFeature, getFeatureString } from "../../utils/features";
 import {
   resolveActivation, clampTtlToActivation, checkInviteCode, redeemCode,
@@ -35,6 +35,8 @@ import {
 import type { User } from "../../types/entities";
 import { clearLoginFailures, loginAllowed, recordLoginFailure } from "../../utils/loginProtection";
 import { authenticationRateLimitKey, rateLimitAllowed, rateLimitExceededResponse } from "../../middleware/rate_limit";
+import { resolveSsoPolicy, type SsoPolicy } from "../../utils/ssoPolicy";
+import { beginOidcAuthorization, clearOidcTransactionCookie, completeOidcAuthorization } from "../../utils/oidc";
 
 // only request that legitimately arrives without a session) and is exported
 // separately so index.ts can mount it BEFORE the global auth filter at the
@@ -51,7 +53,51 @@ const SESSION_COOKIE = "edgesonic_session";
 // attributes (Path=/, HttpOnly, SameSite=Lax) identical across login, logout
 // and the middleware's sliding renewal.
 
+function localAuthenticationBlock(policy: SsoPolicy): { status: 403 | 503; error: string } | null {
+  if (policy.failClosed) {
+    return { status: 503, error: "Authentication is unavailable because SSO is not configured correctly" };
+  }
+  if (!policy.localAuthenticationAllowed) {
+    return { status: 403, error: "Local authentication is disabled; use SSO" };
+  }
+  return null;
+}
+
+function loginPageLocation(requestUrl: string, parameter: "sso" | "sso_error", value: string): string {
+  const origin = new URL(requestUrl).origin;
+  return `${origin}/#/login?${parameter}=${encodeURIComponent(value)}`;
+}
+
+webLoginRoutes.get("/edgesonic/auth/sso/start", async (c) => {
+  try {
+    const started = await beginOidcAuthorization(c.env, c.req.url);
+    c.header("Set-Cookie", started.transactionCookie);
+    return c.redirect(started.authorizationUrl, 302);
+  } catch {
+    return c.redirect(loginPageLocation(c.req.url, "sso_error", "unavailable"), 303);
+  }
+});
+
+webLoginRoutes.get("/edgesonic/auth/sso/callback", async (c) => {
+  c.header("Set-Cookie", clearOidcTransactionCookie(c.req.url), { append: true });
+  try {
+    const result = await completeOidcAuthorization(
+      c.env,
+      c.req.url,
+      c.req.header("Cookie") || "",
+      c.req.header("User-Agent") || "",
+    );
+    const secure = new URL(c.req.url).protocol === "https:" ? "; Secure" : "";
+    c.header("Set-Cookie", buildSessionCookieHeader(result.sessionToken, Math.max(0, result.expiresAt - Math.floor(Date.now() / 1000))) + secure, { append: true });
+    return c.redirect(loginPageLocation(c.req.url, "sso", "complete"), 303);
+  } catch {
+    return c.redirect(loginPageLocation(c.req.url, "sso_error", "callback"), 303);
+  }
+});
+
 webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
+  const blocked = localAuthenticationBlock(resolveSsoPolicy(c.env, c.req.url));
+  if (blocked) return c.json({ ok: false, error: blocked.error }, blocked.status);
   const db = c.env.DB;
 
   let body: { username?: string; password?: string };
@@ -108,9 +154,10 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
   const expiresAt = Math.floor(Date.now() / 1000) + ttlSec;
   const userAgent = c.req.header("User-Agent") || "";
 
+  await ensureSsoSchema(c.env);
   await db
     .prepare(
-      "INSERT INTO sessions (id, username, token, user_agent, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO sessions (id, username, token, auth_source, user_agent, expires_at, created_at) VALUES (?, ?, ?, 'local', ?, ?, ?)"
     )
     .bind(sessionId, username, sessionToken, userAgent, expiresAt, Math.floor(Date.now() / 1000))
     .run();
@@ -160,6 +207,11 @@ webLoginRoutes.post("/edgesonic/auth/login", async (c) => {
 });
 
 webLoginRoutes.get("/edgesonic/auth/guest", async (c) => {
+  const policy = resolveSsoPolicy(c.env, c.req.url);
+  if (policy.failClosed) {
+    return c.json({ ok: false, enabled: false, error: "Authentication configuration is invalid" }, 503);
+  }
+  if (!policy.localAuthenticationAllowed) return c.json({ ok: true, enabled: false });
   const user = await c.env.DB
     .prepare("SELECT username, level, enabled FROM users WHERE username = ? AND level = 0 AND enabled = 1")
     .bind(GUEST_USERNAME)
@@ -168,6 +220,8 @@ webLoginRoutes.get("/edgesonic/auth/guest", async (c) => {
 });
 
 webLoginRoutes.post("/edgesonic/auth/guest", async (c) => {
+  const blocked = localAuthenticationBlock(resolveSsoPolicy(c.env, c.req.url));
+  if (blocked) return c.json({ ok: false, error: blocked.error }, blocked.status);
   const db = c.env.DB;
   const user = await db
     .prepare("SELECT username, level, enabled FROM users WHERE username = ? AND level = 0 AND enabled = 1")
@@ -180,9 +234,10 @@ webLoginRoutes.post("/edgesonic/auth/guest", async (c) => {
   const sessionId = crypto.randomUUID();
   const sessionToken = crypto.randomUUID().replace(/-/g, "");
   const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SEC;
+  await ensureSsoSchema(c.env);
   await db
     .prepare(
-      "INSERT INTO sessions (id, username, token, user_agent, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO sessions (id, username, token, auth_source, user_agent, expires_at, created_at) VALUES (?, ?, ?, 'local', ?, ?, ?)"
     )
     .bind(sessionId, user.username, sessionToken, c.req.header("User-Agent") || "", expiresAt, Math.floor(Date.now() / 1000))
     .run();
@@ -194,6 +249,8 @@ webLoginRoutes.post("/edgesonic/auth/guest", async (c) => {
 
 // The demo-only public route issues sessions for fixed admin without accepting credentials.
 webLoginRoutes.post("/edgesonic/auth/demo-login", async (c) => {
+  const blocked = localAuthenticationBlock(resolveSsoPolicy(c.env, c.req.url));
+  if (blocked) return c.json({ ok: false, error: blocked.error }, blocked.status);
   if (!isDemoMode(c.env)) {
     return c.json({ ok: false, error: "Demo login is unavailable" }, 404);
   }
@@ -212,9 +269,10 @@ webLoginRoutes.post("/edgesonic/auth/demo-login", async (c) => {
   const sessionId = crypto.randomUUID();
   const sessionToken = crypto.randomUUID().replace(/-/g, "");
   const expiresAt = Math.floor(Date.now() / 1000) + SESSION_TTL_SEC;
+  await ensureSsoSchema(c.env);
   await c.env.DB
     .prepare(
-      "INSERT INTO sessions (id, username, token, user_agent, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO sessions (id, username, token, auth_source, user_agent, expires_at, created_at) VALUES (?, ?, ?, 'local', ?, ?, ?)"
     )
     .bind(sessionId, user.username, sessionToken, c.req.header("User-Agent") || "", expiresAt, Math.floor(Date.now() / 1000))
     .run();
@@ -263,6 +321,7 @@ const USERNAME_RE = /^[a-zA-Z0-9_-]{3,32}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 webLoginRoutes.get("/edgesonic/auth/loginConfig", async (c) => {
+  const sso = resolveSsoPolicy(c.env, c.req.url);
   const [noticeText, backgroundUrl, registrationEnabled, allowPasswordReset, emailEnabled, activationEnabled, gateMode] = await Promise.all([
     getFeatureString(c.env, "login_notice_text", ""),
     getFeatureString(c.env, "login_background_url", ""),
@@ -278,19 +337,27 @@ webLoginRoutes.get("/edgesonic/auth/loginConfig", async (c) => {
     backgroundUrl,
     // Self-service registration requires at least one signup gate: a working
     // verification email, or (activation system on) an invite code.
-    registrationEnabled: registrationEnabled && (emailEnabled || activationEnabled),
+    registrationEnabled: sso.localAuthenticationAllowed && registrationEnabled && (emailEnabled || activationEnabled),
     activationEnabled,
     registrationGateMode: gateMode,
     // Password reset has its own independent toggle on top of "is
     // email configured at all" — an operator may want registration without
     // self-service reset, or vice versa.
-    passwordResetEnabled: allowPasswordReset && emailEnabled,
+    passwordResetEnabled: sso.localAuthenticationAllowed && allowPasswordReset && emailEnabled,
     emailEnabled,
-    isDemo: isDemoMode(c.env),
+    isDemo: isDemoMode(c.env) && sso.localAuthenticationAllowed,
+    ssoMode: sso.mode,
+    ssoAvailable: sso.configured && !sso.error && sso.mode !== "disabled",
+    ssoProviderName: sso.providerName,
+    ssoCallbackUrl: sso.callbackUrl,
+    ssoError: sso.error,
+    authenticationBlocked: sso.failClosed,
   });
 });
 
 webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
+  const blocked = localAuthenticationBlock(resolveSsoPolicy(c.env, c.req.url));
+  if (blocked) return c.json({ ok: false, error: blocked.error }, blocked.status);
   if (isDemoMode(c.env)) {
     return c.json({ ok: false, error: "Registration is disabled in demo mode" }, 403);
   }
@@ -395,6 +462,8 @@ webLoginRoutes.post("/edgesonic/auth/register", async (c) => {
 });
 
 webLoginRoutes.post("/edgesonic/auth/passwordReset/request", async (c) => {
+  const blocked = localAuthenticationBlock(resolveSsoPolicy(c.env, c.req.url));
+  if (blocked) return c.json({ ok: false, error: blocked.error }, blocked.status);
   let body: { emailOrUsername?: string };
   try {
     body = await c.req.json();
@@ -432,6 +501,8 @@ webLoginRoutes.post("/edgesonic/auth/passwordReset/request", async (c) => {
 });
 
 webLoginRoutes.post("/edgesonic/auth/passwordReset/confirm", async (c) => {
+  const blocked = localAuthenticationBlock(resolveSsoPolicy(c.env, c.req.url));
+  if (blocked) return c.json({ ok: false, error: blocked.error }, blocked.status);
   let body: { token?: string; newPassword?: string };
   try {
     body = await c.req.json();
@@ -528,7 +599,10 @@ function parseSessionCookie(cookieHeader: string): string | null {
   return null;
 }
 
-export const edgesonicAuthRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
+export const edgesonicAuthRoutes = new Hono<{
+  Bindings: Env;
+  Variables: { user: User; sessionAuthSource?: "local" | "sso" };
+}>();
 
 const XML = { "Content-Type": "application/xml; charset=UTF-8" } as const;
 
@@ -538,6 +612,7 @@ const XML = { "Content-Type": "application/xml; charset=UTF-8" } as const;
 // their display name and avatar so App.vue / Settings can render accordingly.
 edgesonicAuthRoutes.get("/auth/me", async (c) => {
   const user = c.get("user");
+  const authSource = c.get("sessionAuthSource") || "local";
   await ensureNicknameColumn(c.env);
   await ensureEmailColumns(c.env);
   await ensureSubsonicMasterPasswordNoticeColumn(c.env);
@@ -581,6 +656,7 @@ edgesonicAuthRoutes.get("/auth/me", async (c) => {
     ok: true,
     username: user.username,
     level: user.level,
+    authSource,
     nickname,
     avatarKey,
     email,
@@ -658,8 +734,8 @@ edgesonicAuthRoutes.get("/auth/sessions/list", async (c) => {
   const db = c.env.DB;
   const user = c.get("user");
   const rows = await db.prepare(
-    "SELECT id, user_agent, expires_at, created_at FROM sessions WHERE username = ? AND expires_at > ? ORDER BY created_at DESC"
-  ).bind(user.username, Math.floor(Date.now() / 1000)).all<{ id: string; user_agent: string | null; expires_at: number; created_at: number }>();
+    "SELECT id, auth_source, user_agent, expires_at, created_at FROM sessions WHERE username = ? AND expires_at > ? ORDER BY created_at DESC"
+  ).bind(user.username, Math.floor(Date.now() / 1000)).all<{ id: string; auth_source: "local" | "sso"; user_agent: string | null; expires_at: number; created_at: number }>();
 
   return c.text(
     subsonicOK({
@@ -667,6 +743,7 @@ edgesonicAuthRoutes.get("/auth/sessions/list", async (c) => {
         session: rows.results.map((r) => ({
           _attributes: {
             id: r.id,
+            authSource: r.auth_source,
             userAgent: r.user_agent || "",
             expiresAt: String(r.expires_at),
             createdAt: String(r.created_at),

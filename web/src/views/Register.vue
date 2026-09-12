@@ -22,6 +22,7 @@ const error = ref("");
 const loading = ref(false);
 const checkingConfig = ref(true);
 const registrationEnabled = ref(false);
+const ssoMode = ref<"disabled" | "optional" | "required">("disabled");
 const activationEnabled = ref(false);
 const gateMode = ref<"all" | "any">("all");
 const emailVerificationOn = ref(false);
@@ -37,7 +38,8 @@ const gateHintKey = computed(() => {
 
 onMounted(async () => {
   const cfg = await getLoginConfig();
-  registrationEnabled.value = cfg.registrationEnabled;
+  ssoMode.value = cfg.ssoMode;
+  registrationEnabled.value = cfg.registrationEnabled && cfg.ssoMode !== "required";
   activationEnabled.value = cfg.activationEnabled;
   gateMode.value = cfg.registrationGateMode;
   emailVerificationOn.value = cfg.emailEnabled;
@@ -80,7 +82,7 @@ async function submit() {
           <p class="login-hint">{{ t("common.loading") }}</p>
         </div>
         <div v-else-if="!registrationEnabled" class="login-form">
-          <p class="login-hint">{{ t("register.disabled") }}</p>
+          <p class="login-hint">{{ ssoMode === "required" ? t("register.ssoOnly") : t("register.disabled") }}</p>
           <router-link to="/login" class="btn-secondary login-btn">{{ t("register.backToLogin") }}</router-link>
         </div>
         <form v-else @submit.prevent="submit" class="login-form">
