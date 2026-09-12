@@ -4,7 +4,7 @@
 -- Architecture:
 --   Auth:   master_password (web login) → sessions (web+Subsonic dual-use)
 --           subsonic_credentials (per-user, max 64, for native clients)
---  Storage: R2 folder-nested structure with multi-bitrate versions
+--  Storage: D1 logical entries over immutable R2 objects with multi-bitrate versions
 --           song_instances tracks source origin + transcoded/cached variants
 --  Sources: R2 (primary), WebDAV (external), Subsonic (proxied), URL (direct)
 --           R2 acts as transcode cache for WebDAV/Subsonic sources
@@ -21,11 +21,9 @@
 -- ============================================================================
 -- R2 Storage Convention
 -- ============================================================================
--- Primary (owned files):
---  {source_id}/artists/{artist_id}/images/profile.jpg
---  {source_id}/artists/{artist_id}/albums/{album_id}/cover.jpg
---  {source_id}/artists/{artist_id}/albums/{album_id}/songs/{master_id}/original.{suffix}
---  {source_id}/artists/{artist_id}/albums/{album_id}/songs/{master_id}/transcode_{profile}.{suffix}
+-- Native objects use immutable keys under objects/{object_id}.{suffix}.
+-- Logical directories, display names and companion relationships live in
+-- storage_entries; cache/cover/avatar namespaces remain implementation-owned.
 --
 -- WebDAV transcode cache:
 --  _cache/webdav/{source_hash}/{remote_path_sanitized}/original.{suffix}
@@ -438,10 +436,9 @@ CREATE INDEX IF NOT EXISTS idx_songartists_artist ON song_artists(artist_id);
 -- 10. Song Instances (physical files — one per format/source/bitrate)
 -- ============================================================================
 -- Each song_master can have multiple instances from different sources.
--- R2 folder: {source_id}/artists/{artist_id}/albums/{album_id}/songs/{master_id}/
---   ├── original.flac        (instance_type='original')
---   ├── transcode_320.mp3    (instance_type='transcoded')
---   └── transcode_128.opus   (instance_type='transcoded')
+-- Native R2 objects: objects/{object_id}.{suffix}
+-- Logical paths and display names are storage_entries rows; each instance may
+-- point to one immutable object through storage_object_id.
 -- Deduplication: source_dedup_key groups identical audio across sources.
 CREATE TABLE IF NOT EXISTS song_instances (
   id TEXT PRIMARY KEY,
@@ -452,7 +449,7 @@ CREATE TABLE IF NOT EXISTS song_instances (
   source_dedup_key TEXT,                             -- content hash for cross-source dedup
   parent_instance_id TEXT,                           -- FK to self: original instance for transcoded
   storage_uri TEXT NOT NULL,                         -- r2://key or webdav://source_id/path etc.
-  storage_object_id TEXT,                            -- stable native R2 object relation; storage_uri remains the adapter URI
+  storage_object_id TEXT REFERENCES storage_objects(id), -- stable native R2 object relation
   transcode_profile TEXT,                            -- e.g. 'mp3_320', 'opus_128' (null if original)
   suffix TEXT NOT NULL,
   content_type TEXT,

@@ -33,6 +33,8 @@ import type { SongTags } from "../../utils/tags";
 import { dispatchWorkBatch } from "../edgesonic/work";
 import { deserializeRich, normalizeRichLyrics, richLyricsToLrc } from "../../utils/richLyrics";
 import { parseNetEaseLyrics } from "../../../../shared/neteaseLyrics";
+import { findR2EntryByPath, findR2EntryByUri, registerR2Object } from "../../utils/storageResolver";
+import { createStableObjectId, createStableObjectKey, splitEntryPath } from "../../utils/storageObjects";
 
 export const tagEditRoutes = new Hono();
 
@@ -664,15 +666,26 @@ async function exportLrcSidecar(
   storageUri: string,
   lyrics: string,
 ): Promise<SidecarResult> {
-  const lrcUri = deriveSidecarPath(storageUri, "lrc");
-  if (!lrcUri) return { written: false, reason: "invalid source path" };
   const data = new TextEncoder().encode(lyrics);
-  if (lrcUri.startsWith("r2://")) {
-    await env.MUSIC_BUCKET.put(lrcUri.substring(5), data, {
+  if (storageUri.startsWith("r2://")) {
+    const target = await resolveR2SidecarTarget(env, storageUri, "lrc");
+    if (!target) return { written: false, reason: "audio entry not found" };
+    await env.MUSIC_BUCKET.put(target.key, data, {
       httpMetadata: { contentType: "text/plain; charset=utf-8" },
     });
-    return { written: true, path: lrcUri };
+    await registerR2Object(env.DB, {
+      objectId: target.objectId,
+      physicalKey: target.key,
+      logicalPath: target.path,
+      suffix: "lrc",
+      contentType: "text/plain; charset=utf-8",
+      size: data.length,
+      companionOf: target.audioEntryId,
+    });
+    return { written: true, path: `r2://${target.key}` };
   }
+  const lrcUri = deriveSidecarPath(storageUri, "lrc");
+  if (!lrcUri) return { written: false, reason: "invalid source path" };
   if (lrcUri.startsWith("webdav://")) {
     const rest = lrcUri.substring(9);
     const slash = rest.indexOf("/");
@@ -699,15 +712,26 @@ async function exportCoverSidecar(
   storageUri: string,
   coverBytes: Uint8Array,
 ): Promise<SidecarResult> {
+  if (storageUri.startsWith("r2://")) {
+    const target = await resolveR2SidecarTarget(env, storageUri, "jpg", "cover.jpg");
+    if (!target) return { written: false, reason: "audio entry not found" };
+    await env.MUSIC_BUCKET.put(target.key, coverBytes, {
+      httpMetadata: { contentType: "image/jpeg" },
+    });
+    await registerR2Object(env.DB, {
+      objectId: target.objectId,
+      physicalKey: target.key,
+      logicalPath: target.path,
+      suffix: "jpg",
+      contentType: "image/jpeg",
+      size: coverBytes.length,
+      companionOf: target.audioEntryId,
+    });
+    return { written: true, path: `r2://${target.key}` };
+  }
   const lastSlash = storageUri.lastIndexOf("/");
   if (lastSlash < 0) return { written: false, reason: "invalid source path" };
   const coverUri = storageUri.substring(0, lastSlash + 1) + "cover.jpg";
-  if (coverUri.startsWith("r2://")) {
-    await env.MUSIC_BUCKET.put(coverUri.substring(5), coverBytes, {
-      httpMetadata: { contentType: "image/jpeg" },
-    });
-    return { written: true, path: coverUri };
-  }
   if (coverUri.startsWith("webdav://")) {
     const rest = coverUri.substring(9);
     const slash = rest.indexOf("/");
@@ -725,4 +749,24 @@ async function exportCoverSidecar(
     return { written: true, path: coverUri };
   }
   return { written: false, path: coverUri, reason: "read-only source" };
+}
+
+async function resolveR2SidecarTarget(
+  env: Env,
+  storageUri: string,
+  suffix: string,
+  fixedName?: string,
+): Promise<{ audioEntryId: string; objectId: string; key: string; path: string } | null> {
+  const audio = await findR2EntryByUri(env.DB, storageUri);
+  if (!audio || audio.kind !== "file") return null;
+  const { parentPath, displayName } = splitEntryPath(audio.path);
+  const dot = displayName.lastIndexOf(".");
+  const stem = dot > 0 ? displayName.slice(0, dot) : displayName;
+  const path = `${parentPath ? `${parentPath}/` : ""}${fixedName || `${stem}.${suffix}`}`;
+  const existing = await findR2EntryByPath(env.DB, path);
+  if (existing?.physical_key && existing.object_id) {
+    return { audioEntryId: audio.id, objectId: existing.object_id, key: existing.physical_key, path };
+  }
+  const objectId = createStableObjectId(`${path}:${crypto.randomUUID()}`);
+  return { audioEntryId: audio.id, objectId, key: createStableObjectKey(objectId, suffix), path };
 }

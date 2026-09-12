@@ -39,6 +39,8 @@
 import { parseStorageUri, type StreamResult } from "../adapters";
 import { createR2Adapter } from "../adapters/r2";
 import { createWebDAVAdapter } from "../adapters/webdav";
+import { findR2EntryByPath, findR2EntryByUri } from "./storageResolver";
+import { splitEntryPath } from "./storageObjects";
 import {
   parseSidecarToRich,
   serializeRich,
@@ -140,7 +142,10 @@ async function fetchSidecarBytes(
   const parsed = parseStorageUri(storageUri);
   if (parsed.scheme !== "r2" && parsed.scheme !== "webdav") return null;
 
-  const sidecarUri = toSidecarUri(storageUri, ext);
+  const sidecarUri = parsed.scheme === "r2"
+    ? await resolveR2SidecarUri(env, storageUri, ext)
+    : toSidecarUri(storageUri, ext);
+  if (!sidecarUri) return null;
 
   let result: StreamResult;
   try {
@@ -162,6 +167,21 @@ async function fetchSidecarBytes(
   }
 
   return streamToCappedBytes(result, LRC_MAX_BYTES);
+}
+
+async function resolveR2SidecarUri(env: Env, storageUri: string, ext: string): Promise<string | null> {
+  try {
+    const audio = await findR2EntryByUri(env.DB, storageUri);
+    if (!audio || audio.kind !== "file") return null;
+    const { parentPath, displayName } = splitEntryPath(audio.path);
+    const dot = displayName.lastIndexOf(".");
+    const stem = dot > 0 ? displayName.slice(0, dot) : displayName;
+    const path = `${parentPath ? `${parentPath}/` : ""}${stem}${ext}`;
+    const sidecar = await findR2EntryByPath(env.DB, path);
+    return sidecar?.physical_key ? `r2://${sidecar.physical_key}` : null;
+  } catch {
+    return null;
+  }
 }
 
 // Scan-time importer: pull the sibling .lrc and, on hit, write it back to

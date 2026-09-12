@@ -114,6 +114,31 @@ function buildDb() {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL
     );
+    CREATE TABLE storage_objects (
+      id TEXT PRIMARY KEY,
+      physical_key TEXT NOT NULL UNIQUE,
+      legacy_key TEXT UNIQUE,
+      suffix TEXT NOT NULL,
+      content_type TEXT,
+      size INTEGER NOT NULL DEFAULT 0,
+      etag TEXT,
+      last_modified INTEGER,
+      created_at INTEGER DEFAULT 0,
+      updated_at INTEGER DEFAULT 0
+    );
+    CREATE TABLE storage_entries (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      parent_id TEXT,
+      path TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      object_id TEXT,
+      instance_id TEXT,
+      companion_of TEXT,
+      created_at INTEGER DEFAULT 0,
+      updated_at INTEGER DEFAULT 0
+    );
     INSERT INTO albums (id, name) VALUES ('al-1', '25');
 
     INSERT INTO artists (id, name) VALUES ('ar-1', 'Adele');
@@ -419,12 +444,16 @@ async function main() {
     fetchCalls = [];
     fetchHandler = () => new Response("UNEXPECTED", { status: 500 });
     const sqlite = buildDb();
-    sqlite.prepare("INSERT INTO song_instances (id, master_id, storage_uri, suffix) VALUES ('si-elrc', 'sg-1', 'r2://music/Hello.mp3', 'mp3')").run();
+    sqlite.prepare("INSERT INTO song_instances (id, master_id, storage_uri, suffix) VALUES ('si-elrc', 'sg-1', 'r2://objects/obj_hello.mp3', 'mp3')").run();
+    sqlite.prepare("INSERT INTO storage_objects (id, physical_key, suffix, content_type, size) VALUES ('obj-hello', 'objects/obj_hello.mp3', 'mp3', 'audio/mpeg', 1)").run();
+    sqlite.prepare("INSERT INTO storage_objects (id, physical_key, suffix, content_type, size) VALUES ('obj-elrc', 'objects/obj_hello.elrc', 'elrc', 'text/plain', 1)").run();
+    sqlite.prepare("INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id, instance_id) VALUES ('entry-hello', 'r2-local', 'music/Hello.mp3', 'Hello.mp3', 'file', 'obj-hello', 'si-elrc')").run();
+    sqlite.prepare("INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id, companion_of) VALUES ('entry-elrc', 'r2-local', 'music/Hello.elrc', 'Hello.elrc', 'file', 'obj-elrc', 'entry-hello')").run();
     sqlite.prepare("UPDATE song_masters SET lyrics_rich = ? WHERE id = 'sg-1'").run(JSON.stringify({
       tracks: [{ kind: "main", lang: "xxx", synced: true, line: [{ start: 0, value: "逐字" }], cueLine: [], agents: [] }],
     }));
     const { get } = makeApp(sqlite, {
-      "music/Hello.elrc": "[0,1000]<0,400,0>逐<400,600,0>字",
+      "objects/obj_hello.elrc": "[0,1000]<0,400,0>逐<400,600,0>字",
     });
     const r = await get("/rest/getLyricsBySongId?id=sg-1&enhanced=true");
     const xml = await r.text();

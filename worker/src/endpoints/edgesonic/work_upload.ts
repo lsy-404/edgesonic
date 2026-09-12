@@ -26,8 +26,8 @@
 //    The check happens in code so the failure mode is observable in the
 //    response (403 with reason) instead of a generic 404.
 // Effect:
-//  Writes R2 key `cache/transcoded/<instanceId>_<profileId>.<container>`
-//  based on the payload that was queued. Returns { ok, r2Key, size }.
+//  Writes an immutable R2 object and records its human-readable cache path in
+//  D1. Returns { ok, r2Key, size }.
 //
 // The route is intentionally NOT colocated with work.ts — that file already
 // hit 450 lines and the upload path has a different shape (binary body, not
@@ -41,6 +41,8 @@ import { verifyUploadToken } from "../../utils/workUploadToken";
 import { createQueries } from "../../db/queries";
 import { getProfile } from "../../transcode/profiles";
 import { isDemoMode, demoMaxUploadBytes, r2MaxStorageBytes, demoR2TotalBytes } from "../../utils/demoMode";
+import { registerR2Object } from "../../utils/storageResolver";
+import { createStableObjectId, createStableObjectKey } from "../../utils/storageObjects";
 
 export const workUploadRoutes = new Hono<{
   Bindings: Env;
@@ -136,10 +138,10 @@ workUploadRoutes.post("/work/upload", async (c) => {
     }
   }
 
-  // 5. Write to R2. Path scheme `cache/transcoded/<instanceId>_<profile>.<suffix>`
-  //  matches the pre-bake convention the rest of EdgeSonic will eventually
-  //  use.
-  const r2Key = `cache/transcoded/${payload.instanceId}_${payload.profileId}.${payload.outputSuffix}`;
+  // 5. Write to R2 under an immutable object key. The human-readable cache
+  // path remains a D1 entry only.
+  const objectId = createStableObjectId(`browser-transcode:${payload.instanceId}:${payload.profileId}`);
+  const r2Key = createStableObjectKey(objectId, payload.outputSuffix);
   // Prefer the profile catalogue's contentType (authoritative MIME for the
   // codec/container pair) over whatever the browser uploaded with. The
   // browser may send `application/octet-stream` to dodge ffmpeg.wasm output
@@ -187,6 +189,17 @@ workUploadRoutes.post("/work/upload", async (c) => {
       if (inserted) {
         registered = true;
         registeredInstanceId = inserted;
+        await registerR2Object(env.DB, {
+          objectId,
+          physicalKey: r2Key,
+          logicalPath: `cache/transcoded/${payload.instanceId}_${payload.profileId}.${payload.outputSuffix}`,
+          suffix: payload.outputSuffix,
+          contentType,
+          size: buf.byteLength,
+          instanceId: inserted,
+        });
+        await env.DB.prepare("UPDATE song_instances SET storage_object_id = ? WHERE id = ?")
+          .bind(objectId, inserted).run();
       }
     }
   } catch {

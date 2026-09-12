@@ -34,7 +34,8 @@ import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import { createQueries } from "../../db/queries";
 import { encodePath } from "../storage/scan";
-import { copyR2Object } from "../../utils/r2ObjectCopy";
+import { ensureR2Folder, findR2EntryByPath, findR2EntryByUri } from "../../utils/storageResolver";
+import { splitEntryPath } from "../../utils/storageObjects";
 
 export const tidyFolderRoutes = new Hono();
 
@@ -45,6 +46,7 @@ interface PlannedMove {
   instanceId: string;
   from: string;
   to: string;
+  logicalTo?: string;
   skipped?: string;       // populated when the instance can't be moved (e.g. read-only source)
 }
 
@@ -136,16 +138,21 @@ tidyFolderRoutes.post("/tidyFolder", permissionMiddleware("manage_files"), async
       }
 
       let toUri: string;
+      let logicalTo: string | undefined;
       if (scheme === "r2") {
-        const fromKey = inst.storage_uri.substring("r2://".length);
-        const rootPrefix = inferR2Root(fromKey);             // keep the existing top-level music/ prefix
-        const toKey = `${rootPrefix}${targetRel}.${suffix}`;
-        toUri = `r2://${toKey}`;
-        if (toUri === inst.storage_uri) {
+        const entry = await findR2EntryByUri(db, inst.storage_uri);
+        if (!entry) {
+          planned.push({ id, instanceId: inst.id, from: inst.storage_uri, to: "", skipped: "R2 D1 entry not found" });
+          continue;
+        }
+        const rootPrefix = entry.path.split("/", 1)[0] || "music";
+        logicalTo = `${rootPrefix}/${targetRel}.${suffix}`;
+        toUri = inst.storage_uri;
+        if (logicalTo === entry.path) {
           planned.push({ id, instanceId: inst.id, from: inst.storage_uri, to: toUri, skipped: "already at target" });
           continue;
         }
-        planned.push({ id, instanceId: inst.id, from: inst.storage_uri, to: toUri });
+        planned.push({ id, instanceId: inst.id, from: inst.storage_uri, to: toUri, logicalTo });
       } else {
         // webdav://<source_id>/<path>
         const after = inst.storage_uri.substring("webdav://".length);
@@ -165,7 +172,7 @@ tidyFolderRoutes.post("/tidyFolder", permissionMiddleware("manage_files"), async
       if (body.dryRun) continue;
 
       try {
-        await applyMove(env, db, sources, inst.storage_uri, toUri);
+        await applyMove(env, db, sources, inst.storage_uri, toUri, logicalTo);
         applied.push({ id, instanceId: inst.id, ok: true });
       } catch (e) {
         failed++;
@@ -190,11 +197,6 @@ async function loadSources(db: D1Database): Promise<Map<string, SourceRow>> {
 // that is virtually always `music/`; for WebDAV the user may have a different
 // root_path. This stops `tidyFolder` from inadvertently moving files outside
 // of the music root.
-function inferR2Root(key: string): string {
-  const i = key.indexOf("/");
-  if (i < 0) return "music/";
-  return key.substring(0, i + 1);
-}
 function inferWebdavRoot(path: string): string {
   const i = path.indexOf("/");
   if (i < 0) return "";
@@ -232,15 +234,21 @@ function sanitiseSegment(s: string): string {
   return s.replace(/[\/<>:"\\|?*\x00-\x1f]/g, "_").replace(/\s+$/g, "").replace(/^\./, "_");
 }
 
-// Per-instance move: R2 → server-side bucket copy + delete; WebDAV → HTTP MOVE (with a
-// GET/PUT/DELETE fallback for servers that reject MOVE). Storage URI in D1 is
-// updated atomically with the storage side-effect.
-async function applyMove(env: Env, db: D1Database, sources: Map<string, SourceRow>, fromUri: string, toUri: string) {
+// Per-instance move: R2 updates only the logical D1 entry; WebDAV still uses
+// HTTP MOVE with a GET/PUT/DELETE fallback for servers that reject MOVE.
+async function applyMove(env: Env, db: D1Database, sources: Map<string, SourceRow>, fromUri: string, toUri: string, logicalTo?: string) {
   if (fromUri.startsWith("r2://") && toUri.startsWith("r2://")) {
-    const fromKey = fromUri.substring("r2://".length);
-    const toKey = toUri.substring("r2://".length);
-    if (!await copyR2Object(env, fromKey, toKey)) throw new Error("source object not found");
-    await env.MUSIC_BUCKET.delete(fromKey);
+    if (!logicalTo) throw new Error("missing logical R2 destination");
+    const entry = await findR2EntryByUri(db, fromUri);
+    if (!entry) throw new Error("R2 D1 entry not found");
+    if (await findR2EntryByPath(db, logicalTo)) throw new Error("destination already exists");
+    const { parentPath } = splitEntryPath(logicalTo);
+    const parentId = await ensureR2Folder(db, parentPath);
+    const slash = logicalTo.lastIndexOf("/");
+    await db.prepare(
+      "UPDATE storage_entries SET parent_id = ?, path = ?, display_name = ?, updated_at = ? WHERE id = ?",
+    ).bind(parentId, logicalTo, slash < 0 ? logicalTo : logicalTo.slice(slash + 1), Math.floor(Date.now() / 1000), entry.id).run();
+    return;
   } else if (fromUri.startsWith("webdav://") && toUri.startsWith("webdav://")) {
     const fromAfter = fromUri.substring("webdav://".length);
     const fromSlash = fromAfter.indexOf("/");

@@ -16,7 +16,7 @@
 // 147 — POST /storage/files/mkdir endpoint tests.
 //
 // Covers:
-//  • r2: creates a "<path>/.keep" marker object
+//  • r2: creates a logical D1 folder without an R2 marker object
 //  • r2: rejects empty path / ".." traversal segments
 //  • non-r2 source: issues MKCOL against srcBaseUrl(src) + path
 //  • non-r2 source: 405 (collection already exists) is treated as success
@@ -119,8 +119,8 @@ function makeApp(bucket: ReturnType<typeof makeR2Bucket>, sources: SourceRec[]) 
 }
 
 async function main() {
-  // ── r2: creates a .keep marker ───────────────────────────────────────────
-  console.log("\nmkdir r2 → creates .keep marker:");
+  // ── r2: creates a D1 folder ──────────────────────────────────────────────
+  console.log("\nmkdir r2 → creates a logical folder:");
   {
     const bucket = makeR2Bucket();
     const app = makeApp(bucket, []);
@@ -128,7 +128,7 @@ async function main() {
     assert(r.status === 200, `200 (got ${r.status})`);
     const j = await r.json<{ ok: boolean }>();
     assert(j.ok, "ok=true");
-    assert(bucket.store.has("music/newfolder/.keep"), "marker object exists at music/newfolder/.keep");
+    assert(bucket.store.size === 0, "no R2 marker object is created");
   }
 
   // ── r2: strips leading/trailing slashes ──────────────────────────────────
@@ -138,7 +138,7 @@ async function main() {
     const app = makeApp(bucket, []);
     const r = await app.post("/storage/files/mkdir", { source: "r2", path: "/music/sub/" });
     assert(r.status === 200, `200 (got ${r.status})`);
-    assert(bucket.store.has("music/sub/.keep"), "marker object exists at music/sub/.keep");
+    assert(bucket.store.size === 0, "no R2 marker object is created");
   }
 
   // ── empty path → 400 ──────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ async function main() {
     const app = makeApp(bucket, []);
     const r = await app.post("/storage/files/mkdir", { source: "r2", path: "music/../secrets" });
     assert(r.status === 400, `400 (got ${r.status})`);
-    assert(!bucket.store.has("secrets/.keep"), "no marker escaped the intended prefix");
+    assert(bucket.store.size === 0, "no R2 marker escaped the intended prefix");
   }
 
   // ── non-r2 source: issues MKCOL ──────────────────────────────────────────

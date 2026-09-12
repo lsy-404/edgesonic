@@ -128,14 +128,44 @@ function buildDb() {
     CREATE TABLE storage_sources (
       id TEXT PRIMARY KEY,
       type TEXT,
+      name TEXT,
       base_url TEXT,
       username TEXT,
       password TEXT,
       presign_username TEXT,
       presign_password TEXT,
       root_path TEXT,
-      enabled INTEGER DEFAULT 1
+      enabled INTEGER DEFAULT 1,
+      mode TEXT DEFAULT 'library',
+      created_at INTEGER DEFAULT 0,
+      updated_at INTEGER DEFAULT 0
     );
+    CREATE TABLE storage_objects (
+      id TEXT PRIMARY KEY,
+      physical_key TEXT NOT NULL UNIQUE,
+      legacy_key TEXT UNIQUE,
+      suffix TEXT NOT NULL,
+      content_type TEXT,
+      size INTEGER NOT NULL DEFAULT 0,
+      etag TEXT,
+      last_modified INTEGER,
+      created_at INTEGER DEFAULT 0,
+      updated_at INTEGER DEFAULT 0
+    );
+    CREATE TABLE storage_entries (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      parent_id TEXT,
+      path TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      object_id TEXT,
+      instance_id TEXT,
+      companion_of TEXT,
+      created_at INTEGER DEFAULT 0,
+      updated_at INTEGER DEFAULT 0
+    );
+    CREATE UNIQUE INDEX idx_storage_entries_source_path ON storage_entries(source_id, path);
 
     INSERT INTO user_permissions VALUES (2, 'manage_files', 1, 0);
     INSERT INTO artists (id, name) VALUES ('ar-rad', 'Radiohead');
@@ -143,9 +173,9 @@ function buildDb() {
     INSERT INTO song_masters (id, album_id, artist_id, title, track) VALUES ('sg-air', 'al-okc', 'ar-rad', 'Airbag', 1);
     INSERT INTO song_masters (id, album_id, artist_id, title, track) VALUES ('sg-par', 'al-okc', 'ar-rad', 'Paranoid Android', 2);
 
-    -- R2 instance under music/legacy/...
+    -- R2 instance with an immutable physical key and a D1 logical entry.
     INSERT INTO song_instances (id, master_id, storage_uri, suffix, content_type)
-      VALUES ('inst-air-r2', 'sg-air', 'r2://music/legacy/Airbag.mp3', 'mp3', 'audio/mpeg');
+      VALUES ('inst-air-r2', 'sg-air', 'r2://objects/obj_airbag.mp3', 'mp3', 'audio/mpeg');
     -- WebDAV instance (uses sourceId 'wd1')
     INSERT INTO song_instances (id, master_id, storage_uri, suffix, content_type)
       VALUES ('inst-par-wd', 'sg-par', 'webdav://wd1/music/Paranoid.flac', 'flac', 'audio/flac');
@@ -155,6 +185,10 @@ function buildDb() {
 
     INSERT INTO storage_sources (id, type, base_url, username, password, root_path, enabled)
       VALUES ('wd1', 'webdav', 'https://dav.example.com', 'u', 'p', '', 1);
+    INSERT INTO storage_objects (id, physical_key, suffix, content_type, size)
+      VALUES ('obj-airbag', 'objects/obj_airbag.mp3', 'mp3', 'audio/mpeg', 3);
+    INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id, instance_id)
+      VALUES ('entry-airbag', 'r2-local', 'music/legacy/Airbag.mp3', 'Airbag.mp3', 'file', 'obj-airbag', 'inst-air-r2');
   `);
   return sqlite;
 }
@@ -164,7 +198,7 @@ function buildDb() {
 // ---------------------------------------------------------------------------
 function makeBucket() {
   const objects = new Map<string, { body: any; httpMetadata: any; customMetadata: any }>();
-  objects.set("music/legacy/Airbag.mp3", { body: new Uint8Array([1, 2, 3]), httpMetadata: { contentType: "audio/mpeg" }, customMetadata: {} });
+  objects.set("objects/obj_airbag.mp3", { body: new Uint8Array([1, 2, 3]), httpMetadata: { contentType: "audio/mpeg" }, customMetadata: {} });
   const puts: string[] = [];
   const deletes: string[] = [];
   return {
@@ -254,8 +288,8 @@ console.log("dry run: returns planned without touching the bucket:");
   assert(body.ok === true && body.dryRun === true, "ok + dryRun echoed");
   assert(Array.isArray(body.planned) && body.planned.length === 1, "one planned row");
   assert(
-    body.planned[0].to === "r2://music/Radiohead/OK Computer/01 - Airbag.mp3",
-    `planned to-uri (got ${body.planned[0].to})`,
+    body.planned[0].to === "r2://objects/obj_airbag.mp3" && body.planned[0].logicalTo === "music/Radiohead/OK Computer/01 - Airbag.mp3",
+    `planned logical path (got ${body.planned[0].logicalTo})`,
   );
   assert(puts.length === 0 && deletes.length === 0, "no bucket ops");
   assert((body.applied || []).length === 0, "no applied rows on dry run");
@@ -273,16 +307,16 @@ console.log("happy path: R2 move applied:");
   const body = await r.json() as any;
   assert(r.status === 200 && body.ok === true, "200 ok");
   assert(body.failed === 0, `failed=0 (got ${body.failed})`);
-  assert(puts.length === 1, `one put (got ${puts.length})`);
-  assert(puts[0] === "music/Radiohead/OK Computer/01 - Airbag.mp3", `put key (got ${puts[0]})`);
-  assert(deletes.length === 1 && deletes[0] === "music/legacy/Airbag.mp3", "old key deleted");
+  assert(puts.length === 0 && deletes.length === 0, "no R2 copy or delete");
 
-  // D1 reflects the new URI
+  // D1 reflects the new logical path while the physical URI is unchanged.
   const row = sqlite.prepare("SELECT storage_uri FROM song_instances WHERE id = 'inst-air-r2'").get() as any;
   assert(
-    row.storage_uri === "r2://music/Radiohead/OK Computer/01 - Airbag.mp3",
-    `storage_uri updated (got ${row.storage_uri})`,
+    row.storage_uri === "r2://objects/obj_airbag.mp3",
+    `storage_uri remains stable (got ${row.storage_uri})`,
   );
+  const entry = sqlite.prepare("SELECT path FROM storage_entries WHERE id = 'entry-airbag'").get() as any;
+  assert(entry.path === "music/Radiohead/OK Computer/01 - Airbag.mp3", `logical path updated (got ${entry.path})`);
 }
 
 console.log("read-only source produces a skipped entry, not a failure:");

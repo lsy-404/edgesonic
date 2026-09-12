@@ -37,7 +37,7 @@ function makeBucket(entries: Array<string | [string, number]> = []) {
   };
 }
 
-function makeDb(existingUri?: string) {
+function makeDb(existingUri?: string, existingPath = "music/song.mp3") {
   const calls: string[] = [];
   let masterInserts = 0;
   let instanceInserts = 0;
@@ -56,6 +56,15 @@ function makeDb(existingUri?: string) {
           calls.push(compact);
           if (compact.includes("FROM song_instances WHERE storage_uri")) {
             return existingUri === statement.args[0] ? { id: "si-existing", master_id: "sm-existing" } as T : null;
+          }
+          if (compact.includes("FROM song_instances WHERE id = ?")) {
+            return existingUri ? { id: "si-existing", master_id: "sm-existing" } as T : null;
+          }
+          if (compact.includes("FROM storage_entries e") && compact.includes("e.path = ?")) {
+            if (existingUri && existingPath === statement.args[1]) {
+              return { id: "entry-existing", source_id: "r2-local", parent_id: null, path: existingPath, display_name: "song.mp3", kind: "file", object_id: "obj-existing", instance_id: "si-existing", companion_of: null, physical_key: "objects/existing.mp3", object_suffix: "mp3", object_content_type: "audio/mpeg", object_size: 10 } as T;
+            }
+            return null;
           }
           if (compact.includes("FROM storage_sources")) {
             return { id: "webdav", base_url: "https://dav.test", username: "writer", password: "secret", root_path: "" } as T;
@@ -114,8 +123,8 @@ async function checkConflicts(bucket: ReturnType<typeof makeBucket>, db: ReturnT
 async function main() {
   console.log("R2 conflict contract:");
   {
-    const bucket = makeBucket(["music/song.mp3"]);
-    const db = makeDb();
+    const bucket = makeBucket(["objects/existing.mp3"]);
+    const db = makeDb("r2://objects/existing.mp3");
     const result = await makeUpload(bucket, db)("r2");
     assert(result.status === 409, "default policy rejects an existing R2 object");
     assert(result.body.conflict?.requestedKey === "music/song.mp3", "conflict response identifies the requested key");
@@ -123,26 +132,26 @@ async function main() {
     assert(bucket.puts.length === 0, "reject never overwrites the object");
   }
   {
-    const bucket = makeBucket([["music/song.mp3", 10]]);
-    const result = await makeUpload(bucket, makeDb("r2://music/song.mp3"), { R2_MAX_LIMIT: "12" })("r2", "overwrite");
+    const bucket = makeBucket([["objects/existing.mp3", 10]]);
+    const result = await makeUpload(bucket, makeDb("r2://objects/existing.mp3"), { R2_MAX_LIMIT: "12" })("r2", "overwrite");
     assert(result.status === 200, "overwrite storage projection subtracts the old object size");
   }
   {
-    const result = await checkConflicts(makeBucket(["music/song.mp3"]), makeDb());
+    const result = await checkConflicts(makeBucket(["objects/existing.mp3"]), makeDb("r2://objects/existing.mp3"));
     assert(result.status === 200 && result.body.conflicts?.length === 1, "batch preflight returns only the conflicting files");
     assert(result.body.items?.[1]?.key === "music/Album/new.flac" && result.body.items?.[1]?.conflict === false, "batch preflight returns each final path");
   }
   {
-    const bucket = makeBucket(["music/song.mp3"]);
-    const result = await makeUpload(bucket, makeDb())("r2", "rename");
-    assert(result.status === 200 && result.body.key === "music/song (1).mp3", "rename selects the first available R2 key");
-    assert(result.body.conflict?.renamed === true && result.body.conflict?.finalKey === "music/song (1).mp3", "success reports the final R2 path");
+    const bucket = makeBucket(["objects/existing.mp3"]);
+    const result = await makeUpload(bucket, makeDb("r2://objects/existing.mp3"))("r2", "rename");
+    assert(result.status === 200 && /^objects\/obj_[0-9a-f]{16}\.mp3$/.test(result.body.key), "rename allocates a fresh stable R2 key");
+    assert(result.body.conflict?.renamed === true && result.body.conflict?.finalKey === "music/song (1).mp3", "success reports the final logical path");
   }
 
   console.log("overwrite reuses the registered original instance:");
   {
-    const bucket = makeBucket(["music/song.mp3"]);
-    const db = makeDb("r2://music/song.mp3");
+    const bucket = makeBucket(["objects/existing.mp3"]);
+    const db = makeDb("r2://objects/existing.mp3");
     const result = await makeUpload(bucket, db)("r2", "overwrite");
     assert(result.status === 200 && result.body.id === "si-existing", "overwrite returns the existing instance id");
     assert(db.updates === 1, "overwrite refreshes the existing instance");

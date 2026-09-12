@@ -34,6 +34,8 @@ import { getProfile } from "./profiles";
 import { buildTranscodeEngine } from "./factory";
 import { BrowserPoolEngine } from "./browser_pool";
 import { openSourceForTranscode } from "../endpoints/subsonic/media";
+import { registerR2Object } from "../utils/storageResolver";
+import { createStableObjectId, createStableObjectKey } from "../utils/storageObjects";
 import { signUploadToken } from "../utils/workUploadToken";
 import type { TranscodeInput } from "./engine";
 
@@ -72,13 +74,15 @@ export async function preBakeProfile(
     const out = await engine.transcode(input, profile);
     const bytes = new Uint8Array(await new Response(out.body).arrayBuffer());
 
-    const r2Key = `cache/transcoded/${instanceId}_${profile.id}.${profile.container}`;
+    const objectId = createStableObjectId(`prebake:${instanceId}:${profile.id}`);
+    const r2Key = createStableObjectKey(objectId, profile.container);
     await env.MUSIC_BUCKET.put(r2Key, bytes, { httpMetadata: { contentType: out.contentType } });
 
     const queries = createQueries(env.DB);
 
-    await queries.registerTranscodedInstance({
-      id: "si-pb-" + crypto.randomUUID().replace(/-/g, "").substring(0, 16),
+    const outputInstanceId = "si-pb-" + crypto.randomUUID().replace(/-/g, "").substring(0, 16);
+    const registered = await queries.registerTranscodedInstance({
+      id: outputInstanceId,
       masterId: parent.master_id,
       parentInstanceId: instanceId,
       storageUri: `r2://${r2Key}`,
@@ -88,6 +92,19 @@ export async function preBakeProfile(
       bitRate: profile.bitrate,
       size: bytes.byteLength,
     });
+    if (registered) {
+      await registerR2Object(env.DB, {
+        objectId,
+        physicalKey: r2Key,
+        logicalPath: `cache/transcoded/${instanceId}_${profile.id}.${profile.container}`,
+        suffix: profile.container,
+        contentType: out.contentType,
+        size: bytes.byteLength,
+        instanceId: registered,
+      });
+      await env.DB.prepare("UPDATE song_instances SET storage_object_id = ? WHERE id = ?")
+        .bind(objectId, registered).run();
+    }
   } catch {
     // best-effort — see module comment
   }

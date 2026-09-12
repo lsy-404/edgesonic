@@ -36,6 +36,9 @@ import { join } from "node:path";
 import { Hono } from "hono";
 import { filesRoutes } from "../../worker/src/endpoints/storage/files";
 import { isAudioSuffix, isCompanionSuffix, COMPANION_SUFFIXES, AUDIO_SUFFIXES } from "../../worker/src/utils/demoMode";
+import { installFixedLengthStream } from "../helpers/fixedLengthStream";
+
+installFixedLengthStream();
 
 declare global {
   type D1Database = unknown;
@@ -134,6 +137,11 @@ function insertedSongRow(db: ReturnType<typeof makeD1>): boolean {
   return db.executed.some((s) => s.includes("INSERT INTO song_instances"));
 }
 
+function storedObject(bucket: ReturnType<typeof makeR2Bucket>): { key: string; contentType: string } | undefined {
+  const [key] = [...bucket.store.keys()];
+  return key ? { key, contentType: bucket.store.get(key)!.contentType } : undefined;
+}
+
 async function main() {
   console.log("companion types are accepted with allow_all_file_types off:");
   {
@@ -161,8 +169,8 @@ async function main() {
     const db = makeD1();
     const upload = makeApp(bucket, db);
     const { body } = await upload("01 track.lrc", null, "music/album");
-    assert(bucket.store.has("music/album/01 track.lrc"), "written under the requested folder");
-    assert(body.key === "music/album/01 track.lrc", "the key comes back");
+    assert(storedObject(bucket)?.key.startsWith("objects/obj_"), "written under a stable R2 object key");
+    assert(body.key === storedObject(bucket)?.key, "the physical key comes back");
     assert(body.id === undefined, "no instance id is handed out");
     assert(!insertedSongRow(db), "no song_instances row was inserted");
   }
@@ -187,7 +195,7 @@ async function main() {
       const db = makeD1();
       const upload = makeApp(bucket, db);
       await upload(name, sent);
-      const got = bucket.store.get(`music/${name}`)?.contentType;
+      const got = storedObject(bucket)?.contentType;
       assert(got === want, `${name} stored as ${want}${got === want ? "" : ` (got ${got})`}`);
     }
   }
@@ -201,7 +209,7 @@ async function main() {
     assert(status === 200 && body.ok === true, "flac → 200 ok");
     assert(typeof body.id === "string" && (body.id as string).startsWith("si-upload-"), "an instance id is handed out");
     assert(insertedSongRow(db), "a song_instances row was inserted");
-    assert(bucket.store.get("music/song.flac")?.contentType === "audio/flac", "stored as audio/flac");
+    assert(storedObject(bucket)?.contentType === "audio/flac", "stored as audio/flac");
   }
 
   console.log("everything else is still refused:");

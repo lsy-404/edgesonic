@@ -34,20 +34,25 @@ function buildDb() {
     CREATE TABLE albums (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT, year INTEGER, genre TEXT, cover_r2_key TEXT, song_count INTEGER DEFAULT 0, duration INTEGER DEFAULT 0, size INTEGER DEFAULT 0, compilation INTEGER DEFAULT 0, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE song_masters (id TEXT PRIMARY KEY, album_id TEXT NOT NULL, artist_id TEXT NOT NULL, album_artist_id TEXT, title TEXT NOT NULL, sort_title TEXT, track INTEGER, disc INTEGER, duration INTEGER, genre TEXT, compilation INTEGER DEFAULT 0, participants TEXT, lyrics TEXT, lyrics_rich TEXT, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE song_artists (song_id TEXT, artist_id TEXT, position INTEGER DEFAULT 0, PRIMARY KEY(song_id, artist_id));
-    CREATE TABLE song_instances (id TEXT PRIMARY KEY, master_id TEXT, storage_uri TEXT, suffix TEXT, content_type TEXT, size INTEGER DEFAULT 0, bit_rate INTEGER DEFAULT 0, duration INTEGER, missing INTEGER DEFAULT 0, tag_scanned INTEGER DEFAULT 0, created_at INTEGER, updated_at INTEGER);
-    CREATE TABLE storage_sources (id TEXT PRIMARY KEY, base_url TEXT, username TEXT, password TEXT, root_path TEXT, enabled INTEGER DEFAULT 1);
+    CREATE TABLE song_instances (id TEXT PRIMARY KEY, master_id TEXT, storage_uri TEXT, storage_object_id TEXT, suffix TEXT, content_type TEXT, size INTEGER DEFAULT 0, bit_rate INTEGER DEFAULT 0, duration INTEGER, missing INTEGER DEFAULT 0, tag_scanned INTEGER DEFAULT 0, created_at INTEGER, updated_at INTEGER);
+    CREATE TABLE storage_sources (id TEXT PRIMARY KEY, type TEXT, name TEXT, base_url TEXT, username TEXT, password TEXT, root_path TEXT, enabled INTEGER DEFAULT 1, mode TEXT DEFAULT 'library', created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0);
+    CREATE TABLE storage_objects (id TEXT PRIMARY KEY, physical_key TEXT NOT NULL UNIQUE, legacy_key TEXT UNIQUE, suffix TEXT NOT NULL, content_type TEXT, size INTEGER NOT NULL DEFAULT 0, etag TEXT, last_modified INTEGER, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0);
+    CREATE TABLE storage_entries (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, parent_id TEXT, path TEXT NOT NULL, display_name TEXT NOT NULL, kind TEXT NOT NULL, object_id TEXT, instance_id TEXT, companion_of TEXT, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0);
+    CREATE UNIQUE INDEX idx_storage_entries_source_path ON storage_entries(source_id, path);
     INSERT INTO users VALUES ('alice','x',2,1,0,0);
     INSERT INTO user_permissions VALUES (2,'edit_tags',1,0);
     INSERT INTO artists(id,name) VALUES ('ar-old','Old Artist');
     INSERT INTO albums(id,name,sort_name) VALUES ('al-old','Old Album','old album');
     INSERT INTO song_masters(id,album_id,artist_id,title,sort_title,lyrics) VALUES ('sg-1','al-old','ar-old','Song One','song one','[00:01.00]Hello UTF-8 世界');
-    INSERT INTO song_instances(id,master_id,storage_uri,suffix,content_type,size) VALUES ('inst-1','sg-1','r2://music/song.mp3','mp3','audio/mpeg',4);
+    INSERT INTO song_instances(id,master_id,storage_uri,suffix,content_type,size) VALUES ('inst-1','sg-1','r2://objects/obj_song.mp3','mp3','audio/mpeg',4);
+    INSERT INTO storage_objects(id,physical_key,suffix,content_type,size) VALUES ('obj-song','objects/obj_song.mp3','mp3','audio/mpeg',4);
+    INSERT INTO storage_entries(id,source_id,path,display_name,kind,object_id,instance_id) VALUES ('entry-song','r2-local','music/song.mp3','song.mp3','file','obj-song','inst-1');
   `);
   return db;
 }
 
 function bucket(options: { failPut?: boolean } = {}) {
-  const objects = new Map<string, Uint8Array>([["music/song.mp3", new Uint8Array([0x41, 0x55, 0x44, 0x49])]]);
+  const objects = new Map<string, Uint8Array>([["objects/obj_song.mp3", new Uint8Array([0x41, 0x55, 0x44, 0x49])]]);
   return {
     async get(key: string) {
       const value = objects.get(key);
@@ -88,7 +93,7 @@ async function main() {
     const b = bucket();
     const response = await appFor(sqlite, b)({ id: "sg-1", tags: { lyrics: "{export}" } });
     const body = await response.json() as any;
-    const sidecar = b.objects.get("music/song.lrc");
+    const sidecar = [...b.objects.entries()].find(([key]) => key.startsWith("objects/obj_") && key.endsWith(".lrc"))?.[1];
     assert(response.status === 200 && body.files?.[0].written === true, "export reports written=true");
     assert(sidecar && new TextDecoder().decode(sidecar).includes("世界"), "export stores UTF-8 LRC bytes at same-name sidecar");
   }
@@ -104,7 +109,7 @@ async function main() {
     const b = bucket();
     const response = await appFor(sqlite, b)({ id: "sg-1", tags: { lyrics: "{export}" } });
     const body = await response.json() as any;
-    const sidecar = b.objects.get("music/song.lrc");
+    const sidecar = [...b.objects.entries()].find(([key]) => key.startsWith("objects/obj_") && key.endsWith(".lrc"))?.[1];
     const text = sidecar ? new TextDecoder().decode(sidecar) : "";
     assert(response.status === 200 && body.files?.[0].written === true, "rich lyrics export succeeds without lyrics column");
     assert(text === "[00:00.000]烟花\n[00:02.025]2025ver", "rich JSON lines export as ordinary LRC");

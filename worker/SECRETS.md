@@ -16,8 +16,6 @@ bindings.
 | `CF_ACCOUNT_ID` | 054 | Cloudflare account id paired with `CF_API_TOKEN`. Also reused as the R2 account id for 091 presign. | Yes (set via Settings UI) |
 | `R2_ACCESS_KEY_ID` | 091 | R2 S3 access key for presigned URL signing. Pair with `R2_SECRET_ACCESS_KEY`. | Yes (to enable presign) |
 | `R2_SECRET_ACCESS_KEY` | 091 | R2 S3 secret key for presigned URL signing. | Yes (to enable presign) |
-| `R2_COPY_ACCESS_KEY_ID` | Storage | Optional write-capable R2 S3 access key for server-side CopyObject during file moves. | No (binding-copy fallback) |
-| `R2_COPY_SECRET_ACCESS_KEY` | Storage | Optional secret paired with `R2_COPY_ACCESS_KEY_ID`. | No (binding-copy fallback) |
 
 ---
 
@@ -242,31 +240,7 @@ secret at presign time, not verified against R2's live token list). To rotate:
 
 ---
 
-## 4. `R2_COPY_ACCESS_KEY_ID` / `R2_COPY_SECRET_ACCESS_KEY`
-
-### Why
-
-File and folder moves can use the R2 S3 `CopyObject` operation, which copies
-within R2 without streaming the audio through the Worker. If these secrets are
-absent, or the copy credential is rejected, the Worker falls back to its
-fixed-length binding copy and keeps the source-before-delete safety rule.
-
-Create a separate Custom Token scoped to the EdgeSonic bucket with both R2
-Object Read and R2 Object Write permissions. Keep the existing
-`R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` read-only token dedicated to
-presigned playback.
-
-```bash
-cd worker
-wrangler secret put R2_COPY_ACCESS_KEY_ID
-wrangler secret put R2_COPY_SECRET_ACCESS_KEY
-```
-
-The Worker never exposes these values to the browser. A rejected or expired
-copy token does not make moves fail; it disables server-side copy for that
-request and uses the binding path instead.
-
-### Enabling Cloudflare Images Transformations (cover thumbnails)
+## 4. Enabling Cloudflare Images Transformations (cover thumbnails)
 
 The Cloudflare Images binding (`env.IMAGES`, declared in `wrangler.toml.example`)
 is what lets `getCoverArt` resize cover art on demand. The binding deploys

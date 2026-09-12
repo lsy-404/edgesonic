@@ -19,6 +19,7 @@ import { sourcesRoutes } from "./sources";
 import { filesRoutes } from "./files";
 import { browseRoutes } from "./browse";
 import { scanRoutes } from "./scan";
+import { migrationRoutes } from "./migrate";
 
 export const storageRoutes = new Hono();
 
@@ -26,3 +27,4 @@ storageRoutes.route("/", sourcesRoutes);
 storageRoutes.route("/", filesRoutes);
 storageRoutes.route("/", browseRoutes);
 storageRoutes.route("/", scanRoutes);
+storageRoutes.route("/", migrationRoutes);
