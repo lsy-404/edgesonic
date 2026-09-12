@@ -10,6 +10,7 @@ import {
   completeOidcAuthorization,
   OIDC_TRANSACTION_COOKIE,
   OidcFlowError,
+  validateAuthorizationResponseState,
 } from "../../worker/src/utils/oidc";
 
 declare global { type D1Database = unknown; type Env = unknown; }
@@ -275,6 +276,12 @@ async function expectFailure(run: () => Promise<unknown>, label: string) {
 }
 
 async function main() {
+  assert.doesNotThrow(() => validateAuthorizationResponseState(`${CALLBACK}?response=signed-jarm`, "expected-state"));
+  assert.doesNotThrow(() => validateAuthorizationResponseState(`${CALLBACK}?state=expected-state`, "expected-state"));
+  assert.throws(
+    () => validateAuthorizationResponseState(`${CALLBACK}?state=wrong-state`, "expected-state"),
+    (error: unknown) => error instanceof OidcFlowError && error.code === "state_mismatch",
+  );
   const sqlite = buildDatabase();
   const env = environment(sqlite);
   const currentProvider = provider();

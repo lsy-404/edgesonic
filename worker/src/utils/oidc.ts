@@ -644,6 +644,13 @@ function callbackBase(url: URL): string {
   return base.href;
 }
 
+export function validateAuthorizationResponseState(callbackUrl: string, expectedState: string): void {
+  const currentUrl = new URL(callbackUrl);
+  if (currentUrl.searchParams.has("response")) return;
+  const returnedState = currentUrl.searchParams.get("state");
+  if (!returnedState || returnedState !== expectedState) throw new OidcFlowError("state_mismatch");
+}
+
 export async function completeOidcAuthorization(
   env: OidcEnv,
   callbackUrl: string,
@@ -656,8 +663,7 @@ export async function completeOidcAuthorization(
   if (!protectedCookie) throw new OidcFlowError("missing_transaction");
   const transaction = await unprotectTransaction(policy, protectedCookie);
   const currentUrl = new URL(callbackUrl);
-  const returnedState = currentUrl.searchParams.get("state");
-  if (!returnedState || returnedState !== transaction.state) throw new OidcFlowError("state_mismatch");
+  validateAuthorizationResponseState(callbackUrl, transaction.state);
   if (transaction.expiresAt <= Math.floor(Date.now() / 1000)) throw new OidcFlowError("expired_transaction");
   if (transaction.issuer !== policy.issuer || transaction.clientId !== policy.clientId
     || transaction.redirectUri !== policy.callbackUrl || callbackBase(currentUrl) !== transaction.redirectUri) {
