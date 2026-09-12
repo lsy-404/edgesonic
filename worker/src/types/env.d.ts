@@ -38,6 +38,10 @@ interface Env {
   SSO_CLIENT_ID?: string;
   SSO_CLIENT_SECRET?: string;
   SSO_PROVIDER_NAME?: string;
+  SSO_USE_PAR?: string;
+  SSO_USE_JARM?: string;
+  SSO_USE_DPOP?: string;
+  SSO_JAR_PRIVATE_JWK?: string;
   // (pushed dynamically via /edgesonic/cf/setToken using the CF API itself,
   // not declared in wrangler.toml). Unset until the admin runs first-time
   // setup from the Settings page.

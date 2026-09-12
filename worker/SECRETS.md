@@ -120,6 +120,37 @@ the docstring in `worker/src/endpoints/edgesonic/cf.ts` and the inline notes in
 `worker/src/types/env.d.ts` for the full flow. They are listed here only so
 operators have a single inventory of all secrets the worker reads.
 
+## OIDC SSO advanced negotiation
+
+When `SSO_MODE` is `optional` or `required`, configure `SSO_ISSUER`,
+`SSO_CLIENT_ID`, and the `SSO_CLIENT_SECRET` secret. The callback URI is
+`https://<your-domain>/edgesonic/auth/sso/callback`.
+
+The browser client automatically uses PAR when the provider advertises it.
+The following non-secret variables control optional protocol features:
+
+| Name | Values | Effect |
+| ---- | ------ | ------ |
+| `SSO_USE_PAR` | `1` / `0` | Enable or disable PAR negotiation; default is enabled when advertised. |
+| `SSO_USE_JARM` | `1` / `0` | Request a signed authorization response when the provider advertises JWT response mode. |
+| `SSO_USE_DPOP` | `1` / `0` | Bind authorization-code, refresh-token, and UserInfo calls to a generated ES256 key. |
+
+`SSO_JAR_PRIVATE_JWK` is optional and must be stored as a Worker Secret. It is
+the private signing JWK for a request object; register only the matching public
+JWK with the provider. Never put private JWK JSON in `wrangler.toml` or a
+frontend bundle.
+
+```bash
+cd worker
+npx wrangler secret put SSO_CLIENT_SECRET
+npx wrangler secret put SSO_JAR_PRIVATE_JWK  # optional
+```
+
+The device-authorization helper endpoints are intended for native clients:
+`/edgesonic/auth/sso/device/start` and `/edgesonic/auth/sso/device/poll`.
+They return the provider token response to the native client and do not turn a
+device flow into a browser session automatically.
+
 ---
 
 ## 3. `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` (task 091)

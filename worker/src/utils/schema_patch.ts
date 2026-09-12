@@ -213,12 +213,22 @@ export function ensureSsoSchema(env: { DB: D1Database }): Promise<void> {
   if (existing) return existing;
 
   const pending = (async () => {
-    try {
-      await env.DB.prepare(
-        "ALTER TABLE sessions ADD COLUMN auth_source TEXT NOT NULL DEFAULT 'local' CHECK (auth_source IN ('local', 'sso'))",
-      ).run();
-    } catch (error) {
-      if (!/duplicate column/i.test(error instanceof Error ? error.message : String(error))) throw error;
+    const alters = [
+      "ALTER TABLE sessions ADD COLUMN auth_source TEXT NOT NULL DEFAULT 'local' CHECK (auth_source IN ('local', 'sso'))",
+      "ALTER TABLE sessions ADD COLUMN sso_refresh_token TEXT",
+      "ALTER TABLE sessions ADD COLUMN sso_id_token TEXT",
+      "ALTER TABLE sessions ADD COLUMN sso_token_expires_at INTEGER",
+      "ALTER TABLE sessions ADD COLUMN sso_refresh_expires_at INTEGER",
+      "ALTER TABLE sessions ADD COLUMN sso_issuer TEXT",
+      "ALTER TABLE sessions ADD COLUMN sso_client_id TEXT",
+      "ALTER TABLE sessions ADD COLUMN sso_dpop_key TEXT",
+    ];
+    for (const sql of alters) {
+      try {
+        await env.DB.prepare(sql).run();
+      } catch (error) {
+        if (!/duplicate column/i.test(error instanceof Error ? error.message : String(error))) throw error;
+      }
     }
     await env.DB.prepare(
       `CREATE TABLE IF NOT EXISTS oidc_identities (

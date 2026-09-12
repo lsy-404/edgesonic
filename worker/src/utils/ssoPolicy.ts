@@ -16,6 +16,10 @@ export interface SsoEnvironment {
   SSO_CLIENT_ID?: string;
   SSO_CLIENT_SECRET?: string;
   SSO_PROVIDER_NAME?: string;
+  SSO_USE_PAR?: string;
+  SSO_USE_JARM?: string;
+  SSO_USE_DPOP?: string;
+  SSO_JAR_PRIVATE_JWK?: string;
 }
 
 export interface SsoPolicy {

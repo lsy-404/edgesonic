@@ -115,6 +115,13 @@ CREATE TABLE IF NOT EXISTS sessions (
   auth_source TEXT NOT NULL DEFAULT 'local' CHECK (auth_source IN ('local', 'sso')),
   user_agent TEXT,                                   -- browser/client info
   ip_address TEXT,                                   -- client IP at creation
+  sso_refresh_token TEXT,                             -- encrypted OIDC refresh token
+  sso_id_token TEXT,                                  -- encrypted OIDC ID token for RP logout
+  sso_token_expires_at INTEGER,
+  sso_refresh_expires_at INTEGER,
+  sso_issuer TEXT,
+  sso_client_id TEXT,
+  sso_dpop_key TEXT,                                  -- encrypted DPoP key pair
   expires_at INTEGER NOT NULL,                       -- unix timestamp
   created_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
