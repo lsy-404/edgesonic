@@ -12,7 +12,7 @@ import { ensureR2Folder, registerR2Object, R2_SOURCE_ID } from "../../utils/stor
 export const migrationRoutes = new Hono<{ Bindings: Env }>();
 
 const MAX_BATCH = 40;
-const COPY_CONCURRENCY = 4;
+const COPY_CONCURRENCY = 8;
 
 type MigrationOutcome = {
   copied: number;
