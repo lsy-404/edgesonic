@@ -106,6 +106,13 @@ const NO_AUTH_PATHS = new Set([
   // for every other request, so it has to live outside the auth filter.
   "/edgesonic/auth/login",
   "/edgesonic/auth/logout",
+  "/edgesonic/auth/sso/start",
+  "/edgesonic/auth/sso/callback",
+  "/edgesonic/auth/sso/device/start",
+  "/edgesonic/auth/sso/device/poll",
+  "/edgesonic/auth/sso/logout",
+  "/edgesonic/auth/sso/logout-complete",
+  "/edgesonic/auth/sso/refresh",
   "/edgesonic/auth/guest",
   "/edgesonic/auth/demo-login",
   // build version and isolate start time (non-sensitive); the SPA polls it

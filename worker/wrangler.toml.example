@@ -38,6 +38,13 @@ SSO_MODE = "disabled"
 # SSO_ISSUER = "https://id.example.com"
 # SSO_CLIENT_ID = "edgesonic"
 # SSO_PROVIDER_NAME = "Single Sign-On"
+# PAR is enabled when the provider advertises it. Set these optional flags to
+# enable/disable advanced OIDC negotiation:
+# SSO_USE_PAR = "1"
+# SSO_USE_JARM = "0"
+# SSO_USE_DPOP = "0"
+# SSO_JAR_PRIVATE_JWK is a client signing key and must be stored as a secret:
+#   npx wrangler secret put SSO_JAR_PRIVATE_JWK
 # Keep SSO_CLIENT_SECRET out of this file:
 #   npx wrangler secret put SSO_CLIENT_SECRET
 # R2Bucket bindings don't expose their own bucket name at runtime, so this

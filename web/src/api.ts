@@ -170,6 +170,7 @@ function storeActivation(next: ActivationInfo) {
 }
 const salt = ref("");
 let sessionCheckInFlight: Promise<void> | null = null;
+let ssoRefreshInFlight: Promise<boolean> | null = null;
 
 export function useAuth() {
   // useRouter() must run inside a component setup; useAuth() is always called
@@ -352,6 +353,7 @@ export function useAuth() {
   }
 
   async function logout() {
+    const wasSso = authSource.value === "sso";
     token.value = ""; username.value = ""; level.value = 0;
     permissions.value = {}; nickname.value = ""; avatarKey.value = "";
     email.value = ""; emailVerified.value = false;
@@ -368,6 +370,10 @@ export function useAuth() {
     localStorage.removeItem("edgesonic_auth_source");
     activation.value = { ...DEFAULT_ACTIVATION };
     localStorage.removeItem("edgesonic_activation");
+    if (wasSso) {
+      window.location.assign("/edgesonic/auth/sso/logout");
+      return;
+    }
     // Best-effort: clear the cookie + delete the session row server-side.
     // If the request fails (offline, worker down) the SPA-side state is
     // already cleared; the cookie will lapse at its natural 24h expiry
@@ -502,6 +508,23 @@ export function useAuth() {
     return sessionCheckInFlight;
   }
 
+  async function refreshSsoSession(): Promise<boolean> {
+    if (authSource.value !== "sso") return false;
+    if (ssoRefreshInFlight) return ssoRefreshInFlight;
+    ssoRefreshInFlight = (async () => {
+      try {
+        const data = await requestJson<{ ok?: boolean; expiresAt?: number }>(`${EDGESONIC_BASE}/auth/sso/refresh`, {
+          method: "POST",
+          credentials: "same-origin",
+        });
+        return !!data.ok;
+      } catch {
+        return false;
+      }
+    })().finally(() => { ssoRefreshInFlight = null; });
+    return ssoRefreshInFlight;
+  }
+
   // A 401 may come from a stale cookie after a page was left open. Confirm it
   // against the session endpoint before clearing local state; a 403 remains a
   // permission error and must not sign the user out.
@@ -524,7 +547,7 @@ export function useAuth() {
   // Refresh the current user's effective permissions + profile. Called after
   // login and on app mount; a 401 flows through handleAuthError (logout), any
   // other failure keeps the cached values so the UI stays usable offline.
-  async function fetchMe(): Promise<boolean> {
+  async function fetchMe(allowSsoRefresh = true): Promise<boolean> {
     try {
       const data = JSON.parse(await edgesonicFetch("auth/me")) as {
         ok: boolean; username?: string; level?: number; authSource?: "local" | "sso";
@@ -564,6 +587,9 @@ export function useAuth() {
       localStorage.setItem("edgesonic_perms", JSON.stringify(permissions.value));
       return true;
     } catch (e) {
+      if (allowSsoRefresh && authSource.value === "sso" && (e as { status?: number })?.status === 401) {
+        if (await refreshSsoSession()) return fetchMe(false);
+      }
       handleAuthError(e);
       return false;
     }
@@ -873,7 +899,7 @@ export function useAuth() {
     activation, fetchActivationStatus, redeemActivationCode, probeGuestEnabled,
     fetchMe, getMessages, markMessageRead, dismissMessage, sendUserMessage,
     updateNickname, requestEmailChange, confirmEmailChange, changeOwnPassword, updateOwnAvatar,
-    login, guestLogin, demoLogin, completeSsoLogin, logout, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
+    login, guestLogin, demoLogin, completeSsoLogin, logout, refreshSsoSession, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
     getLoginConfig, register, requestPasswordReset, confirmPasswordReset, confirmEmailVerify,
     tagFetch, tagPost, storageFetch, storagePost, edgesonicFetch, edgesonicPost,
     readTags, writeTags, batchWriteTags, rescanSongs, submitMetadata, tidyFolder,

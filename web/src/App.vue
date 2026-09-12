@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, watch, onBeforeUnmount, nextTick } from "vue";
+import { ref, computed, watch, onBeforeUnmount, onMounted, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "./api";
@@ -28,7 +28,7 @@ const route = useRoute();
 const isBare = computed(() => route.meta?.bare === true);
 const { t } = useI18n();
 const {
-  isLoggedIn, level, logout, hasPerm, fetchMe, displayName, activation, probeGuestEnabled,
+  isLoggedIn, level, logout, hasPerm, fetchMe, refreshSsoSession, authSource, displayName, activation, probeGuestEnabled,
   subsonicMasterPasswordNotice, dismissSubsonicMasterPasswordNotice,
 } = useAuth();
 const player = usePlayerStore();
@@ -62,6 +62,15 @@ watch(sidebarScroll, (element) => {
   updateSidebarSelection();
 }, { flush: "post" });
 onBeforeUnmount(() => sidebarObserver?.disconnect());
+let ssoRefreshTimer: number | undefined;
+onMounted(() => {
+  ssoRefreshTimer = window.setInterval(() => {
+    if (isLoggedIn.value && authSource.value === "sso") void refreshSsoSession();
+  }, 4 * 60 * 1000);
+});
+onBeforeUnmount(() => {
+  if (ssoRefreshTimer !== undefined) window.clearInterval(ssoRefreshTimer);
+});
 const demoMode = useDemoMode();
 const fluentThemeMode = ref<"light" | "dark">("dark");
 watch(activeTheme, async () => {

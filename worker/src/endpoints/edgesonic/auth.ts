@@ -36,7 +36,16 @@ import type { User } from "../../types/entities";
 import { clearLoginFailures, loginAllowed, recordLoginFailure } from "../../utils/loginProtection";
 import { authenticationRateLimitKey, rateLimitAllowed, rateLimitExceededResponse } from "../../middleware/rate_limit";
 import { resolveSsoPolicy, type SsoPolicy } from "../../utils/ssoPolicy";
-import { beginOidcAuthorization, clearOidcTransactionCookie, completeOidcAuthorization } from "../../utils/oidc";
+import {
+  beginOidcAuthorization,
+  beginOidcDeviceAuthorization,
+  buildOidcLogoutUrl,
+  clearOidcDeviceCookie,
+  clearOidcTransactionCookie,
+  completeOidcAuthorization,
+  pollOidcDeviceAuthorization,
+  refreshOidcSession,
+} from "../../utils/oidc";
 
 // only request that legitimately arrives without a session) and is exported
 // separately so index.ts can mount it BEFORE the global auth filter at the
@@ -92,6 +101,65 @@ webLoginRoutes.get("/edgesonic/auth/sso/callback", async (c) => {
     return c.redirect(loginPageLocation(c.req.url, "sso", "complete"), 303);
   } catch {
     return c.redirect(loginPageLocation(c.req.url, "sso_error", "callback"), 303);
+  }
+});
+
+webLoginRoutes.get("/edgesonic/auth/sso/device/start", async (c) => {
+  try {
+    const started = await beginOidcDeviceAuthorization(c.env, c.req.url);
+    c.header("Set-Cookie", started.transactionCookie);
+    return c.json({
+      ok: true,
+      userCode: started.userCode,
+      verificationUri: started.verificationUri,
+      verificationUriComplete: started.verificationUriComplete,
+      expiresIn: started.expiresIn,
+      interval: started.interval,
+    });
+  } catch {
+    return c.json({ ok: false, error: "Device authorization is unavailable" }, 503);
+  }
+});
+
+webLoginRoutes.post("/edgesonic/auth/sso/device/poll", async (c) => {
+  try {
+    const result = await pollOidcDeviceAuthorization(c.env, c.req.url, c.req.header("Cookie") || "");
+    if (result.status === "pending") return c.json({ ok: true, status: result.status, retryAfter: result.retryAfter || 5 }, 202);
+    c.header("Set-Cookie", clearOidcDeviceCookie(c.req.url));
+    return c.json({ ok: result.status === "approved", status: result.status, tokenResponse: result.tokenResponse });
+  } catch {
+    c.header("Set-Cookie", clearOidcDeviceCookie(c.req.url));
+    return c.json({ ok: false, status: "error", error: "Device authorization failed" }, 400);
+  }
+});
+
+webLoginRoutes.get("/edgesonic/auth/sso/logout", async (c) => {
+  const cookie = c.req.header("Cookie") || "";
+  const sessionToken = cookie.split(";").map((part) => part.trim()).find((part) => part.startsWith("edgesonic_session="))?.slice("edgesonic_session=".length) || "";
+  let providerLogout: string | null = null;
+  try {
+    providerLogout = await buildOidcLogoutUrl(c.env, c.req.url, cookie, `${new URL(c.req.url).origin}/edgesonic/auth/sso/logout-complete`);
+  } catch {
+    providerLogout = null;
+  }
+  if (sessionToken) await c.env.DB.prepare("DELETE FROM sessions WHERE token = ?").bind(sessionToken).run();
+  c.header("Set-Cookie", buildSessionCookieHeader("", 0) + (new URL(c.req.url).protocol === "https:" ? "; Secure" : ""));
+  return c.redirect(providerLogout || `${new URL(c.req.url).origin}/#/login?logout=complete`, 303);
+});
+
+webLoginRoutes.get("/edgesonic/auth/sso/logout-complete", (c) => {
+  return c.redirect(`${new URL(c.req.url).origin}/#/login?logout=complete`, 303);
+});
+
+webLoginRoutes.post("/edgesonic/auth/sso/refresh", async (c) => {
+  try {
+    const result = await refreshOidcSession(c.env, c.req.url, c.req.header("Cookie") || "");
+    const isHttps = new URL(c.req.url).protocol === "https:";
+    c.header("Set-Cookie", buildSessionCookieHeader(result.sessionToken, Math.max(0, result.expiresAt - Math.floor(Date.now() / 1000))) + (isHttps ? "; Secure" : ""));
+    return c.json({ ok: true, expiresAt: result.expiresAt, activation: result.activation });
+  } catch (error) {
+    const code = error instanceof Error && "code" in error ? String((error as { code?: unknown }).code) : "refresh_failed";
+    return c.json({ ok: false, error: code }, code === "account_disabled" ? 403 : 401);
   }
 });
 
