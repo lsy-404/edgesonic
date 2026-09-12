@@ -33,6 +33,7 @@ import { maybeRunCacheEviction } from "./utils/cacheEviction";
 import { advanceLyricsSearchIndex } from "./utils/lyricsSearch";
 import { webLoginRoutes } from "./endpoints/edgesonic/auth";
 import { sharePublicRoutes } from "./endpoints/share_public";
+import { spaHashRedirect } from "./spa";
 
 // Durable Object backing SandboxTranscodeEngine. This export must exist even
 // when the engine is not in use (containers binding is declared in wrangler.toml).
@@ -158,7 +159,11 @@ app.onError((err, c) => {
 // asyncScanSource per enabled source. Independent ctx.waitUntil() calls let
 // either subsystem fail without blocking the other.
 export default {
-  fetch: app.fetch.bind(app),
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    const response = await app.fetch(request, env, ctx);
+    if (response.status !== 404) return response;
+    return spaHashRedirect(request) || response;
+  },
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(
       refreshAllChannels(env.DB).catch((e) => {
