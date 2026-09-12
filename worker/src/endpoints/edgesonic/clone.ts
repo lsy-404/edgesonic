@@ -45,6 +45,8 @@ import type { Context } from "hono";
 import { artistInsertStatements, parseArtistCredits, songArtistStatements } from "../../utils/artistCredits";
 import { PayloadTooLargeError, limitReadableStream } from "../../utils/streamLimit";
 import { isSafeCloneParams, limitedProxyBody, safeCloneTarget, takeCloneProxyRateLimit } from "../../utils/cloneProxySecurity";
+import { registerR2Object } from "../../utils/storageResolver";
+import { createStableObjectId, createStableObjectKey } from "../../utils/storageObjects";
 
 export const cloneRoutes = new Hono<{
   Bindings: Env;
@@ -999,13 +1001,9 @@ cloneRoutes.post("/clone/upsertUser", permissionMiddleware("manage_users"), asyn
 // Query: ?masterId=<song_master_id>&suffix=<ext>&contentType=<mime>&
 //      &artist=<...>&album=<...>&filename=<...>&size=<bytes>&originalPath=<...>
 //
-// Writes R2 key from upstream originalPath when available, otherwise falls
-// back to `music/{artist}/{album}/{stem}.{masterIdHash}.{ext}` (see
-// fallbackR2Key for why the hash is needed), and creates a
-// song_instances row (source_type='original', source_id='r2-local',
-// storage_uri=r2://music/...). Idempotent: if a song_instance with the
-// same storage_uri already exists, the R2 put still happens (overwrite)
-// but the D1 insert is skipped.
+// Writes an immutable R2 object and records the upstream logical path in D1,
+// then creates a song_instances row (source_type='original',
+// source_id='r2-local'). The object key is independent of display naming.
 //
 // Mirrors work_upload.ts shape (binary body, R2 put, song_instances
 // register) but the caller is the browser, not a browser-pool worker, so
@@ -1049,7 +1047,9 @@ async function registerAudioInstance(
     return { ok: false, error: "song_master not found — upsertMaster first", status: 404 };
   }
 
-  const r2Key = originalPathToR2Key(originalPath) || fallbackR2Key(artistDir, albumDir, filename, masterId);
+  const logicalPath = originalPathToR2Key(originalPath) || fallbackR2Key(artistDir, albumDir, filename, masterId);
+  const objectId = createStableObjectId(`clone:${params.sourceKey || DEFAULT_CLONE_SOURCE_KEY}:${masterId}:${logicalPath}`);
+  const r2Key = createStableObjectKey(objectId, suffix || extToSuffix(filename) || "bin");
   let overflowed = false;
   let r2Object: R2Object;
   try {
@@ -1088,19 +1088,29 @@ async function registerAudioInstance(
   try {
     await db.prepare(
       `INSERT INTO song_instances
-         (id, master_id, source_id, source_type, storage_uri, suffix, content_type,
+         (id, master_id, source_id, source_type, storage_uri, storage_object_id, suffix, content_type,
           size, tag_scanned, created_at, updated_at)
-       VALUES (?, ?, 'r2-local', 'original', ?, ?, ?, ?, 1, ?, ?)`,
+       VALUES (?, ?, 'r2-local', 'original', ?, ?, ?, ?, ?, 1, ?, ?)`,
     ).bind(
       instanceId,
       masterId,
       storageUri,
+      objectId,
       suffix || extToSuffix(filename),
       contentType,
       declaredSize || size,
       now,
       now,
     ).run();
+    await registerR2Object(env.DB, {
+      objectId,
+      physicalKey: r2Key,
+      logicalPath,
+      suffix: suffix || extToSuffix(filename) || "bin",
+      contentType,
+      size: declaredSize || size,
+      instanceId,
+    });
   } catch (e) {
     // FK / PK failure shouldn't fail the whole clone — R2 bytes are valid.
     console.error(`[clone] instance registration failed:`, e);

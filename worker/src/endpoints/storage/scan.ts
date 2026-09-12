@@ -22,6 +22,8 @@ import { getFeatureString } from "../../utils/features";
 import { dispatchWorkBatch } from "../edgesonic/work";
 import { importLrcOnScan } from "../../utils/lrcSidecar";
 import { R2_BUILTIN_ID, synthesizeR2Row } from "./sources";
+import { registerR2Object } from "../../utils/storageResolver";
+import { normalizeSuffix } from "../../utils/storageObjects";
 
 export const scanRoutes = new Hono();
 
@@ -914,7 +916,7 @@ export async function asyncScanR2Source(
     let pages = 0;
     let complete = true;
     do {
-      const listing = await env.MUSIC_BUCKET.list({ cursor, limit: 1000 });
+      const listing = await env.MUSIC_BUCKET.list({ prefix: "objects/", cursor, limit: 1000 });
       for (const o of listing.objects) {
         if (AUDIO_EXT.has(extOf(o.key))) {
           audio.push({
@@ -962,6 +964,7 @@ export async function asyncScanR2Source(
     const stmts: D1PreparedStatement[] = [];
     const touchedAlbums = new Set<string>();
     const seenUris = new Set<string>();
+    const newObjectRegistrations: Array<{ objectId: string; key: string; suffix: string; size: number; etag: string | null; lastModified: number | null; instanceId: string; logicalPath: string }> = [];
     let scanned = 0;
 
     const flush = async () => {
@@ -974,8 +977,7 @@ export async function asyncScanR2Source(
 
     for (const obj of audio) {
       scanned++;
-      // Bare key, no source-id prefix — matches every other r2:// writer in
-      // the codebase (clone.ts, work_upload.ts, hotcache.ts, files.ts).
+      // Bare stable physical key; D1 entry.path is the logical file path.
       const uri = `r2://${obj.key}`;
       seenUris.add(uri);
       const prior = existingMap.get(uri);
@@ -1022,7 +1024,14 @@ export async function asyncScanR2Source(
         continue;
       }
 
-      const meta = guessFromPath(obj.key);
+      const stable = /^objects\/(obj_[0-9a-f]{16})\.([^./]+)$/i.exec(obj.key);
+      if (!stable) {
+        if (scanned % SCAN_PROGRESS_CHUNK === 0) await flush();
+        continue;
+      }
+      const suffix = normalizeSuffix(stable[2]);
+      const logicalPath = `music/${stable[1]}.${suffix}`;
+      const meta = guessFromPath(logicalPath);
       const artistId = "ar-" + md5(meta.artist).substring(0, 10);
       const albumId = "al-" + md5(meta.artist + " " + meta.album).substring(0, 10);
       const masterId = "sm-" + md5(uri).substring(0, 10);
@@ -1043,8 +1052,9 @@ export async function asyncScanR2Source(
              (id, master_id, source_id, storage_uri, suffix, size,
               source_etag, source_last_modified, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(instanceId, masterId, src.id, uri, extOf(obj.key), obj.size, obj.etag, obj.lastModified, now, now),
+        ).bind(instanceId, masterId, src.id, uri, suffix, obj.size, obj.etag, obj.lastModified, now, now),
       );
+      newObjectRegistrations.push({ objectId: stable[1], key: obj.key, suffix, size: obj.size, etag: obj.etag, lastModified: obj.lastModified, instanceId, logicalPath });
 
       if (dispatchToWorkerPool) {
         dispatchTargets.push({ instanceId, uri, suffix: extOf(obj.key), size: obj.size });
@@ -1053,6 +1063,20 @@ export async function asyncScanR2Source(
     }
 
     await flush();
+    for (const registration of newObjectRegistrations) {
+      await registerR2Object(db, {
+        objectId: registration.objectId,
+        physicalKey: registration.key,
+        logicalPath: registration.logicalPath,
+        suffix: registration.suffix,
+        size: registration.size,
+        etag: registration.etag,
+        lastModified: registration.lastModified,
+        instanceId: registration.instanceId,
+      });
+      await db.prepare("UPDATE song_instances SET storage_object_id = ? WHERE id = ?")
+        .bind(registration.objectId, registration.instanceId).run();
+    }
 
     // See asyncScanSource above for the reasoning — deleted R2 objects are
     // indistinguishable from renames, and only trustworthy on a complete

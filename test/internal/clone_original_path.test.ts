@@ -208,10 +208,26 @@ function buildDb() {
     CREATE TABLE song_instances (
       id TEXT PRIMARY KEY, master_id TEXT NOT NULL,
       source_id TEXT NOT NULL, source_type TEXT DEFAULT 'original',
-      storage_uri TEXT NOT NULL, suffix TEXT, content_type TEXT,
+      storage_uri TEXT NOT NULL, storage_object_id TEXT, suffix TEXT, content_type TEXT,
       size INTEGER, tag_scanned INTEGER DEFAULT 0,
       created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
     );
+    CREATE TABLE storage_sources (
+      id TEXT PRIMARY KEY, type TEXT, name TEXT, base_url TEXT, root_path TEXT,
+      mode TEXT DEFAULT 'library', enabled INTEGER DEFAULT 1,
+      created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
+    );
+    CREATE TABLE storage_objects (
+      id TEXT PRIMARY KEY, physical_key TEXT NOT NULL UNIQUE, legacy_key TEXT UNIQUE,
+      suffix TEXT NOT NULL, content_type TEXT, size INTEGER NOT NULL DEFAULT 0,
+      etag TEXT, last_modified INTEGER, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
+    );
+    CREATE TABLE storage_entries (
+      id TEXT PRIMARY KEY, source_id TEXT NOT NULL, parent_id TEXT, path TEXT NOT NULL,
+      display_name TEXT NOT NULL, kind TEXT NOT NULL, object_id TEXT, instance_id TEXT,
+      companion_of TEXT, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
+    );
+    CREATE UNIQUE INDEX idx_storage_entries_source_path ON storage_entries(source_id, path);
 
     INSERT INTO users (username, master_password, level, enabled) VALUES ('admin', 'hash', 3, 1);
     INSERT INTO user_permissions (level, permission, enabled) VALUES (3, 'manage_users', 1);
@@ -259,8 +275,8 @@ async function main() {
   }, "AAAAA");
   const withPathBody = await withPath.json() as any;
   assert(withPath.status === 200 && withPathBody.ok === true, `ingest with originalPath ok (status ${withPath.status})`);
-  assert(withPathBody.r2Key === "music/Artist/Album/Intro.flac", `capital Music root canonicalized (got ${withPathBody.r2Key})`);
-  assert(r2.map.has("music/Artist/Album/Intro.flac"), "bytes stored under canonical key");
+  assert(/^objects\/obj_[0-9a-f]{16}\.flac$/.test(withPathBody.r2Key), `stable object key keeps the suffix (got ${withPathBody.r2Key})`);
+  assert(r2.map.has(withPathBody.r2Key), "bytes stored under the stable object key");
 
   console.log("ingestAudio fallback keys never collide across masters:");
   const fbOne = await app.ingest({
@@ -287,13 +303,13 @@ async function main() {
     originalPath: "/srv/Music/Artist/Album/Intro.flac", size: "5",
   }, "AAAAA");
   const againBody = await again.json() as any;
-  assert(againBody.ok === true && againBody.r2Key === "music/Artist/Album/Intro.flac", "same key after wipe");
+  assert(againBody.ok === true && againBody.r2Key === withPathBody.r2Key, "same stable key after wipe");
   assert(againBody.registered === false, "existing instance row reused (idempotent)");
   const instCount = sqlite.prepare(
-    "SELECT COUNT(*) AS n FROM song_instances WHERE master_id='sm-one' AND storage_uri='r2://music/Artist/Album/Intro.flac'",
+    `SELECT COUNT(*) AS n FROM song_instances WHERE master_id='sm-one' AND storage_uri='r2://${withPathBody.r2Key}'`,
   ).get() as any;
-  assert(instCount?.n === 1, `exactly one instance row for the path-derived key (got ${instCount?.n})`);
-  assert(r2.map.has("music/Artist/Album/Intro.flac"), "bytes restored in R2");
+  assert(instCount?.n === 1, `exactly one instance row for the stable key (got ${instCount?.n})`);
+  assert(r2.map.has(withPathBody.r2Key), "bytes restored in R2");
 
   if (failures) process.exit(1);
 }

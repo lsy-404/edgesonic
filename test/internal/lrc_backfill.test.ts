@@ -86,6 +86,16 @@ function buildDb(): DatabaseSync {
       id TEXT PRIMARY KEY, master_id TEXT NOT NULL, storage_uri TEXT NOT NULL,
       source_type TEXT NOT NULL DEFAULT 'original', missing INTEGER DEFAULT 0
     );
+    CREATE TABLE storage_objects (
+      id TEXT PRIMARY KEY, physical_key TEXT NOT NULL UNIQUE, legacy_key TEXT UNIQUE,
+      suffix TEXT NOT NULL, content_type TEXT, size INTEGER NOT NULL DEFAULT 0,
+      etag TEXT, last_modified INTEGER, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
+    );
+    CREATE TABLE storage_entries (
+      id TEXT PRIMARY KEY, source_id TEXT NOT NULL, parent_id TEXT, path TEXT NOT NULL,
+      display_name TEXT NOT NULL, kind TEXT NOT NULL, object_id TEXT, instance_id TEXT,
+      companion_of TEXT, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
+    );
     CREATE TABLE feature_strings (
       key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT, updated_at INTEGER DEFAULT 0
     );
@@ -96,25 +106,37 @@ function buildDb(): DatabaseSync {
     -- sm-1: has a sidecar .lrc waiting in the mock bucket → should fill.
     INSERT INTO song_masters (id, title, lyrics) VALUES ('sm-1', 'Has Sidecar', NULL);
     INSERT INTO song_instances (id, master_id, storage_uri, source_type)
-      VALUES ('si-1', 'sm-1', 'r2://music/Artist/Album/01 Has Sidecar.flac', 'original');
+      VALUES ('si-1', 'sm-1', 'r2://objects/obj-sidecar.flac', 'original');
 
     -- sm-2: no sidecar in the bucket → stays a candidate, not filled.
     INSERT INTO song_masters (id, title, lyrics) VALUES ('sm-2', 'No Sidecar', NULL);
     INSERT INTO song_instances (id, master_id, storage_uri, source_type)
-      VALUES ('si-2', 'sm-2', 'r2://music/Artist/Album/02 No Sidecar.flac', 'original');
+      VALUES ('si-2', 'sm-2', 'r2://objects/obj-no-sidecar.flac', 'original');
 
     -- sm-3: already has plain lyrics but no lyrics_rich → still selected
     -- (rich-lyrics pass), but its 'lyrics' column must stay untouched.
     INSERT INTO song_masters (id, title, lyrics) VALUES ('sm-3', 'Already Has Lyrics', 'la la la');
     INSERT INTO song_instances (id, master_id, storage_uri, source_type)
-      VALUES ('si-3', 'sm-3', 'r2://music/Artist/Album/03 Already Has Lyrics.flac', 'original');
+      VALUES ('si-3', 'sm-3', 'r2://objects/obj-existing.flac', 'original');
 
     -- sm-4: only a 'cached' (non-original) instance whose synthetic path
     -- happens to have a sidecar hit registered in the mock bucket — must be
     -- excluded by the source_type filter regardless.
     INSERT INTO song_masters (id, title, lyrics) VALUES ('sm-4', 'Cached Only', NULL);
     INSERT INTO song_instances (id, master_id, storage_uri, source_type)
-      VALUES ('si-4', 'sm-4', 'r2://cache/webdav/sm-4.flac', 'cached');
+      VALUES ('si-4', 'sm-4', 'r2://objects/obj-cached.flac', 'cached');
+    INSERT INTO storage_objects (id, physical_key, suffix, content_type, size) VALUES
+      ('obj-sidecar', 'objects/obj-sidecar.flac', 'flac', 'audio/flac', 1),
+      ('obj-no-sidecar', 'objects/obj-no-sidecar.flac', 'flac', 'audio/flac', 1),
+      ('obj-existing', 'objects/obj-existing.flac', 'flac', 'audio/flac', 1),
+      ('obj-cached', 'objects/obj-cached.flac', 'flac', 'audio/flac', 1),
+      ('obj-lrc', 'objects/obj-sidecar.lrc', 'lrc', 'text/plain', 1);
+    INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id, instance_id) VALUES
+      ('entry-sidecar-audio', 'r2-local', 'music/Artist/Album/01 Has Sidecar.flac', '01 Has Sidecar.flac', 'file', 'obj-sidecar', 'si-1'),
+      ('entry-no-sidecar-audio', 'r2-local', 'music/Artist/Album/02 No Sidecar.flac', '02 No Sidecar.flac', 'file', 'obj-no-sidecar', 'si-2'),
+      ('entry-existing-audio', 'r2-local', 'music/Artist/Album/03 Already Has Lyrics.flac', '03 Already Has Lyrics.flac', 'file', 'obj-existing', 'si-3'),
+      ('entry-lrc', 'r2-local', 'music/Artist/Album/01 Has Sidecar.lrc', '01 Has Sidecar.lrc', 'file', 'obj-lrc', NULL),
+      ('entry-cached-audio', 'r2-local', 'cache/webdav/sm-4.flac', 'sm-4.flac', 'file', 'obj-cached', 'si-4');
   `);
   return sqlite;
 }
@@ -159,10 +181,10 @@ async function main() {
   {
     const sqlite = buildDb();
     const env = makeEnv(sqlite, {
-      "music/Artist/Album/01 Has Sidecar.lrc": "[00:00.00]la la la",
+      "objects/obj-sidecar.lrc": "[00:00.00]la la la",
       // sm-4's cache path deliberately has a sidecar too — proves the
       // source_type filter (not just "no file present") is what excludes it.
-      "cache/webdav/sm-4.lrc": "[00:00.00]should never be read",
+      "objects/obj-cached.lrc": "[00:00.00]should never be read",
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -191,7 +213,7 @@ async function main() {
   {
     const sqlite = buildDb();
     sqlite.exec("INSERT INTO feature_strings (key, value) VALUES ('lrc_backfill_interval_hours', '0')");
-    const env = makeEnv(sqlite, { "music/Artist/Album/01 Has Sidecar.lrc": "[00:00.00]la la la" });
+    const env = makeEnv(sqlite, { "objects/obj-sidecar.lrc": "[00:00.00]la la la" });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await maybeRunLrcBackfill(env as any, { waitUntil: () => {} } as any);
     const sm1 = sqlite.prepare("SELECT lyrics FROM song_masters WHERE id = 'sm-1'").get() as { lyrics: string | null };
@@ -204,7 +226,7 @@ async function main() {
     sqlite.exec("INSERT INTO feature_strings (key, value) VALUES ('lrc_backfill_interval_hours', '24')");
     const now = Math.floor(Date.now() / 1000);
     sqlite.exec(`INSERT INTO kv_store (key, value, updated_at) VALUES ('cron:last_lrc_backfill_ts', '${now}', ${now})`);
-    const env = makeEnv(sqlite, { "music/Artist/Album/01 Has Sidecar.lrc": "[00:00.00]la la la" });
+    const env = makeEnv(sqlite, { "objects/obj-sidecar.lrc": "[00:00.00]la la la" });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await maybeRunLrcBackfill(env as any, { waitUntil: () => {} } as any);
     const sm1 = sqlite.prepare("SELECT lyrics FROM song_masters WHERE id = 'sm-1'").get() as { lyrics: string | null };
@@ -217,7 +239,7 @@ async function main() {
     sqlite.exec("INSERT INTO feature_strings (key, value) VALUES ('lrc_backfill_interval_hours', '24')");
     const stale = Math.floor(Date.now() / 1000) - 25 * 3600;
     sqlite.exec(`INSERT INTO kv_store (key, value, updated_at) VALUES ('cron:last_lrc_backfill_ts', '${stale}', ${stale})`);
-    const env = makeEnv(sqlite, { "music/Artist/Album/01 Has Sidecar.lrc": "[00:00.00]la la la" });
+    const env = makeEnv(sqlite, { "objects/obj-sidecar.lrc": "[00:00.00]la la la" });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await maybeRunLrcBackfill(env as any, { waitUntil: () => {} } as any);
     const sm1 = sqlite.prepare("SELECT lyrics FROM song_masters WHERE id = 'sm-1'").get() as { lyrics: string | null };

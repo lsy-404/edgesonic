@@ -33,6 +33,8 @@
 import { createWebDAVAdapter } from "../adapters/webdav";
 import type { SongInstance } from "../types/entities";
 import { getSourceCacheTier, resolveTierConfig, evictExpired, evictForRoom } from "./cacheTiers";
+import { registerR2Object } from "./storageResolver";
+import { createStableObjectId, createStableObjectKey } from "./storageObjects";
 
 export function hotCacheWebdav(
   env: Env,
@@ -49,7 +51,9 @@ async function doHotCache(env: Env, source: SongInstance): Promise<void> {
   if (!tierConfig) return;
 
   const now = Math.floor(Date.now() / 1000);
-  const cacheKey = `cache/webdav/${source.master_id}.${source.suffix}`;
+  const objectId = createStableObjectId(`hotcache:${source.id}`);
+  const cacheKey = createStableObjectKey(objectId, source.suffix);
+  const logicalPath = `cache/webdav/${source.master_id}.${source.suffix}`;
   const instanceId = `si-whc-${source.master_id}`;
 
   // Atomic claim: the deterministic id makes INSERT OR IGNORE a mutex — a
@@ -101,9 +105,18 @@ async function doHotCache(env: Env, source: SongInstance): Promise<void> {
     });
 
     const wroteAt = Math.floor(Date.now() / 1000);
+    await registerR2Object(env.DB, {
+      objectId,
+      physicalKey: cacheKey,
+      logicalPath,
+      suffix: source.suffix,
+      contentType: resp.contentType || source.content_type || null,
+      size: len,
+      instanceId,
+    });
     await env.DB.prepare(
-      "UPDATE song_instances SET missing = 0, size = ?, expires_at = ?, last_accessed_at = ?, updated_at = ? WHERE id = ?",
-    ).bind(len, wroteAt + tierConfig.ttlSeconds, wroteAt, wroteAt, instanceId).run();
+      "UPDATE song_instances SET storage_uri = ?, storage_object_id = ?, missing = 0, size = ?, expires_at = ?, last_accessed_at = ?, updated_at = ? WHERE id = ?",
+    ).bind(`r2://${cacheKey}`, objectId, len, wroteAt + tierConfig.ttlSeconds, wroteAt, wroteAt, instanceId).run();
   } catch {
     await env.MUSIC_BUCKET.delete(cacheKey).catch(() => {});
     await env.DB.prepare("DELETE FROM song_instances WHERE id = ? AND missing = 1").bind(instanceId).run();

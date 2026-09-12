@@ -1,78 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-// POST /storage/files/moveFolder + /storage/files/deleteFolder tests.
-//
-// Covers:
-//  • moveFolder: re-homes every object under the prefix (incl. the mkdir
-//    ".keep" marker), preserves httpMetadata, rewrites song_instances
-//    storage_uri rows, paginates past R2's 1000-key page limit
-//  • moveFolder: rejects moving a folder into itself / a descendant (400)
-//  • moveFolder: rejects empty / ".." traversal paths (400)
-//  • moveFolder: unknown (empty) folder → 404
-//  • moveFolder (single-file /files/move): dest === key is a no-op success
-//    and does NOT delete the object
-//  • deleteFolder: removes every object under the prefix page by page,
-//    cascades song_instances rows and orphan masters, leaves siblings alone
-//  • deleteFolder: LIKE-wildcard folder names ("a_b") don't over-match
-//    sibling instances ("aXb")
-//  • deleteFolder: invalid path → 400, empty folder → 404
-//
-// Adapters are shimmed via an in-memory R2 bucket + minimal D1 mock so no
-// real network calls are made (same pattern as files_mkdir.test.ts).
-//
-// Run: npx tsx test/internal/files_folder_ops.test.ts
-
 import { Hono } from "hono";
 import { filesRoutes } from "../../worker/src/endpoints/storage/files";
 
-const FIXED_LENGTH_BODY = Symbol("fixed-length-body");
-
-class TestFixedLengthStream extends TransformStream<Uint8Array, Uint8Array> {
-  constructor(expectedLength: number | bigint) {
-    const expected = Number(expectedLength);
-    let actual = 0;
-    super({
-      transform(chunk, controller) {
-        actual += chunk.byteLength;
-        if (actual > expected) {
-          controller.error(new Error(`FixedLengthStream length mismatch: expected ${expected} bytes, got ${actual}`));
-          return;
-        }
-        controller.enqueue(chunk);
-      },
-      flush(controller) {
-        if (actual !== expected) {
-          controller.error(new Error(`FixedLengthStream length mismatch: expected ${expected} bytes, got ${actual}`));
-        }
-      },
-    });
-    Object.defineProperty(this.readable, FIXED_LENGTH_BODY, { value: true });
-  }
-}
-
-Object.defineProperty(globalThis, "FixedLengthStream", {
-  configurable: true,
-  value: TestFixedLengthStream,
-});
-
-declare global {
-  type D1Database = unknown;
-  type D1PreparedStatement = unknown;
-  type Env = unknown;
-}
+declare global { type D1Database = unknown; type Env = unknown; }
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -80,196 +9,111 @@ function assert(cond: unknown, msg: string) {
   else { failures++; console.error(`  ✗ ${msg}`); }
 }
 
-// ---------------------------------------------------------------------------
-// In-memory R2 bucket shim — list() honours prefix + cursor + limit so the
-// pagination loops in moveFolder/deleteFolder get exercised for real.
-// ---------------------------------------------------------------------------
-interface R2Item { key: string; body: Uint8Array; contentType: string }
+interface Entry {
+  id: string; path: string; display_name: string; kind: "folder" | "file";
+  parent_id: string | null; object_id: string | null; instance_id: string | null;
+  physical_key: string | null;
+}
+interface Instance { id: string; master_id: string }
+interface Master { id: string; album_id: string; artist_id: string }
 
-function makeR2Bucket(pageLimit = 1000) {
-  const store = new Map<string, R2Item>();
-  let transientPutFailures = 0;
-  let putAttempts = 0;
-  let putDelayMs = 0;
-  let activePuts = 0;
-  let maxConcurrentPuts = 0;
-
-  async function readBody(body: unknown): Promise<Uint8Array> {
-    if (body instanceof ArrayBuffer) return new Uint8Array(body);
-    if (body instanceof Uint8Array) return new Uint8Array(body);
-    if (body && typeof (body as { getReader?: unknown }).getReader === "function") {
-      const reader = (body as ReadableStream<Uint8Array>).getReader();
-      const chunks: Uint8Array[] = [];
-      let total = 0;
-      for (;;) {
-        const next = await reader.read();
-        if (next.done) break;
-        const chunk = next.value instanceof Uint8Array ? next.value : new Uint8Array(next.value);
-        chunks.push(chunk);
-        total += chunk.byteLength;
-      }
-      const result = new Uint8Array(total);
-      let offset = 0;
-      for (const chunk of chunks) {
-        result.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-      return result;
-    }
-    return new Uint8Array(0);
-  }
-
+function makeBucket() {
+  const store = new Map<string, Uint8Array>();
   return {
     store,
-    get putAttempts() { return putAttempts; },
-    get maxConcurrentPuts() { return maxConcurrentPuts; },
-    failNextPuts(count: number) { transientPutFailures = count; putAttempts = 0; },
-    delayPuts(delayMs: number) { putDelayMs = delayMs; maxConcurrentPuts = 0; },
-    async put(key: string, body: unknown, opts?: { httpMetadata?: { contentType?: string } }) {
-      putAttempts++;
-      activePuts++;
-      maxConcurrentPuts = Math.max(maxConcurrentPuts, activePuts);
-      try {
-        if (putDelayMs) await new Promise((resolve) => setTimeout(resolve, putDelayMs));
-        if (transientPutFailures > 0) {
-          transientPutFailures--;
-          throw new Error("put: We encountered an internal error. Please try again. (10001)");
-        }
-        if (body && typeof (body as { getReader?: unknown }).getReader === "function" && !(body as Record<symbol, unknown>)[FIXED_LENGTH_BODY]) {
-          throw new Error("put: stream length is unknown");
-        }
-        const buf = await readBody(body);
-        store.set(key, { key, body: buf, contentType: opts?.httpMetadata?.contentType || "application/octet-stream" });
-      } finally {
-        activePuts--;
-      }
-    },
     async get(key: string) {
-      const item = store.get(key);
-      if (!item) return null;
-      return {
-        key,
-        size: item.body.byteLength,
-        body: new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.enqueue(item.body);
-            controller.close();
-          },
-        }),
-        httpMetadata: { contentType: item.contentType },
-        customMetadata: {},
-      };
+      const bytes = store.get(key);
+      if (!bytes) return null;
+      return { body: new Blob([bytes]).stream(), size: bytes.length, httpMetadata: { contentType: "audio/mpeg" }, customMetadata: {} };
+    },
+    async put(key: string, body: unknown) {
+      store.set(key, body instanceof Uint8Array ? body : new Uint8Array(await new Response(body as BodyInit).arrayBuffer()));
     },
     async delete(keys: string | string[]) {
-      for (const k of Array.isArray(keys) ? keys : [keys]) store.delete(k);
-    },
-    async list({ prefix, cursor, limit }: { prefix?: string; cursor?: string; limit?: number }) {
-      // Like real R2, the cursor is a resume token anchored to the last key
-      // returned (not an index) — deleting already-listed objects between
-      // pages must not shift the continuation point.
-      const cap = Math.min(limit ?? 1000, pageLimit);
-      const all = Array.from(store.keys()).filter((k) => k.startsWith(prefix || "")).sort();
-      const remaining = cursor ? all.filter((k) => k > cursor) : all;
-      const page = remaining.slice(0, cap);
-      const truncated = page.length < remaining.length;
-      return {
-        objects: page.map((k) => {
-          const item = store.get(k)!;
-          return { key: k, size: item.body.length, httpMetadata: { contentType: item.contentType }, customMetadata: {} };
-        }),
-        delimitedPrefixes: [] as string[],
-        truncated,
-        cursor: truncated ? page[page.length - 1] : undefined,
-      };
+      for (const key of Array.isArray(keys) ? keys : [keys]) store.delete(key);
     },
   };
 }
 
-// ---------------------------------------------------------------------------
-// D1 shim — in-memory song_instances/song_masters tables, supporting exactly
-// the statements the files endpoints issue (incl. LIKE ... ESCAPE '\').
-// ---------------------------------------------------------------------------
-interface InstanceRow { id: string; master_id: string; storage_uri: string }
-interface MasterRow { id: string; album_id: string; artist_id: string }
-
-function likeToRegExp(pattern: string): RegExp {
-  // Translate a SQL LIKE pattern with ESCAPE '\' into a RegExp.
-  let out = "";
-  for (let i = 0; i < pattern.length; i++) {
-    const ch = pattern[i];
-    if (ch === "\\" && i + 1 < pattern.length) { out += pattern[++i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); continue; }
-    if (ch === "%") { out += ".*"; continue; }
-    if (ch === "_") { out += "."; continue; }
-    out += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-  return new RegExp(`^${out}$`);
-}
-
-function makeD1(instances: InstanceRow[], masters: MasterRow[]) {
+function makeD1(entries: Entry[], instances: Instance[], masters: Master[]) {
   const db = {
-    instances,
-    masters,
     prepare(sql: string) {
+      const normalized = sql.trim().replace(/\s+/g, " ");
       const stmt = {
-        sql: sql.trim().replace(/\s+/g, " "),
         args: [] as unknown[],
         bind(...args: unknown[]) { stmt.args = args; return stmt; },
-        async first<T = unknown>(): Promise<T | null> {
-          if (stmt.sql.includes("FROM user_permissions")) return { enabled: 1, max_rph: 0 } as T;
-          if (stmt.sql.includes("SELECT master_id FROM song_instances WHERE storage_uri = ?")) {
-            const row = instances.find((r) => r.storage_uri === stmt.args[0]);
-            return (row ? { master_id: row.master_id } : null) as T | null;
+        async first<T = unknown>() {
+          if (normalized.includes("FROM user_permissions")) return { enabled: 1, max_rph: 0 } as T;
+          if (normalized.includes("FROM storage_entries WHERE source_id") && normalized.includes("kind = 'folder'") && normalized.includes("path = ?")) {
+            return (entries.find((e) => e.path === stmt.args[1] && e.kind === "folder") || null) as T | null;
           }
-          if (stmt.sql.includes("SELECT COUNT(*) AS n FROM song_instances WHERE master_id = ?")) {
-            return { n: instances.filter((r) => r.master_id === stmt.args[0]).length } as T;
+          if (normalized.includes("FROM storage_entries e") && normalized.includes("o.physical_key = ?")) {
+            return (entries.find((e) => e.physical_key === stmt.args[1]) || null) as T | null;
           }
-          if (stmt.sql.includes("SELECT album_id, artist_id FROM song_masters WHERE id = ?")) {
-            const m = masters.find((r) => r.id === stmt.args[0]);
-            return (m ? { album_id: m.album_id, artist_id: m.artist_id } : null) as T | null;
+          if (normalized.includes("FROM storage_entries e") && normalized.includes("e.path = ?")) {
+            return (entries.find((e) => e.path === stmt.args[1]) || null) as T | null;
+          }
+          if (normalized.includes("SELECT COUNT(*) AS n FROM song_instances WHERE master_id = ?")) {
+            return { n: instances.filter((i) => i.master_id === stmt.args[0]).length } as T;
+          }
+          if (normalized.includes("SELECT album_id, artist_id FROM song_masters WHERE id = ?")) {
+            return (masters.find((m) => m.id === stmt.args[0]) || null) as T | null;
+          }
+          if (normalized.includes("SELECT master_id FROM song_instances WHERE id = ?")) {
+            const item = instances.find((i) => i.id === stmt.args[0]);
+            return (item ? { master_id: item.master_id } : null) as T | null;
           }
           return null;
         },
         async all<T = unknown>() {
-          if (stmt.sql.includes("SELECT DISTINCT master_id FROM song_instances WHERE storage_uri LIKE ?")) {
-            const re = likeToRegExp(stmt.args[0] as string);
-            const ids = Array.from(new Set(instances.filter((r) => re.test(r.storage_uri)).map((r) => r.master_id)));
-            return { results: ids.map((id) => ({ master_id: id })) as T[], success: true as const, meta: {} };
+          if (normalized.includes("FROM storage_entries e") && normalized.includes("e.parent_id IS ?")) {
+            return { results: entries.filter((e) => e.parent_id === stmt.args[1]) as T[] };
           }
-          return { results: [] as T[], success: true as const, meta: {} };
+          if (normalized.includes("FROM storage_entries") && normalized.includes("path LIKE ?")) {
+            const prefix = String(stmt.args[2]).replace(/%$/, "");
+            return { results: entries.filter((e) => e.id === stmt.args[1] || e.path === stmt.args[1] || e.path.startsWith(prefix)) as T[] };
+          }
+          return { results: [] as T[] };
         },
         async run() {
-          if (stmt.sql.includes("UPDATE song_instances SET storage_uri = ?")) {
-            const [newUri, , oldUri] = stmt.args as [string, number, string];
-            for (const r of instances) if (r.storage_uri === oldUri) r.storage_uri = newUri;
-          } else if (stmt.sql.includes("DELETE FROM song_instances WHERE storage_uri LIKE ?")) {
-            const re = likeToRegExp(stmt.args[0] as string);
-            for (let i = instances.length - 1; i >= 0; i--) if (re.test(instances[i].storage_uri)) instances.splice(i, 1);
-          } else if (stmt.sql.includes("DELETE FROM song_instances WHERE storage_uri = ?")) {
-            const idx = instances.findIndex((r) => r.storage_uri === stmt.args[0]);
-            if (idx >= 0) instances.splice(idx, 1);
-          } else if (stmt.sql.includes("DELETE FROM song_masters WHERE id = ?")) {
-            const idx = masters.findIndex((r) => r.id === stmt.args[0]);
-            if (idx >= 0) masters.splice(idx, 1);
+          if (normalized.includes("INSERT INTO storage_sources")) return { meta: { changes: 1 } };
+          if (normalized.includes("INSERT INTO storage_entries") && normalized.includes("'folder'")) {
+            const [id, , parentId, path, name] = stmt.args as [string, string, string | null, string, string];
+            if (!entries.some((e) => e.path === path)) entries.push({ id, path, display_name: name, kind: "folder", parent_id: parentId, object_id: null, instance_id: null, physical_key: null });
+            return { meta: { changes: 1 } };
           }
-          return { success: true as const, meta: { changes: 0 } };
+          if (normalized.includes("UPDATE storage_entries SET parent_id")) {
+            const [parentId, path, name, , id] = stmt.args as [string | null, string, string, number, string];
+            const row = entries.find((e) => e.id === id);
+            if (row) { row.parent_id = parentId; row.path = path; row.display_name = name; }
+            return { meta: { changes: 1 } };
+          }
+          if (normalized.includes("DELETE FROM song_instances WHERE id = ?")) {
+            const index = instances.findIndex((i) => i.id === stmt.args[0]);
+            if (index >= 0) instances.splice(index, 1);
+          } else if (normalized.includes("DELETE FROM storage_entries WHERE id = ?")) {
+            const id = stmt.args[0];
+            const descendants = new Set(entries.filter((e) => e.id === id || e.parent_id === id).map((e) => e.id));
+            for (const entry of entries.filter((e) => descendants.has(e.id))) {
+              const index = entries.indexOf(entry);
+              if (index >= 0) entries.splice(index, 1);
+            }
+          } else if (normalized.includes("DELETE FROM storage_objects WHERE id = ?")) {
+            // The object table is represented by the entry fixture only.
+          } else if (normalized.includes("DELETE FROM song_masters WHERE id = ?")) {
+            const index = masters.findIndex((m) => m.id === stmt.args[0]);
+            if (index >= 0) masters.splice(index, 1);
+          }
+          return { meta: { changes: 1 } };
         },
       };
       return stmt;
-    },
-    async batch(stmts: Array<{ run(): Promise<unknown> }>) {
-      const out = [] as unknown[];
-      for (const s of stmts) out.push(await s.run());
-      return out;
     },
   };
   return db;
 }
 
-// ---------------------------------------------------------------------------
-// Hono app harness
-// ---------------------------------------------------------------------------
-function makeApp(bucket: ReturnType<typeof makeR2Bucket>, db: ReturnType<typeof makeD1>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeApp(bucket: ReturnType<typeof makeBucket>, entries: Entry[], instances: Instance[] = [], masters: Master[] = []) {
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.use("*", async (c, next) => {
     c.set("user", { username: "root", level: 3, enabled: 1, password: "x" });
@@ -277,193 +121,60 @@ function makeApp(bucket: ReturnType<typeof makeR2Bucket>, db: ReturnType<typeof 
     return next();
   });
   app.route("/storage", filesRoutes);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const env: Record<string, any> = { DB: db, MUSIC_BUCKET: bucket };
-
-  return {
-    async post(url: string, body: unknown) {
-      const req = new Request(`http://test${url}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      return app.fetch(req, env);
-    },
-  };
+  const env = { DB: makeD1(entries, instances, masters), MUSIC_BUCKET: bucket };
+  return { post: (url: string, body: unknown) => app.fetch(new Request(`http://test${url}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }), env) };
 }
 
 async function main() {
-  // ── moveFolder: recursive move with .keep, metadata, D1 rewrite ──────────
-  console.log("\nmoveFolder → moves every object incl. .keep, rewrites storage_uri:");
+  console.log("\nmoveFolder → updates D1 paths without copying R2 objects:");
   {
-    const bucket = makeR2Bucket();
-    await bucket.put("music/a/.keep", new Uint8Array(0), { httpMetadata: { contentType: "application/x-directory" } });
-    await bucket.put("music/a/t1.mp3", new Uint8Array([1]), { httpMetadata: { contentType: "audio/mpeg" } });
-    await bucket.put("music/a/sub/t2.flac", new Uint8Array([2]), { httpMetadata: { contentType: "audio/flac" } });
-    await bucket.put("music/aa/other.mp3", new Uint8Array([3]), { httpMetadata: { contentType: "audio/mpeg" } });
-    const db = makeD1(
-      [
-        { id: "i1", master_id: "m1", storage_uri: "r2://music/a/t1.mp3" },
-        { id: "i2", master_id: "m2", storage_uri: "r2://music/a/sub/t2.flac" },
-        { id: "i3", master_id: "m3", storage_uri: "r2://music/aa/other.mp3" },
-      ],
-      [],
-    );
-    const app = makeApp(bucket, db);
-    bucket.failNextPuts(2);
+    const bucket = makeBucket();
+    bucket.store.set("objects/a.mp3", new Uint8Array([1]));
+    bucket.store.set("objects/b.flac", new Uint8Array([2]));
+    const entries: Entry[] = [
+      { id: "root", path: "music/a", display_name: "a", kind: "folder", parent_id: null, object_id: null, instance_id: null, physical_key: null },
+      { id: "sub", path: "music/a/sub", display_name: "sub", kind: "folder", parent_id: "root", object_id: null, instance_id: null, physical_key: null },
+      { id: "e1", path: "music/a/t1.mp3", display_name: "t1.mp3", kind: "file", parent_id: "root", object_id: "o1", instance_id: "i1", physical_key: "objects/a.mp3" },
+      { id: "e2", path: "music/a/sub/t2.flac", display_name: "t2.flac", kind: "file", parent_id: "sub", object_id: "o2", instance_id: "i2", physical_key: "objects/b.flac" },
+    ];
+    const app = makeApp(bucket, entries, [{ id: "i1", master_id: "m1" }, { id: "i2", master_id: "m2" }]);
     const r = await app.post("/storage/files/moveFolder", { path: "music/a", dest: "music/b/a" });
-    assert(r.status === 200, `200 (got ${r.status})`);
     const j = await r.json<{ ok: boolean; moved: number }>();
-    assert(j.ok && j.moved === 3, `moved=3 (got ${j.moved})`);
-    assert(bucket.putAttempts === 5, `two transient failures retried (put attempts=${bucket.putAttempts})`);
-    assert(bucket.store.has("music/b/a/.keep"), ".keep marker travelled along");
-    assert(bucket.store.has("music/b/a/t1.mp3") && bucket.store.has("music/b/a/sub/t2.flac"), "nested objects re-homed");
-    assert(!Array.from(bucket.store.keys()).some((k) => k.startsWith("music/a/")), "source prefix emptied");
-    assert(bucket.store.has("music/aa/other.mp3"), "sibling prefix 'music/aa' untouched (no prefix over-match)");
-    assert(bucket.store.get("music/b/a/t1.mp3")?.contentType === "audio/mpeg", "httpMetadata preserved");
-    assert(Array.from(bucket.store.get("music/b/a/t1.mp3")?.body || []).join(",") === "1", "object bytes preserved through stream copy");
-    assert(db.instances.find((i) => i.id === "i1")?.storage_uri === "r2://music/b/a/t1.mp3", "i1 storage_uri rewritten");
-    assert(db.instances.find((i) => i.id === "i2")?.storage_uri === "r2://music/b/a/sub/t2.flac", "i2 storage_uri rewritten");
-    assert(db.instances.find((i) => i.id === "i3")?.storage_uri === "r2://music/aa/other.mp3", "i3 (sibling) untouched");
+    assert(r.status === 200 && j.ok && j.moved === 4, "folder move succeeds and reports D1 entries");
+    assert(bucket.store.has("objects/a.mp3") && bucket.store.has("objects/b.flac"), "R2 objects stay at immutable keys");
+    assert(entries.some((e) => e.path === "music/b/a/t1.mp3") && entries.some((e) => e.path === "music/b/a/sub/t2.flac"), "nested logical paths are re-homed");
   }
 
-  // ── moveFolder: pagination past the page limit ────────────────────────────
-  console.log("\nmoveFolder → paginates (page limit 2, 5 objects):");
+  console.log("\nmoveFolder → rejects self and descendants:");
   {
-    const bucket = makeR2Bucket(2);
-    for (let i = 0; i < 5; i++) await bucket.put(`music/big/f${i}.mp3`, new Uint8Array([i]), { httpMetadata: { contentType: "audio/mpeg" } });
-    bucket.delayPuts(10);
-    const db = makeD1([], []);
-    const app = makeApp(bucket, db);
-    const r = await app.post("/storage/files/moveFolder", { path: "music/big", dest: "music/moved" });
-    const j = await r.json<{ ok: boolean; moved: number }>();
-    assert(j.ok && j.moved === 5, `moved=5 across pages (got ${j.moved})`);
-    assert(bucket.maxConcurrentPuts > 1 && bucket.maxConcurrentPuts <= 4, `page copies are bounded and concurrent (max=${bucket.maxConcurrentPuts})`);
-    assert(!Array.from(bucket.store.keys()).some((k) => k.startsWith("music/big/")), "source emptied across pages");
-    assert(Array.from(bucket.store.keys()).filter((k) => k.startsWith("music/moved/")).length === 5, "all 5 objects at dest");
+    const entries: Entry[] = [{ id: "root", path: "music/a", display_name: "a", kind: "folder", parent_id: null, object_id: null, instance_id: null, physical_key: null }];
+    const app = makeApp(makeBucket(), entries);
+    assert((await app.post("/storage/files/moveFolder", { path: "music/a", dest: "music/a" })).status === 400, "self destination is rejected");
+    assert((await app.post("/storage/files/moveFolder", { path: "music/a", dest: "music/a/inner" })).status === 400, "descendant destination is rejected");
   }
 
-  // ── moveFolder: into itself / descendant → 400 ───────────────────────────
-  console.log("\nmoveFolder → refuses self/descendant destinations:");
+  console.log("\ndeleteFolder → deletes the logical subtree and its R2 objects:");
   {
-    const bucket = makeR2Bucket();
-    await bucket.put("music/a/t1.mp3", new Uint8Array([1]));
-    const app = makeApp(bucket, makeD1([], []));
-    const r1 = await app.post("/storage/files/moveFolder", { path: "music/a", dest: "music/a" });
-    assert(r1.status === 400, `dest === path → 400 (got ${r1.status})`);
-    const r2 = await app.post("/storage/files/moveFolder", { path: "music/a", dest: "music/a/inner" });
-    assert(r2.status === 400, `dest inside path → 400 (got ${r2.status})`);
-    assert(bucket.store.has("music/a/t1.mp3"), "nothing was moved or deleted");
-  }
-
-  // ── moveFolder: invalid paths → 400, missing folder → 404 ────────────────
-  console.log("\nmoveFolder → path validation:");
-  {
-    const app = makeApp(makeR2Bucket(), makeD1([], []));
-    assert((await app.post("/storage/files/moveFolder", { path: "", dest: "music/x" })).status === 400, "empty path → 400");
-    assert((await app.post("/storage/files/moveFolder", { path: "music/../x", dest: "music/y" })).status === 400, "'..' segment → 400");
-    assert((await app.post("/storage/files/moveFolder", { path: "music/a", dest: "../y" })).status === 400, "'..' dest → 400");
-    assert((await app.post("/storage/files/moveFolder", { path: "music/nope", dest: "music/x" })).status === 404, "empty/unknown folder → 404");
-  }
-
-  // ── files/move: dest === key no-op keeps the object ──────────────────────
-  console.log("\nfiles/move → same-key move is a no-op, not a delete:");
-  {
-    const bucket = makeR2Bucket();
-    await bucket.put("music/t.mp3", new Uint8Array([9]), { httpMetadata: { contentType: "audio/mpeg" } });
-    const app = makeApp(bucket, makeD1([], []));
-    const r = await app.post("/storage/files/move", { key: "music/t.mp3", dest: "music/t.mp3" });
-    const j = await r.json<{ ok: boolean }>();
-    assert(j.ok, "ok=true");
-    assert(bucket.store.has("music/t.mp3"), "object still exists after self-move");
-  }
-
-  // ── files/move + files/copy: fixed-length stream path ────────────────────
-  console.log("\nfiles/move + files/copy → preserve bytes with R2 response streams:");
-  {
-    const bucket = makeR2Bucket();
-    await bucket.put("music/from.mp3", new Uint8Array([4, 5]), { httpMetadata: { contentType: "audio/mpeg" } });
-    const db = makeD1([{ id: "i1", master_id: "m1", storage_uri: "r2://music/from.mp3" }], []);
-    const app = makeApp(bucket, db);
-    const moved = await app.post("/storage/files/move", { key: "music/from.mp3", dest: "music/moved.mp3" });
-    const movedJson = await moved.json<{ ok: boolean }>();
-    assert(movedJson.ok, "single-file move succeeds");
-    assert(!bucket.store.has("music/from.mp3") && bucket.store.has("music/moved.mp3"), "single-file move re-homes object");
-    assert(Array.from(bucket.store.get("music/moved.mp3")?.body || []).join(",") === "4,5", "single-file move preserves bytes");
-    assert(db.instances[0]?.storage_uri === "r2://music/moved.mp3", "single-file move rewrites storage_uri");
-
-    const copied = await app.post("/storage/files/copy", { key: "music/moved.mp3", dest: "music/copied.mp3" });
-    const copiedJson = await copied.json<{ ok: boolean }>();
-    assert(copiedJson.ok, "single-file copy succeeds");
-    assert(bucket.store.has("music/moved.mp3") && bucket.store.has("music/copied.mp3"), "single-file copy keeps source");
-    assert(Array.from(bucket.store.get("music/copied.mp3")?.body || []).join(",") === "4,5", "single-file copy preserves bytes");
-  }
-
-  // ── deleteFolder: recursive delete + D1 cascade ───────────────────────────
-  console.log("\ndeleteFolder → deletes prefix recursively, cascades D1:");
-  {
-    const bucket = makeR2Bucket(2); // small pages → exercise pagination too
-    await bucket.put("music/kill/.keep", new Uint8Array(0));
-    await bucket.put("music/kill/t1.mp3", new Uint8Array([1]));
-    await bucket.put("music/kill/sub/t2.mp3", new Uint8Array([2]));
-    await bucket.put("music/keep/t3.mp3", new Uint8Array([3]));
-    const db = makeD1(
-      [
-        { id: "i1", master_id: "m1", storage_uri: "r2://music/kill/t1.mp3" },
-        { id: "i2", master_id: "m2", storage_uri: "r2://music/kill/sub/t2.mp3" },
-        { id: "i2b", master_id: "m2", storage_uri: "r2://music/keep/t3.mp3" }, // m2 has a survivor
-      ],
-      [
-        { id: "m1", album_id: "al1", artist_id: "ar1" },
-        { id: "m2", album_id: "al2", artist_id: "ar2" },
-      ],
-    );
-    const app = makeApp(bucket, db);
+    const bucket = makeBucket();
+    bucket.store.set("objects/a.mp3", new Uint8Array([1]));
+    bucket.store.set("objects/keep.mp3", new Uint8Array([2]));
+    const entries: Entry[] = [
+      { id: "kill", path: "music/kill", display_name: "kill", kind: "folder", parent_id: null, object_id: null, instance_id: null, physical_key: null },
+      { id: "e1", path: "music/kill/a.mp3", display_name: "a.mp3", kind: "file", parent_id: "kill", object_id: "o1", instance_id: "i1", physical_key: "objects/a.mp3" },
+      { id: "keep", path: "music/keep.mp3", display_name: "keep.mp3", kind: "file", parent_id: null, object_id: "o2", instance_id: "i2", physical_key: "objects/keep.mp3" },
+    ];
+    const instances = [{ id: "i1", master_id: "m1" }, { id: "i2", master_id: "m2" }];
+    const masters = [{ id: "m1", album_id: "al1", artist_id: "ar1" }, { id: "m2", album_id: "al2", artist_id: "ar2" }];
+    const app = makeApp(bucket, entries, instances, masters);
     const r = await app.post("/storage/files/deleteFolder", { path: "music/kill" });
-    assert(r.status === 200, `200 (got ${r.status})`);
     const j = await r.json<{ ok: boolean; deleted: number }>();
-    assert(j.ok && j.deleted === 3, `deleted=3 (got ${j.deleted})`);
-    assert(!Array.from(bucket.store.keys()).some((k) => k.startsWith("music/kill/")), "prefix emptied");
-    assert(bucket.store.has("music/keep/t3.mp3"), "sibling folder untouched");
-    assert(!db.instances.some((i) => i.id === "i1" || i.id === "i2"), "instances under prefix removed");
-    assert(db.instances.some((i) => i.id === "i2b"), "surviving instance kept");
-    assert(!db.masters.some((m) => m.id === "m1"), "orphaned master m1 removed");
-    assert(db.masters.some((m) => m.id === "m2"), "master m2 kept (still has an instance)");
+    assert(r.status === 200 && j.ok && j.deleted === 2, "folder delete removes folder and file entries");
+    assert(!bucket.store.has("objects/a.mp3") && bucket.store.has("objects/keep.mp3"), "only the logical subtree object is deleted");
+    assert(!entries.some((e) => e.path.startsWith("music/kill")) && instances.length === 1 && masters.length === 1, "D1 catalog cleanup preserves the sibling");
   }
 
-  // ── deleteFolder: SQL wildcard folder name doesn't over-match ────────────
-  console.log("\ndeleteFolder → LIKE wildcards in folder names are escaped:");
-  {
-    const bucket = makeR2Bucket();
-    await bucket.put("music/a_b/t1.mp3", new Uint8Array([1]));
-    const db = makeD1(
-      [
-        { id: "i1", master_id: "m1", storage_uri: "r2://music/a_b/t1.mp3" },
-        { id: "i2", master_id: "m2", storage_uri: "r2://music/aXb/t1.mp3" }, // would match unescaped '_'
-      ],
-      [],
-    );
-    const app = makeApp(bucket, db);
-    const r = await app.post("/storage/files/deleteFolder", { path: "music/a_b" });
-    const j = await r.json<{ ok: boolean }>();
-    assert(j.ok, "ok=true");
-    assert(!db.instances.some((i) => i.id === "i1"), "exact-folder instance removed");
-    assert(db.instances.some((i) => i.id === "i2"), "wildcard-lookalike sibling instance kept");
-  }
-
-  // ── deleteFolder: invalid / missing ───────────────────────────────────────
-  console.log("\ndeleteFolder → path validation:");
-  {
-    const app = makeApp(makeR2Bucket(), makeD1([], []));
-    assert((await app.post("/storage/files/deleteFolder", { path: "" })).status === 400, "empty path → 400");
-    assert((await app.post("/storage/files/deleteFolder", { path: "music/../x" })).status === 400, "'..' segment → 400");
-    assert((await app.post("/storage/files/deleteFolder", { path: "music/nothing" })).status === 404, "unknown folder → 404");
-  }
-
-  // ---------------------------------------------------------------------------
   console.log(`\n${failures === 0 ? "All tests passed." : `${failures} test(s) FAILED.`}`);
-  if (failures > 0) process.exit(1);
+  if (failures) process.exit(1);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

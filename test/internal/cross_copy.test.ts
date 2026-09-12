@@ -206,9 +206,9 @@ async function main() {
     assert(r.status === 200, `200 (got ${r.status})`);
     const j = await r.json<{ ok: boolean; destUri: string }>();
     assert(j.ok, "ok=true");
-    assert(j.destUri === "r2://music/dest/track_copy.mp3", `destUri correct (got '${j.destUri}')`);
+    assert(/^r2:\/\/objects\/obj_[0-9a-f]{16}\.mp3$/.test(j.destUri), `stable destUri preserves suffix (got '${j.destUri}')`);
     // Verify bytes written to R2
-    const written = await bucket.get("music/dest/track_copy.mp3");
+    const written = await bucket.get(j.destUri.replace(/^r2:\/\//, ""));
     assert(written !== null, "dest file exists in R2");
     if (written) {
       const reader = written.body.getReader();
@@ -240,7 +240,7 @@ async function main() {
       assert(r.status === 200, `200 (got ${r.status})`);
       const j = await r.json<{ ok: boolean; destUri: string }>();
       assert(j.ok, "ok=true");
-      assert(j.destUri === "r2://music/downloads/audio.flac", `destUri correct (got '${j.destUri}')`);
+      assert(/^r2:\/\/objects\/obj_[0-9a-f]{16}\.flac$/.test(j.destUri), `stable destUri preserves suffix (got '${j.destUri}')`);
     } finally {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (globalThis as any).fetch = originalFetch;

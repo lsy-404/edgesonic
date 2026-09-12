@@ -23,7 +23,7 @@ import { createSubsonicAdapter } from "../../adapters/subsonic";
 import { encodePath } from "./scan";
 import { srcBaseUrl, type SourceRow } from "../../utils/slices";
 import { PayloadTooLargeError, limitReadableStream } from "../../utils/streamLimit";
-import { copyR2Object, createR2CopyRequestState, type R2CopyRequestState } from "../../utils/r2ObjectCopy";
+import { copyR2Object } from "../../utils/r2ObjectCopy";
 import type { User } from "../../types/entities";
 
 export const filesRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
@@ -57,6 +57,15 @@ import { getFeatureString } from "../../utils/features";
 import { isDemoMode, demoMaxUploadBytes, r2MaxStorageBytes, demoR2TotalBytes, allowAllFileTypes, isAudioSuffix, isCompanionSuffix } from "../../utils/demoMode";
 import { getProfile } from "../../transcode/profiles";
 import { preBakeProfile } from "../../transcode/preBake";
+import {
+  R2_SOURCE_ID,
+  ensureR2Folder,
+  findR2EntryByKey,
+  findR2EntryByPath,
+  registerR2Object,
+  stableR2Uri,
+} from "../../utils/storageResolver";
+import { createStableObjectId, createStableObjectKey, splitEntryPath } from "../../utils/storageObjects";
 
 filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   const env = c.env as Env;
@@ -91,8 +100,8 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   // everything else about this request (D1 rows, tag parsing, transcodes) is
   // audio-only.
   const isAudio = isAudioSuffix(suffix);
-  // Build R2 key: music/ is the base; path is a sub-path relative to music/
-  const requestedKey = "music/" + (cleanPath ? cleanPath + "/" : "") + name;
+  // D1 owns the logical path. R2 receives a fresh immutable object key.
+  const requestedPath = "music/" + (cleanPath ? cleanPath + "/" : "") + name;
 
   const db = env.DB;
   const now = Math.floor(Date.now() / 1000);
@@ -115,7 +124,9 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     }
   }
 
-  const target = await resolveUploadTarget(env, source, requestedKey, c.req.query("conflict"));
+  const target = source === "r2"
+    ? await resolveR2UploadTarget(db, requestedPath, suffix, c.req.query("conflict"))
+    : await resolveUploadTarget(env, source, requestedPath, c.req.query("conflict"));
   if ("error" in target) return c.json(target.error.body, target.error.status);
   const r2Key = target.key;
 
@@ -125,8 +136,9 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     const totalCap = await r2MaxStorageBytes(env);
     if (totalCap > 0) {
       const used = await demoR2TotalBytes(env.MUSIC_BUCKET);
-      const oldSize = target.policy === "overwrite" && target.existed
-        ? (await env.MUSIC_BUCKET.head(r2Key))?.size || 0
+      const oldKey = source === "r2" ? (target as R2UploadTarget).previousKey : r2Key;
+      const oldSize = target.policy === "overwrite" && target.existed && oldKey
+        ? (await env.MUSIC_BUCKET.head(oldKey))?.size || 0
         : 0;
       const projected = Math.max(0, used - oldSize) + (sizeHeader || 0);
       if (projected > totalCap) {
@@ -194,12 +206,27 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     }
   }
 
-  // A companion file is just bytes sitting next to the track — no song row,
-  // no tag parse, no transcode. The player picks .lrc/.ttml/.krc up by
-  // filename (utils/lrcSidecar). Registering one as a song_instance is what
-  // used to happen with allow_all_file_types on, and it produced a phantom
-  // track under "Pending Uploads" that no metadata pass could ever resolve.
-  if (!isAudio) return c.json(uploadSuccess({ key: r2Key, source, target }));
+  const r2Target = source === "r2" ? target as R2UploadTarget : null;
+
+  // A companion file is just bytes plus a D1 entry. It has no song row, no tag
+  // parse and no transcode; its relation to an audio entry is resolved from
+  // the logical D1 path instead of a physical-key suffix replacement.
+  if (!isAudio) {
+    if (r2Target) {
+      await registerR2Object(db, {
+        objectId: r2Target.objectId,
+        physicalKey: r2Key,
+        legacyKey: null,
+        logicalPath: r2Target.logicalPath,
+        suffix,
+        contentType,
+        size: sizeHeader || 0,
+      });
+      await cleanupStorageObject(db, r2Target.previousEntry?.object_id || null);
+      if (r2Target.previousKey && r2Target.previousKey !== r2Key) await env.MUSIC_BUCKET.delete(r2Target.previousKey);
+    }
+    return c.json(uploadSuccess({ key: r2Key, source, target }));
+  }
 
   // DB record: create a song_instance pointing at the uploaded file. We need
   // a master_id FK, so create a placeholder master that applyMetadataResult
@@ -209,17 +236,37 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   const sourceId = source === "webdav"
     ? (await db.prepare("SELECT id FROM storage_sources WHERE type = 'webdav' AND enabled = 1 LIMIT 1").first<{ id: string }>())?.id || "webdav"
     : "r2-local";
-  const storageUri = source === "webdav" ? `webdav://${sourceId}/${r2Key}` : `r2://${r2Key}`;
+  const storageUri = source === "webdav" ? `webdav://${sourceId}/${r2Key}` : stableR2Uri((target as R2UploadTarget).objectId, suffix);
   const title = name.replace(/\.[^.]+$/, "");
 
   try {
-    const existing = await db.prepare(
-      "SELECT id, master_id FROM song_instances WHERE storage_uri = ? AND source_type = 'original' LIMIT 1",
-    ).bind(storageUri).first<{ id: string; master_id: string }>();
+    const previousEntry = source === "r2" ? (target as R2UploadTarget).previousEntry : null;
+    const existing = previousEntry?.instance_id
+      ? await db.prepare(
+        "SELECT id, master_id FROM song_instances WHERE id = ? AND source_type = 'original' LIMIT 1",
+      ).bind(previousEntry.instance_id).first<{ id: string; master_id: string }>()
+      : await db.prepare(
+        "SELECT id, master_id FROM song_instances WHERE storage_uri = ? AND source_type = 'original' LIMIT 1",
+      ).bind(storageUri).first<{ id: string; master_id: string }>();
     if (existing) {
       await db.prepare(
-        "UPDATE song_instances SET source_id = ?, suffix = ?, content_type = ?, size = ?, tag_scanned = 0, missing = 0, updated_at = ? WHERE id = ?",
-      ).bind(sourceId, suffix, contentType, sizeHeader || 0, now, existing.id).run();
+        "UPDATE song_instances SET source_id = ?, storage_uri = ?, storage_object_id = ?, suffix = ?, content_type = ?, size = ?, tag_scanned = 0, missing = 0, updated_at = ? WHERE id = ?",
+      ).bind(sourceId, storageUri, source === "r2" ? (target as R2UploadTarget).objectId : null, suffix, contentType, sizeHeader || 0, now, existing.id).run();
+      if (source === "r2") {
+        await registerR2Object(db, {
+          objectId: (target as R2UploadTarget).objectId,
+          physicalKey: r2Key,
+          logicalPath: (target as R2UploadTarget).logicalPath,
+          suffix,
+          contentType,
+          size: sizeHeader || 0,
+          instanceId: existing.id,
+        });
+        await cleanupStorageObject(db, (target as R2UploadTarget).previousEntry?.object_id || null);
+        if ((target as R2UploadTarget).previousKey && (target as R2UploadTarget).previousKey !== r2Key) {
+          await env.MUSIC_BUCKET.delete((target as R2UploadTarget).previousKey!);
+        }
+      }
       return finishAudioUpload(c, env, r2Key, storageUri, existing.id, source, target);
     }
 
@@ -230,12 +277,24 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
       db.prepare("INSERT OR IGNORE INTO albums (id, name, sort_name) VALUES ('pending-uploads', 'Pending Uploads', 'pending uploads')"),
       db.prepare("INSERT INTO song_masters (id, album_id, artist_id, title, created_at, updated_at) VALUES (?, 'pending-uploads', 'unknown-artist', ?, ?, ?)")
         .bind(masterId, title, now, now),
-      db.prepare("INSERT INTO song_instances (id, master_id, source_id, source_type, storage_uri, suffix, content_type, size, tag_scanned, created_at, updated_at) VALUES (?, ?, ?, 'original', ?, ?, ?, ?, 0, ?, ?)")
-        .bind(instanceId, masterId, sourceId, storageUri, suffix, contentType, sizeHeader || 0, now, now),
+      db.prepare("INSERT INTO song_instances (id, master_id, source_id, source_type, storage_uri, storage_object_id, suffix, content_type, size, tag_scanned, created_at, updated_at) VALUES (?, ?, ?, 'original', ?, ?, ?, ?, ?, 0, ?, ?)")
+        .bind(instanceId, masterId, sourceId, storageUri, source === "r2" ? (target as R2UploadTarget).objectId : null, suffix, contentType, sizeHeader || 0, now, now),
     ]);
+    if (source === "r2") {
+      await registerR2Object(db, {
+        objectId: (target as R2UploadTarget).objectId,
+        physicalKey: r2Key,
+        logicalPath: (target as R2UploadTarget).logicalPath,
+        suffix,
+        contentType,
+        size: sizeHeader || 0,
+        instanceId,
+      });
+      await cleanupStorageObject(db, (target as R2UploadTarget).previousEntry?.object_id || null);
+    }
     return finishAudioUpload(c, env, r2Key, storageUri, instanceId, source, target);
   } catch (e) {
-    if (source !== "webdav" && !(target.policy === "overwrite" && target.existed)) await env.MUSIC_BUCKET.delete(r2Key);
+    if (source !== "webdav") await env.MUSIC_BUCKET.delete(r2Key);
     return c.json({ ok: false, error: `DB insert failed: ${e instanceof Error ? e.message : String(e)}` }, 500);
   }
 });
@@ -257,7 +316,9 @@ filesRoutes.post("/files/upload-conflicts", permissionMiddleware("upload"), asyn
       const path = normalizeUploadPath(file.path || "");
       if (path === null || !isSafeUploadName(file.name!)) throw new Error("Invalid upload path or name");
       const key = `music/${path ? `${path}/` : ""}${file.name}`;
-      const exists = await doesUploadTargetExist(env, source, key);
+      const exists = source === "r2"
+        ? !!await findR2EntryByPath(env.DB, key)
+        : await doesUploadTargetExist(env, source, key);
       return {
         name: file.name,
         key,
@@ -359,7 +420,68 @@ async function verifyWebDavUpload(url: string, creds: { username: string; passwo
 }
 
 type UploadTarget = { key: string; policy: "error" | "overwrite" | "rename"; existed: boolean; requestedKey: string };
+type R2UploadTarget = UploadTarget & {
+  logicalPath: string;
+  objectId: string;
+  previousKey: string | null;
+  previousEntry: Awaited<ReturnType<typeof findR2EntryByPath>>;
+};
 const MAX_RENAME_ATTEMPTS = 1000;
+
+async function resolveR2UploadTarget(
+  db: D1Database,
+  requestedPath: string,
+  suffix: string,
+  requestedPolicy: string | undefined,
+): Promise<R2UploadTarget | { error: { status: 400 | 409 | 502; body: Record<string, unknown> } }> {
+  const policy = requestedPolicy === "overwrite" || requestedPolicy === "rename" ? requestedPolicy : "error";
+  if (requestedPolicy && policy === "error" && requestedPolicy !== "error") {
+    return { error: { status: 400, body: { ok: false, error: "Invalid conflict policy", conflict: { requestedKey: requestedPath, policies: ["error", "overwrite", "rename"] } } } };
+  }
+  try {
+    let logicalPath = requestedPath;
+    let previousEntry = await findR2EntryByPath(db, logicalPath);
+    if (previousEntry?.kind === "folder") {
+      return { error: { status: 409, body: { ok: false, error: "A folder already exists at the requested path" } } };
+    }
+    if (previousEntry && policy === "error") {
+      return { error: { status: 409, body: uploadConflict("r2", requestedPath) } };
+    }
+    if (previousEntry && policy === "rename") {
+      const dot = requestedPath.lastIndexOf(".");
+      const slash = requestedPath.lastIndexOf("/");
+      const base = dot > slash ? requestedPath.slice(0, dot) : requestedPath;
+      const extension = base === requestedPath ? "" : requestedPath.slice(dot);
+      previousEntry = null;
+      for (let n = 1; n <= MAX_RENAME_ATTEMPTS; n++) {
+        const candidate = `${base} (${n})${extension}`;
+        const existing = await findR2EntryByPath(db, candidate);
+        if (!existing) {
+          logicalPath = candidate;
+          break;
+        }
+        if (n === MAX_RENAME_ATTEMPTS) {
+          return { error: { status: 409, body: { ok: false, error: "No available renamed path" } } };
+        }
+      }
+    }
+    const objectId = createStableObjectId(`${logicalPath}:${crypto.randomUUID()}`);
+    const key = createStableObjectKey(objectId, suffix);
+    const oldEntry = policy === "overwrite" ? await findR2EntryByPath(db, requestedPath) : null;
+    return {
+      key,
+      objectId,
+      logicalPath,
+      previousKey: oldEntry?.physical_key || null,
+      previousEntry: oldEntry,
+      policy,
+      existed: !!oldEntry,
+      requestedKey: requestedPath,
+    };
+  } catch (error) {
+    return { error: { status: 502, body: { ok: false, error: error instanceof Error ? error.message : String(error) } } };
+  }
+}
 
 async function resolveUploadTarget(env: Env, source: string, requestedKey: string, requestedPolicy: string | undefined): Promise<UploadTarget | { error: { status: 400 | 409 | 502; body: Record<string, unknown> } }> {
   const policy = requestedPolicy === "overwrite" || requestedPolicy === "rename" ? requestedPolicy : "error";
@@ -409,6 +531,7 @@ function uploadConflict(source: string, requestedKey: string): Record<string, un
 }
 
 function uploadSuccess(input: { key: string; id?: string; storageUri?: string; source: string; target: UploadTarget }): Record<string, unknown> {
+  const finalPath = "logicalPath" in input.target ? input.target.logicalPath : input.key;
   return {
     ok: true,
     key: input.key,
@@ -417,9 +540,9 @@ function uploadSuccess(input: { key: string; id?: string; storageUri?: string; s
     conflict: {
       policy: input.target.policy,
       requestedKey: input.target.requestedKey,
-      finalKey: input.key,
+      finalKey: finalPath,
       overwritten: input.target.existed && input.target.policy === "overwrite",
-      renamed: input.key !== input.target.requestedKey,
+      renamed: finalPath !== input.target.requestedKey,
     },
   };
 }
@@ -459,12 +582,6 @@ function normalizeUploadContentType(contentType: string | null | undefined, suff
 
 // POST /storage/files/mkdir body: { source: "r2" | <sourceId>, path: "music/newfolder" }
 //
-// R2 has no real directories — env.MUSIC_BUCKET.list() only surfaces a prefix
-// as a "dir" once some object exists under it (see browse.ts's delimiter
-// logic), so we drop a 0-byte marker object at `${path}/.keep`. browse.ts
-// filters that marker name back out of file listings so it never shows up
-// as a stray file inside the folder the user just created.
-//
 // Every other source is treated as WebDAV, same as files/list does for any
 // non-r2 source id — MKCOL is idempotent here (405 "already exists" counts
 // as success).
@@ -479,9 +596,7 @@ filesRoutes.post("/files/mkdir", permissionMiddleware("upload"), async (c) => {
   }
 
   if (source === "r2") {
-    await env.MUSIC_BUCKET.put(`${path}/.keep`, new Uint8Array(0), {
-      httpMetadata: { contentType: "application/x-directory" },
-    });
+    await ensureR2Folder(env.DB, path);
     return c.json({ ok: true });
   }
 
@@ -521,6 +636,13 @@ async function cleanupOrphanMaster(db: D1Database, masterId: string) {
   }
 }
 
+async function cleanupStorageObject(db: D1Database, objectId: string | null): Promise<void> {
+  if (!objectId) return;
+  await db.prepare(
+    "DELETE FROM storage_objects WHERE id = ? AND NOT EXISTS (SELECT 1 FROM storage_entries WHERE object_id = ?)",
+  ).bind(objectId, objectId).run();
+}
+
 // Normalize a user-supplied folder path: strip surrounding slashes and refuse
 // empty results or "."/".." traversal segments (same policy as files/mkdir).
 function normalizeFolderPath(p: string | undefined): string | null {
@@ -530,32 +652,7 @@ function normalizeFolderPath(p: string | undefined): string | null {
   return path;
 }
 
-const R2_COPY_CONCURRENCY = 4;
-
-async function copyR2Page(
-  env: Env,
-  objects: R2Object[],
-  sourcePrefix: string,
-  destPrefix: string,
-  state: R2CopyRequestState,
-): Promise<Array<{ sourceKey: string; destKey: string }>> {
-  const copied: Array<{ sourceKey: string; destKey: string }> = [];
-  let nextIndex = 0;
-  async function worker() {
-    for (;;) {
-      const index = nextIndex++;
-      if (index >= objects.length) return;
-      const sourceKey = objects[index].key;
-      const destKey = destPrefix + sourceKey.substring(sourcePrefix.length);
-      if (await copyR2Object(env, sourceKey, destKey, state)) copied.push({ sourceKey, destKey });
-    }
-  }
-  const workerCount = Math.min(R2_COPY_CONCURRENCY, objects.length);
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
-  return copied;
-}
-
-// POST /rest/files/delete body: { key: "music/file.mp3" }
+// POST /rest/files/delete body: { key: "objects/obj_....mp3" }
 filesRoutes.post("/files/delete", permissionMiddleware("delete"), async (c) => {
   const user = c.get("user");
   if (user.level < 2) {
@@ -567,27 +664,22 @@ filesRoutes.post("/files/delete", permissionMiddleware("delete"), async (c) => {
   if (!key) return c.json({ ok: false, error: "Missing key" }, 400);
 
   const db = env.DB;
+  const entry = await findR2EntryByKey(db, key);
+  if (!entry) return c.json({ ok: false, error: "File not found" }, 404);
   await env.MUSIC_BUCKET.delete(key);
-
-  // Cascade D1 cleanup
-  const inst = await db.prepare("SELECT master_id FROM song_instances WHERE storage_uri = ?")
-    .bind(`r2://${key}`).first<{ master_id: string }>();
-  if (inst) {
-    await db.prepare("DELETE FROM song_instances WHERE storage_uri = ?").bind(`r2://${key}`).run();
-    await cleanupOrphanMaster(db, inst.master_id);
-  }
+  const inst = entry.instance_id
+    ? await db.prepare("SELECT master_id FROM song_instances WHERE id = ?").bind(entry.instance_id).first<{ master_id: string }>()
+    : null;
+  if (entry.instance_id) await db.prepare("DELETE FROM song_instances WHERE id = ?").bind(entry.instance_id).run();
+  await db.prepare("DELETE FROM storage_entries WHERE id = ?").bind(entry.id).run();
+  if (entry.object_id) await db.prepare("DELETE FROM storage_objects WHERE id = ?").bind(entry.object_id).run();
+  if (inst) await cleanupOrphanMaster(db, inst.master_id);
   return c.json({ ok: true });
 });
 
 // POST /storage/files/deleteFolder body: { path: "music/folder" } — R2 only,
-// like the per-object delete/move above (the UI only ever offers folder ops
-// on the R2 source). Recursively deletes every object under `${path}/`,
-// including the 0-byte `.keep` marker files/mkdir drops, page by page (R2
-// list caps at 1000 keys per page and bulk delete accepts up to 1000 keys).
-// D1 cascade mirrors the single-file delete: drop every song_instances row
-// whose storage_uri lived under the prefix, then orphan-collect the affected
-// masters/albums/artists. The LIKE pattern escapes \ % _ so folder names
-// containing SQL wildcards can't over-match unrelated rows.
+// on the R2 source). The R2 objects are resolved from D1 entries, so a folder
+// delete removes only objects that belong to its logical subtree.
 filesRoutes.post("/files/deleteFolder", permissionMiddleware("delete"), async (c) => {
   const env = c.env as Env;
   const body = await c.req.json<{ path?: string }>();
@@ -595,41 +687,34 @@ filesRoutes.post("/files/deleteFolder", permissionMiddleware("delete"), async (c
   if (!path) return c.json({ ok: false, error: "Invalid path" }, 400);
 
   const db = env.DB;
-  const prefix = `${path}/`;
-  let deleted = 0;
-  let cursor: string | undefined;
-  do {
-    const listing = await env.MUSIC_BUCKET.list({ prefix, cursor, limit: 1000 });
-    const keys = listing.objects.map((o) => o.key);
-    if (keys.length) {
-      await env.MUSIC_BUCKET.delete(keys);
-      deleted += keys.length;
+  const folder = await findR2EntryByPath(db, path);
+  if (!folder || folder.kind !== "folder") return c.json({ ok: false, error: "Folder not found" }, 404);
+  const escapedPrefix = `${path.replace(/[\\%_]/g, (ch) => `\\${ch}`)}/%`;
+  const rows = await db.prepare(
+    `SELECT e.id, e.object_id, e.instance_id, o.physical_key
+       FROM storage_entries e
+       LEFT JOIN storage_objects o ON o.id = e.object_id
+      WHERE e.source_id = ? AND (e.path = ? OR e.path LIKE ? ESCAPE '\\')`
+  ).bind(R2_SOURCE_ID, path, escapedPrefix).all<{ id: string; object_id: string | null; instance_id: string | null; physical_key: string | null }>();
+  const keys = rows.results.map((row) => row.physical_key).filter((key): key is string => !!key);
+  for (let i = 0; i < keys.length; i += 1000) await env.MUSIC_BUCKET.delete(keys.slice(i, i + 1000));
+  const affected = new Set<string>();
+  for (const row of rows.results) {
+    if (row.instance_id) {
+      const inst = await db.prepare("SELECT master_id FROM song_instances WHERE id = ?").bind(row.instance_id).first<{ master_id: string }>();
+      if (inst) affected.add(inst.master_id);
+      await db.prepare("DELETE FROM song_instances WHERE id = ?").bind(row.instance_id).run();
     }
-    cursor = listing.truncated ? listing.cursor : undefined;
-  } while (cursor);
-  if (deleted === 0) return c.json({ ok: false, error: "Folder not found" }, 404);
-
-  const likePrefix = `r2://${prefix}`.replace(/[\\%_]/g, (ch) => `\\${ch}`);
-  const affected = await db.prepare(
-    "SELECT DISTINCT master_id FROM song_instances WHERE storage_uri LIKE ? ESCAPE '\\'",
-  ).bind(`${likePrefix}%`).all<{ master_id: string }>();
-  if (affected.results.length) {
-    await db.prepare("DELETE FROM song_instances WHERE storage_uri LIKE ? ESCAPE '\\'")
-      .bind(`${likePrefix}%`).run();
-    for (const row of affected.results) await cleanupOrphanMaster(db, row.master_id);
+    await db.prepare("DELETE FROM storage_entries WHERE id = ?").bind(row.id).run();
+    if (row.object_id) await db.prepare("DELETE FROM storage_objects WHERE id = ?").bind(row.object_id).run();
   }
-  return c.json({ ok: true, deleted });
+  for (const masterId of affected) await cleanupOrphanMaster(db, masterId);
+  return c.json({ ok: true, deleted: rows.results.length });
 });
 
 // POST /storage/files/moveFolder body: { path: "music/a", dest: "music/b/a" }
-// — R2 only. Recursively re-homes every object under `${path}/` to `${dest}/`
-// (the `.keep` marker travels along, so empty folders survive the move). Each
-// page is copied first (server-side CopyObject when configured, otherwise
-// fixed-length get→put) and only then bulk-deleted, so a mid-flight
-// failure can leave duplicates at both locations but never loses bytes — a
-// retry is idempotent. Moving a folder into itself or a descendant is refused:
-// it would rewrite keys back under the prefix being enumerated. storage_uri
-// rows are rewritten per page via exact-match db.batch updates.
+// — R2 only. A folder move updates D1 paths and parent ids; R2 bytes stay at
+// their immutable object keys, so the operation is a single database change.
 filesRoutes.post("/files/moveFolder", permissionMiddleware("upload"), async (c) => {
   const env = c.env as Env;
   const body = await c.req.json<{ path?: string; dest?: string }>();
@@ -641,64 +726,96 @@ filesRoutes.post("/files/moveFolder", permissionMiddleware("upload"), async (c) 
   }
 
   const db = env.DB;
-  const prefix = `${path}/`;
-  const destPrefix = `${dest}/`;
+  const folder = await findR2EntryByPath(db, path);
+  if (!folder || folder.kind !== "folder") return c.json({ ok: false, error: "Folder not found" }, 404);
+  if (await findR2EntryByPath(db, dest)) return c.json({ ok: false, error: "Destination already exists" }, 409);
+  const { parentPath } = splitEntryPath(dest);
+  const destParentId = await ensureR2Folder(db, parentPath);
   const now = Math.floor(Date.now() / 1000);
-  let moved = 0;
-  let cursor: string | undefined;
-  const copyState = createR2CopyRequestState();
-  do {
-    const listing = await env.MUSIC_BUCKET.list({ prefix, cursor, limit: 1000 });
-    const copied = await copyR2Page(env, listing.objects, prefix, destPrefix, copyState);
-    const movedKeys = copied.map(({ sourceKey }) => sourceKey);
-    const uriUpdates = copied.map(({ sourceKey, destKey }) =>
-      db.prepare("UPDATE song_instances SET storage_uri = ?, updated_at = ? WHERE storage_uri = ?")
-        .bind(`r2://${destKey}`, now, `r2://${sourceKey}`),
-    );
-    if (movedKeys.length) {
-      await env.MUSIC_BUCKET.delete(movedKeys);
-      await db.batch(uriUpdates);
-      moved += movedKeys.length;
+  const oldPrefix = `${path}/`;
+  const escapedOldPrefix = `${path.replace(/[\\%_]/g, (ch) => `\\${ch}`)}/%`;
+  const rows = await db.prepare(
+    "SELECT id, path FROM storage_entries WHERE source_id = ? AND (id = ? OR path LIKE ? ESCAPE '\\') ORDER BY length(path) ASC",
+  ).bind(R2_SOURCE_ID, folder.id, escapedOldPrefix).all<{ id: string; path: string }>();
+  const updates = rows.results.map((row) => {
+    const suffix = row.path === path ? "" : row.path.slice(oldPrefix.length);
+    const nextPath = suffix ? `${dest}/${suffix}` : dest;
+    const slash = nextPath.lastIndexOf("/");
+    const parentId = row.id === folder.id ? destParentId : null;
+    return { row, nextPath, name: slash < 0 ? nextPath : nextPath.slice(slash + 1), parentId };
+  });
+  const parentIds = new Map<string, string | null>();
+  const nextByPath = new Map(updates.map((item) => [item.nextPath, item.row.id]));
+  for (const item of updates) {
+    if (item.row.id === folder.id) parentIds.set(item.row.id, destParentId);
+    else {
+      const parentPath = item.nextPath.slice(0, item.nextPath.lastIndexOf("/"));
+      const movedParentId = nextByPath.get(parentPath);
+      if (movedParentId) parentIds.set(item.row.id, movedParentId);
+      else {
+        const parent = await findR2EntryByPath(db, parentPath);
+        parentIds.set(item.row.id, parent?.id || null);
+      }
     }
-    cursor = listing.truncated ? listing.cursor : undefined;
-  } while (cursor);
-
-  if (moved === 0) return c.json({ ok: false, error: "Folder not found" }, 404);
-  return c.json({ ok: true, moved });
+  }
+  for (const item of updates) {
+    await db.prepare(
+      "UPDATE storage_entries SET parent_id = ?, path = ?, display_name = ?, updated_at = ? WHERE id = ?",
+    ).bind(parentIds.get(item.row.id) ?? item.parentId, item.nextPath, item.name, now, item.row.id).run();
+  }
+  return c.json({ ok: true, moved: updates.length });
 });
 
-// POST /rest/files/move body: { key, dest }
+// POST /rest/files/move body: { key: stable physical key, dest: logical path }
 filesRoutes.post("/files/move", permissionMiddleware("upload"), async (c) => {
   const env = c.env as Env;
   const body = await c.req.json<{ key: string; dest: string }>();
   const { key, dest } = body;
   if (!key || !dest) return c.json({ ok: false, error: "Missing key or dest" }, 400);
-  // Moving onto itself would put-then-delete the same key, destroying the
-  // object — treat it as a no-op success instead (easy to trigger now that
-  // the move dialog defaults its folder picker to the current directory).
-  if (dest === key) return c.json({ ok: true });
-
-  if (!await copyR2Object(env, key, dest)) {
-    return c.json({ ok: false, error: "Source not found" }, 404);
-  }
-  await env.MUSIC_BUCKET.delete(key);
-
-  await env.DB.prepare("UPDATE song_instances SET storage_uri = ?, updated_at = ? WHERE storage_uri = ?")
-    .bind(`r2://${dest}`, Math.floor(Date.now() / 1000), `r2://${key}`).run();
-
+  const entry = await findR2EntryByKey(env.DB, key);
+  if (!entry || entry.kind !== "file") return c.json({ ok: false, error: "Source not found" }, 404);
+  const logicalDest = normalizeFolderPath(dest);
+  if (!logicalDest) return c.json({ ok: false, error: "Invalid destination" }, 400);
+  if (logicalDest === entry.path) return c.json({ ok: true });
+  if (await findR2EntryByPath(env.DB, logicalDest)) return c.json({ ok: false, error: "Destination already exists" }, 409);
+  const { parentPath } = splitEntryPath(logicalDest);
+  const parentId = await ensureR2Folder(env.DB, parentPath);
+  const slash = logicalDest.lastIndexOf("/");
+  await env.DB.prepare(
+    "UPDATE storage_entries SET parent_id = ?, path = ?, display_name = ?, updated_at = ? WHERE id = ?",
+  ).bind(parentId, logicalDest, slash < 0 ? logicalDest : logicalDest.slice(slash + 1), Math.floor(Date.now() / 1000), entry.id).run();
   return c.json({ ok: true });
 });
 
-// POST /rest/files/copy body: { key, dest }
+// POST /rest/files/copy body: { key: stable physical key, dest: logical path }
 filesRoutes.post("/files/copy", permissionMiddleware("upload"), async (c) => {
   const env = c.env as Env;
   const body = await c.req.json<{ key: string; dest: string }>();
   const { key, dest } = body;
   if (!key || !dest) return c.json({ ok: false, error: "Missing key or dest" }, 400);
 
-  if (!await copyR2Object(env, key, dest)) {
+  const source = await findR2EntryByKey(env.DB, key);
+  const logicalDest = normalizeFolderPath(dest);
+  if (!source || source.kind !== "file" || !logicalDest) {
     return c.json({ ok: false, error: "Source not found" }, 404);
   }
+  if (await findR2EntryByPath(env.DB, logicalDest)) return c.json({ ok: false, error: "Destination already exists" }, 409);
+  const sourceObject = source.object_id
+    ? await env.DB.prepare("SELECT suffix, content_type, size FROM storage_objects WHERE id = ?")
+      .bind(source.object_id).first<{ suffix: string; content_type: string | null; size: number }>()
+    : null;
+  if (!sourceObject) return c.json({ ok: false, error: "Source object metadata not found" }, 404);
+  const objectId = createStableObjectId(`${logicalDest}:${crypto.randomUUID()}`);
+  const destKey = createStableObjectKey(objectId, sourceObject.suffix);
+  if (!await copyR2Object(env, key, destKey)) return c.json({ ok: false, error: "Source not found" }, 404);
+  await registerR2Object(env.DB, {
+    objectId,
+    physicalKey: destKey,
+    logicalPath: logicalDest,
+    suffix: sourceObject.suffix,
+    contentType: sourceObject.content_type,
+    size: sourceObject.size,
+  });
   return c.json({ ok: true });
 });
 
@@ -780,11 +897,17 @@ filesRoutes.post("/files/crossCopy", permissionMiddleware("upload"), async (c) =
   // ── 2. Resolve destination adapter + URI ────────────────────────────────
   let destUri: string;
   let destPut: ((uri: string, body: ReadableStream<Uint8Array>, contentType?: string) => Promise<void>) | null = null;
+  let r2Destination: { objectId: string; key: string; logicalPath: string; suffix: string } | null = null;
 
   if (destSource === "r2") {
-    // Strip leading 'music/' to avoid double-prefix, then re-add it.
+    // Strip leading 'music/' to normalize the logical D1 path, then allocate
+    // an immutable R2 object key.
     const cleanPath = destPath.replace(/^music\/?/, "");
-    const key = "music/" + cleanPath;
+    const logicalPath = "music/" + cleanPath;
+    const suffix = logicalPath.split(".").pop() || "bin";
+    const objectId = createStableObjectId(`${logicalPath}:${crypto.randomUUID()}`);
+    const key = createStableObjectKey(objectId, suffix);
+    r2Destination = { objectId, key, logicalPath, suffix };
     destUri = `r2://${key}`;
     const adapter = createR2Adapter(env.MUSIC_BUCKET);
     destPut = adapter.put!.bind(adapter);
@@ -800,7 +923,11 @@ filesRoutes.post("/files/crossCopy", permissionMiddleware("upload"), async (c) =
 
     switch (row.type) {
       case "r2": {
-        const key = "music/" + destPath.replace(/^music\/?/, "");
+        const logicalPath = "music/" + destPath.replace(/^music\/?/, "");
+        const suffix = logicalPath.split(".").pop() || "bin";
+        const objectId = createStableObjectId(`${logicalPath}:${crypto.randomUUID()}`);
+        const key = createStableObjectKey(objectId, suffix);
+        r2Destination = { objectId, key, logicalPath, suffix };
         destUri = `r2://${key}`;
         const adapter = createR2Adapter(env.MUSIC_BUCKET);
         destPut = adapter.put!.bind(adapter);
@@ -835,33 +962,35 @@ filesRoutes.post("/files/crossCopy", permissionMiddleware("upload"), async (c) =
   // When the caller provides registerInstance, create a song_instances row
   // pointing at the new R2 copy so /rest/stream can select it immediately.
   let instanceId: string | undefined;
-  if (registerInstance && destUri.startsWith("r2://")) {
+  if (r2Destination) {
     try {
-      // Generate a unique id. crypto.randomUUID is available in Workers.
-      const rand = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
-      instanceId = `si-mirror-${rand}`;
+      if (registerInstance) {
+        const rand = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        instanceId = `si-mirror-${rand}`;
+      }
       const now = Math.floor(Date.now() / 1000);
       // Copy physical params from the source instance so the stream selector
       // has bit_rate/duration/etc. without re-parsing.
-      const sourceRow = await env.DB.prepare(
+      const sourceRow = registerInstance ? await env.DB.prepare(
         "SELECT bit_rate, sample_rate, bit_depth, channels, duration, size, content_type, suffix, transcode_profile FROM song_instances WHERE id = ?",
       ).bind(registerInstance.sourceInstanceId).first<{
         bit_rate: number | null; sample_rate: number | null; bit_depth: number | null;
         channels: number | null; duration: number | null; size: number | null;
         content_type: string | null; suffix: string | null; transcode_profile: string | null;
-      }>();
-      await env.DB.prepare(
+      }>() : null;
+      if (registerInstance) await env.DB.prepare(
         `INSERT INTO song_instances
            (id, master_id, source_id, source_type, parent_instance_id,
-            storage_uri, transcode_profile, suffix, content_type,
+            storage_uri, storage_object_id, transcode_profile, suffix, content_type,
             bit_rate, sample_rate, bit_depth, channels, duration, size,
             tag_scanned, created_at, updated_at)
-         VALUES (?, ?, 'r2-local', 'original', ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+         VALUES (?, ?, 'r2-local', 'original', ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
       ).bind(
         instanceId,
         registerInstance.masterId,
         registerInstance.sourceInstanceId,
         destUri,
+        r2Destination.objectId,
         sourceRow?.suffix || registerInstance.suffix,
         sourceRow?.content_type || registerInstance.contentType,
         sourceRow?.bit_rate ?? null,
@@ -873,9 +1002,16 @@ filesRoutes.post("/files/crossCopy", permissionMiddleware("upload"), async (c) =
         now,
         now,
       ).run();
+      await registerR2Object(env.DB, {
+        objectId: r2Destination.objectId,
+        physicalKey: r2Destination.key,
+        logicalPath: r2Destination.logicalPath,
+        suffix: sourceRow?.suffix || r2Destination.suffix,
+        contentType: sourceRow?.content_type || registerInstance?.contentType || null,
+        size: sourceRow?.size ?? registerInstance?.size ?? null,
+        instanceId: instanceId || null,
+      });
     } catch (e) {
-      // Registration failure is non-fatal — bytes are in R2, just no DB row.
-      // The caller can re-scan to pick it up, or retry the mirror.
       console.error(`[crossCopy] instance registration failed:`, e);
       instanceId = undefined;
     }

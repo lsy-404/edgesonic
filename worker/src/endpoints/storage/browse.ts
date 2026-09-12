@@ -18,6 +18,7 @@ import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import { parseMultistatus, stripTrailingSlash, encodePath } from "./scan";
 import { srcBaseUrl, type SourceRow } from "../../utils/slices";
+import { R2_SOURCE_ID, findR2EntryByPath } from "../../utils/storageResolver";
 
 export const browseRoutes = new Hono();
 
@@ -28,40 +29,40 @@ browseRoutes.get("/files/list", permissionMiddleware("download"), async (c) => {
   const path = (c.req.query("path") || "").replace(/^\/+|\/+$/g, "");
 
   if (source === "r2") {
-    const prefix = path ? `${path}/` : "";
-    const objects: R2Object[] = [];
-    const delimitedPrefixes: string[] = [];
-    let cursor: string | undefined;
-    do {
-      const listing = await env.MUSIC_BUCKET.list({
-        prefix,
-        delimiter: "/",
-        ...(cursor ? { cursor } : {}),
-      });
-      objects.push(...listing.objects);
-      delimitedPrefixes.push(...listing.delimitedPrefixes);
-      cursor = listing.truncated ? listing.cursor : undefined;
-    } while (cursor);
+    const parent = path
+      ? await findR2EntryByPath(env.DB, path)
+      : null;
+    if (path && (!parent || parent.kind !== "folder")) {
+      return c.json({ ok: false, error: "Folder not found" }, 404);
+    }
+    const parentId = parent?.id || null;
+    const rows = await env.DB.prepare(
+      `SELECT e.id, e.path, e.display_name, e.kind, e.object_id, e.instance_id,
+              e.updated_at, o.physical_key, o.content_type, o.size
+         FROM storage_entries e
+         LEFT JOIN storage_objects o ON o.id = e.object_id
+        WHERE e.source_id = ? AND e.parent_id IS ?
+        ORDER BY e.kind DESC, e.display_name COLLATE NOCASE ASC`,
+    ).bind(R2_SOURCE_ID, parentId).all<{
+      id: string; path: string; display_name: string; kind: "file" | "folder";
+      object_id: string | null; instance_id: string | null; updated_at: number;
+      physical_key: string | null; content_type: string | null; size: number | null;
+    }>();
     return c.json({
       ok: true,
       source: "r2",
       path,
-      dirs: delimitedPrefixes.map((p) => ({
-        name: p.substring(prefix.length).replace(/\/$/, ""),
-        modifiedAt: null,
+      dirs: rows.results.filter((row) => row.kind === "folder").map((row) => ({
+        name: row.display_name,
+        modifiedAt: row.updated_at,
       })),
-      // ".keep" is the 0-byte marker files/mkdir drops to make an otherwise
-      // real-object-free R2 "folder" show up via the delimiter above — hide
-      // it from the folder's own contents so it doesn't look like a stray file.
-      files: objects
-        .filter((o) => o.key.substring(prefix.length) !== ".keep")
-        .map((o) => ({
-          name: o.key.substring(prefix.length),
-          size: o.size,
-          contentType: o.httpMetadata?.contentType || null,
-          uri: `r2://${o.key}`,
-          modifiedAt: o.uploaded ? Math.floor(o.uploaded.getTime() / 1000) : null,
-        })),
+      files: rows.results.filter((row) => row.kind === "file" && row.physical_key).map((row) => ({
+        name: row.display_name,
+        size: row.size || 0,
+        contentType: row.content_type,
+        uri: `r2://${row.physical_key}`,
+        modifiedAt: row.updated_at,
+      })),
     });
   }
 

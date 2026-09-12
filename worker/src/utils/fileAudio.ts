@@ -3,6 +3,7 @@
 import { createR2Adapter } from "../adapters/r2";
 import { encodePath } from "../endpoints/storage/scan";
 import { srcBaseUrl, type SourceRow } from "./slices";
+import { findR2EntryByPath } from "./storageResolver";
 
 function normalizeFilePath(path: string | undefined): string | null {
   const normalized = (path || "").replace(/^\/+|\/+$/g, "");
@@ -55,7 +56,9 @@ export async function streamStoredFile(env: Env, input: {
   if (!path) return jsonError(400, "Invalid file path");
 
   if (source === "r2") {
-    const result = await createR2Adapter(env.MUSIC_BUCKET).stream(`r2://${path}`, input.range);
+    const entry = await findR2EntryByPath(env.DB, path);
+    if (!entry?.physical_key) return jsonError(404, "File not found");
+    const result = await createR2Adapter(env.MUSIC_BUCKET).stream(`r2://${entry.physical_key}`, input.range);
     if (!result.body || result.statusCode >= 400) return new Response(null, { status: result.statusCode });
     return new Response(result.body, {
       status: result.statusCode,

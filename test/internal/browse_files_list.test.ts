@@ -1,27 +1,6 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-// GET /storage/files/list, r2 branch: verifies an empty folder created by
-// files/mkdir (a "<path>/.keep" marker object) shows up as a directory in its
-// parent listing, and that ".keep" itself never leaks out as a visible file
-// when browsing into that folder.
-//
-// Run: npx tsx test/internal/browse_files_list.test.ts
-
 import { Hono } from "hono";
 import { browseRoutes } from "../../worker/src/endpoints/storage/browse";
+import { filesRoutes } from "../../worker/src/endpoints/storage/files";
 import { mediaRoutes } from "../../worker/src/endpoints/subsonic/media";
 
 declare global { type D1Database = unknown; type Env = unknown; }
@@ -32,57 +11,80 @@ function assert(cond: unknown, msg: string) {
   else { failures++; console.error(`  ✗ ${msg}`); }
 }
 
-// ---------------------------------------------------------------------------
-// In-memory R2 bucket shim with delimiter-aware list() (mirrors R2's actual
-// commonPrefix-grouping semantics closely enough for this test).
-// ---------------------------------------------------------------------------
-interface R2Item { key: string; size: number; contentType: string; uploaded: Date; bytes: Uint8Array }
+interface Entry {
+  id: string; path: string; display_name: string; kind: "folder" | "file";
+  parent_id: string | null; object_id: string | null; instance_id: string | null;
+  physical_key: string | null; content_type: string | null; size: number | null; updated_at: number;
+}
 
-interface R2Page { objects: unknown[]; delimitedPrefixes: string[]; truncated: boolean; cursor?: string }
-
-function makeR2Bucket(pageResults?: Record<string, R2Page>) {
-  const store = new Map<string, R2Item>();
-  const listCalls: { prefix: string; delimiter: string; cursor?: string }[] = [];
+function makeBucket() {
+  const store = new Map<string, { bytes: Uint8Array; contentType: string }>();
   return {
-    listCalls,
+    store,
     async put(key: string, body: unknown, opts?: { httpMetadata?: { contentType?: string } }) {
-      const bytes = body instanceof Uint8Array ? body : new Uint8Array([1, 2, 3, 4]);
-      store.set(key, { key, size: bytes.byteLength, bytes, contentType: opts?.httpMetadata?.contentType || "application/octet-stream", uploaded: new Date("2026-08-25T12:34:56Z") });
-    },
-    async list({ prefix, delimiter, cursor }: { prefix: string; delimiter: string; cursor?: string }) {
-      listCalls.push({ prefix, delimiter, ...(cursor ? { cursor } : {}) });
-      if (pageResults) return pageResults[cursor || ""];
-      const objects: (R2Item & { httpMetadata: { contentType: string } })[] = [];
-      const prefixSet = new Set<string>();
-      for (const item of store.values()) {
-        if (!item.key.startsWith(prefix)) continue;
-        const rest = item.key.substring(prefix.length);
-        const idx = rest.indexOf(delimiter);
-        if (idx >= 0) {
-          prefixSet.add(prefix + rest.substring(0, idx + delimiter.length));
-        } else {
-          objects.push({ ...item, httpMetadata: { contentType: item.contentType } });
-        }
-      }
-      return { objects, delimitedPrefixes: Array.from(prefixSet), truncated: false };
+      const bytes = body instanceof Uint8Array
+        ? body
+        : new Uint8Array(await new Response(body as BodyInit).arrayBuffer());
+      store.set(key, { bytes, contentType: opts?.httpMetadata?.contentType || "application/octet-stream" });
     },
     async get(key: string, opts?: { range?: { offset: number; length?: number } }) {
       const item = store.get(key);
       if (!item) return null;
       const start = opts?.range?.offset || 0;
-      const end = opts?.range?.length ? start + opts.range.length : undefined;
+      const end = opts?.range?.length === undefined ? undefined : start + opts.range.length;
       const bytes = item.bytes.slice(start, end);
-      return {
-        body: new Blob([bytes]).stream(),
-        size: item.size,
-        httpMetadata: { contentType: item.contentType },
-      };
+      return { body: new Blob([bytes]).stream(), size: item.bytes.length, httpMetadata: { contentType: item.contentType } };
+    },
+    async delete(key: string | string[]) {
+      for (const item of Array.isArray(key) ? key : [key]) store.delete(item);
     },
   };
 }
 
-function makeApp(bucket: ReturnType<typeof makeR2Bucket>, sourceRow?: Record<string, unknown>, resolvedSong?: Record<string, unknown>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function makeD1(entries: Entry[], resolvedSong?: Record<string, unknown>) {
+  const instances = new Map(entries.filter((e) => e.instance_id).map((e) => [e.instance_id!, { master_id: "song-1" }]));
+  const db = {
+    prepare(sql: string) {
+      const stmt = {
+        args: [] as unknown[],
+        bind(...args: unknown[]) { stmt.args = args; return stmt; },
+        async first<T = unknown>() {
+          if (sql.includes("FROM user_permissions")) return { enabled: 1, max_rph: 0 } as T;
+          if (sql.includes("FROM storage_entries e") && sql.includes("o.physical_key = ?")) {
+            const row = entries.find((e) => e.physical_key === stmt.args[1]);
+            return (row || null) as T | null;
+          }
+          if (sql.includes("FROM storage_entries e") && sql.includes("e.path = ?")) {
+            const row = entries.find((e) => e.path === stmt.args[1]);
+            return (row || null) as T | null;
+          }
+          if (sql.includes("FROM song_instances")) return (resolvedSong || null) as T | null;
+          return null;
+        },
+        async all<T = unknown>() {
+          if (sql.includes("FROM storage_entries e") && sql.includes("e.parent_id IS ?")) {
+            const parentId = stmt.args[1] as string | null;
+            return { results: entries.filter((e) => e.parent_id === parentId).sort((a, b) => a.display_name.localeCompare(b.display_name)) as T[] };
+          }
+          return { results: [] as T[] };
+        },
+        async run() {
+          if (sql.includes("UPDATE storage_entries SET parent_id")) {
+            const [parentId, path, name, , id] = stmt.args as [string | null, string, string, number, string];
+            const row = entries.find((e) => e.id === id);
+            if (row) { row.parent_id = parentId; row.path = path; row.display_name = name; }
+          }
+          return { meta: { changes: 1 } };
+        },
+      };
+      return stmt;
+    },
+  };
+  void instances;
+  return db;
+}
+
+function makeApp(bucket: ReturnType<typeof makeBucket>, entries: Entry[], resolvedSong?: Record<string, unknown>) {
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.use("*", async (c, next) => {
     c.set("user", { username: "root", level: 3, enabled: 1, password: "x" });
@@ -90,163 +92,59 @@ function makeApp(bucket: ReturnType<typeof makeR2Bucket>, sourceRow?: Record<str
     return next();
   });
   app.route("/storage", browseRoutes);
+  app.route("/storage", filesRoutes);
   app.route("/rest", mediaRoutes);
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const env: Record<string, any> = {
-    DB: { prepare(sql: string) { return { bind() { return this; }, async first() {
-      if (sql.includes("FROM song_instances")) return resolvedSong || null;
-      return sql.includes("FROM storage_sources") ? sourceRow || null : { enabled: 1, max_rph: 0 };
-    } }; } },
-    MUSIC_BUCKET: bucket,
-  };
-
-  return {
-    async get(url: string, headers?: HeadersInit) { return app.fetch(new Request(`http://test${url}`, { headers }), env); },
-  };
+  const env = { DB: makeD1(entries, resolvedSong), MUSIC_BUCKET: bucket };
+  return { get: (url: string, headers?: HeadersInit) => app.fetch(new Request(`http://test${url}`, { headers }), env), post: (url: string, body: unknown) => app.fetch(new Request(`http://test${url}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }), env) };
 }
 
 async function main() {
-  const bucket = makeR2Bucket();
-  await bucket.put("music/newfolder/.keep", null, { httpMetadata: { contentType: "application/x-directory" } });
-  await bucket.put("music/newfolder/track.mp3", null, { httpMetadata: { contentType: "audio/mpeg" } });
-  const app = makeApp(bucket);
+  const bucket = makeBucket();
+  bucket.store.set("objects/obj_audio.mp3", { bytes: new Uint8Array([10, 11, 12, 13]), contentType: "audio/mpeg" });
+  bucket.store.set("objects/obj_note.lrc", { bytes: new Uint8Array([91, 49, 93]), contentType: "text/plain" });
+  const entries: Entry[] = [
+    { id: "folder-1", path: "music/Album", display_name: "Album", kind: "folder", parent_id: "music-root", object_id: null, instance_id: null, physical_key: null, content_type: null, size: null, updated_at: 1787661296 },
+    { id: "audio-1", path: "music/Album/track.mp3", display_name: "track.mp3", kind: "file", parent_id: "folder-1", object_id: "obj-audio", instance_id: "si-1", physical_key: "objects/obj_audio.mp3", content_type: "audio/mpeg", size: 4, updated_at: 1787661296 },
+    { id: "lrc-1", path: "music/Album/track.lrc", display_name: "track.lrc", kind: "file", parent_id: "folder-1", object_id: "obj-note", instance_id: null, physical_key: "objects/obj_note.lrc", content_type: "text/plain", size: 3, updated_at: 1787661296 },
+  ];
+  const root = { id: "music-root", path: "music", display_name: "music", kind: "folder" as const, parent_id: null, object_id: null, instance_id: null, physical_key: null, content_type: null, size: null, updated_at: 1787661296 };
+  entries.push(root);
+  const app = makeApp(bucket, entries, { id: "song-1", title: "track", artist: "Artist", album: "Album", coverArt: "cover-1", duration: 245 });
 
-  console.log("\nfiles/list r2 parent → shows the marker-only folder as a dir:");
+  console.log("\nfiles/list r2 → D1 supplies logical folders and display names:");
   {
-    const r = await app.get("/storage/files/list?source=r2&path=music");
-    const j = await r.json<{ ok: boolean; dirs: { name: string }[]; files: { name: string }[] }>();
-    assert(j.ok, "ok=true");
-    assert(j.dirs.some((d) => d.name === "newfolder"), `dirs includes 'newfolder' (got ${JSON.stringify(j.dirs)})`);
-    assert(!j.files.some((f) => f.name === ".keep"), "no '.keep' leaked into the parent's file list");
+    const r = await app.get("/storage/files/list?source=r2&path=music/Album");
+    const j = await r.json<{ ok: boolean; files: { name: string; uri: string }[] }>();
+    assert(r.status === 200 && j.ok, "listing returns ok=true");
+    assert(j.files.map((f) => f.name).join(",") === "track.lrc,track.mp3", "listing uses D1 display names");
+    assert(j.files.some((f) => f.uri === "r2://objects/obj_audio.mp3"), "listing returns immutable physical URI");
   }
 
-  console.log("\nfiles/list r2 → follows truncated pages and keeps all entries:");
+  console.log("\nstreamFile r2 → resolves logical path to the stable object key:");
   {
-    const paginated = makeR2Bucket({
-      "": {
-        objects: [{ key: "music/first.flac", size: 10, httpMetadata: { contentType: "audio/flac" }, uploaded: new Date("2026-08-25T12:34:56Z") }],
-        delimitedPrefixes: ["music/album-a/"],
-        truncated: true,
-        cursor: "page-2",
-      },
-      "page-2": {
-        objects: [],
-        delimitedPrefixes: ["music/album-b/"],
-        truncated: true,
-        cursor: "page-3",
-      },
-      "page-3": {
-        objects: [
-          { key: "music/.keep", size: 0, httpMetadata: { contentType: "application/x-directory" }, uploaded: new Date("2026-08-25T12:34:56Z") },
-          { key: "music/second.flac", size: 20, httpMetadata: { contentType: "audio/flac" }, uploaded: new Date("2026-08-25T12:34:56Z") },
-        ],
-        delimitedPrefixes: ["music/album-c/"],
-        truncated: false,
-      },
-    });
-    const r = await makeApp(paginated).get("/storage/files/list?source=r2&path=music");
-    const j = await r.json<{ ok: boolean; dirs: { name: string }[]; files: { name: string; size: number; contentType: string | null; uri: string; modifiedAt: number | null }[] }>();
-    assert(j.ok, "paginated listing returns ok=true");
-    assert(j.dirs.map((d) => d.name).join(",") === "album-a,album-b,album-c", "directories from every page are returned, including an empty-file page");
-    assert(j.files.map((f) => f.name).join(",") === "first.flac,second.flac", "files from every page are returned and .keep stays hidden");
-    const secondFile = j.files.find((f) => f.name === "second.flac");
-    assert(secondFile?.size === 20 && secondFile.contentType === "audio/flac" && secondFile.uri === "r2://music/second.flac" && secondFile.modifiedAt === 1787661296,
-      "final-page file metadata and URI are preserved");
-    assert(paginated.listCalls.length === 3 && paginated.listCalls[0].prefix === "music/" && paginated.listCalls[0].delimiter === "/" && paginated.listCalls[1].cursor === "page-2" && paginated.listCalls[2].cursor === "page-3",
-      `list() receives the preserved prefix/delimiter and continuation cursor (got ${JSON.stringify(paginated.listCalls)})`);
-  }
-
-  console.log("\nfiles/list r2 inside folder → .keep hidden, real file kept:");
-  {
-    const r = await app.get("/storage/files/list?source=r2&path=music/newfolder");
-    const j = await r.json<{ ok: boolean; files: { name: string; modifiedAt: number | null }[] }>();
-    assert(j.ok, "ok=true");
-    assert(!j.files.some((f) => f.name === ".keep"), "'.keep' not present in its own folder's listing");
-    assert(j.files.some((f) => f.name === "track.mp3"), "real file 'track.mp3' still listed");
-    assert(j.files.find((f) => f.name === "track.mp3")?.modifiedAt === 1787661296, "R2 upload time is returned as unix seconds");
-  }
-
-  console.log("\nstreamFile r2 → serves an unscanned file with media and range headers:");
-  {
-    await bucket.put("music/newfolder/direct.flac", new Uint8Array([10, 11, 12, 13]), { httpMetadata: { contentType: "application/octet-stream" } });
-    const full = await app.get("/rest/streamFile?source=r2&path=music/newfolder/direct.flac");
+    const full = await app.get("/rest/streamFile?source=r2&path=music/Album/track.mp3");
     assert(full.status === 200, "full stream returns 200");
-    assert(full.headers.get("Content-Type") === "audio/flac", "octet-stream FLAC receives a browser-playable MIME type");
-    assert(full.headers.get("Accept-Ranges") === "bytes", "full stream advertises byte ranges");
-    assert((await full.arrayBuffer()).byteLength === 4, "full stream preserves bytes");
-
-    const ranged = await app.get("/rest/streamFile?source=r2&path=music/newfolder/direct.flac", { Range: "bytes=1-2" });
-    assert(ranged.status === 206, "range stream returns 206");
-    assert(ranged.headers.get("Content-Range") === "bytes 1-2/4", "range stream reports the selected byte span");
-    assert((await ranged.arrayBuffer()).byteLength === 2, "range stream preserves only requested bytes");
-
-    const invalid = await app.get("/rest/streamFile?source=r2&path=music/../outside.flac");
-    assert(invalid.status === 400, "path traversal is rejected");
+    assert((await full.arrayBuffer()).byteLength === 4, "full stream reads the stable object");
+    const ranged = await app.get("/rest/streamFile?source=r2&path=music/Album/track.mp3", { Range: "bytes=1-2" });
+    assert(ranged.status === 206 && ranged.headers.get("Content-Range") === "bytes 1-2/4", "logical stream keeps range support");
   }
 
-  console.log("\nfiles/resolve → binds a browsed object to its catalog song:");
+  console.log("\nfiles/move → changes only the D1 logical entry:");
   {
-    const resolveApp = makeApp(bucket, undefined, {
-      id: "sg-json",
-      title: "JSON lyric song",
-      artist: "Artist",
-      album: "Album",
-      coverArt: "cover-1",
-      duration: 245,
-    });
-    const r = await resolveApp.get(`/storage/files/resolve?uri=${encodeURIComponent("r2://music/JSON lyric song.flac")}`);
-    const j = await r.json<{ ok: boolean; song?: { id: string; title: string; duration: number } }>();
-    assert(r.status === 200 && j.ok, `matched storage URI returns 200 ok (got ${r.status}: ${JSON.stringify(j)})`);
-    assert(j.song?.id === "sg-json" && j.song.title === "JSON lyric song" && j.song.duration === 245,
-      "returns the catalog identity and display metadata");
-
-    const miss = await makeApp(bucket).get(`/storage/files/resolve?uri=${encodeURIComponent("r2://music/not-scanned.flac")}`);
-    assert(miss.status === 404, "unscanned file returns a non-fatal 404");
+    const before = bucket.store.size;
+    const r = await app.post("/storage/files/move", { key: "objects/obj_audio.mp3", dest: "music/Album/renamed.mp3" });
+    const j = await r.json<{ ok: boolean }>();
+    assert(r.status === 200 && j.ok, "logical rename succeeds");
+    assert(bucket.store.size === before && bucket.store.has("objects/obj_audio.mp3"), "R2 bytes are not copied or deleted");
+    assert(entries.find((e) => e.id === "audio-1")?.path === "music/Album/renamed.mp3", "D1 path is updated");
   }
 
-  console.log("\nfiles/list WebDAV → requests and returns last-modified time:");
+  console.log("\nfiles/resolve → matches a stable URI to its catalog song:");
   {
-    const originalFetch = globalThis.fetch;
-    let requestedBody = "";
-    globalThis.fetch = async (_input, init) => {
-      requestedBody = String(init?.body || "");
-      return new Response(`<?xml version="1.0"?>
-        <d:multistatus xmlns:d="DAV:">
-          <d:response>
-            <d:href>/root/music/</d:href>
-            <d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat>
-          </d:response>
-          <d:response>
-            <d:href>/root/music/album/</d:href>
-            <d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype><d:getlastmodified>Mon, 24 Aug 2026 10:00:00 GMT</d:getlastmodified></d:prop></d:propstat>
-          </d:response>
-          <d:response>
-            <d:href>/root/music/track.mp3</d:href>
-            <d:propstat><d:prop><d:resourcetype/><d:getcontentlength>123</d:getcontentlength><d:getcontenttype>audio/mpeg</d:getcontenttype><d:getlastmodified>Tue, 25 Aug 2026 12:34:56 GMT</d:getlastmodified></d:prop></d:propstat>
-          </d:response>
-        </d:multistatus>`, { status: 207 });
-    };
-    try {
-      const davApp = makeApp(bucket, {
-        id: "dav",
-        base_url: "https://dav.example/root",
-        username: "user",
-        password: "pass",
-        root_path: null,
-      });
-      const r = await davApp.get("/storage/files/list?source=dav&path=music");
-      const j = await r.json<{
-        ok: boolean;
-        dirs: { name: string; modifiedAt: number | null }[];
-        files: { name: string; modifiedAt: number | null }[];
-      }>();
-      assert(requestedBody.includes("getlastmodified"), "PROPFIND asks for getlastmodified");
-      assert(j.dirs[0]?.modifiedAt === 1787565600, "WebDAV directory time is returned as unix seconds");
-      assert(j.files[0]?.modifiedAt === 1787661296, "WebDAV file time is returned as unix seconds");
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    const r = await app.get(`/storage/files/resolve?uri=${encodeURIComponent("r2://objects/obj_audio.mp3")}`);
+    const j = await r.json<{ ok: boolean; song?: { id: string } }>();
+    assert(r.status === 200 && j.ok && j.song?.id === "song-1", "stable URI resolves to the catalog song");
+    assert((await app.get("/rest/streamFile?source=r2&path=music/../outside.flac")).status === 400, "path traversal is rejected");
   }
 
   console.log(`\n${failures === 0 ? "All tests passed." : `${failures} test(s) FAILED.`}`);

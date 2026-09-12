@@ -85,10 +85,21 @@ function buildDb(): DatabaseSync {
     CREATE TABLE song_masters (id TEXT PRIMARY KEY, album_id TEXT, artist_id TEXT, title TEXT, sort_title TEXT, track INTEGER, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE song_instances (
       id TEXT PRIMARY KEY, master_id TEXT, source_id TEXT NOT NULL, source_type TEXT DEFAULT 'original',
-      storage_uri TEXT NOT NULL, suffix TEXT, content_type TEXT, size INTEGER DEFAULT 0,
+      storage_uri TEXT NOT NULL, storage_object_id TEXT, suffix TEXT, content_type TEXT, size INTEGER DEFAULT 0,
       source_etag TEXT, source_last_modified INTEGER, tag_scanned INTEGER DEFAULT 0,
       missing INTEGER DEFAULT 0, created_at INTEGER, updated_at INTEGER
     );
+    CREATE TABLE storage_objects (
+      id TEXT PRIMARY KEY, physical_key TEXT NOT NULL UNIQUE, legacy_key TEXT UNIQUE,
+      suffix TEXT NOT NULL, content_type TEXT, size INTEGER NOT NULL DEFAULT 0,
+      etag TEXT, last_modified INTEGER, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
+    );
+    CREATE TABLE storage_entries (
+      id TEXT PRIMARY KEY, source_id TEXT NOT NULL, parent_id TEXT, path TEXT NOT NULL,
+      display_name TEXT NOT NULL, kind TEXT NOT NULL, object_id TEXT, instance_id TEXT,
+      companion_of TEXT, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0
+    );
+    CREATE UNIQUE INDEX idx_storage_entries_source_path ON storage_entries(source_id, path);
     CREATE TABLE scan_jobs (
       id TEXT PRIMARY KEY, source_id TEXT, status TEXT DEFAULT 'running',
       total_items INTEGER DEFAULT 0, scanned_items INTEGER DEFAULT 0,
@@ -133,12 +144,12 @@ async function main() {
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-1", "r2-local");
     const env = { MUSIC_BUCKET: makeBucket([
-      { key: "music/Artist A/Album A/01 Track One.mp3", size: 5000, etag: "e1", uploaded: new Date("2024-01-01T00:00:00Z") },
+      { key: "objects/obj_0000000000000001.mp3", size: 5000, etag: "e1", uploaded: new Date("2024-01-01T00:00:00Z") },
     ]) };
     await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-1", {});
     const inst = sqlite.prepare("SELECT * FROM song_instances").all() as Array<{ storage_uri: string; source_id: string }>;
     assert(inst.length === 1, `exactly 1 instance inserted (got ${inst.length})`);
-    assert(inst[0]?.storage_uri === "r2://music/Artist A/Album A/01 Track One.mp3", `bare-key r2:// uri (got ${inst[0]?.storage_uri})`);
+    assert(inst[0]?.storage_uri === "r2://objects/obj_0000000000000001.mp3", `stable r2:// uri (got ${inst[0]?.storage_uri})`);
     assert(inst[0]?.source_id === "r2-local", "source_id = r2-local");
     const job = sqlite.prepare("SELECT * FROM scan_jobs WHERE id='sj-1'").get() as { status: string; scanned_items: number; total_items: number };
     assert(job.status === "completed", `job completed (got ${job.status})`);
@@ -151,14 +162,14 @@ async function main() {
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-2", "r2-local");
     const env = { MUSIC_BUCKET: makeBucket([
-      { key: "music/Artist/Album/cover.jpg", size: 100, etag: "e1", uploaded: new Date() },
-      { key: "music/Artist/Album/track.lrc", size: 50, etag: "e2", uploaded: new Date() },
-      { key: "music/Artist/Album/track.flac", size: 9000, etag: "e3", uploaded: new Date() },
+      { key: "objects/obj_0000000000000002.jpg", size: 100, etag: "e1", uploaded: new Date() },
+      { key: "objects/obj_0000000000000003.lrc", size: 50, etag: "e2", uploaded: new Date() },
+      { key: "objects/obj_0000000000000004.flac", size: 9000, etag: "e3", uploaded: new Date() },
     ]) };
     await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-2", {});
     const inst = sqlite.prepare("SELECT storage_uri FROM song_instances").all() as Array<{ storage_uri: string }>;
     assert(inst.length === 1, `only the audio file inserted (got ${inst.length})`);
-    assert(inst[0]?.storage_uri.endsWith("track.flac"), "the flac is the one that landed");
+    assert(inst[0]?.storage_uri === "r2://objects/obj_0000000000000004.flac", "the flac is the one that landed");
   }
 
   console.log("\nexisting instance with matching etag/size → SKIP (no UPDATE, tag_scanned untouched):");
@@ -168,12 +179,12 @@ async function main() {
     const lm = Math.floor(new Date("2024-01-01T00:00:00Z").getTime() / 1000);
     sqlite.prepare(
       `INSERT INTO song_instances (id, master_id, source_id, storage_uri, suffix, size, source_etag, source_last_modified, tag_scanned, created_at, updated_at)
-       VALUES ('si-1', 'sm-1', 'r2-local', 'r2://music/Artist/Album/track.mp3', 'mp3', 5000, 'e1', ?, 1, ?, ?)`,
+       VALUES ('si-1', 'sm-1', 'r2-local', 'r2://objects/obj_0000000000000005.mp3', 'mp3', 5000, 'e1', ?, 1, ?, ?)`,
     ).run(lm, now, now);
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-3", "r2-local");
     const env = { MUSIC_BUCKET: makeBucket([
-      { key: "music/Artist/Album/track.mp3", size: 5000, etag: "e1", uploaded: new Date("2024-01-01T00:00:00Z") },
+      { key: "objects/obj_0000000000000005.mp3", size: 5000, etag: "e1", uploaded: new Date("2024-01-01T00:00:00Z") },
     ]) };
     await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-3", { etagCheck: true });
     const row = sqlite.prepare("SELECT tag_scanned, updated_at FROM song_instances WHERE id='si-1'").get() as { tag_scanned: number; updated_at: number };
@@ -189,12 +200,12 @@ async function main() {
     const lm = Math.floor(new Date("2024-01-01T00:00:00Z").getTime() / 1000);
     sqlite.prepare(
       `INSERT INTO song_instances (id, master_id, source_id, storage_uri, suffix, size, source_etag, source_last_modified, tag_scanned, created_at, updated_at)
-       VALUES ('si-1', 'sm-1', 'r2-local', 'r2://music/Artist/Album/track.mp3', 'mp3', 5000, 'e1', ?, 1, ?, ?)`,
+       VALUES ('si-1', 'sm-1', 'r2-local', 'r2://objects/obj_0000000000000006.mp3', 'mp3', 5000, 'e1', ?, 1, ?, ?)`,
     ).run(lm, now, now);
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-4", "r2-local");
     const env = { MUSIC_BUCKET: makeBucket([
-      { key: "music/Artist/Album/track.mp3", size: 5000, etag: "e1", uploaded: new Date("2024-01-01T00:00:00Z") },
+      { key: "objects/obj_0000000000000006.mp3", size: 5000, etag: "e1", uploaded: new Date("2024-01-01T00:00:00Z") },
     ]) };
     await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-4", { etagCheck: false });
     const row = sqlite.prepare("SELECT tag_scanned FROM song_instances WHERE id='si-1'").get() as { tag_scanned: number };
@@ -207,12 +218,12 @@ async function main() {
     const now = Math.floor(Date.now() / 1000);
     sqlite.prepare(
       `INSERT INTO song_instances (id, master_id, source_id, storage_uri, suffix, size, source_etag, source_last_modified, tag_scanned, created_at, updated_at)
-       VALUES ('si-1', 'sm-1', 'r2-local', 'r2://music/Artist/Album/track.mp3', 'mp3', 5000, NULL, NULL, 1, ?, ?)`,
+       VALUES ('si-1', 'sm-1', 'r2-local', 'r2://objects/obj_0000000000000007.mp3', 'mp3', 5000, NULL, NULL, 1, ?, ?)`,
     ).run(now, now);
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-5", "r2-local");
     const env = { MUSIC_BUCKET: makeBucket([
-      { key: "music/Artist/Album/track.mp3", size: 5000, etag: "e1", uploaded: new Date("2024-01-01T00:00:00Z") },
+      { key: "objects/obj_0000000000000007.mp3", size: 5000, etag: "e1", uploaded: new Date("2024-01-01T00:00:00Z") },
     ]) };
     await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-5", { etagCheck: true });
     const row = sqlite.prepare("SELECT source_etag, tag_scanned FROM song_instances WHERE id='si-1'").get() as { source_etag: string; tag_scanned: number };
@@ -228,7 +239,7 @@ async function main() {
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-6", "r2-local");
     const env = { MUSIC_BUCKET: makeBucket([
-      { key: "music/Artist/Album/track.mp3", size: 5000, etag: "e1", uploaded: new Date() },
+      { key: "objects/obj_0000000000000008.mp3", size: 5000, etag: "e1", uploaded: new Date() },
     ]) };
     await asyncScanR2Source(env, db, { id: "r2-local", mode: "sync_only" }, "sj-6", {});
     const count = (sqlite.prepare("SELECT COUNT(*) AS n FROM song_instances").get() as { n: number }).n;
@@ -244,7 +255,7 @@ async function main() {
     seedScanJob(sqlite, "sj-7", "r2-local");
     const objects: StubObject[] = [];
     for (let i = 0; i < 5; i++) {
-      objects.push({ key: `music/Artist/Album/track${i}.mp3`, size: 1000 + i, etag: `e${i}`, uploaded: new Date() });
+      objects.push({ key: `objects/obj_00000000000000${10 + i}.mp3`, size: 1000 + i, etag: `e${i}`, uploaded: new Date() });
     }
     const env = { MUSIC_BUCKET: makeBucket(objects, 2) }; // force 3 pages for 5 objects
     await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-7", {});
@@ -288,14 +299,14 @@ async function main() {
     const now = Math.floor(Date.now() / 1000);
     sqlite.prepare(
       `INSERT INTO song_instances (id, master_id, source_id, storage_uri, suffix, size, source_etag, source_last_modified, tag_scanned, missing, created_at, updated_at)
-       VALUES ('si-gone', 'sm-gone', 'r2-local', 'r2://music/Artist/Album/gone.mp3', 'mp3', 5000, 'e1', ?, 0, 0, ?, ?)`,
+       VALUES ('si-gone', 'sm-gone', 'r2-local', 'r2://objects/obj_0000000000000015.mp3', 'mp3', 5000, 'e1', ?, 0, 0, ?, ?)`,
     ).run(now, now, now);
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-10", "r2-local");
     // Bucket listing no longer contains gone.mp3 — only an unrelated file,
     // so audio.length > 0 and the scan is "complete" (no page-budget cutoff).
     const env = { MUSIC_BUCKET: makeBucket([
-      { key: "music/Artist/Album/still-here.mp3", size: 1234, etag: "e9", uploaded: new Date() },
+      { key: "objects/obj_0000000000000016.mp3", size: 1234, etag: "e9", uploaded: new Date() },
     ]) };
     await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-10", { etagCheck: true });
     const row = sqlite.prepare("SELECT missing FROM song_instances WHERE id='si-gone'").get() as { missing: number };
@@ -308,7 +319,7 @@ async function main() {
     const now = Math.floor(Date.now() / 1000);
     sqlite.prepare(
       `INSERT INTO song_instances (id, master_id, source_id, storage_uri, suffix, size, source_etag, source_last_modified, tag_scanned, missing, created_at, updated_at)
-       VALUES ('si-back', 'sm-back', 'r2-local', 'r2://music/Artist/Album/back.mp3', 'mp3', 5000, 'e1', ?, 1, 1, ?, ?)`,
+       VALUES ('si-back', 'sm-back', 'r2-local', 'r2://objects/obj_0000000000000017.mp3', 'mp3', 5000, 'e1', ?, 1, 1, ?, ?)`,
     ).run(now, now, now);
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-11", "r2-local");
@@ -316,7 +327,7 @@ async function main() {
     // normally apply, but a missing=1 row must always fall through to the
     // path 2 UPDATE so the flag actually clears.
     const env = { MUSIC_BUCKET: makeBucket([
-      { key: "music/Artist/Album/back.mp3", size: 5000, etag: "e1", uploaded: new Date() },
+      { key: "objects/obj_0000000000000017.mp3", size: 5000, etag: "e1", uploaded: new Date() },
     ]) };
     await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-11", { etagCheck: true });
     const row = sqlite.prepare("SELECT missing, tag_scanned FROM song_instances WHERE id='si-back'").get() as { missing: number; tag_scanned: number };
@@ -329,7 +340,7 @@ async function main() {
     const now = Math.floor(Date.now() / 1000);
     sqlite.prepare(
       `INSERT INTO song_instances (id, master_id, source_id, storage_uri, suffix, size, source_etag, source_last_modified, tag_scanned, missing, created_at, updated_at)
-       VALUES ('si-safe', 'sm-safe', 'r2-local', 'r2://music/Artist/Album/safe.mp3', 'mp3', 5000, 'e1', ?, 1, 0, ?, ?)`,
+       VALUES ('si-safe', 'sm-safe', 'r2-local', 'r2://objects/obj_0000000000000018.mp3', 'mp3', 5000, 'e1', ?, 1, 0, ?, ?)`,
     ).run(now, now, now);
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-12", "r2-local");
