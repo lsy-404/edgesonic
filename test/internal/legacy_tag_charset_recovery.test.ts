@@ -59,6 +59,12 @@ const songResponse = mapSong({
 }, "al-damaged");
 assert(songResponse.title === "大风歌20XX" && songResponse.album === "从众效应Conformity" && songResponse.artist === "Unknown Artist", "song API response repairs the detail view without mutating source data");
 
+const questionOnlyAlbum = mapAlbum({
+  id: "al-question", name: "？？xx? Conformity", sort_name: null, year: null, genre: null,
+  cover_r2_key: null, song_count: 1, duration: 0, size: 0, compilation: 0, created_at: 0, updated_at: 0,
+}, "Unknown Artist", undefined, uri);
+assert(questionOnlyAlbum.name === "从众效应Conformity", "repeated full-width or ASCII question marks trigger path recovery");
+
 const clean = recoverMetadataFromStoragePath(
   "r2://music/专辑/别名（wav）/01 不应替换.wav",
   { title: "正确标题", artist: "正确歌手", album: "正确专辑" },
