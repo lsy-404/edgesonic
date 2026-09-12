@@ -235,20 +235,27 @@ async function unprotectSecret(policy: SsoPolicy, value: string): Promise<string
   }
 }
 
-async function importJwkForUse(jwk: JsonWebKey, usage: "sign" | "verify"): Promise<CryptoKey> {
+async function importJwkForUse(jwk: JsonWebKey, usage: "sign" | "verify", extractable = false): Promise<CryptoKey> {
   if (!jwk || typeof jwk !== "object" || typeof jwk.kty !== "string") throw new OidcFlowError("configuration_error");
   if (jwk.kty === "RSA") {
     const algorithm = jwk.alg === "PS256" ? { name: "RSA-PSS", hash: "SHA-256" } : jwk.alg === undefined || jwk.alg === "RS256" ? { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" } : null;
     if (!algorithm) throw new OidcFlowError("configuration_error");
-    return crypto.subtle.importKey("jwk", jwk, algorithm, false, [usage]);
+    return crypto.subtle.importKey("jwk", jwk, algorithm, extractable, [usage]);
   }
   if (jwk.kty === "EC" && jwk.crv === "P-256") {
-    return crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, [usage]);
+    return crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, extractable, [usage]);
   }
   if (jwk.kty === "OKP" && jwk.crv === "Ed25519") {
-    return crypto.subtle.importKey("jwk", jwk, "Ed25519", false, [usage]);
+    return crypto.subtle.importKey("jwk", jwk, "Ed25519", extractable, [usage]);
   }
   throw new OidcFlowError("configuration_error");
+}
+
+export async function restoreDpopKeyPair(privateJwk: JsonWebKey, publicJwk: JsonWebKey): Promise<CryptoKeyPair> {
+  return {
+    privateKey: await importJwkForUse(privateJwk, "sign"),
+    publicKey: await importJwkForUse(publicJwk, "verify", true),
+  };
 }
 
 async function createDpopMaterial(): Promise<{ privateJwk: JsonWebKey; publicJwk: JsonWebKey; jkt: string }> {
@@ -266,10 +273,7 @@ async function createDpopProof(privateJwk: JsonWebKey, publicJwk: JsonWebKey, me
 
 async function dpopHandleFromTransaction(transaction: OidcTransaction, config: Awaited<ReturnType<typeof oidcConfiguration>>) {
   if (!transaction.dpopPrivateJwk || !transaction.dpopPublicJwk) return undefined;
-  const keyPair = {
-    privateKey: await importJwkForUse(transaction.dpopPrivateJwk, "sign"),
-    publicKey: await importJwkForUse(transaction.dpopPublicJwk, "verify"),
-  };
+  const keyPair = await restoreDpopKeyPair(transaction.dpopPrivateJwk, transaction.dpopPublicJwk);
   return getDPoPHandle(config, keyPair);
 }
 
@@ -576,10 +580,7 @@ export async function refreshOidcSession(
     try {
       const keys = JSON.parse(await unprotectSecret(policy, row.sso_dpop_key)) as { privateKey?: JsonWebKey; publicKey?: JsonWebKey };
       if (keys.privateKey && keys.publicKey) {
-        dpopHandle = getDPoPHandle(config, {
-          privateKey: await importJwkForUse(keys.privateKey, "sign"),
-          publicKey: await importJwkForUse(keys.publicKey, "verify"),
-        });
+        dpopHandle = getDPoPHandle(config, await restoreDpopKeyPair(keys.privateKey, keys.publicKey));
       } else throw new Error("missing DPoP key material");
     } catch {
       throw new OidcFlowError("invalid_secret");

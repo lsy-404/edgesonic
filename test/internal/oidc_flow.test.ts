@@ -10,6 +10,7 @@ import {
   completeOidcAuthorization,
   OIDC_TRANSACTION_COOKIE,
   OidcFlowError,
+  restoreDpopKeyPair,
   validateAuthorizationResponseState,
 } from "../../worker/src/utils/oidc";
 
@@ -276,6 +277,18 @@ async function expectFailure(run: () => Promise<unknown>, label: string) {
 }
 
 async function main() {
+  const generatedDpop = await crypto.subtle.generateKey(
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["sign", "verify"],
+  ) as CryptoKeyPair;
+  const restoredDpop = await restoreDpopKeyPair(
+    await crypto.subtle.exportKey("jwk", generatedDpop.privateKey),
+    await crypto.subtle.exportKey("jwk", generatedDpop.publicKey),
+  );
+  assert.equal(restoredDpop.privateKey.extractable, false);
+  assert.equal(restoredDpop.publicKey.extractable, true);
+
   assert.doesNotThrow(() => validateAuthorizationResponseState(`${CALLBACK}?response=signed-jarm`, "expected-state"));
   assert.doesNotThrow(() => validateAuthorizationResponseState(`${CALLBACK}?state=expected-state`, "expected-state"));
   assert.throws(
