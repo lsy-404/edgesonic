@@ -68,6 +68,10 @@ interface Env {
   // See worker/SECRETS.md §3.
   R2_ACCESS_KEY_ID?: string;
   R2_SECRET_ACCESS_KEY?: string;
+  // Optional write-capable R2 S3 credentials for server-side CopyObject.
+  // Keep these separate from the read-only presign credentials above.
+  R2_COPY_ACCESS_KEY_ID?: string;
+  R2_COPY_SECRET_ACCESS_KEY?: string;
   // Permission matrix cache, pushed dynamically via
   // POST /edgesonic/permissions/save using the same CF-API-secret-write
   // pattern as CF_API_TOKEN (cf.ts:setToken) — no redeploy needed. JSON

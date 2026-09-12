@@ -23,6 +23,9 @@
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { tidyFolderRoutes, renderTemplate } from "../../worker/src/endpoints/tag/tidy";
+import { installFixedLengthStream } from "../helpers/fixedLengthStream";
+
+installFixedLengthStream();
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -167,7 +170,16 @@ function makeBucket() {
   return {
     bucket: {
       async get(key: string) {
-        return objects.get(key) ?? null;
+        const item = objects.get(key);
+        if (!item) return null;
+        return {
+          ...item,
+          key,
+          size: item.body instanceof Uint8Array ? item.body.byteLength : 0,
+          body: item.body instanceof Uint8Array
+            ? new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(item.body); controller.close(); } })
+            : item.body,
+        };
       },
       async put(key: string, body: any, opts?: any) {
         puts.push(key);

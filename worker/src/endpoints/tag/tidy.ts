@@ -34,6 +34,7 @@ import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import { createQueries } from "../../db/queries";
 import { encodePath } from "../storage/scan";
+import { copyR2Object } from "../../utils/r2ObjectCopy";
 
 export const tidyFolderRoutes = new Hono();
 
@@ -231,19 +232,14 @@ function sanitiseSegment(s: string): string {
   return s.replace(/[\/<>:"\\|?*\x00-\x1f]/g, "_").replace(/\s+$/g, "").replace(/^\./, "_");
 }
 
-// Per-instance move: R2 → bucket copy + delete; WebDAV → HTTP MOVE (with a
+// Per-instance move: R2 → server-side bucket copy + delete; WebDAV → HTTP MOVE (with a
 // GET/PUT/DELETE fallback for servers that reject MOVE). Storage URI in D1 is
 // updated atomically with the storage side-effect.
 async function applyMove(env: Env, db: D1Database, sources: Map<string, SourceRow>, fromUri: string, toUri: string) {
   if (fromUri.startsWith("r2://") && toUri.startsWith("r2://")) {
     const fromKey = fromUri.substring("r2://".length);
     const toKey = toUri.substring("r2://".length);
-    const obj = await env.MUSIC_BUCKET.get(fromKey);
-    if (!obj) throw new Error("source object not found");
-    await env.MUSIC_BUCKET.put(toKey, obj.body, {
-      httpMetadata: obj.httpMetadata,
-      customMetadata: obj.customMetadata,
-    });
+    if (!await copyR2Object(env, fromKey, toKey)) throw new Error("source object not found");
     await env.MUSIC_BUCKET.delete(fromKey);
   } else if (fromUri.startsWith("webdav://") && toUri.startsWith("webdav://")) {
     const fromAfter = fromUri.substring("webdav://".length);
