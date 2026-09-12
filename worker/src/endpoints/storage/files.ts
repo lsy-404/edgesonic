@@ -23,6 +23,7 @@ import { createSubsonicAdapter } from "../../adapters/subsonic";
 import { encodePath } from "./scan";
 import { srcBaseUrl, type SourceRow } from "../../utils/slices";
 import { PayloadTooLargeError, limitReadableStream } from "../../utils/streamLimit";
+import { copyR2Object, createR2CopyRequestState, type R2CopyRequestState } from "../../utils/r2ObjectCopy";
 import type { User } from "../../types/entities";
 
 export const filesRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
@@ -529,46 +530,14 @@ function normalizeFolderPath(p: string | undefined): string | null {
   return path;
 }
 
-const R2_COPY_RETRY_DELAYS_MS = [100, 250];
 const R2_COPY_CONCURRENCY = 4;
 
-function isRetryableR2CopyError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /\b10001\b/.test(message) || (/internal error/i.test(message) && /try again/i.test(message));
-}
-
-function waitForR2CopyRetry(delayMs: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, delayMs));
-}
-
-// R2 does not expose a native rename in the Worker binding. A GET body is an
-// unknown-length stream, so wrap it before PUT or R2 may reject the copy.
-async function copyR2Object(bucket: R2Bucket, sourceKey: string, destKey: string): Promise<boolean> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= R2_COPY_RETRY_DELAYS_MS.length; attempt++) {
-    try {
-      const obj = await bucket.get(sourceKey);
-      if (!obj || !("body" in obj) || !obj.body) return false;
-      await bucket.put(destKey, obj.body.pipeThrough(new FixedLengthStream(obj.size)), {
-        httpMetadata: obj.httpMetadata,
-        customMetadata: obj.customMetadata,
-      });
-      return true;
-    } catch (error) {
-      lastError = error;
-      const delayMs = R2_COPY_RETRY_DELAYS_MS[attempt];
-      if (!isRetryableR2CopyError(error) || delayMs === undefined) throw error;
-      await waitForR2CopyRetry(delayMs);
-    }
-  }
-  throw lastError instanceof Error ? lastError : new Error(String(lastError));
-}
-
 async function copyR2Page(
-  bucket: R2Bucket,
+  env: Env,
   objects: R2Object[],
   sourcePrefix: string,
   destPrefix: string,
+  state: R2CopyRequestState,
 ): Promise<Array<{ sourceKey: string; destKey: string }>> {
   const copied: Array<{ sourceKey: string; destKey: string }> = [];
   let nextIndex = 0;
@@ -578,7 +547,7 @@ async function copyR2Page(
       if (index >= objects.length) return;
       const sourceKey = objects[index].key;
       const destKey = destPrefix + sourceKey.substring(sourcePrefix.length);
-      if (await copyR2Object(bucket, sourceKey, destKey)) copied.push({ sourceKey, destKey });
+      if (await copyR2Object(env, sourceKey, destKey, state)) copied.push({ sourceKey, destKey });
     }
   }
   const workerCount = Math.min(R2_COPY_CONCURRENCY, objects.length);
@@ -655,7 +624,8 @@ filesRoutes.post("/files/deleteFolder", permissionMiddleware("delete"), async (c
 // POST /storage/files/moveFolder body: { path: "music/a", dest: "music/b/a" }
 // — R2 only. Recursively re-homes every object under `${path}/` to `${dest}/`
 // (the `.keep` marker travels along, so empty folders survive the move). Each
-// page is copied first (get→put) and only then bulk-deleted, so a mid-flight
+// page is copied first (server-side CopyObject when configured, otherwise
+// fixed-length get→put) and only then bulk-deleted, so a mid-flight
 // failure can leave duplicates at both locations but never loses bytes — a
 // retry is idempotent. Moving a folder into itself or a descendant is refused:
 // it would rewrite keys back under the prefix being enumerated. storage_uri
@@ -676,9 +646,10 @@ filesRoutes.post("/files/moveFolder", permissionMiddleware("upload"), async (c) 
   const now = Math.floor(Date.now() / 1000);
   let moved = 0;
   let cursor: string | undefined;
+  const copyState = createR2CopyRequestState();
   do {
     const listing = await env.MUSIC_BUCKET.list({ prefix, cursor, limit: 1000 });
-    const copied = await copyR2Page(env.MUSIC_BUCKET, listing.objects, prefix, destPrefix);
+    const copied = await copyR2Page(env, listing.objects, prefix, destPrefix, copyState);
     const movedKeys = copied.map(({ sourceKey }) => sourceKey);
     const uriUpdates = copied.map(({ sourceKey, destKey }) =>
       db.prepare("UPDATE song_instances SET storage_uri = ?, updated_at = ? WHERE storage_uri = ?")
@@ -707,7 +678,7 @@ filesRoutes.post("/files/move", permissionMiddleware("upload"), async (c) => {
   // the move dialog defaults its folder picker to the current directory).
   if (dest === key) return c.json({ ok: true });
 
-  if (!await copyR2Object(env.MUSIC_BUCKET, key, dest)) {
+  if (!await copyR2Object(env, key, dest)) {
     return c.json({ ok: false, error: "Source not found" }, 404);
   }
   await env.MUSIC_BUCKET.delete(key);
@@ -725,7 +696,7 @@ filesRoutes.post("/files/copy", permissionMiddleware("upload"), async (c) => {
   const { key, dest } = body;
   if (!key || !dest) return c.json({ ok: false, error: "Missing key or dest" }, 400);
 
-  if (!await copyR2Object(env.MUSIC_BUCKET, key, dest)) {
+  if (!await copyR2Object(env, key, dest)) {
     return c.json({ ok: false, error: "Source not found" }, 404);
   }
   return c.json({ ok: true });
