@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "db:migrate:local": "wrangler d1 execute edgesonic-db --local --file",
     "db:migrate:remote": "wrangler d1 execute edgesonic-db --remote --file",
-    "db:migrate:personal-sso": "wrangler d1 execute edgesonic-db --remote --file migrations/0039_personal_sso_identity_mapping.sql",
+    "db:preflight:personal-sso": "node scripts/check-personal-sso-schema.mjs",
+    "db:migrate:personal-sso": "npm run db:preflight:personal-sso && wrangler d1 execute edgesonic-db --remote --file migrations/0039_personal_sso_identity_mapping.sql",
     "db:seed": "npx tsx scripts/seed.ts"
   },
   "repository": {
