@@ -38,6 +38,8 @@ SSO_MODE = "disabled"
 # SSO_ISSUER = "https://id.example.com"
 # SSO_CLIENT_ID = "edgesonic"
 # SSO_PROVIDER_NAME = "Single Sign-On"
+# Register this RP back-channel logout URI with the provider when supported:
+#   https://<your-edgesonic-host>/edgesonic/auth/sso/backchannel-logout
 # Shared identity mapping is intentionally off. Set to "1" only when this
 # Worker and the identity provider use the same D1 identity_accounts table.
 SSO_SHARED_IDENTITY_MAPPING = "0"

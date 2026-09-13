@@ -43,6 +43,7 @@ import {
   clearOidcDeviceCookie,
   clearOidcTransactionCookie,
   completeOidcAuthorization,
+  handleBackchannelLogout,
   pollOidcDeviceAuthorization,
   refreshOidcSession,
 } from "../../utils/oidc";
@@ -154,6 +155,18 @@ webLoginRoutes.get("/edgesonic/auth/sso/logout", async (c) => {
 
 webLoginRoutes.get("/edgesonic/auth/sso/logout-complete", (c) => {
   return c.redirect(`${new URL(c.req.url).origin}/#/login?logout=complete`, 303);
+});
+
+webLoginRoutes.post("/edgesonic/auth/sso/backchannel-logout", async (c) => {
+  try {
+    await handleBackchannelLogout(c.env, c.req.raw, c.req.url);
+    c.header("Cache-Control", "no-store");
+    return c.body(null, 200);
+  } catch (error) {
+    c.header("Cache-Control", "no-store");
+    const code = error instanceof Error && "code" in error ? String((error as { code?: unknown }).code) : "invalid_logout_token";
+    return c.json({ ok: false, error: code }, 400);
+  }
 });
 
 webLoginRoutes.post("/edgesonic/auth/sso/refresh", async (c) => {

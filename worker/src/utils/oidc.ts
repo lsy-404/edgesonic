@@ -25,7 +25,7 @@ import {
   type IDToken,
   type UserInfoResponse,
 } from "openid-client";
-import { CompactSign, calculateJwkThumbprint, importJWK } from "jose";
+import { CompactSign, calculateJwkThumbprint, decodeProtectedHeader, importJWK, jwtVerify } from "jose";
 import { SESSION_TTL_SEC } from "../auth";
 import type { User } from "../types/entities";
 import { clampTtlToActivation, resolveActivation } from "./activation";
@@ -39,6 +39,9 @@ const TRANSACTION_VERSION = 2;
 const COOKIE_AAD = new TextEncoder().encode("edgesonic-oidc-transaction-v2");
 const SECRET_AAD_PREFIX = "edgesonic-oidc-secret-v1:";
 const OIDC_TOKEN_MAX_BYTES = 64 * 1024;
+const OIDC_LOGOUT_FORM_MAX_BYTES = 16 * 1024;
+const OIDC_LOGOUT_TOKEN_MAX_AGE_SEC = 5 * 60;
+const OIDC_LOGOUT_IAT_FUTURE_SKEW_SEC = 60;
 export const OIDC_DEVICE_COOKIE = "edgesonic_oidc_device";
 
 interface OidcTransaction {
@@ -353,6 +356,130 @@ async function oidcConfiguration(policy: SsoPolicy, fetcher: CustomFetch, useJar
   }
   config.timeout = 10;
   return config;
+}
+
+async function readBoundedText(request: Request, maxBytes: number): Promise<string> {
+  if (!request.body) throw new OidcFlowError("invalid_logout_request");
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) throw new OidcFlowError("invalid_logout_request");
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(body);
+}
+
+interface BackchannelLogoutClaims {
+  sub: string;
+  jti: string;
+}
+
+async function verifyBackchannelLogoutToken(
+  policy: SsoPolicy,
+  token: string,
+  fetcher: CustomFetch,
+): Promise<BackchannelLogoutClaims> {
+  if (!token || token.length > OIDC_LOGOUT_FORM_MAX_BYTES) throw new OidcFlowError("invalid_logout_token");
+  let header: ReturnType<typeof decodeProtectedHeader>;
+  try {
+    header = decodeProtectedHeader(token);
+  } catch {
+    throw new OidcFlowError("invalid_logout_token");
+  }
+  if (header.alg !== "RS256" || typeof header.kid !== "string" || !header.kid) {
+    throw new OidcFlowError("invalid_logout_token");
+  }
+
+  const config = await oidcConfiguration(policy, fetcher);
+  const jwksUri = config.serverMetadata().jwks_uri;
+  if (typeof jwksUri !== "string") throw new OidcFlowError("configuration_error");
+  const jwksResponse = await fetcher(jwksUri, { method: "GET", body: undefined, headers: {}, redirect: "manual" });
+  if (!jwksResponse.ok) throw new OidcFlowError("invalid_logout_token");
+  const jwksText = await jwksResponse.text();
+  if (jwksText.length > OIDC_TOKEN_MAX_BYTES) throw new OidcFlowError("invalid_logout_token");
+  let jwks: { keys?: Array<JsonWebKey & { kid?: string; alg?: string }> };
+  try { jwks = JSON.parse(jwksText) as { keys?: JsonWebKey[] }; } catch { throw new OidcFlowError("invalid_logout_token"); }
+  const jwk = Array.isArray(jwks.keys)
+    ? jwks.keys.find((candidate) => candidate.kid === header.kid && candidate.kty === "RSA" && candidate.alg === "RS256")
+    : undefined;
+  if (!jwk) throw new OidcFlowError("invalid_logout_token");
+
+  let verified: { payload: Record<string, unknown> };
+  try {
+    verified = await jwtVerify(token, await importJWK(jwk, "RS256"), {
+      algorithms: ["RS256"],
+      issuer: policy.issuer as string,
+      audience: policy.clientId as string,
+      requiredClaims: ["iss", "aud", "iat", "exp", "jti", "events", "sub"],
+      maxTokenAge: `${OIDC_LOGOUT_TOKEN_MAX_AGE_SEC}s`,
+      clockTolerance: OIDC_LOGOUT_IAT_FUTURE_SKEW_SEC,
+    });
+  } catch {
+    throw new OidcFlowError("invalid_logout_token");
+  }
+  const payload = verified.payload;
+  if (Object.prototype.hasOwnProperty.call(payload, "nonce")) throw new OidcFlowError("invalid_logout_token");
+  if (typeof payload.iat !== "number" || !Number.isInteger(payload.iat)
+    || payload.iat > Math.floor(Date.now() / 1000) + OIDC_LOGOUT_IAT_FUTURE_SKEW_SEC
+    || payload.iat < Math.floor(Date.now() / 1000) - OIDC_LOGOUT_TOKEN_MAX_AGE_SEC) {
+    throw new OidcFlowError("invalid_logout_token");
+  }
+  if (typeof payload.sub !== "string" || !payload.sub || typeof payload.jti !== "string"
+    || !payload.jti || payload.jti.length > 512) {
+    throw new OidcFlowError("invalid_logout_token");
+  }
+  const events = payload.events as Record<string, unknown> | undefined;
+  if (!events || typeof events !== "object" || Array.isArray(events)
+    || !Object.prototype.hasOwnProperty.call(events, "http://schemas.openid.net/event/backchannel-logout")
+    || !events["http://schemas.openid.net/event/backchannel-logout"]
+    || typeof events["http://schemas.openid.net/event/backchannel-logout"] !== "object"
+    || Array.isArray(events["http://schemas.openid.net/event/backchannel-logout"])) {
+    throw new OidcFlowError("invalid_logout_token");
+  }
+  return { sub: payload.sub, jti: payload.jti };
+}
+
+export async function handleBackchannelLogout(
+  env: OidcEnv,
+  request: Request,
+  requestUrl: string,
+  fetcher: CustomFetch = runtimeFetch,
+): Promise<number> {
+  const contentType = request.headers.get("Content-Type")?.split(";", 1)[0].trim().toLowerCase();
+  if (request.method !== "POST" || contentType !== "application/x-www-form-urlencoded") {
+    throw new OidcFlowError("invalid_logout_request");
+  }
+  const form = new URLSearchParams(await readBoundedText(request, OIDC_LOGOUT_FORM_MAX_BYTES));
+  const tokens = form.getAll("logout_token");
+  if (tokens.length !== 1) throw new OidcFlowError("invalid_logout_request");
+  const token = tokens[0];
+  const policy = requireConfiguredSso(env, requestUrl);
+  const claims = await verifyBackchannelLogoutToken(policy, token, fetcher);
+  await ensureSsoSchema(env);
+  const identity = await env.DB.prepare(
+    "SELECT username FROM oidc_identities WHERE issuer = ? AND subject = ?",
+  ).bind(policy.issuer, claims.sub).first<{ username: string }>();
+  if (!identity?.username) return 0;
+  const result = await env.DB.prepare(
+    `DELETE FROM sessions
+       WHERE username = ? AND auth_source = 'sso'
+         AND sso_issuer = ? AND sso_client_id = ?`,
+  ).bind(identity.username, policy.issuer, policy.clientId).run();
+  return Number(result.meta?.changes || 0);
 }
 
 function readJwkSecret(raw: string | undefined): JsonWebKey | null {
