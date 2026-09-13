@@ -10,3 +10,4 @@
 - amend 前最终验证：OIDC 测试通过、完整 `test:sso` 4/4、Worker typecheck、web typecheck 和 `git diff --check` 全部通过。
 - 已在生产配置开启同库映射并部署版本 `01dc128e-6768-4d91-a630-a5823771e9dd`。
 - 已完成生产首次映射、未激活门禁、撤权及清理验证；另行回归专用密码、token+salt 与 API key，三种 Subsonic `/rest/ping.view` 均为 200/`ok`。
+- 最终生产配置复核：SSO 为 required 且可用、activation 开启、访客关闭、本地注册和本地登录均为 403。
