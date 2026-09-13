@@ -13,3 +13,4 @@
 - 2026-09-12：重新运行 annotation、clone 身份映射和 OpenSubsonic 测试，全部通过；Worker TypeScript 检查再次通过，临时依赖链接已删除。
 - 2026-09-12：rebase 到最新 `origin/main` 后回归测试通过；确认 GitHub `main` 无经典分支保护且无适用 ruleset。
 - 2026-09-12：完成差异检查与违禁标记自检，将两个实现提交快进合并到本地 `main`，准备推送远端。
+- 2026-09-12：将本地 `main` 推送到 `origin/main`，远端更新到 `81e9755`。
