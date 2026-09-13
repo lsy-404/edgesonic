@@ -8,3 +8,5 @@
 - 未部署、未推送、未合并；已创建普通 commit。
 - 已修复共享映射写入后的并发竞争窗口，并用测试 hook 模拟竞争映射，确认最终 session 采用持久化赢家。
 - amend 前最终验证：OIDC 测试通过、完整 `test:sso` 4/4、Worker typecheck、web typecheck 和 `git diff --check` 全部通过。
+- 已在生产配置开启同库映射并部署版本 `01dc128e-6768-4d91-a630-a5823771e9dd`。
+- 已完成生产首次映射、未激活门禁、撤权及清理验证；另行回归专用密码、token+salt 与 API key，三种 Subsonic `/rest/ping.view` 均为 200/`ok`。
