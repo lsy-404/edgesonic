@@ -38,6 +38,7 @@ interface Env {
   SSO_CLIENT_ID?: string;
   SSO_CLIENT_SECRET?: string;
   SSO_PROVIDER_NAME?: string;
+  SSO_SHARED_IDENTITY_MAPPING?: "0" | "1";
   SSO_USE_PAR?: string;
   SSO_USE_JARM?: string;
   SSO_USE_DPOP?: string;

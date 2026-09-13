@@ -38,6 +38,9 @@ SSO_MODE = "disabled"
 # SSO_ISSUER = "https://id.example.com"
 # SSO_CLIENT_ID = "edgesonic"
 # SSO_PROVIDER_NAME = "Single Sign-On"
+# Shared identity mapping is intentionally off. Set to "1" only when this
+# Worker and the identity provider use the same D1 identity_accounts table.
+SSO_SHARED_IDENTITY_MAPPING = "0"
 # PAR is enabled when the provider advertises it. Set these optional flags to
 # enable/disable advanced OIDC negotiation:
 # SSO_USE_PAR = "1"

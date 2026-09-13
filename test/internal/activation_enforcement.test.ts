@@ -109,7 +109,8 @@ function setupSchema(sqlite: DatabaseSync, opts: { guestEnabled: boolean }): voi
     CREATE UNIQUE INDEX idx_users_email ON users(email) WHERE email IS NOT NULL;
     CREATE TABLE sessions (
       id TEXT PRIMARY KEY, username TEXT NOT NULL, token TEXT NOT NULL UNIQUE,
-      user_agent TEXT, expires_at INTEGER NOT NULL, created_at INTEGER DEFAULT 0
+      user_agent TEXT, expires_at INTEGER NOT NULL, created_at INTEGER DEFAULT 0,
+      auth_source TEXT NOT NULL DEFAULT 'local'
     );
     CREATE TABLE subsonic_credentials (
       id TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL,
@@ -156,7 +157,7 @@ function setupSchema(sqlite: DatabaseSync, opts: { guestEnabled: boolean }): voi
 
 type Harness = {
   sqlite: DatabaseSync;
-  env: { DB: D1Database; INSTANCE_ID: string };
+  env: { DB: D1Database; INSTANCE_ID: string; SSO_MODE?: "disabled" | "optional" | "required" };
   request: (path: string, init?: RequestInit) => Promise<Response>;
 };
 
@@ -186,13 +187,13 @@ function makeHarness(opts: { guestEnabled: boolean }): Harness {
   };
 }
 
-async function seedUser(h: Harness, username: string, level: number, status: string, until: number | null): Promise<void> {
+async function seedUser(h: Harness, username: string, level: number, status: string, until: number | null, authSource: "local" | "sso" = "local"): Promise<void> {
   h.sqlite.prepare(
     "INSERT INTO users (username, master_password, level, activation_status, activated_until) VALUES (?, ?, ?, ?, ?)"
   ).run(username, await sha256("pw"), level, status, until);
   h.sqlite.prepare(
-    "INSERT INTO sessions (id, username, token, expires_at) VALUES (?, ?, ?, ?)"
-  ).run(`sid-${username}`, username, `tok-${username}`, Math.floor(Date.now() / 1000) + 7 * 86400);
+    "INSERT INTO sessions (id, username, token, auth_source, expires_at) VALUES (?, ?, ?, ?, ?)"
+  ).run(`sid-${username}`, username, `tok-${username}`, authSource, Math.floor(Date.now() / 1000) + 7 * 86400);
 }
 
 function cookieFor(username: string): Record<string, string> {
@@ -267,7 +268,9 @@ async function main() {
   console.log("authMiddleware: inactive web session, guest disabled:");
   {
     const h = makeHarness({ guestEnabled: false });
+    h.env.SSO_MODE = "optional";
     await seedUser(h, "erin", 1, "disabled", null);
+    await seedUser(h, "sso-erin", 1, "disabled", null, "sso");
     const c = cookieFor("erin");
 
     const me = await h.request("/edgesonic/activation/me", { headers: c });
@@ -279,6 +282,13 @@ async function main() {
     assert(read.status === 403, "management GET denied");
     const rest = await h.request("/rest/getPlaylists", { headers: c });
     assert(rest.status === 403, "REST read denied");
+
+    const ssoCookie = cookieFor("sso-erin");
+    const ssoMe = await h.request("/edgesonic/activation/me", { headers: ssoCookie });
+    assert(ssoMe.status === 200 && !(await ssoMe.json() as { active: boolean }).active,
+      "inactive OIDC session remains restricted but can reach activation status");
+    const ssoRead = await h.request("/edgesonic/mgmtread", { headers: ssoCookie });
+    assert(ssoRead.status === 403, "inactive OIDC session cannot reach management routes");
 
     // The guest-availability probe must stay reachable — the SPA uses it to
     // decide between guest degradation and the activation-required page.

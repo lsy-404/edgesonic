@@ -22,7 +22,8 @@ const CLIENT_SECRET = "unit-test-client-secret";
 const APP_ORIGIN = "https://music.example";
 const CALLBACK = `${APP_ORIGIN}/edgesonic/auth/sso/callback`;
 
-function makeD1(sqlite: DatabaseSync): any {
+function makeD1(sqlite: DatabaseSync, beforeIdentityInsert?: () => void): any {
+  let identityInsertHook = beforeIdentityInsert;
   function prepare(query: string) {
     const statement = sqlite.prepare(query);
     let values: any[] = [];
@@ -33,6 +34,11 @@ function makeD1(sqlite: DatabaseSync): any {
         return { results: statement.all(...values) as T[], success: true, meta: {} };
       },
       async run() {
+        if (identityInsertHook && query.includes("INSERT OR IGNORE INTO oidc_identities")) {
+          const hook = identityInsertHook;
+          identityInsertHook = undefined;
+          hook();
+        }
         const result = statement.run(...values);
         return { success: true, meta: { changes: Number(result.changes) } };
       },
@@ -70,6 +76,11 @@ function buildDatabase(): DatabaseSync {
       activated_until INTEGER,
       created_at INTEGER NOT NULL DEFAULT 0,
       updated_at INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE identity_accounts (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
     );
     CREATE UNIQUE INDEX idx_users_email ON users(email) WHERE email IS NOT NULL;
     CREATE TABLE sessions (
@@ -112,19 +123,26 @@ function buildDatabase(): DatabaseSync {
       max_rph INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (level, permission)
     );
-    INSERT INTO features (key, value) VALUES ('enable_activation', 0);
+    INSERT INTO features (key, value) VALUES ('enable_activation', 1);
     INSERT INTO users
       (username, master_password, level, enabled, email, activation_status, created_at, updated_at)
       VALUES ('existing-admin', 'x', 3, 1, 'same@example.com', 'permanent', unixepoch(), unixepoch());
+    INSERT INTO users
+      (username, master_password, level, enabled, email, activation_status, created_at, updated_at)
+      VALUES ('shared-inactive', 'x', 1, 1, 'shared@example.com', 'disabled', unixepoch(), unixepoch());
+    INSERT INTO users
+      (username, master_password, level, enabled, email, activation_status, created_at, updated_at)
+      VALUES ('shared-race', 'x', 1, 1, 'race@example.com', 'permanent', unixepoch(), unixepoch());
+    INSERT INTO identity_accounts (id, username) VALUES ('identity-shared-inactive', 'shared-inactive');
     INSERT INTO oidc_identities (issuer, subject, username, created_at, last_login_at)
       VALUES ('https://identity.example', 'person-123', 'existing-admin', unixepoch(), unixepoch());
   `);
   return sqlite;
 }
 
-function environment(sqlite: DatabaseSync) {
+function environment(sqlite: DatabaseSync, beforeIdentityInsert?: () => void) {
   return {
-    DB: makeD1(sqlite),
+    DB: makeD1(sqlite, beforeIdentityInsert),
     INSTANCE_ID: "test-instance",
     SSO_MODE: "optional",
     SSO_ISSUER: ISSUER,
@@ -225,7 +243,7 @@ function provider(options: { claims?: ClaimOverrides; signingKey?: KeyObject } =
     if (url.pathname === "/oauth/userinfo") {
       assert.equal(new Headers(init.headers).get("Authorization"), "Bearer provider-access-token");
       return jsonResponse({
-        sub: "person-123",
+        sub: typeof options.claims?.sub === "string" ? options.claims.sub : "person-123",
         preferred_username: "remote-person",
         email: "same@example.com",
         roles: ["administrator"],
@@ -336,10 +354,50 @@ async function main() {
   assert.equal((sqlite.prepare("SELECT COUNT(*) AS count FROM users WHERE username LIKE 'sso_%'").get() as { count: number }).count, 0);
   assert.equal((sqlite.prepare("SELECT auth_source FROM sessions WHERE token = ?").get(result.sessionToken) as { auth_source: string }).auth_source, "sso");
 
+  const sharedSubjectProvider = provider({ claims: { sub: "identity-shared-inactive" } });
+  const sharedSubjectStart = await begin(sharedSubjectProvider, env);
+  await assert.rejects(
+    () => complete(sharedSubjectProvider, env, sharedSubjectStart.authorizationUrl.searchParams.get("state") as string, sharedSubjectStart.cookie),
+    (error: unknown) => error instanceof OidcFlowError && error.code === "identity_not_mapped",
+    "shared identity mapping must remain disabled by default",
+  );
+
+  env.SSO_SHARED_IDENTITY_MAPPING = "1";
+  const sharedMappedProvider = provider({ claims: { sub: "identity-shared-inactive" } });
+  const sharedMappedStart = await begin(sharedMappedProvider, env);
+  const inactive = await complete(sharedMappedProvider, env, sharedMappedStart.authorizationUrl.searchParams.get("state") as string, sharedMappedStart.cookie);
+  assert.equal(inactive.username, "shared-inactive");
+  assert.equal(inactive.activation.status, "disabled");
+  assert.equal(inactive.activation.active, false, "shared OIDC mapping must preserve inactive activation state");
+  assert.equal(
+    (sqlite.prepare("SELECT username FROM oidc_identities WHERE issuer = ? AND subject = ?").get(ISSUER, "identity-shared-inactive") as { username: string }).username,
+    "shared-inactive",
+  );
+  const sharedRepeatProvider = provider({ claims: { sub: "identity-shared-inactive" } });
+  const sharedRepeatStart = await begin(sharedRepeatProvider, env);
+  await complete(sharedRepeatProvider, env, sharedRepeatStart.authorizationUrl.searchParams.get("state") as string, sharedRepeatStart.cookie);
+  assert.equal(
+    (sqlite.prepare("SELECT COUNT(*) AS count FROM oidc_identities WHERE issuer = ? AND subject = ?").get(ISSUER, "identity-shared-inactive") as { count: number }).count,
+    1,
+    "shared mapping must be idempotent",
+  );
+
+  sqlite.prepare("INSERT INTO identity_accounts (id, username) VALUES (?, ?)").run("identity-race", "shared-race");
+  const raceEnv = environment(sqlite, () => {
+    sqlite.prepare(
+      "INSERT INTO oidc_identities (issuer, subject, username, created_at, last_login_at) VALUES (?, ?, ?, unixepoch(), unixepoch())",
+    ).run(ISSUER, "identity-race", "existing-admin");
+  });
+  raceEnv.SSO_SHARED_IDENTITY_MAPPING = "1";
+  const raceProvider = provider({ claims: { sub: "identity-race" } });
+  const raceStart = await begin(raceProvider, raceEnv);
+  const raceResult = await complete(raceProvider, raceEnv, raceStart.authorizationUrl.searchParams.get("state") as string, raceStart.cookie);
+  assert.equal(raceResult.username, "existing-admin", "a competing persisted mapping must determine the session user");
+
   const second = await begin(currentProvider, env);
   const repeated = await complete(currentProvider, env, second.authorizationUrl.searchParams.get("state") as string, second.cookie);
   assert.equal(repeated.username, result.username);
-  assert.equal((sqlite.prepare("SELECT COUNT(*) AS count FROM users").get() as { count: number }).count, 1);
+  assert.equal((sqlite.prepare("SELECT COUNT(*) AS count FROM users").get() as { count: number }).count, 3);
 
   const stateProvider = provider();
   const stateStart = await begin(stateProvider, env);

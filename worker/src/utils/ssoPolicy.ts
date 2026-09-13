@@ -16,6 +16,9 @@ export interface SsoEnvironment {
   SSO_CLIENT_ID?: string;
   SSO_CLIENT_SECRET?: string;
   SSO_PROVIDER_NAME?: string;
+  // When enabled, an OIDC subject may map to an existing identity account in
+  // this D1 database. Explicit oidc_identities mappings always win.
+  SSO_SHARED_IDENTITY_MAPPING?: string;
   SSO_USE_PAR?: string;
   SSO_USE_JARM?: string;
   SSO_USE_DPOP?: string;

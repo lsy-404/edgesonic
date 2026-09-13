@@ -648,6 +648,24 @@ async function resolveIdentity(
     ).bind(Math.floor(Date.now() / 1000), issuer, subject).run();
     return existing;
   }
+  if (env.SSO_SHARED_IDENTITY_MAPPING === "1") {
+    const shared = await env.DB.prepare(
+      `SELECT u.username, u.master_password, u.level, u.enabled,
+              u.activation_status, u.activated_until, u.created_at, u.updated_at
+         FROM identity_accounts a
+         JOIN users u ON u.username = a.username
+        WHERE a.id = ?`,
+    ).bind(subject).first<StoredUserRow>();
+    if (shared) {
+      await env.DB.prepare(
+        `INSERT OR IGNORE INTO oidc_identities
+          (issuer, subject, username, created_at, last_login_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      ).bind(issuer, subject, shared.username, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000)).run();
+      const persisted = await findMappedUser(env.DB, issuer, subject);
+      if (persisted) return persisted;
+    }
+  }
   throw new OidcFlowError("identity_not_mapped");
 }
 
