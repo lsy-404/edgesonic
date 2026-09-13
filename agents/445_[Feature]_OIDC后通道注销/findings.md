@@ -20,3 +20,5 @@
 - `npm run test:sso` 通过，4 个既有 SSO 回归测试全部通过。
 - Wrangler dry-run 通过，未部署。
 - 实现 commit `4860a22`；其后审阅与审计追加提交强制 `typ=logout+jwt` 并覆盖错误 typ、错误 issuer、错误签名。
+- 生产端到端验证证明管理员应用撤权可以终止已建立的 EdgeSonic SSO Web session，同时不会跨越到 local session 或任何 Subsonic 协议凭据表。
+- EdgeSonic 激活开关保持开启；新 SSO 用户的 `activation_status='disabled'` 会保留 activation endpoint，但普通受保护页面仍返回 403，必须继续兑换激活码。
