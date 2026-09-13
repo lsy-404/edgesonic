@@ -12,3 +12,4 @@
 | 442 | [Audit] Subsonic 与强制 SSO 边界 | 审计 required 模式对标准 Subsonic 凭据认证的影响并补充回归测试 | 确保 Web SSO 强制不会破坏既有客户端协议 | ✅ 已完成 |
 | 443 | [BugFix] getSong 收藏状态返回 | 修复 getSong 未可靠返回当前用户歌曲收藏状态的问题并增加回归测试 | 播放器需要以歌曲详情响应恢复准确的收藏状态 | ✅ 已完成 |
 | 444 | [Feature] SSO 供应与激活边界 | 增加默认关闭的同库身份供应，并验证 SSO 新用户仍受 EdgeSonic 激活策略约束 | 管理员授权后允许首次登录，但不能绕过邀请码或激活状态 | ✅ 已完成 |
+| 445 | [Feature] OIDC 后通道注销 | 增加标准 OIDC Back-Channel Logout RP endpoint，撤权时精确清理 EdgeSonic SSO 本地会话并保持 Subsonic 协议凭据不变 | 个人 SSO 管理员撤权后需要立即结束对应 EdgeSonic Web 会话 | ✅ 已完成 |

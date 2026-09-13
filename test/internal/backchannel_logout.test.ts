@@ -14,12 +14,17 @@ const ISSUER = "https://identity.example";
 const CLIENT_ID = "edgesonic-client";
 const KID = "logout-key";
 const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const { privateKey: otherPrivateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
 
 function b64(value: unknown): string {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
 
-function logoutToken(overrides: Record<string, unknown> = {}, key: KeyObject = privateKey): string {
+function logoutToken(
+  overrides: Record<string, unknown> = {},
+  key: KeyObject = privateKey,
+  headerOverrides: Record<string, unknown> = {},
+): string {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     iss: ISSUER,
@@ -31,7 +36,7 @@ function logoutToken(overrides: Record<string, unknown> = {}, key: KeyObject = p
     events: { "http://schemas.openid.net/event/backchannel-logout": {} },
     ...overrides,
   };
-  const input = `${b64({ alg: "RS256", kid: KID, typ: "logout+jwt" })}.${b64(payload)}`;
+  const input = `${b64({ alg: "RS256", kid: KID, typ: "logout+jwt", ...headerOverrides })}.${b64(payload)}`;
   return `${input}.${signBytes("RSA-SHA256", Buffer.from(input), key).toString("base64url")}`;
 }
 
@@ -129,6 +134,9 @@ async function main() {
 
     for (const token of [
       logoutToken({ aud: "other-client" }),
+      logoutToken({}, privateKey, { typ: "JWT" }),
+      logoutToken({ iss: "https://wrong.example" }),
+      logoutToken({}, otherPrivateKey),
       logoutToken({ nonce: "must-not-be-present" }),
       logoutToken({ events: {} }),
       logoutToken({ events: { "http://schemas.openid.net/event/backchannel-logout": null } }),

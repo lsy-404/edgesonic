@@ -400,7 +400,7 @@ async function verifyBackchannelLogoutToken(
   } catch {
     throw new OidcFlowError("invalid_logout_token");
   }
-  if (header.alg !== "RS256" || typeof header.kid !== "string" || !header.kid) {
+  if (header.typ !== "logout+jwt" || header.alg !== "RS256" || typeof header.kid !== "string" || !header.kid) {
     throw new OidcFlowError("invalid_logout_token");
   }
 
