@@ -57,14 +57,14 @@ export interface SubsonicChild {
   playCount?: number;
 }
 
-// Subsonic spec emits `starred` only when truly starred (uses starred_at ISO).
+// Subsonic emits `starred` only when truly starred; epoch preserves that state for legacy rows without a timestamp.
 // Absent annotation → all three fields stay undefined (back-compat with 1.16.1).
 function applyAnnotation<
   T extends { starred?: string; userRating?: number; playCount?: number },
 >(obj: T, ann: AnnotationLite | undefined): T {
   if (!ann) return obj;
-  if (ann.starred === 1 && ann.starred_at !== null) {
-    obj.starred = formatISODate(ann.starred_at);
+  if (ann.starred === 1) {
+    obj.starred = formatISODate(ann.starred_at ?? 0);
   }
   if (ann.rating !== null && ann.rating > 0) obj.userRating = ann.rating;
   if (ann.play_count > 0) obj.playCount = ann.play_count;

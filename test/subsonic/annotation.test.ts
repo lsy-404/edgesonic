@@ -26,6 +26,7 @@ import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { createQueries } from "../../worker/src/db/queries";
 import { annotationRoutes } from "../../worker/src/endpoints/subsonic/annotation";
+import { browsingRoutes } from "../../worker/src/endpoints/subsonic/browsing";
 
 // ---------------------------------------------------------------------------
 // Tiny test harness (same style as test/tagwrite.test.ts)
@@ -178,6 +179,8 @@ function buildDb() {
       VALUES ('sg-2', 'al-1', 'ar-1', 'Song B', 2, 200, 'Rock');
     INSERT INTO song_masters (id, album_id, artist_id, title, track, duration, genre)
       VALUES ('sg-3', 'al-2', 'ar-2', 'Song C', 1, 240, 'Jazz');
+    INSERT INTO song_instances (id, master_id, storage_uri, suffix, content_type, bit_rate, size, duration)
+      VALUES ('si-1', 'sg-1', 'r2://music/song-a.flac', 'flac', 'audio/flac', 900, 1024, 180);
   `);
 
   return sqlite;
@@ -195,6 +198,7 @@ function makeApp(sqlite: DatabaseSync, username = "alice") {
     return next();
   });
   app.route("/rest", annotationRoutes);
+  app.route("/rest", browsingRoutes);
   const env = { DB: makeD1(sqlite) };
   return {
     async hit(method: "GET" | "POST", url: string) {
@@ -402,6 +406,35 @@ console.log("endpoint: getStarred / getStarred2 / getRandomSongs");
   const bodyYear = await rYear.text();
   const oldSongs = (bodyYear.match(/<song /g) ?? []).length;
   assert(oldSongs === 2, `toYear=2010 → 2 songs from al-1 (got ${oldSongs})`);
+}
+
+console.log("endpoint: getSong starred state");
+{
+  const sqlite = buildDb();
+  sqlite.exec(`
+    INSERT INTO annotations (user_id, item_id, item_type, starred, starred_at)
+      VALUES ('alice', 'sg-1', 'song', 1, NULL);
+  `);
+
+  const { hit } = makeApp(sqlite);
+  const starred = await hit("GET", "/rest/getSong?id=sg-1");
+  const starredBody = await starred.text();
+  assert(starred.status === 200 && /<song\b[^>]*\bstarred="[^"]+"/.test(starredBody),
+    "getSong reports starred=1 even when a legacy annotation lacks starred_at");
+
+  await hit("GET", "/rest/unstar?id=sg-1");
+  const unstarred = await hit("GET", "/rest/getSong?id=sg-1");
+  assert(!/<song\b[^>]*\bstarred=/.test(await unstarred.text()),
+    "getSong omits starred after the current user unstars the song");
+
+  sqlite.exec(`
+    UPDATE annotations SET starred = 1, starred_at = 1700000000
+      WHERE user_id = 'alice' AND item_id = 'sg-1' AND item_type = 'song';
+  `);
+  const { hit: hitAsBob } = makeApp(sqlite, "bob");
+  const otherUser = await hitAsBob("GET", "/rest/getSong?id=sg-1");
+  assert(!/<song\b[^>]*\bstarred=/.test(await otherUser.text()),
+    "getSong does not leak another user's starred state");
 }
 
 console.log("endpoint: error paths");
