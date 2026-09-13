@@ -587,7 +587,7 @@ export const authMiddleware = createMiddleware<{
       return authFail(40, "This session authentication source is not allowed", 401);
     }
     c.set("sessionAuthSource", sessionAuthSource);
-  } else if (ssoPolicy.mode === "required") {
+  } else if (ssoPolicy.mode === "required" && authMethod !== "subsonic_cred" && authMethod !== "apikey" && authMethod !== "guest") {
     return authFail(50, "SSO authentication is required", 403);
   }
 

@@ -6,6 +6,7 @@ import { Hono } from "hono";
 import { authMiddleware } from "../../worker/src/auth";
 import { webLoginRoutes } from "../../worker/src/endpoints/edgesonic/auth";
 import { resolveSsoPolicy } from "../../worker/src/utils/ssoPolicy";
+import { md5 } from "../../worker/src/utils/md5";
 
 declare global { type D1Database = unknown; type Env = unknown; }
 
@@ -69,6 +70,8 @@ function buildDatabase(): DatabaseSync {
     INSERT INTO sessions (id, username, token, auth_source, expires_at)
       VALUES ('sso-session', 'alice', 'sso-token', 'sso', unixepoch() + 3600);
     INSERT INTO api_keys (api_key, username) VALUES ('alice-key', 'alice');
+    INSERT INTO subsonic_credentials (id, username, password, stream_proxy_strategy)
+      VALUES ('alice-client', 'alice', 'alice-client-password', 'always');
     INSERT INTO features (key, value) VALUES
       ('open_registration', 1), ('allow_email_password_reset', 1), ('enable_activation', 0);
     INSERT INTO feature_strings (key, value) VALUES
@@ -140,7 +143,13 @@ async function main() {
   env.SSO_MODE = "required";
   assert.equal((await request(app, env, "/edgesonic/protected", "sso-token")).status, 200);
   assert.equal((await request(app, env, "/edgesonic/protected", "local-token")).status, 401);
-  assert.equal((await request(app, env, "/rest/ping?apiKey=alice-key")).status, 403);
+  const requiredApiKey = await request(app, env, "/rest/ping?apiKey=alice-key");
+  assert.equal(requiredApiKey.status, 200);
+  const requiredClientPassword = await request(app, env, "/rest/ping?u=alice&p=alice-client-password");
+  assert.equal(requiredClientPassword.status, 200);
+  const salt = "required-sso-salt";
+  const requiredTokenSalt = await request(app, env, `/rest/ping?u=alice&t=${md5(`alice-client-password${salt}`)}&s=${salt}`);
+  assert.equal(requiredTokenSalt.status, 200);
 
   for (const path of [
     "/edgesonic/auth/login",
