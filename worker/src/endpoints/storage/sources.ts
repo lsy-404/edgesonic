@@ -24,6 +24,7 @@ import { ensureCacheTierColumns } from "../../utils/schema_patch";
 import type { User } from "../../types/entities";
 
 const CACHE_TIERS = new Set(["off", "standard", "extended"]);
+const DELETE_SOURCE_MASTER_CHUNK = 100;
 
 export const sourcesRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
 
@@ -47,6 +48,41 @@ export function synthesizeR2Row() {
     // remote — it has no meaningful cache_tier.
     last_sync: null, enabled: 1, mode: "library", cache_tier: "off",
   };
+}
+
+async function removeSourceCatalog(db: D1Database, sourceId: string): Promise<void> {
+  const masters = await db.prepare(
+    `SELECT DISTINCT i.master_id, m.album_id
+       FROM song_instances i
+       LEFT JOIN song_masters m ON m.id = i.master_id
+      WHERE i.source_id = ?`,
+  ).bind(sourceId).all<{ master_id: string; album_id: string | null }>();
+
+  await db.prepare("DELETE FROM song_instances WHERE source_id = ?").bind(sourceId).run();
+
+  const masterIds = masters.results.map((row) => row.master_id);
+  const albumIds = masters.results
+    .map((row) => row.album_id)
+    .filter((id): id is string => typeof id === "string");
+  for (let offset = 0; offset < masterIds.length; offset += DELETE_SOURCE_MASTER_CHUNK) {
+    const chunk = masterIds.slice(offset, offset + DELETE_SOURCE_MASTER_CHUNK);
+    const placeholders = chunk.map(() => "?").join(", ");
+    await db.prepare(
+      `DELETE FROM song_masters
+       WHERE id IN (${placeholders})
+         AND NOT EXISTS (SELECT 1 FROM song_instances WHERE master_id = song_masters.id)`,
+    ).bind(...chunk).run();
+  }
+
+  for (let offset = 0; offset < albumIds.length; offset += DELETE_SOURCE_MASTER_CHUNK) {
+    const chunk = albumIds.slice(offset, offset + DELETE_SOURCE_MASTER_CHUNK);
+    const placeholders = chunk.map(() => "?").join(", ");
+    await db.prepare(
+      `DELETE FROM albums
+       WHERE id IN (${placeholders})
+         AND NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = albums.id)`,
+    ).bind(...chunk).run();
+  }
 }
 
 sourcesRoutes.get("/sources/list", async (c) => {
@@ -264,6 +300,7 @@ sourcesRoutes.post("/sources/delete", permissionMiddleware("manage_sources"), as
     return c.text(subsonicError(0, "Cannot delete the built-in R2 source"), 400, XML);
   }
   const db = c.env.DB;
+  await removeSourceCatalog(db, body.id);
   await db.prepare("DELETE FROM storage_sources WHERE id = ?").bind(body.id).run();
   return c.text(subsonicOK({}), 200, XML);
 });

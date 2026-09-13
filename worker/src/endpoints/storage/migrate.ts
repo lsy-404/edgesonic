@@ -1,24 +1,50 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// One-time migration of legacy music/<logical path> R2 keys into immutable
-// objects/<object id>.<suffix> keys. The endpoint is deliberately bounded;
-// callers continue with the returned cursor after reviewing the result.
+// One-time migration of legacy R2 audio objects into immutable
+// objects/<object id>.<suffix> keys. Candidates come from D1 rather than an
+// R2 prefix so pre-refactor root-directory objects are included without
+// treating cache, cover, or unrelated bucket content as music.
 
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import { createStableObjectId, createStableObjectKey, normalizeSuffix } from "../../utils/storageObjects";
-import { ensureR2Folder, registerR2Object, R2_SOURCE_ID } from "../../utils/storageResolver";
+import { registerR2Object, R2_SOURCE_ID, r2KeyFromUri, stableR2Uri } from "../../utils/storageResolver";
 
 export const migrationRoutes = new Hono<{ Bindings: Env }>();
 
 const MAX_BATCH = 40;
 const COPY_CONCURRENCY = 2;
 
+type Phase = "instances" | "cleanup";
+type Cursor = { phase: Phase; after: string };
+
 type MigrationOutcome = {
   copied: number;
+  indexed: number;
   skipped: number;
   deleted: number;
   error?: { key: string; error: string };
+};
+
+type MigrationSummary = {
+  copied: number;
+  indexed: number;
+  skipped: number;
+  deleted: number;
+  errors: Array<{ key: string; error: string }>;
+};
+
+type InstanceCandidate = {
+  id: string;
+  storage_uri: string;
+  suffix: string;
+  content_type: string | null;
+};
+
+type CleanupCandidate = {
+  id: string;
+  physical_key: string;
+  legacy_key: string;
 };
 
 migrationRoutes.post("/files/migrate-r2", permissionMiddleware("manage_files"), async (c) => {
@@ -27,38 +53,89 @@ migrationRoutes.post("/files/migrate-r2", permissionMiddleware("manage_files"), 
     await c.req.json<{ cursor?: string; limit?: number; deleteLegacy?: boolean }>().catch(() => ({}));
   const limit = Math.min(Math.max(Number(body.limit) || MAX_BATCH, 1), MAX_BATCH);
   const deleteLegacy = body.deleteLegacy === true;
-  const listing = await env.MUSIC_BUCKET.list({ prefix: "music/", limit, ...(body.cursor ? { cursor: body.cursor } : {}) });
-  let processed = 0;
-  let copied = 0;
-  let skipped = 0;
-  let deleted = 0;
-  const errors: Array<{ key: string; error: string }> = [];
+  const cursor = decodeCursor(body.cursor);
 
-  const outcomes = await runWithConcurrency(
-    listing.objects,
-    COPY_CONCURRENCY,
-    (object) => migrateLegacyObject(env, object, deleteLegacy),
+  const selection = cursor.phase === "instances"
+    ? await env.DB.prepare(
+      `SELECT id, storage_uri, suffix, content_type
+       FROM song_instances
+       WHERE source_id = ?
+         AND source_type = 'original'
+         AND missing = 0
+         AND storage_object_id IS NULL
+         AND storage_uri LIKE 'r2://%'
+         AND storage_uri NOT LIKE 'r2://objects/%'
+         AND id > ?
+       ORDER BY id ASC
+       LIMIT ?`,
+    ).bind(R2_SOURCE_ID, cursor.after, limit).all<InstanceCandidate>()
+    : await env.DB.prepare(
+      `SELECT id, physical_key, legacy_key
+       FROM storage_objects
+       WHERE legacy_key IS NOT NULL
+         AND id > ?
+       ORDER BY id ASC
+       LIMIT ?`,
+    ).bind(cursor.after, limit).all<CleanupCandidate>();
+
+  const outcomes = cursor.phase === "instances"
+    ? await runWithConcurrency(
+      selection.results as InstanceCandidate[],
+      COPY_CONCURRENCY,
+      (candidate) => migrateInstance(env, candidate),
+    )
+    : await runWithConcurrency(
+      selection.results as CleanupCandidate[],
+      COPY_CONCURRENCY,
+      (candidate) => cleanupLegacyObject(env, candidate, deleteLegacy),
+    );
+
+  const summary = outcomes.reduce<MigrationSummary>(
+    (result, outcome) => ({
+      copied: result.copied + outcome.copied,
+      indexed: result.indexed + outcome.indexed,
+      skipped: result.skipped + outcome.skipped,
+      deleted: result.deleted + outcome.deleted,
+      errors: outcome.error ? [...result.errors, outcome.error] : result.errors,
+    }),
+    { copied: 0, indexed: 0, skipped: 0, deleted: 0, errors: [] as Array<{ key: string; error: string }> },
   );
-  for (const outcome of outcomes) {
-    processed++;
-    copied += outcome.copied;
-    skipped += outcome.skipped;
-    deleted += outcome.deleted;
-    if (outcome.error) errors.push(outcome.error);
-  }
+
+  const last = selection.results.at(-1);
+  const hasMoreInPhase = selection.results.length === limit && last;
+  const next = hasMoreInPhase
+    ? encodeCursor({ phase: cursor.phase, after: last.id })
+    : cursor.phase === "instances"
+      ? encodeCursor({ phase: "cleanup", after: "" })
+      : null;
 
   return c.json({
-    ok: errors.length === 0,
-    processed,
-    copied,
-    skipped,
-    deleted,
-    errors,
-    nextCursor: listing.truncated ? listing.cursor : null,
-    complete: !listing.truncated,
+    ok: summary.errors.length === 0,
+    phase: cursor.phase,
+    processed: outcomes.length,
+    ...summary,
+    nextCursor: next,
+    complete: next === null,
     deleteLegacy,
-  }, errors.length === 0 ? 200 : 207);
+  }, summary.errors.length === 0 ? 200 : 207);
 });
+
+function decodeCursor(raw: string | undefined): Cursor {
+  if (!raw) return { phase: "instances", after: "" };
+  try {
+    const parsed = JSON.parse(atob(raw)) as Partial<Cursor>;
+    if ((parsed.phase === "instances" || parsed.phase === "cleanup") && typeof parsed.after === "string") {
+      return { phase: parsed.phase, after: parsed.after };
+    }
+  } catch {
+    // A legacy R2-list cursor belongs to the retired prefix-only traversal.
+  }
+  return { phase: "instances", after: "" };
+}
+
+function encodeCursor(cursor: Cursor): string {
+  return btoa(JSON.stringify(cursor));
+}
 
 async function runWithConcurrency<T>(items: T[], concurrency: number, worker: (item: T) => Promise<MigrationOutcome>): Promise<MigrationOutcome[]> {
   const results: MigrationOutcome[] = [];
@@ -74,73 +151,77 @@ async function runWithConcurrency<T>(items: T[], concurrency: number, worker: (i
   return results;
 }
 
-async function migrateLegacyObject(env: Env, object: R2Object, deleteLegacy: boolean): Promise<MigrationOutcome> {
+async function migrateInstance(env: Env, instance: InstanceCandidate): Promise<MigrationOutcome> {
   try {
-    if (object.key.endsWith("/.keep")) {
-      const folderPath = object.key.slice("music/".length, -"/.keep".length);
-      if (folderPath) await ensureR2Folder(env.DB, `music/${folderPath}`);
-      if (deleteLegacy) await env.MUSIC_BUCKET.delete(object.key);
-      return { copied: 0, skipped: 1, deleted: deleteLegacy ? 1 : 0 };
-    }
+    const legacyKey = r2KeyFromUri(instance.storage_uri);
+    const suffix = normalizeSuffix(instance.suffix || legacyKey.split(".").pop() || "bin");
+    const source = await env.MUSIC_BUCKET.head(legacyKey);
+    if (!source) throw new Error("legacy object not found");
 
-    const suffix = normalizeSuffix(object.key.split(".").pop() || "bin");
-    const objectId = createStableObjectId(`legacy:${object.key}`);
-    const stableKey = createStableObjectKey(objectId, suffix);
     const known = await env.DB.prepare(
       "SELECT id, physical_key FROM storage_objects WHERE legacy_key = ? LIMIT 1",
-    ).bind(object.key).first<{ id: string; physical_key: string }>();
-    const targetKey = known?.physical_key || stableKey;
-    const existing = await env.MUSIC_BUCKET.head(targetKey);
-    const oldUri = `r2://${object.key}`;
-    const instance = await env.DB.prepare(
-      "SELECT id, storage_uri FROM song_instances WHERE storage_uri = ? AND source_id = ? LIMIT 1",
-    ).bind(oldUri, R2_SOURCE_ID).first<{ id: string; storage_uri: string }>();
-    if (known && existing) {
-      if (existing.size !== object.size) throw new Error(`target size mismatch: ${existing.size} != ${object.size}`);
-      if (!instance || instance.storage_uri === `r2://${targetKey}`) {
-        if (deleteLegacy && targetKey !== object.key) await env.MUSIC_BUCKET.delete(object.key);
-        return { copied: 0, skipped: 1, deleted: deleteLegacy ? 1 : 0 };
-      }
-    }
+    ).bind(legacyKey).first<{ id: string; physical_key: string }>();
+    const objectId = known?.id || createStableObjectId(`legacy:${legacyKey}`);
+    const physicalKey = known?.physical_key || createStableObjectKey(objectId, suffix);
+    let target = await env.MUSIC_BUCKET.head(physicalKey);
     let copied = 0;
-    let skipped = 0;
-    if (!existing) {
-      const source = await env.MUSIC_BUCKET.get(object.key);
-      if (!source?.body) throw new Error("legacy object not found");
-      await env.MUSIC_BUCKET.put(targetKey, source.body.pipeThrough(new FixedLengthStream(object.size)), {
-        httpMetadata: source.httpMetadata,
-        customMetadata: source.customMetadata,
+
+    if (!target) {
+      const body = await env.MUSIC_BUCKET.get(legacyKey);
+      if (!body?.body) throw new Error("legacy object not found");
+      const written = await env.MUSIC_BUCKET.put(physicalKey, body.body.pipeThrough(new FixedLengthStream(source.size)), {
+        httpMetadata: body.httpMetadata,
+        customMetadata: body.customMetadata,
       });
-      copied++;
-    } else if (existing.size !== object.size) {
-      throw new Error(`target size mismatch: ${existing.size} != ${object.size}`);
-    } else {
-      skipped++;
+      if (written.size !== source.size) throw new Error(`target size mismatch: ${written.size} != ${source.size}`);
+      target = await env.MUSIC_BUCKET.head(physicalKey);
+      copied = 1;
     }
+    if (!target || target.size !== source.size) throw new Error(`target size mismatch: ${target?.size ?? "missing"} != ${source.size}`);
 
     await registerR2Object(env.DB, {
-      objectId: known?.id || objectId,
-      physicalKey: targetKey,
-      legacyKey: object.key,
-      logicalPath: object.key,
+      objectId,
+      physicalKey,
+      legacyKey,
+      logicalPath: legacyKey,
       suffix,
-      contentType: object.httpMetadata?.contentType || null,
-      size: object.size,
-      etag: object.etag || null,
-      lastModified: object.uploaded ? Math.floor(object.uploaded.getTime() / 1000) : null,
-      instanceId: instance?.id || null,
+      contentType: source.httpMetadata?.contentType || instance.content_type,
+      size: source.size,
+      etag: source.etag || null,
+      lastModified: source.uploaded ? Math.floor(source.uploaded.getTime() / 1000) : null,
+      instanceId: instance.id,
     });
-    if (instance) {
-      await env.DB.prepare(
-        "UPDATE song_instances SET storage_uri = ?, storage_object_id = ?, suffix = ?, content_type = ?, size = ?, missing = 0, updated_at = ? WHERE id = ?",
-      ).bind(`r2://${targetKey}`, known?.id || objectId, suffix, object.httpMetadata?.contentType || null, object.size, Math.floor(Date.now() / 1000), instance.id).run();
-    }
-    if (deleteLegacy && targetKey !== object.key) {
-      await env.MUSIC_BUCKET.delete(object.key);
-      return { copied, skipped, deleted: 1 };
-    }
-    return { copied, skipped, deleted: 0 };
+    const updated = await env.DB.prepare(
+      `UPDATE song_instances
+       SET storage_uri = ?, storage_object_id = ?, suffix = ?, content_type = COALESCE(?, content_type),
+           size = ?, missing = 0, updated_at = ?
+       WHERE source_id = ? AND storage_uri = ?`,
+    ).bind(
+      stableR2Uri(objectId, suffix), objectId, suffix, source.httpMetadata?.contentType || instance.content_type,
+      source.size, Math.floor(Date.now() / 1000), R2_SOURCE_ID, instance.storage_uri,
+    ).run();
+    return { copied, indexed: updated.meta.changes, skipped: 0, deleted: 0 };
   } catch (error) {
-    return { copied: 0, skipped: 0, deleted: 0, error: { key: object.key, error: error instanceof Error ? error.message : String(error) } };
+    return { copied: 0, indexed: 0, skipped: 0, deleted: 0, error: { key: instance.storage_uri, error: error instanceof Error ? error.message : String(error) } };
+  }
+}
+
+async function cleanupLegacyObject(env: Env, object: CleanupCandidate, deleteLegacy: boolean): Promise<MigrationOutcome> {
+  try {
+    if (!deleteLegacy) return { copied: 0, indexed: 0, skipped: 1, deleted: 0 };
+    if (object.legacy_key === object.physical_key) return { copied: 0, indexed: 0, skipped: 1, deleted: 0 };
+    const legacy = await env.MUSIC_BUCKET.head(object.legacy_key);
+    if (!legacy) return { copied: 0, indexed: 0, skipped: 1, deleted: 0 };
+    const stable = await env.MUSIC_BUCKET.head(object.physical_key);
+    if (!stable || stable.size !== legacy.size) {
+      throw new Error(`stable object verification failed: ${stable?.size ?? "missing"} != ${legacy.size}`);
+    }
+    await env.MUSIC_BUCKET.delete(object.legacy_key);
+    await env.DB.prepare(
+      "UPDATE storage_objects SET legacy_key = NULL, updated_at = ? WHERE id = ? AND physical_key = ?",
+    ).bind(Math.floor(Date.now() / 1000), object.id, object.physical_key).run();
+    return { copied: 0, indexed: 0, skipped: 0, deleted: 1 };
+  } catch (error) {
+    return { copied: 0, indexed: 0, skipped: 0, deleted: 0, error: { key: object.legacy_key, error: error instanceof Error ? error.message : String(error) } };
   }
 }

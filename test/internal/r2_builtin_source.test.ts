@@ -86,9 +86,11 @@ function buildDb(): DatabaseSync {
       PRIMARY KEY (level, permission)
     );
     CREATE TABLE song_instances (
-      id TEXT PRIMARY KEY, source_id TEXT NOT NULL, size INTEGER DEFAULT 0, missing INTEGER DEFAULT 0,
+      id TEXT PRIMARY KEY, master_id TEXT, source_id TEXT NOT NULL, size INTEGER DEFAULT 0, missing INTEGER DEFAULT 0,
       source_type TEXT, parent_instance_id TEXT
     );
+    CREATE TABLE albums (id TEXT PRIMARY KEY);
+    CREATE TABLE song_masters (id TEXT PRIMARY KEY, album_id TEXT);
     -- /sources/list resolves cache_tier_standard/extended budgets via
     -- resolveTierConfig, which reads feature_strings even when no cached row
     -- exists yet (falls back to hardcoded defaults, but still queries).
@@ -223,20 +225,38 @@ async function main() {
     assert(row.n === 1, "row was NOT deleted");
   }
 
-  console.log("\nregular (non-r2) sources unaffected — still 404 on update-missing, still deletable:");
+  console.log("\nregular source deletion removes its local catalog but preserves shared R2 copies:");
   {
     const sqlite = buildDb();
     sqlite.prepare(
       `INSERT INTO storage_sources (id, type, name, base_url, created_at, updated_at)
        VALUES ('wd-1', 'webdav', 'My WebDAV', 'https://dav.example', 1, 1)`,
     ).run();
+    sqlite.exec(`
+      INSERT INTO albums (id) VALUES ('album-orphan'), ('album-shared');
+      INSERT INTO song_masters (id, album_id) VALUES ('master-orphan', 'album-orphan'), ('master-shared', 'album-shared');
+      INSERT INTO song_instances (id, master_id, source_id, source_type) VALUES
+        ('wd-only', 'master-orphan', 'wd-1', 'original'),
+        ('wd-shared', 'master-shared', 'wd-1', 'original'),
+        ('r2-copy', 'master-shared', 'r2-local', 'original');
+    `);
     const app = makeApp(sqlite);
     const rMissing = await app.post("/storage/sources/update", { id: "does-not-exist", name: "X" });
     assert(rMissing.status === 404, `unknown non-r2 id still 404s (got ${rMissing.status})`);
     const rDelete = await app.post("/storage/sources/delete", { id: "wd-1" });
-    assert(rDelete.status === 200, `regular source still deletable (got ${rDelete.status})`);
+    assert(rDelete.status === 200, `regular source is deletable (got ${rDelete.status})`);
     const row = sqlite.prepare("SELECT COUNT(*) AS n FROM storage_sources WHERE id='wd-1'").get() as { n: number };
     assert(row.n === 0, "wd-1 actually removed");
+    const localInstances = sqlite.prepare("SELECT COUNT(*) AS n FROM song_instances WHERE source_id='wd-1'").get() as { n: number };
+    const r2Copy = sqlite.prepare("SELECT COUNT(*) AS n FROM song_instances WHERE id='r2-copy'").get() as { n: number };
+    const orphanMaster = sqlite.prepare("SELECT COUNT(*) AS n FROM song_masters WHERE id='master-orphan'").get() as { n: number };
+    const sharedMaster = sqlite.prepare("SELECT COUNT(*) AS n FROM song_masters WHERE id='master-shared'").get() as { n: number };
+    const orphanAlbum = sqlite.prepare("SELECT COUNT(*) AS n FROM albums WHERE id='album-orphan'").get() as { n: number };
+    const sharedAlbum = sqlite.prepare("SELECT COUNT(*) AS n FROM albums WHERE id='album-shared'").get() as { n: number };
+    assert(localInstances.n === 0, "the deleted source's local instances are removed");
+    assert(r2Copy.n === 1, "independent R2 copy remains available");
+    assert(orphanMaster.n === 0 && orphanAlbum.n === 0, "unreferenced song and album are removed");
+    assert(sharedMaster.n === 1 && sharedAlbum.n === 1, "song and album with an R2 copy remain");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

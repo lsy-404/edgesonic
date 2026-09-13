@@ -474,6 +474,7 @@ export function useAuth() {
     if (resp.status === 401 || resp.status === 403) {
       const err = new Error("session expired") as Error & { status: number };
       err.status = resp.status;
+      if (resp.status === 401) handleAuthError(err);
       throw err;
     }
     return text;
@@ -484,6 +485,7 @@ export function useAuth() {
     if (resp.status === 401 || resp.status === 403) {
       const err = new Error("session expired") as Error & { status: number };
       err.status = resp.status;
+      if (resp.status === 401) handleAuthError(err);
       throw err;
     }
     return text;

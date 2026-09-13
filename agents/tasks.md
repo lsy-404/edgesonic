@@ -15,3 +15,5 @@
 | 445 | [Feature] OIDC 后通道注销 | 增加标准 OIDC Back-Channel Logout RP endpoint，撤权时精确清理 EdgeSonic SSO 本地会话并保持 Subsonic 协议凭据不变 | 个人 SSO 管理员撤权后需要立即结束对应 EdgeSonic Web 会话 | ✅ 已完成 |
 | 446 | [Audit] EdgeSonic旧域名重定向核验 | 核验旧自定义域名到新自定义域名的真实 HTTP、浏览器及 Cloudflare 规则行为 | 用户报告旧域名仍可访问，需要确认是否存在未覆盖路径或配置失效 | ✅ 已完成 |
 | 447 | [Migration] SSO规范域名迁移 | 将个人 SSO 的 Provider 与受支持 Relying Party 从旧域名迁移至 `voidcarve.com` | 用户明确要求所有 SSO 使用新域名，旧域名只保留受控跳转 | ✅ 已完成 |
+| 448 | [Audit] R2 D1重构后上传故障核验 | 定位所有上传请求失败是否由稳定对象模型、D1 schema 或生产 Worker 绑定造成 | 用户报告重构后所有上传失败，需要先以真实请求和代码证据确定断点 | ✅ 已完成 |
+| 449 | [BugFix] 上传认证与R2根目录对象收敛 | 修复失效 SSO 会话恢复、将根目录遗留 R2 音频迁入稳定对象模型并重建逻辑索引、清理已删除 WebDAV 源的本地残留 | 用户要求完成对象迁移后重建索引，并恢复上传和准确歌曲统计 | 🔄 进行中 |
