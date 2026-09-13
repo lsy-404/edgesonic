@@ -23,3 +23,6 @@
 - `npm run test:sso`：4/4 通过。
 - `npm run typecheck -w worker`：通过。
 - 全部测试使用内存数据库和合成凭据字符串，未读取、输出或写入任何现有用户凭据或秘密。
+- 生产修复前使用一次性合成账号验证 `/rest/ping.view`，专用 Subsonic 凭据返回 HTTP 403、错误码 50；账号和凭据随后清理为 0。
+- 生产修复后再次使用一次性合成账号验证：`u+p`、`u+t+s`、OpenSubsonic API key 均返回 HTTP 200 与 `status=ok`；用户、凭据和 API key 随后清理为 0。
+- 生产本地 Web 登录仍返回 403，登录配置仍为 `required` 且 SSO 可用，注册和密码重置仍关闭。
