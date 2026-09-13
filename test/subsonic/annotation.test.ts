@@ -417,9 +417,13 @@ console.log("endpoint: getSong starred state");
   `);
 
   const { hit } = makeApp(sqlite);
+  const fallbackStart = Math.floor(Date.now() / 1000);
   const starred = await hit("GET", "/rest/getSong?id=sg-1");
   const starredBody = await starred.text();
-  assert(starred.status === 200 && /<song\b[^>]*\bstarred="[^"]+"/.test(starredBody),
+  const fallbackEnd = Math.floor(Date.now() / 1000);
+  const starredValue = /<song\b[^>]*\bstarred="([^"]+)"/.exec(starredBody)?.[1];
+  const fallbackTimestamp = starredValue ? Math.floor(Date.parse(starredValue) / 1000) : NaN;
+  assert(starred.status === 200 && fallbackTimestamp >= fallbackStart && fallbackTimestamp <= fallbackEnd,
     "getSong reports starred=1 even when a legacy annotation lacks starred_at");
 
   await hit("GET", "/rest/unstar?id=sg-1");

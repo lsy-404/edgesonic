@@ -9,3 +9,5 @@
 - 2026-09-12：修改 `worker/src/types/subsonic.ts`，令收藏状态只由 `starred` 标记决定，缺失时间使用 epoch ISO 哨兵。
 - 2026-09-12：运行 annotation 端点测试，全部通过；运行 OpenSubsonic 映射测试，全部通过。
 - 2026-09-12：首次类型检查因声明包解析路径失败；临时链接已安装依赖后重新运行 Worker TypeScript 检查，通过且临时链接已删除。
+- 2026-09-12：根据用户补充校正时间语义：移除 epoch 兜底，改为当前时间；扩展 clone 身份映射测试，验证保留上游时间且缺失时使用当前时间。
+- 2026-09-12：重新运行 annotation、clone 身份映射和 OpenSubsonic 测试，全部通过；Worker TypeScript 检查再次通过，临时依赖链接已删除。

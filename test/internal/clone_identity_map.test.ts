@@ -214,14 +214,27 @@ async function main() {
   assert(!combinedArtist, "clone does not create a combined artist entity");
 
   console.log("clone upsertStarred resolves remote song id:");
+  const fallbackStart = Math.floor(Date.now() / 1000);
   const starred = await app.post("/edgesonic/clone/upsertStarred", {
     sourceKey: "src-a",
     userId: "admin",
     items: [{ id: "remote-song", type: "song" }],
   });
+  const fallbackEnd = Math.floor(Date.now() / 1000);
   assert(starred.status === 200, `starred status 200 (got ${starred.status})`);
-  const ann = sqlite.prepare("SELECT starred FROM annotations WHERE user_id='admin' AND item_id='sg-local' AND item_type='song'").get() as any;
+  let ann = sqlite.prepare("SELECT starred, starred_at FROM annotations WHERE user_id='admin' AND item_id='sg-local' AND item_type='song'").get() as any;
   assert(ann?.starred === 1, "starred row uses local song id");
+  assert(ann?.starred_at >= fallbackStart && ann?.starred_at <= fallbackEnd,
+    "clone uses the current time when upstream omits starredAt");
+
+  const upstreamStarredAt = 1700000000;
+  await app.post("/edgesonic/clone/upsertStarred", {
+    sourceKey: "src-a",
+    userId: "admin",
+    items: [{ id: "remote-song", type: "song", starredAt: upstreamStarredAt }],
+  });
+  ann = sqlite.prepare("SELECT starred, starred_at FROM annotations WHERE user_id='admin' AND item_id='sg-local' AND item_type='song'").get() as any;
+  assert(ann?.starred_at === upstreamStarredAt, "clone preserves the upstream starredAt timestamp");
 
   console.log("clone upsertPlaylist resolves remote song id and avoids missing-owner FK:");
   const playlist = await app.post("/edgesonic/clone/upsertPlaylist", {
