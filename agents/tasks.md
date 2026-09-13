@@ -13,3 +13,5 @@
 | 443 | [BugFix] getSong 收藏状态返回 | 修复 getSong 未可靠返回当前用户歌曲收藏状态的问题并增加回归测试 | 播放器需要以歌曲详情响应恢复准确的收藏状态 | ✅ 已完成 |
 | 444 | [Feature] SSO 供应与激活边界 | 增加默认关闭的同库身份供应，并验证 SSO 新用户仍受 EdgeSonic 激活策略约束 | 管理员授权后允许首次登录，但不能绕过邀请码或激活状态 | ✅ 已完成 |
 | 445 | [Feature] OIDC 后通道注销 | 增加标准 OIDC Back-Channel Logout RP endpoint，撤权时精确清理 EdgeSonic SSO 本地会话并保持 Subsonic 协议凭据不变 | 个人 SSO 管理员撤权后需要立即结束对应 EdgeSonic Web 会话 | ✅ 已完成 |
+| 446 | [Audit] EdgeSonic旧域名重定向核验 | 核验旧自定义域名到新自定义域名的真实 HTTP、浏览器及 Cloudflare 规则行为 | 用户报告旧域名仍可访问，需要确认是否存在未覆盖路径或配置失效 | ✅ 已完成 |
+| 447 | [Migration] SSO规范域名迁移 | 将个人 SSO 的 Provider 与受支持 Relying Party 从旧域名迁移至 `voidcarve.com` | 用户明确要求所有 SSO 使用新域名，旧域名只保留受控跳转 | ✅ 已完成 |
