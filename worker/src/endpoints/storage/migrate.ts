@@ -14,6 +14,7 @@ export const migrationRoutes = new Hono<{ Bindings: Env }>();
 
 const MAX_BATCH = 40;
 const COPY_CONCURRENCY = 2;
+const CLEANUP_CONCURRENCY = 4;
 
 type Phase = "instances" | "cleanup";
 type Cursor = { phase: Phase; after: string };
@@ -86,7 +87,7 @@ migrationRoutes.post("/files/migrate-r2", permissionMiddleware("manage_files"), 
     )
     : await runWithConcurrency(
       selection.results as CleanupCandidate[],
-      COPY_CONCURRENCY,
+      CLEANUP_CONCURRENCY,
       (candidate) => cleanupLegacyObject(env, candidate, deleteLegacy),
     );
 
