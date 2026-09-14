@@ -38,13 +38,13 @@ function buildDb() {
     CREATE TABLE storage_entries (id TEXT PRIMARY KEY, source_id TEXT, parent_id TEXT, path TEXT NOT NULL, display_name TEXT NOT NULL, kind TEXT NOT NULL, object_id TEXT, instance_id TEXT, companion_of TEXT, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0);
     CREATE UNIQUE INDEX idx_storage_entries_source_path ON storage_entries(source_id, path);
     INSERT INTO user_permissions VALUES (3, 'manage_files', 1, 0);
-    INSERT INTO song_instances (id, master_id, source_id, source_type, storage_uri, suffix, content_type, size) VALUES ('si-1', 'sm-1', 'r2-local', 'original', 'r2://Artist/Album/song.mp3', 'mp3', 'audio/mpeg', 3);
+    INSERT INTO song_instances (id, master_id, source_id, source_type, storage_uri, suffix, content_type, size) VALUES ('si-1', 'sm-1', 'r2-local', 'original', 'r2://Artist/Album/song..v1.mp3', 'mp3', 'audio/mpeg', 3);
   `);
   return sqlite;
 }
 
 function makeBucket() {
-  const store = new Map<string, Uint8Array>([["Artist/Album/song.mp3", new Uint8Array([1, 2, 3])]]);
+  const store = new Map<string, Uint8Array>([["Artist/Album/song..v1.mp3", new Uint8Array([1, 2, 3])]]);
   return {
     store,
     async list({ prefix }: { prefix?: string }) {
@@ -84,14 +84,14 @@ async function main() {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
   }), env);
   const firstBody = await first.json() as any;
-  const object = sqlite.prepare("SELECT * FROM storage_objects WHERE legacy_key = 'Artist/Album/song.mp3'").get() as any;
-  const entry = sqlite.prepare("SELECT * FROM storage_entries WHERE path = 'Artist/Album/song.mp3'").get() as any;
+  const object = sqlite.prepare("SELECT * FROM storage_objects WHERE legacy_key = 'Artist/Album/song..v1.mp3'").get() as any;
+  const entry = sqlite.prepare("SELECT * FROM storage_entries WHERE path = 'Artist/Album/song..v1.mp3'").get() as any;
   const instance = sqlite.prepare("SELECT storage_uri, storage_object_id FROM song_instances WHERE id = 'si-1'").get() as any;
   assert(first.status === 200 && firstBody.phase === "instances" && firstBody.complete === false, "instance phase hands off to verified cleanup");
   assert(object?.physical_key === instance?.storage_uri.replace("r2://", ""), "D1 object and instance reference the same stable key");
   assert(/^objects\/obj_[0-9a-f]{16}\.mp3$/.test(object?.physical_key || ""), "stable object key retains the suffix");
   assert(entry?.instance_id === "si-1" && object?.size === 3, "logical entry and metadata are indexed");
-  assert(bucket.store.has("Artist/Album/song.mp3") && bucket.store.has(object.physical_key), "copy phase preserves the root object until cleanup");
+  assert(bucket.store.has("Artist/Album/song..v1.mp3") && bucket.store.has(object.physical_key), "copy phase preserves the root object until cleanup");
 
   console.log("cleanup phase → deletes only the verified legacy key:");
   const second = await app.fetch(new Request("http://test/storage/files/migrate-r2", {
@@ -99,7 +99,7 @@ async function main() {
   }), env);
   const secondBody = await second.json() as any;
   assert(second.status === 200 && secondBody.complete === true && secondBody.deleted === 1, "cleanup reports one verified deleted legacy key");
-  assert(!bucket.store.has("Artist/Album/song.mp3") && bucket.store.has(object.physical_key), "stable object remains after cleanup");
+  assert(!bucket.store.has("Artist/Album/song..v1.mp3") && bucket.store.has(object.physical_key), "stable object remains after cleanup");
   const cleanedObject = sqlite.prepare("SELECT legacy_key FROM storage_objects WHERE id = ?").get(object.id) as { legacy_key: string | null };
   assert(cleanedObject?.legacy_key === null, "cleanup clears the retired key from the D1 object record");
 

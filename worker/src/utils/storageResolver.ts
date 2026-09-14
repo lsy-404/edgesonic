@@ -62,7 +62,9 @@ export function stableR2Uri(objectId: string, suffix: string): string {
 export function r2KeyFromUri(uri: string): string {
   if (!uri.startsWith("r2://")) throw new Error("Expected an R2 storage URI");
   const key = uri.slice("r2://".length);
-  if (!key || key.includes("..")) throw new Error("Invalid R2 storage URI");
+  if (!key || key.split("/").some((segment) => !segment || segment === "." || segment === "..")) {
+    throw new Error("Invalid R2 storage URI");
+  }
   return key;
 }
 
