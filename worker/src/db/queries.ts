@@ -73,9 +73,29 @@ export function createQueries(db: D1Database) {
     // instead of showing the true total.
     async getLibraryCounts(): Promise<{ artists: number; albums: number; songs: number }> {
       const [artists, albums, songs] = await Promise.all([
-        db.prepare("SELECT COUNT(*) AS n FROM artists").first<{ n: number }>(),
-        db.prepare("SELECT COUNT(*) AS n FROM albums").first<{ n: number }>(),
-        db.prepare("SELECT COUNT(*) AS n FROM song_masters").first<{ n: number }>(),
+        db.prepare(
+          `SELECT COUNT(*) AS n FROM artists ar
+           WHERE EXISTS (
+             SELECT 1 FROM song_masters sm
+             JOIN song_instances si ON si.master_id = sm.id AND si.missing = 0
+             WHERE sm.artist_id = ar.id OR sm.album_artist_id = ar.id
+                OR EXISTS (SELECT 1 FROM song_artists sa WHERE sa.song_id = sm.id AND sa.artist_id = ar.id)
+           )`,
+        ).first<{ n: number }>(),
+        db.prepare(
+          `SELECT COUNT(*) AS n FROM albums al
+           WHERE EXISTS (
+             SELECT 1 FROM song_masters sm
+             JOIN song_instances si ON si.master_id = sm.id AND si.missing = 0
+             WHERE sm.album_id = al.id
+           )`,
+        ).first<{ n: number }>(),
+        db.prepare(
+          `SELECT COUNT(DISTINCT sm.id) AS n
+           FROM song_masters sm
+           JOIN song_instances si ON si.master_id = sm.id
+           WHERE si.missing = 0`,
+        ).first<{ n: number }>(),
       ]);
       return {
         artists: artists?.n ?? 0,
