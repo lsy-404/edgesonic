@@ -837,6 +837,9 @@ export function useAuth() {
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.responseText);
         else {
+          if (xhr.status === 401) {
+            handleAuthError({ status: xhr.status });
+          }
           // Surface the backend's { ok:false, error } message so the UI can
           // show the real reason (e.g. demo upload cap, payload too large)
           // instead of a generic "Upload failed: 413".

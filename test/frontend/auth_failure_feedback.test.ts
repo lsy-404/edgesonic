@@ -18,8 +18,11 @@ assert(api.includes('showError(i18n.global.t("common.sessionExpired"))'), "faile
 assert(api.includes('await router.replace("/login")'), "failed session verification forces navigation to login");
 const fetchAt = api.slice(api.indexOf("async function fetchAt"), api.indexOf("async function postAt"));
 const postAt = api.slice(api.indexOf("async function postAt"), api.indexOf("async function confirmSessionFailure"));
+const uploadFile = api.slice(api.indexOf("async function uploadFile"), api.indexOf("interface UploadConflictEntry"));
 assert(fetchAt.includes("if (resp.status === 401) handleAuthError(err);"), "GET management requests clear a rejected SSO session");
 assert(postAt.includes("if (resp.status === 401) handleAuthError(err);"), "POST management requests clear a rejected SSO session");
+assert(uploadFile.includes("if (xhr.status === 401)"), "upload requests detect a rejected SSO session");
+assert(uploadFile.includes("handleAuthError({ status: xhr.status });"), "upload requests start the shared SSO recovery");
 assert(app.includes("activeToast"), "app renders the global toast channel");
 assert(palette.includes("background: var(--color-bg-elevated);"), "toasts use an opaque background");
 
