@@ -273,6 +273,11 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     const instanceId = `si-upload-${crypto.randomUUID().substring(0, 12)}`;
     const masterId = `sm-upload-${crypto.randomUUID().substring(0, 12)}`;
     await db.batch([
+      db.prepare(
+        `INSERT INTO storage_sources (id, type, name, base_url, root_path, region, mode, enabled)
+         VALUES ('r2-local', 'r2', 'R2', '', '', 'auto', 'library', 1)
+         ON CONFLICT(id) DO NOTHING`,
+      ),
       db.prepare("INSERT OR IGNORE INTO artists (id, name, sort_name) VALUES ('unknown-artist', 'Unknown Artist', 'unknown artist')"),
       db.prepare("INSERT OR IGNORE INTO albums (id, name, sort_name) VALUES ('pending-uploads', 'Pending Uploads', 'pending uploads')"),
       db.prepare("INSERT INTO song_masters (id, album_id, artist_id, title, created_at, updated_at) VALUES (?, 'pending-uploads', 'unknown-artist', ?, ?, ?)")
