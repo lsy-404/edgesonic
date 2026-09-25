@@ -150,7 +150,7 @@ onMounted(async () => {
 
       <p v-if="displayNotice" class="login-notice">{{ displayNotice }}</p>
 
-      <div class="sso-mode-row">
+      <div v-if="ssoMode !== 'disabled'" class="sso-mode-row">
         <span>{{ t("login.ssoMode") }}</span>
         <strong>{{ ssoModeLabel }}</strong>
       </div>
@@ -172,8 +172,11 @@ onMounted(async () => {
           :disabled="loading || !ssoAvailable"
           @click="startSso"
         >
-          {{ t("login.ssoContinue", { provider: ssoProviderName }) }}
+          {{ t("login.ssoContinue") }}
         </button>
+        <p v-if="ssoMode !== 'disabled'" class="login-config-hint login-sso-provider">
+          {{ t("login.ssoProvider", { provider: ssoProviderName }) }}
+        </p>
         <p v-if="ssoConfigurationError" class="login-config-hint login-config-error">
           {{ t("login.ssoConfigurationError") }}
         </p>
