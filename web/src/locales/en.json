@@ -514,7 +514,7 @@
     "uploadQueue": "Upload queue",
     "uploadingFile": "Uploading {current} / {total}",
     "uploadDone": "Upload complete, {n} files",
-    "metadataPending": "Uploaded, but metadata is pending for {n} audio files. Use Read Tags to retry.",
+    "metadataPending": "Uploaded, but metadata could not be saved automatically for {n} audio files. If a file is in the library, find it on the Files page and choose Edit Tags from its context or more menu. If it is not in the library yet, complete the tags in the source file and upload it again with the replace option.",
     "uploadPartialFail": "Uploaded {done}, {failed} failed",
     "uploadResult": "Upload complete: {done} succeeded, {skipped} skipped, {failed} failed",
     "uploadConflict": {
