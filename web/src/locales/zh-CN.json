@@ -515,7 +515,7 @@
     "uploadQueue": "上传队列",
     "uploadingFile": "上传中 {current} / {total}",
     "uploadDone": "上传完成，共 {n} 个文件",
-    "metadataPending": "文件已上传，{n} 首音频的标签尚未解析；可用“读取标签”重试。",
+    "metadataPending": "文件已上传，但 {n} 首音频的元数据未能自动保存。已入库时，可在文件页找到该音频，从右键或更多菜单选择“编辑标签”；尚未入库时，请先补全源文件标签，再以覆盖方式上传。",
     "uploadPartialFail": "已上传 {done} 个，{failed} 个失败",
     "uploadResult": "上传完成：{done} 个成功，{skipped} 个跳过，{failed} 个失败",
     "uploadConflict": {
