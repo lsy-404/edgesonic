@@ -249,6 +249,9 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
         "SELECT id, master_id FROM song_instances WHERE storage_uri = ? AND source_type = 'original' LIMIT 1",
       ).bind(storageUri).first<{ id: string; master_id: string }>();
     if (existing) {
+      if (source === "r2") {
+        await prepareR2ObjectUpsert(db, target as R2UploadTarget, r2Key, suffix, contentType, sizeHeader || 0, now).run();
+      }
       await db.prepare(
         "UPDATE song_instances SET source_id = ?, storage_uri = ?, storage_object_id = ?, suffix = ?, content_type = ?, size = ?, tag_scanned = 0, missing = 0, updated_at = ? WHERE id = ?",
       ).bind(sourceId, storageUri, source === "r2" ? (target as R2UploadTarget).objectId : null, suffix, contentType, sizeHeader || 0, now, existing.id).run();
@@ -282,6 +285,7 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
       db.prepare("INSERT OR IGNORE INTO albums (id, name, sort_name) VALUES ('pending-uploads', 'Pending Uploads', 'pending uploads')"),
       db.prepare("INSERT INTO song_masters (id, album_id, artist_id, title, created_at, updated_at) VALUES (?, 'pending-uploads', 'unknown-artist', ?, ?, ?)")
         .bind(masterId, title, now, now),
+      ...(source === "r2" ? [prepareR2ObjectUpsert(db, target as R2UploadTarget, r2Key, suffix, contentType, sizeHeader || 0, now)] : []),
       db.prepare("INSERT INTO song_instances (id, master_id, source_id, source_type, storage_uri, storage_object_id, suffix, content_type, size, tag_scanned, created_at, updated_at) VALUES (?, ?, ?, 'original', ?, ?, ?, ?, ?, 0, ?, ?)")
         .bind(instanceId, masterId, sourceId, storageUri, source === "r2" ? (target as R2UploadTarget).objectId : null, suffix, contentType, sizeHeader || 0, now, now),
     ]);
@@ -646,6 +650,28 @@ async function cleanupStorageObject(db: D1Database, objectId: string | null): Pr
   await db.prepare(
     "DELETE FROM storage_objects WHERE id = ? AND NOT EXISTS (SELECT 1 FROM storage_entries WHERE object_id = ?)",
   ).bind(objectId, objectId).run();
+}
+
+function prepareR2ObjectUpsert(
+  db: D1Database,
+  target: R2UploadTarget,
+  physicalKey: string,
+  suffix: string,
+  contentType: string | null,
+  size: number,
+  now: number,
+): D1PreparedStatement {
+  return db.prepare(
+    `INSERT INTO storage_objects
+       (id, physical_key, legacy_key, suffix, content_type, size, created_at, updated_at)
+     VALUES (?, ?, NULL, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       physical_key = excluded.physical_key,
+       suffix = excluded.suffix,
+       content_type = excluded.content_type,
+       size = excluded.size,
+       updated_at = excluded.updated_at`,
+  ).bind(target.objectId, physicalKey, suffix, contentType, size, now, now);
 }
 
 // Normalize a user-supplied folder path: strip surrounding slashes and refuse
