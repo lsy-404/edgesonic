@@ -1,0 +1,157 @@
+{
+  "purpose": "Manual real-media smoke run using one local album track per source; the generated WAV was decoded from that exact FLAC before merge.",
+  "tool_version": "1",
+  "external_pcm_method": "FFmpeg decoded each FLAC, pre-merge WAV, and merged WAV to interleaved signed 16-bit little-endian PCM at the source format; SHA-256 and byte count were compared.",
+  "samples": [
+    {
+      "album": "Atlantis",
+      "sample_index": 1,
+      "tool_exit_status": 0,
+      "tag_output_verified": true,
+      "verified_standard_id3_frames": [
+        "TALB",
+        "TCOM",
+        "TCON",
+        "TDRC",
+        "TIT2",
+        "TPE1",
+        "TPE2",
+        "TRCK"
+      ],
+      "verified_comment_frame_values": [],
+      "flac_comment_keys_mirrored_as_txxx": [
+        "ALBUM",
+        "ALBUMARTIST",
+        "ARTIST",
+        "COMPOSER",
+        "GENRE",
+        "TITLE",
+        "TRACKNUMBER",
+        "WM/MCDI",
+        "WM/WMCOLLECTIONID",
+        "YEAR"
+      ],
+      "flac_metadata_blocks": [
+        {
+          "name": "STREAMINFO",
+          "length": 34,
+          "sha256": "3d132b04c7bf5c926ff872bd1fc60375076c71d7e7a6abb7160868cc6db90d5e",
+          "preservation": "equivalent_wav_format",
+          "preserved_in_wav": true
+        },
+        {
+          "name": "SEEKTABLE",
+          "length": 432,
+          "sha256": "bbfd84f3194b18e5fd07f297d0c13969c42c486d9dceb877bde7cc637d98ae69",
+          "preservation": "regenerable",
+          "preserved_in_wav": true
+        },
+        {
+          "name": "VORBIS_COMMENT",
+          "length": 347,
+          "sha256": "9147aba9f6e05563acb1eb7ae4ff2a23c77549353def9666253663c98b3a6a6e",
+          "preservation": "copied_as_id3_frames",
+          "preserved_in_wav": true
+        }
+      ],
+      "unpreserved_flac_blocks": [],
+      "format_parameters_match": true,
+      "metadata_preserved": true,
+      "metadata_preserved_is_not_delete_authorization": true,
+      "external_pcm_match": {
+        "exact": true,
+        "flac": {
+          "bytes": 41691552,
+          "sha256": "71439589a1f0aa10ee783244a3d007ed98af9e4cf045e33853fc889ea70c5fd2"
+        },
+        "wav_before": {
+          "bytes": 41691552,
+          "sha256": "71439589a1f0aa10ee783244a3d007ed98af9e4cf045e33853fc889ea70c5fd2"
+        },
+        "wav_after": {
+          "bytes": 41691552,
+          "sha256": "71439589a1f0aa10ee783244a3d007ed98af9e4cf045e33853fc889ea70c5fd2"
+        }
+      },
+      "riff_pcm_and_non_id3_chunk_guards_passed": true,
+      "merged_wav_sha256": "f087996a68ce6248dbee51d18bc5a170b4019281694d22bd7283539b7dba80d7",
+      "merged_wav_bytes": 41693246
+    },
+    {
+      "album": "Quadimension Q1",
+      "sample_index": 1,
+      "tool_exit_status": 0,
+      "tag_output_verified": true,
+      "verified_standard_id3_frames": [
+        "COMM",
+        "TALB",
+        "TCON",
+        "TDRC",
+        "TIT2",
+        "TPE1",
+        "TPE2",
+        "TRCK"
+      ],
+      "verified_comment_frame_values": [
+        "ExactAudioCopy v1.1"
+      ],
+      "flac_comment_keys_mirrored_as_txxx": [
+        "ALBUM",
+        "ALBUMARTIST",
+        "ARTIST",
+        "COMMENT",
+        "DATE",
+        "DISCID",
+        "GENRE",
+        "TITLE",
+        "TRACKNUMBER",
+        "TRACKTOTAL"
+      ],
+      "flac_metadata_blocks": [
+        {
+          "name": "STREAMINFO",
+          "length": 34,
+          "sha256": "926504f1942ae9040ae2cc8fdbdcabafcbd2ebe1fb1b0cf848c424e8c72b399c",
+          "preservation": "equivalent_wav_format",
+          "preserved_in_wav": true
+        },
+        {
+          "name": "VORBIS_COMMENT",
+          "length": 263,
+          "sha256": "7a870882a94f925e6dd2c946711d01749db7c2ac7aac82bd5a3bf6a3df125a32",
+          "preservation": "copied_as_id3_frames",
+          "preserved_in_wav": true
+        },
+        {
+          "name": "PADDING",
+          "length": 7969,
+          "sha256": "e2fab5ebd67c32325fa746e863db4e21c846655bb409235000ceca455bc85142",
+          "preservation": "regenerable",
+          "preserved_in_wav": true
+        }
+      ],
+      "unpreserved_flac_blocks": [],
+      "format_parameters_match": true,
+      "metadata_preserved": true,
+      "metadata_preserved_is_not_delete_authorization": true,
+      "external_pcm_match": {
+        "exact": true,
+        "flac": {
+          "bytes": 28047600,
+          "sha256": "23104e8834779c1aaf63fff107ac5ef5fee99d20fc8495bccd243c04a624d822"
+        },
+        "wav_before": {
+          "bytes": 28047600,
+          "sha256": "23104e8834779c1aaf63fff107ac5ef5fee99d20fc8495bccd243c04a624d822"
+        },
+        "wav_after": {
+          "bytes": 28047600,
+          "sha256": "23104e8834779c1aaf63fff107ac5ef5fee99d20fc8495bccd243c04a624d822"
+        }
+      },
+      "riff_pcm_and_non_id3_chunk_guards_passed": true,
+      "merged_wav_sha256": "a8f591a54cd86bd37a6d6851f94454093790156e10e43a79aa9d59186610b521",
+      "merged_wav_bytes": 28049234
+    }
+  ]
+}
