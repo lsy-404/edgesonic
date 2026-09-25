@@ -23,6 +23,7 @@ import {
   songArtistStatements,
   UNUSED_ARTIST_CLEANUP_SQL,
 } from "../../utils/artistCredits";
+import { retainCompilationAlbum } from "../../utils/albumIdentity";
 import { createQueries } from "../../db/queries";
 
 type Queries = ReturnType<typeof createQueries>;
@@ -385,8 +386,8 @@ async function applyTagsToSong(
 
   const curArtist = await db.prepare("SELECT name FROM artists WHERE id = ?")
     .bind(master.artist_id).first<{ name: string }>();
-  const curAlbum = await db.prepare("SELECT name FROM albums WHERE id = ?")
-    .bind(master.album_id).first<{ name: string }>();
+  const curAlbum = await db.prepare("SELECT name, compilation FROM albums WHERE id = ?")
+    .bind(master.album_id).first<{ name: string; compilation: number }>();
 
   // album/albumArtist/genre) the keyword has already been preserved by
   // cleanInput as the literal token; we translate it to an empty string here
@@ -412,7 +413,9 @@ async function applyTagsToSong(
   const genreValue = tags.genre === KW_NULL ? "" : tags.genre;
   const artistId = primaryArtist?.id || master.artist_id;
   const albumIdentityChanged = artistChanged || tags.albumArtist !== undefined || tags.album !== undefined;
-  const albumId = albumIdentityChanged
+  const albumId = albumIdentityChanged && !retainCompilationAlbum(
+    curAlbum, albumName, tags.albumArtist === KW_NULL ? "" : tags.albumArtist, currentAlbumArtist?.name,
+  )
     ? "al-" + md5(linkArtistName + " " + albumName).substring(0, 10)
     : master.album_id;
   const now = Math.floor(Date.now() / 1000);

@@ -38,6 +38,7 @@
 //   "seen" so a future scan does not re-queue the work forever.
 
 import { md5 } from "./md5";
+import { retainCompilationAlbum } from "./albumIdentity";
 import { deriveBitrate } from "./audioMetrics";
 import {
   artistInsertStatements,
@@ -217,8 +218,7 @@ export async function applyMetadataResult(
 
 // ---------------------------------------------------------------------------
 // relinkArtistAlbum — pulled in from endpoints/tag/submit.ts so the
-// helper can call it directly. Behaviour is byte-for-byte identical to the
-// original implementation:
+// helper can call it directly:
 //  * md5(linkArtistName)[:10] -> artist id
 //  * md5(linkArtistName + " " + albumName)[:10] -> album id
 //  * INSERT OR IGNORE both, UPDATE song_masters with the new fk's
@@ -236,8 +236,8 @@ export async function relinkArtistAlbum(
   // omits the field (same fallback chain as tagedit.ts).
   const curArtist = await db.prepare("SELECT name FROM artists WHERE id = ?")
     .bind(master.artist_id).first<{ name: string }>();
-  const curAlbum = await db.prepare("SELECT name FROM albums WHERE id = ?")
-    .bind(master.album_id).first<{ name: string }>();
+  const curAlbum = await db.prepare("SELECT name, compilation FROM albums WHERE id = ?")
+    .bind(master.album_id).first<{ name: string; compilation: number }>();
   const title = tags.title || master.title;
   const artistChanged = tags.artist !== undefined;
   const artistName = tags.artist || curArtist?.name || "Unknown Artist";
@@ -253,7 +253,7 @@ export async function relinkArtistAlbum(
   const albumName = tags.album || curAlbum?.name || "Unknown Album";
   const artistId = primaryArtist?.id || master.artist_id;
   const albumIdentityChanged = artistChanged || tags.albumArtist !== undefined || tags.album !== undefined;
-  const albumId = albumIdentityChanged
+  const albumId = albumIdentityChanged && !retainCompilationAlbum(curAlbum, albumName, tags.albumArtist, currentAlbumArtist?.name)
     ? "al-" + md5(linkArtistName + " " + albumName).substring(0, 10)
     : master.album_id;
   const oldAlbumId = master.album_id;

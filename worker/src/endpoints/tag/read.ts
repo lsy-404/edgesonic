@@ -21,6 +21,7 @@ import { md5 } from "../../utils/md5";
 import { parseTags } from "../../utils/tags";
 import { fetchSlices, type SourceRow } from "../../utils/slices";
 import { recoverMetadataFromStoragePath } from "../../utils/storageMetadata";
+import { retainCompilationAlbum } from "../../utils/albumIdentity";
 import {
   artistInsertStatements,
   parseAlbumArtistCredit,
@@ -39,11 +40,24 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
   const onlySource = c.req.query("source");
 
   const rows = (await db.prepare(
-    `SELECT si.id, si.master_id, si.source_id, si.storage_uri, si.suffix
-     FROM song_instances si WHERE si.tag_scanned = 0 ${onlySource ? "AND si.source_id = ?" : ""}
+    `SELECT si.id, si.master_id, si.source_id, si.storage_uri, si.suffix,
+            sm.album_id AS current_album_id, al.name AS current_album_name,
+            al.compilation AS current_album_compilation,
+            aa.name AS current_album_artist_name, ar.name AS current_artist_name
+     FROM song_instances si
+     LEFT JOIN song_masters sm ON sm.id = si.master_id
+     LEFT JOIN albums al ON al.id = sm.album_id
+     LEFT JOIN artists aa ON aa.id = sm.album_artist_id
+     LEFT JOIN artists ar ON ar.id = sm.artist_id
+     WHERE si.tag_scanned = 0 ${onlySource ? "AND si.source_id = ?" : ""}
      LIMIT ?`
   ).bind(...(onlySource ? [onlySource, batch] : [batch]))
-    .all<{ id: string; master_id: string; source_id: string; storage_uri: string; suffix: string }>()).results;
+    .all<{
+      id: string; master_id: string; source_id: string; storage_uri: string; suffix: string;
+      current_album_id: string | null; current_album_name: string | null;
+      current_album_compilation: number | null; current_album_artist_name: string | null;
+      current_artist_name: string | null;
+    }>()).results;
 
   const sources = new Map<string, SourceRow>();
   for (const s of (await db.prepare(
@@ -69,15 +83,20 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           // and the browser-pool path (relinkArtistAlbum) both use it. Only
           // set it when the file actually declared TPE2/ALBUMARTIST — leaving
           // it NULL for ordinary (non-compilation) rips, same as relinkArtistAlbum.
-          const artistName = tags.artist || "Unknown Artist";
+          const artistName = tags.artist || row.current_artist_name || "Unknown Artist";
           const artistCredits = parseArtistCredits(artistName);
           const albumArtist = parseAlbumArtistCredit(tags.albumArtist);
           const albumArtistCredits = albumArtist ? [albumArtist] : [];
           const primaryArtist = artistCredits[0];
           const linkArtistName = albumArtist?.name || primaryArtist.name;
-          const albumName = tags.album || "Unknown Album";
+          const albumName = tags.album || row.current_album_name || "Unknown Album";
           const artistId = primaryArtist.id;
-          const albumId = "al-" + md5(linkArtistName + " " + albumName).substring(0, 10);
+          const albumId = row.current_album_id && retainCompilationAlbum(
+            { name: row.current_album_name, compilation: row.current_album_compilation },
+            albumName, tags.albumArtist, row.current_album_artist_name,
+          )
+            ? row.current_album_id
+            : "al-" + md5(linkArtistName + " " + albumName).substring(0, 10);
           const albumArtistId = albumArtist?.id ?? null;
           touchedAlbums.add(albumId);
 

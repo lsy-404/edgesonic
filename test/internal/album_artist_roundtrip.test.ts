@@ -5,6 +5,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { tagEditRoutes } from "../../worker/src/endpoints/tag/write";
+import { tagReadRoutes } from "../../worker/src/endpoints/tag/read";
 import { subsonicRoutes } from "../../worker/src/endpoints/subsonic";
 import { createQueries } from "../../worker/src/db/queries";
 import { applyMetadataResult } from "../../worker/src/utils/metadataApply";
@@ -46,7 +47,7 @@ function buildDb(): DatabaseSync {
     CREATE TABLE users (username TEXT PRIMARY KEY, master_password TEXT, level INTEGER, enabled INTEGER DEFAULT 1, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE user_permissions (level INTEGER, permission TEXT, enabled INTEGER, max_rph INTEGER, PRIMARY KEY(level, permission));
     INSERT INTO users VALUES ('alice','x',2,1,0,0);
-    INSERT INTO user_permissions VALUES (2,'edit_tags',1,0);
+    INSERT INTO user_permissions VALUES (2,'edit_tags',1,0), (2,'manage_sources',1,0);
     INSERT INTO artists(id,name,sort_name) VALUES ('ar-track-a','Singer A','singer a'), ('ar-track-b','Singer B','singer b');
     INSERT INTO albums(id,name,sort_name) VALUES ('al-old','Old Album','old album');
     INSERT INTO song_masters(id,album_id,artist_id,title,sort_title,track,disc,duration,created_at,updated_at)
@@ -66,15 +67,34 @@ function appFor(sqlite: DatabaseSync) {
     return next();
   });
   app.route("/tag", tagEditRoutes);
+  app.route("/tag", tagReadRoutes);
   app.route("/rest", subsonicRoutes);
   return (path: string, init?: RequestInit) => app.fetch(new Request(`http://test${path}`, init), {
     DB: d1(sqlite),
     MUSIC_BUCKET: {
-      async get() { return { arrayBuffer: async () => new Uint8Array([0x41, 0x55, 0x44, 0x49]).buffer }; },
+      async get(key: string) {
+        const bytes = key === "music/compilation-read.mp3" ? id3Compilation() : new Uint8Array([0x41, 0x55, 0x44, 0x49]);
+        return { arrayBuffer: async () => bytes.buffer };
+      },
       async put() {},
     },
     INSTANCE_ID: "test-instance",
   });
+}
+
+function id3Compilation(): Uint8Array {
+  const encoder = new TextEncoder();
+  const frame = (id: string, value: string) => {
+    const body = Uint8Array.from([3, ...encoder.encode(value)]);
+    const header = new Uint8Array(10);
+    header.set(encoder.encode(id), 0);
+    new DataView(header.buffer).setUint32(4, body.length);
+    return Uint8Array.from([...header, ...body]);
+  };
+  const frames = [frame("TIT2", "Same Title"), frame("TPE1", "Guest Singer"), frame("TALB", "Old Album")];
+  const size = frames.reduce((total, item) => total + item.length, 0);
+  const header = Uint8Array.from([73, 68, 51, 3, 0, 0, (size >> 21) & 127, (size >> 14) & 127, (size >> 7) & 127, size & 127]);
+  return Uint8Array.from([...header, ...frames.flatMap((item) => [...item])]);
 }
 
 async function main() {
@@ -156,6 +176,41 @@ async function main() {
   await applyMetadataResult(d1(scannedDb), "inst-b", { artist: "New Singer" }, {});
   const newArtist = await createQueries(d1(scannedDb)).getSongMaster("sg-b");
   assert(newArtist?.album_id === `al-${md5("New Singer Old Album").substring(0, 10)}`, "metadata artist-only update uses the new artist for album identity");
+
+  const compilationDb = buildDb();
+  compilationDb.exec("UPDATE albums SET compilation = 1 WHERE id = 'al-old'");
+  const compilationCall = appFor(compilationDb);
+  const compilationWrite = await compilationCall("/tag/write", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: "sg-b", tags: { artist: "Guest Singer" } }),
+  });
+  const compilationWritten = compilationDb.prepare("SELECT album_id, artist_id FROM song_masters WHERE id = 'sg-b'").get() as { album_id: string; artist_id: string };
+  assert(compilationWrite.status === 200 && compilationWritten.album_id === "al-old", "tag write keeps artist edits inside a compilation");
+  assert(compilationWritten.artist_id === `ar-${md5("Guest Singer").substring(0, 10)}`, "tag write still updates the track artist");
+  await applyMetadataResult(d1(compilationDb), "inst-a", { artist: "Another Singer", album: "Old Album" }, {});
+  const compilationScanned = compilationDb.prepare("SELECT album_id, artist_id FROM song_masters WHERE id = 'sg-a'").get() as { album_id: string; artist_id: string };
+  assert(compilationScanned.album_id === "al-old", "metadata scan keeps the existing compilation album");
+  assert(compilationScanned.artist_id === `ar-${md5("Another Singer").substring(0, 10)}`, "metadata scan still updates the track artist");
+  await applyMetadataResult(d1(compilationDb), "inst-a", { album: "Renamed Album" }, {});
+  const compilationRenamed = compilationDb.prepare("SELECT album_id FROM song_masters WHERE id = 'sg-a'").get() as { album_id: string };
+  assert(compilationRenamed.album_id !== "al-old", "an explicit album rename moves the track out of the compilation");
+  const compilationAlbumArtist = await compilationCall("/tag/write", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: "sg-b", tags: { albumArtist: "Named Ensemble" } }),
+  });
+  const compilationRelinked = compilationDb.prepare("SELECT album_id FROM song_masters WHERE id = 'sg-b'").get() as { album_id: string };
+  assert(compilationAlbumArtist.status === 200 && compilationRelinked.album_id !== "al-old", "an explicit album artist change moves the track out of the compilation");
+  compilationDb.close();
+
+  const readDb = buildDb();
+  readDb.exec("UPDATE albums SET compilation = 1 WHERE id = 'al-old'; UPDATE song_instances SET tag_scanned = 1 WHERE id = 'inst-a'; UPDATE song_instances SET storage_uri = 'r2://music/compilation-read.mp3', tag_scanned = 0 WHERE id = 'inst-b'");
+  const readResult = await appFor(readDb)("/tag/read?batch=1");
+  const readRow = readDb.prepare("SELECT sm.album_id, ar.name AS artist_name, si.tag_scanned FROM song_masters sm JOIN artists ar ON ar.id = sm.artist_id JOIN song_instances si ON si.master_id = sm.id WHERE sm.id = 'sg-b'").get() as { album_id: string; artist_name: string; tag_scanned: number };
+  assert(readResult.status === 200 && readRow.tag_scanned === 1, `Read Tags processes an imported compilation track (${readResult.status}, ${JSON.stringify(readRow)}, ${await readResult.text()})`);
+  assert(readRow.album_id === "al-old" && readRow.artist_name === "Guest Singer", `Read Tags preserves compilation grouping while updating track artist (${JSON.stringify(readRow)})`);
+  readDb.close();
   scannedDb.close();
   sqlite.close();
 
