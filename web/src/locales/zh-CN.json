@@ -503,8 +503,8 @@
     "fileTypeFilter": "文件类型筛选",
     "fileTypeMusic": "音乐、歌词与图片",
     "fileTypeAll": "所有文件",
-    "parseMetadata": "上传时解析元信息",
-    "parseMetadataHint": "在浏览器内读取标签并提交，使文件立刻关联到正确的专辑/艺术家。批量上传时可关闭，稍后手动扫描。",
+    "parseMetadata": "自动解析音频标签",
+    "parseMetadataHint": "手动上传音频后自动读取标签并关联专辑/艺术家；“读取标签”用于导入或连接来源中的现有文件。",
     "preTranscode": {
       "title": "预转码选项",
       "hint": "立即生成这些播放音质，而不是等到第一次以该音质播放时才转码。"
@@ -515,6 +515,7 @@
     "uploadQueue": "上传队列",
     "uploadingFile": "上传中 {current} / {total}",
     "uploadDone": "上传完成，共 {n} 个文件",
+    "metadataPending": "文件已上传，{n} 首音频的标签尚未解析；可用“读取标签”重试。",
     "uploadPartialFail": "已上传 {done} 个，{failed} 个失败",
     "uploadResult": "上传完成：{done} 个成功，{skipped} 个跳过，{failed} 个失败",
     "uploadConflict": {
