@@ -502,8 +502,8 @@
     "fileTypeFilter": "File type filter",
     "fileTypeMusic": "Music, lyrics & images",
     "fileTypeAll": "All files",
-    "parseMetadata": "Parse metadata on upload",
-    "parseMetadataHint": "Reads tags in-browser and submits them so the file links to the right album/artist immediately. Turn off for bulk uploads and scan later.",
+    "parseMetadata": "Automatic metadata parsing",
+    "parseMetadataHint": "Manual audio uploads read tags automatically. Use Read Tags for imported files and connected sources.",
     "preTranscode": {
       "title": "Pre-transcode options",
       "hint": "Generate these playback qualities right away instead of waiting for the first request at that quality."
@@ -514,6 +514,7 @@
     "uploadQueue": "Upload queue",
     "uploadingFile": "Uploading {current} / {total}",
     "uploadDone": "Upload complete, {n} files",
+    "metadataPending": "Uploaded, but metadata is pending for {n} audio files. Use Read Tags to retry.",
     "uploadPartialFail": "Uploaded {done}, {failed} failed",
     "uploadResult": "Upload complete: {done} succeeded, {skipped} skipped, {failed} failed",
     "uploadConflict": {

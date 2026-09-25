@@ -135,9 +135,6 @@ const COMPANION_ACCEPT = ".lrc,.ttml,.krc,.elrc,.txt,image/*";
 const LOCAL_CONVERT_ACCEPT = Array.from(ENCRYPTED_AUDIO_EXTENSIONS, (ext) => `.${ext}`).join(",");
 const uploadAcceptMode = ref<"music" | "all">("music");
 const uploadAccept = computed(() => (uploadAcceptMode.value === "music" ? `audio/*,${COMPANION_ACCEPT},${LOCAL_CONVERT_ACCEPT}` : undefined));
-// Parse metadata on upload (default on). When off, the file lands in
-// R2/D1 with tag_scanned=0 and a manual scan picks it up later.
-const uploadParseMetadata = ref(true);
 const canSelectAllFiles = computed(() => demoMode.allowAllFileTypes);
 
 // Pre-transcode options, asked per-upload instead of as a global Settings
@@ -359,6 +356,7 @@ async function doUpload() {
   let resetQueue = true;
   let uploadCancelled = false;
   let uploadSkippedCount = 0;
+  let metadataPendingCount = 0;
   let conflictChoice: UploadConflictChoice | null = null;
   // uploads push real bytes through this browser; pause the
   // background metadata pool for the duration so it doesn't compete for
@@ -420,20 +418,16 @@ async function doUpload() {
         });
         uploadProgressList.value[index] = 100;
         uploadDoneCount.value++;
-        // When "parse metadata on upload" is on, parse the file's
-        // tags in-browser and submit them so the song relinks to the right
-        // album/artist immediately, no worker-pool round-trip needed.
-        if (uploadParseMetadata.value && (kind === "audio" || kind === "variant")) {
+        if (kind === "audio" || kind === "variant") {
           try {
             const resp = JSON.parse(raw) as { id?: string };
-            if (resp.id) {
-              const tags = await extractMetadata(file);
-              await submitMetadata(resp.id, tags as Record<string, string | number>);
-            }
+            if (!resp.id) throw new Error("Audio upload response did not include an instance ID");
+            const tags = await extractMetadata(file);
+            const submitted = await submitMetadata(resp.id, tags as Record<string, string | number>);
+            if (!submitted.ok) throw new Error(submitted.error || "Metadata submission failed");
           } catch (parseErr) {
+            metadataPendingCount++;
             console.error(`[upload] metadata parse/submit failed for ${file.name}:`, parseErr);
-            // Not fatal — the file already lives in R2/D1; a manual scan
-            // will pick it up later.
           }
         }
         return true;
@@ -497,11 +491,13 @@ async function doUpload() {
       },
     });
     conversionBusy.value = false;
+    const pendingMessage = metadataPendingCount > 0 ? t("files.metadataPending", { n: metadataPendingCount }) : "";
     if (uploadFailedNames.value.length === 0 && uploadSkippedCount === 0) {
-      showToast(t("files.uploadDone", { n: total }));
-      uploadMsg.value = "";
+      uploadMsg.value = pendingMessage;
+      showToast(pendingMessage || t("files.uploadDone", { n: total }), pendingMessage ? "info" : "success");
     } else {
-      uploadMsg.value = t("files.uploadResult", { done: uploadDoneCount.value, skipped: uploadSkippedCount, failed: uploadFailedNames.value.length });
+      const resultMessage = t("files.uploadResult", { done: uploadDoneCount.value, skipped: uploadSkippedCount, failed: uploadFailedNames.value.length });
+      uploadMsg.value = pendingMessage ? `${resultMessage} ${pendingMessage}` : resultMessage;
       uploadErr.value = uploadFailedNames.value.length > 0;
       showToast(uploadMsg.value, uploadErr.value ? "error" : "success");
     }
@@ -1577,7 +1573,6 @@ onBeforeUnmount(() => {
         <span class="upload-options-hint">{{ t("files.syncUploadHint") }}</span>
       </div>
       <div class="upload-options-row">
-        <FluentSwitch :aria-label="t('files.parseMetadata')" v-model="uploadParseMetadata" :title="t('files.parseMetadataHint')" />
         <span class="upload-options-label">{{ t("files.parseMetadata") }}</span>
         <span class="upload-options-hint">{{ t("files.parseMetadataHint") }}</span>
       </div>
