@@ -982,12 +982,7 @@ export async function asyncScanR2Source(
       seenUris.add(uri);
       const prior = existingMap.get(uri);
 
-      // Path 1: unchanged → skip. Pre-existing rows (native uploads never
-      // recorded source_etag/source_last_modified) naturally fail this check
-      // on their first R2 scan and fall through to path 2's UPDATE, which
-      // backfills those columns — a one-time reconciliation, not a bug.
-      // A previously-missing row also always falls through to path 2 so its
-      // flag gets cleared.
+      // Path 1: unchanged → skip. A previously-missing row falls through so its flag gets cleared.
       if (prior && etagCheck && prior.missing === 0) {
         const etagSame = obj.etag !== null && prior.etag !== null && obj.etag === prior.etag;
         const lmSame = obj.lastModified !== null && prior.lastModified !== null && obj.lastModified === prior.lastModified;
@@ -1003,15 +998,18 @@ export async function asyncScanR2Source(
 
       // Path 2: changed (or first-ever backfill) → UPDATE
       if (prior) {
+        const fingerprintBackfillOnly = etagCheck && prior.missing === 0 && prior.etag === null &&
+          prior.lastModified === null && prior.size === obj.size;
         stmts.push(
           db.prepare(
             `UPDATE song_instances
              SET source_etag = ?, source_last_modified = ?, size = ?,
-                 suffix = ?, tag_scanned = 0, missing = 0, updated_at = ?
+                 suffix = ?, tag_scanned = ?, missing = 0, updated_at = ?
              WHERE id = ?`,
-          ).bind(obj.etag, obj.lastModified, obj.size, extOf(obj.key), now, prior.id),
+          ).bind(obj.etag, obj.lastModified, obj.size, extOf(obj.key),
+            fingerprintBackfillOnly ? prior.tagScanned : 0, now, prior.id),
         );
-        if (dispatchToWorkerPool) {
+        if (dispatchToWorkerPool && (!fingerprintBackfillOnly || prior.tagScanned === 0)) {
           dispatchTargets.push({ instanceId: prior.id, uri, suffix: extOf(obj.key), size: obj.size });
         }
         if (scanned % SCAN_PROGRESS_CHUNK === 0) await flush();
