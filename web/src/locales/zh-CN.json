@@ -145,7 +145,8 @@
       "optional": "可选",
       "required": "仅 SSO"
     },
-    "ssoContinue": "使用 {provider} 继续",
+    "ssoContinue": "重定向到登录门户",
+    "ssoProvider": "登录提供方：{provider}",
     "ssoUnavailable": "SSO 提供方当前不可用。",
     "ssoCallbackFailed": "无法验证 SSO 登录，请重试。",
     "ssoConfigurationError": "SSO 已启用，但服务端配置缺失或无效。",

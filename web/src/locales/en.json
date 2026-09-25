@@ -144,7 +144,8 @@
       "optional": "Optional",
       "required": "SSO only"
     },
-    "ssoContinue": "CONTINUE WITH {provider}",
+    "ssoContinue": "REDIRECT TO LOGIN PORTAL",
+    "ssoProvider": "Login provider: {provider}",
     "ssoUnavailable": "The SSO provider is currently unavailable.",
     "ssoCallbackFailed": "SSO login could not be verified. Please try again.",
     "ssoConfigurationError": "SSO is enabled but its server configuration is incomplete or invalid.",
