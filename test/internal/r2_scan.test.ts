@@ -228,9 +228,26 @@ async function main() {
     await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-5", { etagCheck: true });
     const row = sqlite.prepare("SELECT source_etag, tag_scanned FROM song_instances WHERE id='si-1'").get() as { source_etag: string; tag_scanned: number };
     assert(row.source_etag === "e1", "etag backfilled from the R2 object");
-    assert(row.tag_scanned === 0, "backfill path resets tag_scanned (one-time reconciliation)");
+    assert(row.tag_scanned === 1, "first fingerprint backfill preserves completed metadata");
     const count = (sqlite.prepare("SELECT COUNT(*) AS n FROM song_instances").get() as { n: number }).n;
     assert(count === 1, "still exactly 1 row — no duplicate inserted");
+  }
+
+  console.log("\nchanged R2 fingerprint → previously parsed file needs a fresh parse:");
+  {
+    const sqlite = buildDb();
+    sqlite.prepare(
+      `INSERT INTO song_instances (id, master_id, source_id, storage_uri, suffix, size, source_etag, source_last_modified, tag_scanned)
+       VALUES ('si-changed', 'sm-changed', 'r2-local', 'r2://objects/obj_0000000000000022.mp3', 'mp3', 5000, 'old', 1704067200, 1)`,
+    ).run();
+    const db = makeD1(sqlite);
+    seedScanJob(sqlite, "sj-changed", "r2-local");
+    const env = { MUSIC_BUCKET: makeBucket([
+      { key: "objects/obj_0000000000000022.mp3", size: 5000, etag: "new", uploaded: new Date("2024-01-02T00:00:00Z") },
+    ]) };
+    await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-changed", { etagCheck: true });
+    const row = sqlite.prepare("SELECT source_etag, tag_scanned FROM song_instances WHERE id='si-changed'").get() as { source_etag: string; tag_scanned: number };
+    assert(row.source_etag === "new" && row.tag_scanned === 0, "changed object resets the parse state");
   }
 
   console.log("\nsync_only mode: new object discovered but NOT inserted into song_instances:");
