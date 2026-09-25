@@ -203,8 +203,17 @@ function makeApp(sqlite: DatabaseSync, user: { username: string; level: number }
     return next();
   });
   app.route("/edgesonic", workRoutes);
-  const env = { DB: makeD1(sqlite) };
+  const covers: Array<{ key: string; bytes: Uint8Array }> = [];
+  const env = {
+    DB: makeD1(sqlite),
+    MUSIC_BUCKET: {
+      async put(key: string, bytes: Uint8Array) {
+        covers.push({ key, bytes });
+      },
+    },
+  };
   return {
+    covers,
     async post(url: string, body: unknown) {
       const req = new Request(`http://test${url}`, {
         method: "POST",
@@ -222,7 +231,7 @@ async function main() {
 console.log("work/submit (metadata, success) → tag_scanned=1 + relink + physical params:");
 {
   const sqlite = buildDb();
-  seedClaimed(sqlite, "wt-metadata-inst-1", "metadata", { instanceId: "inst-1", sourceUri: "r2://music/foo.m4a", suffix: "m4a", size: 5000000 });
+  seedClaimed(sqlite, "wt-metadata-inst-1", "metadata", { instanceId: "inst-1", sourceUri: "r2://music/foo.m4a", suffix: "m4a", size: 5000000, origin: "upload" });
   const { post } = makeApp(sqlite, { username: "alice", level: 2 });
   const r = await post("/edgesonic/work/submit", {
     id: "wt-metadata-inst-1",
@@ -286,6 +295,48 @@ console.log("work/submit (metadata, success) → tag_scanned=1 + relink + physic
   const wq = sqlite.prepare("SELECT status, result_json FROM work_queue WHERE id='wt-metadata-inst-1'").get() as any;
   assert(wq.status === "completed", `queue row status (got ${wq.status})`);
   assert(typeof wq.result_json === "string" && wq.result_json.includes("Cosmic Drift"), "result_json stored");
+}
+
+console.log("work/submit (uploaded instance already parsed) preserves browser tags and adds cover:");
+{
+  const sqlite = buildDb();
+  sqlite.prepare("UPDATE song_instances SET tag_scanned = 1, duration = 180 WHERE id = 'inst-1'").run();
+  seedClaimed(sqlite, "wt-metadata-inst-1", "metadata", { instanceId: "inst-1", origin: "upload" });
+  const { post, covers } = makeApp(sqlite, { username: "alice", level: 2 });
+  const r = await post("/edgesonic/work/submit", {
+    id: "wt-metadata-inst-1",
+    result: {
+      instanceId: "inst-1",
+      tags: { title: "Background Title", artist: "Background Artist", album: "Background Album", duration: 99 },
+      cover: { data: "AQID", mime: "image/png" },
+    },
+  });
+  const body = await r.json() as any;
+  assert(r.status === 200 && body.applied?.ok === true, "queued upload task completes");
+  assert(body.applied?.masterId === "sg-1", "existing master anchors the cover");
+  const master = sqlite.prepare("SELECT title, album_id, artist_id FROM song_masters WHERE id = 'sg-1'").get() as any;
+  assert(master.title === "Song One" && master.album_id === "al-old" && master.artist_id === "ar-old", "browser metadata remains authoritative");
+  const instance = sqlite.prepare("SELECT duration, tag_scanned FROM song_instances WHERE id = 'inst-1'").get() as any;
+  assert(instance.duration === 180 && instance.tag_scanned === 1, "browser physical metadata remains authoritative");
+  const album = sqlite.prepare("SELECT cover_r2_key FROM albums WHERE id = 'al-old'").get() as any;
+  assert(album.cover_r2_key === "covers/al-old", "embedded cover links to the current album");
+  assert(covers.length === 1 && covers[0].key === "covers/al-old" && covers[0].bytes.length === 3, "embedded cover is written once");
+}
+
+console.log("work/submit (recheck on scanned instance) still refreshes metadata:");
+{
+  const sqlite = buildDb();
+  sqlite.prepare("UPDATE song_instances SET tag_scanned = 1 WHERE id = 'inst-1'").run();
+  seedClaimed(sqlite, "wt-metadata-recheck-inst-1", "metadata", { instanceId: "inst-1", origin: "recheck" });
+  const { post } = makeApp(sqlite, { username: "alice", level: 2 });
+  const r = await post("/edgesonic/work/submit", {
+    id: "wt-metadata-recheck-inst-1",
+    result: { instanceId: "inst-1", tags: { title: "Refreshed Title", duration: 211 } },
+  });
+  const body = await r.json() as any;
+  assert(r.status === 200 && body.applied?.ok === true, "recheck task completes");
+  const master = sqlite.prepare("SELECT title FROM song_masters WHERE id = 'sg-1'").get() as any;
+  assert(master.title === "Refreshed Title", "recheck can still update an already scanned instance");
 }
 
 console.log("work/submit (metadata, partial tags) — still flips tag_scanned, no crash:");
@@ -422,6 +473,23 @@ console.log("work/backfillCompleted: replays multiple completed metadata rows:")
   assert(si.tag_scanned === 1, `tag_scanned=1 after backfill (got ${si.tag_scanned})`);
   // Last applied row's bitrate wins — backfill processes in created_at ASC order
   assert(si.bit_rate === 160, `bit_rate=160 (last apply wins, got ${si.bit_rate})`);
+}
+
+console.log("work/backfillCompleted: completed upload cannot replace direct-upload metadata:");
+{
+  const sqlite = buildDb();
+  sqlite.prepare("UPDATE song_instances SET tag_scanned = 1, duration = 180 WHERE id = 'inst-1'").run();
+  seedCompleted(sqlite, "wt-upload-1", { instanceId: "inst-1", origin: "upload" }, {
+    instanceId: "inst-1",
+    tags: { title: "Old Queue Title", artist: "Old Queue Artist", album: "Old Queue Album", duration: 99 },
+  });
+  const { post } = makeApp(sqlite, { username: "root", level: 3 });
+  const r = await post("/edgesonic/work/backfillCompleted", {});
+  const body = await r.json() as any;
+  assert(r.status === 200 && body.applied === 1 && body.failed === 0, "completed upload task is accounted for");
+  const master = sqlite.prepare("SELECT title, album_id FROM song_masters WHERE id = 'sg-1'").get() as any;
+  const instance = sqlite.prepare("SELECT duration FROM song_instances WHERE id = 'inst-1'").get() as any;
+  assert(master.title === "Song One" && master.album_id === "al-old" && instance.duration === 180, "direct-upload metadata remains unchanged");
 }
 
 console.log("work/backfillCompleted: non-admin rejected:");

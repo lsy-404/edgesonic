@@ -52,6 +52,21 @@ export const workRoutes = new Hono<{
   Variables: { user: User };
 }>();
 
+async function applyQueuedMetadata(
+  db: D1Database,
+  instanceId: string,
+  tags: Record<string, unknown>,
+  payload: Record<string, unknown>,
+) {
+  // A completed direct upload parse owns its tags; queued work can still add its cover.
+  if (payload.origin === "upload" && payload.instanceId === instanceId) {
+    const instance = await db.prepare("SELECT master_id, tag_scanned FROM song_instances WHERE id = ?")
+      .bind(instanceId).first<{ master_id: string; tag_scanned: number }>();
+    if (instance?.tag_scanned === 1) return { updated: true, masterId: instance.master_id };
+  }
+  return applyMetadataResult(db, instanceId, tags, tags);
+}
+
 // ---------------------------------------------------------------------------
 // GET /edgesonic/work/socket — the only way to receive work.
 // ---------------------------------------------------------------------------
@@ -163,17 +178,17 @@ workRoutes.post("/work/submit", async (c) => {
     try {
       const r = body.result as Record<string, unknown>;
       const tags = (r.tags && typeof r.tags === "object") ? r.tags as Record<string, unknown> : {};
+      let payload: Record<string, unknown> = {};
+      try {
+        const parsed = JSON.parse(row.payload);
+        if (parsed && typeof parsed === "object") payload = parsed as Record<string, unknown>;
+      } catch { /* malformed payload */ }
       // result.instanceId is what the worker actually processed; fall back to
       // the dispatched payload (52a stores it as a JSON column) when the
       // worker forgot to echo it. Both should always agree.
       let instanceId = typeof r.instanceId === "string" ? r.instanceId : "";
-      if (!instanceId) {
-        try {
-          const payload = JSON.parse(row.payload) as Record<string, unknown>;
-          if (typeof payload?.instanceId === "string") instanceId = payload.instanceId;
-        } catch { /* malformed payload — falls through to "missing instanceId" */ }
-      }
-      const apply = await applyMetadataResult(env.DB, instanceId, tags, tags);
+      if (!instanceId && typeof payload.instanceId === "string") instanceId = payload.instanceId;
+      const apply = await applyQueuedMetadata(env.DB, instanceId, tags, payload);
       applyAnnotation = apply.updated
         ? { ok: true, masterId: apply.masterId }
         : { ok: false, reason: apply.reason };
@@ -437,14 +452,14 @@ workRoutes.post("/work/backfillCompleted",
       const tags = (result.tags && typeof result.tags === "object")
         ? result.tags as Record<string, unknown>
         : {};
+      let payload: Record<string, unknown> = {};
+      try {
+        const parsed = JSON.parse(cand.payload);
+        if (parsed && typeof parsed === "object") payload = parsed as Record<string, unknown>;
+      } catch { /* malformed payload */ }
       let instanceId = typeof result.instanceId === "string" ? result.instanceId : "";
-      if (!instanceId) {
-        try {
-          const payload = JSON.parse(cand.payload) as Record<string, unknown>;
-          if (typeof payload?.instanceId === "string") instanceId = payload.instanceId;
-        } catch { /* missing payload — caught below as "missing instanceId" */ }
-      }
-      const apply = await applyMetadataResult(env.DB, instanceId, tags, tags);
+      if (!instanceId && typeof payload.instanceId === "string") instanceId = payload.instanceId;
+      const apply = await applyQueuedMetadata(env.DB, instanceId, tags, payload);
       if (apply.updated) {
         applied++;
       } else {

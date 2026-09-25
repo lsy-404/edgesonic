@@ -368,6 +368,7 @@ async function finishAudioUpload(
           sourceUri: storageUri,
           suffix,
           size: sizeHeader || 0,
+          origin: "upload",
         },
         requiredCaps: ["music-metadata"],
         priority: 3, // higher than scan-dispatched tasks (5) so uploads parse fast
