@@ -576,6 +576,8 @@ function normalizeUploadContentType(contentType: string | null | undefined, suff
     case "elrc":
     case "txt": return "text/plain; charset=utf-8";
     case "ttml": return "application/ttml+xml";
+    case "cue": return "application/x-cue";
+    case "pdf": return "application/pdf";
     case "jpg":
     case "jpeg": return "image/jpeg";
     case "png": return "image/png";

@@ -18,7 +18,7 @@
 // entries of their own.
 //
 // Covers:
-//  • .lrc / .ttml / .krc / .elrc / .txt / images are accepted with allow_all_file_types
+//  • .lrc / .ttml / .krc / .elrc / .txt / images / .cue / .pdf are accepted
 //    off — they belong in a music folder
 //  • a companion lands in R2 but gets no song_instances row (registering one
 //    produced a phantom "Pending Uploads" track no metadata pass could fix)
@@ -154,12 +154,15 @@ async function main() {
       ["cover.jpg", "image/jpeg"],
       ["back.png", "image/png"],
       ["art.webp", "image/webp"],
+      ["album.cue", null],
+      ["booklet.pdf", null],
     ] as Array<[string, string | null]>) {
       const bucket = makeR2Bucket();
       const db = makeD1();
       const upload = makeApp(bucket, db);
       const { status, body } = await upload(name, sent);
       assert(status === 200 && body.ok === true, `${name} → 200 ok`);
+      assert(body.id === undefined && !insertedSongRow(db), `${name} stays a companion without a song instance`);
     }
   }
 
@@ -187,6 +190,8 @@ async function main() {
       ["f.jpg", null, "image/jpeg"],
       ["g.png", null, "image/png"],
       ["h.webp", null, "image/webp"],
+      ["j.cue", null, "application/x-cue"],
+      ["k.pdf", "application/octet-stream", "application/pdf"],
       // A type the browser does know is kept as sent.
       ["i.jpeg", "image/jpeg", "image/jpeg"],
     ];
@@ -214,7 +219,7 @@ async function main() {
 
   console.log("everything else is still refused:");
   {
-    for (const name of ["payload.exe", "doc.pdf", "bundle.zip", "script.js"]) {
+    for (const name of ["payload.exe", "bundle.zip", "script.js"]) {
       const bucket = makeR2Bucket();
       const db = makeD1();
       const upload = makeApp(bucket, db);
