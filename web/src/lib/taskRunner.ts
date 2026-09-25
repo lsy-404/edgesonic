@@ -119,7 +119,7 @@ export async function runTask(
     if (task.taskType === "metadata") {
       const instanceId = String(task.payload.instanceId || "");
       if (instanceId) {
-        augmented.payload.streamUrl = deps.restUrl("stream", { id: instanceId });
+        augmented.payload.streamUrl = deps.restUrl("stream", { id: instanceId, source: instanceId });
       }
     }
 
