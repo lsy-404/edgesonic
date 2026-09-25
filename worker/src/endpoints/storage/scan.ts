@@ -1027,8 +1027,15 @@ export async function asyncScanR2Source(
         if (scanned % SCAN_PROGRESS_CHUNK === 0) await flush();
         continue;
       }
+      const registeredEntry = await db.prepare(
+        "SELECT path FROM storage_entries WHERE source_id = ? AND object_id = ? AND kind = 'file' AND instance_id IS NULL LIMIT 1",
+      ).bind(src.id, stable[1]).first<{ path: string }>();
+      if (!registeredEntry) {
+        if (scanned % SCAN_PROGRESS_CHUNK === 0) await flush();
+        continue;
+      }
       const suffix = normalizeSuffix(stable[2]);
-      const logicalPath = `music/${stable[1]}.${suffix}`;
+      const logicalPath = registeredEntry.path;
       const meta = guessFromPath(logicalPath);
       const artistId = "ar-" + md5(meta.artist).substring(0, 10);
       const albumId = "al-" + md5(meta.artist + " " + meta.album).substring(0, 10);

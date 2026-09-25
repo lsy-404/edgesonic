@@ -34,13 +34,13 @@ const sources = ref<StorageSource[]>([]);
 const requestedSource = typeof route.query.source === "string" ? route.query.source : "r2";
 const currentSource = ref(requestedSource || "r2");
 
-function routePath(value: unknown, source: string): string {
-  if (typeof value !== "string" || !value.trim()) return source === "r2" ? "music" : "";
+function routePath(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "";
   const segments = value.split("/").filter((segment) => segment && segment !== "." && segment !== "..");
   return segments.join("/");
 }
 
-const path = ref(routePath(route.query.path, currentSource.value));
+const path = ref(routePath(route.query.path));
 const locateFileName = ref(typeof route.query.file === "string" ? route.query.file : "");
 const dirs = ref<DirEntry[]>([]);
 const files = ref<FileEntry[]>([]);
@@ -251,7 +251,7 @@ function formatModifiedTime(value: number | null): string {
 
 function selectSource(id: string) {
   currentSource.value = id;
-  path.value = id === "r2" ? "music" : "";
+  path.value = "";
   clearSelection();
   loadDir();
   // the count tracks the active source.
@@ -305,8 +305,8 @@ function isEncryptedUploadIncluded(item: LocalUploadItem) {
 }
 
 function uploadObjectKey(file: File, item: LocalUploadItem) {
-  const targetPath = (uploadPathFor(path.value, item) || "").replace(/^music\/?/, "").replace(/\/+$/, "");
-  return `music/${targetPath ? `${targetPath}/` : ""}${file.name}`;
+  const targetPath = (uploadPathFor(path.value, item) || "").replace(/\/+$/, "");
+  return `${targetPath ? `${targetPath}/` : ""}${file.name}`;
 }
 
 function askUploadConflict(files: UploadConflictEntry[]): Promise<UploadConflictChoice> {
@@ -1645,7 +1645,7 @@ onBeforeUnmount(() => {
         <div class="modal-title">{{ t("files.uploadConflict.title") }}</div>
         <p class="modal-confirm-text">{{ t("files.uploadConflict.message", { n: uploadConflictModal.files.length }) }}</p>
         <ul class="upload-conflict-list">
-          <li v-for="file in uploadConflictModal.files" :key="file.key" :title="file.key">{{ file.key.replace(/^music\//, "") }}</li>
+          <li v-for="file in uploadConflictModal.files" :key="file.key" :title="file.key">{{ file.key }}</li>
         </ul>
         <p class="upload-conflict-hint">{{ t("files.uploadConflict.hint") }}</p>
         <div class="modal-actions upload-conflict-actions">

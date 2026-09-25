@@ -137,10 +137,20 @@ function seedScanJob(sqlite: DatabaseSync, jobId: string, sourceId: string) {
   ).run(jobId, sourceId, Math.floor(Date.now() / 1000));
 }
 
+function seedUnindexedEntry(sqlite: DatabaseSync, objectId: string, suffix: string, logicalPath: string, size: number) {
+  sqlite.prepare(
+    "INSERT INTO storage_objects (id, physical_key, suffix, size) VALUES (?, ?, ?, ?)",
+  ).run(objectId, `objects/${objectId}.${suffix}`, suffix, size);
+  sqlite.prepare(
+    "INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id) VALUES (?, 'r2-local', ?, ?, 'file', ?)",
+  ).run(`se-${objectId}`, logicalPath, logicalPath.split("/").pop(), objectId);
+}
+
 async function main() {
-  console.log("brand new bucket object → INSERT (artist/album/master/instance):");
+  console.log("registered bucket object without an instance → INSERT (artist/album/master/instance):");
   {
     const sqlite = buildDb();
+    seedUnindexedEntry(sqlite, "obj_0000000000000001", "mp3", "Album/track.mp3", 5000);
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-1", "r2-local");
     const env = { MUSIC_BUCKET: makeBucket([
@@ -151,14 +161,31 @@ async function main() {
     assert(inst.length === 1, `exactly 1 instance inserted (got ${inst.length})`);
     assert(inst[0]?.storage_uri === "r2://objects/obj_0000000000000001.mp3", `stable r2:// uri (got ${inst[0]?.storage_uri})`);
     assert(inst[0]?.source_id === "r2-local", "source_id = r2-local");
+    const path = sqlite.prepare("SELECT path FROM storage_entries WHERE object_id='obj_0000000000000001'").get() as { path: string };
+    assert(path.path === "Album/track.mp3", "registered logical path is retained");
     const job = sqlite.prepare("SELECT * FROM scan_jobs WHERE id='sj-1'").get() as { status: string; scanned_items: number; total_items: number };
     assert(job.status === "completed", `job completed (got ${job.status})`);
     assert(job.scanned_items === 1 && job.total_items === 1, "job counters = 1/1");
   }
 
+  console.log("\nunregistered stable key does not invent a music album:");
+  {
+    const sqlite = buildDb();
+    const db = makeD1(sqlite);
+    seedScanJob(sqlite, "sj-orphan", "r2-local");
+    const env = { MUSIC_BUCKET: makeBucket([
+      { key: "objects/obj_0000000000000023.flac", size: 5000, etag: "e1", uploaded: new Date() },
+    ]) };
+    await asyncScanR2Source(env, db, { id: "r2-local", mode: "library" }, "sj-orphan", {});
+    const instances = (sqlite.prepare("SELECT COUNT(*) AS n FROM song_instances").get() as { n: number }).n;
+    const entries = (sqlite.prepare("SELECT COUNT(*) AS n FROM storage_entries").get() as { n: number }).n;
+    assert(instances === 0 && entries === 0, "orphan physical object remains unindexed");
+  }
+
   console.log("\nnon-audio keys (covers, sidecars) are ignored:");
   {
     const sqlite = buildDb();
+    seedUnindexedEntry(sqlite, "obj_0000000000000004", "flac", "Album/track.flac", 9000);
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-2", "r2-local");
     const env = { MUSIC_BUCKET: makeBucket([
@@ -253,6 +280,7 @@ async function main() {
   console.log("\nsync_only mode: new object discovered but NOT inserted into song_instances:");
   {
     const sqlite = buildDb();
+    seedUnindexedEntry(sqlite, "obj_0000000000000008", "mp3", "Album/track.mp3", 5000);
     const db = makeD1(sqlite);
     seedScanJob(sqlite, "sj-6", "r2-local");
     const env = { MUSIC_BUCKET: makeBucket([
@@ -272,7 +300,9 @@ async function main() {
     seedScanJob(sqlite, "sj-7", "r2-local");
     const objects: StubObject[] = [];
     for (let i = 0; i < 5; i++) {
-      objects.push({ key: `objects/obj_00000000000000${10 + i}.mp3`, size: 1000 + i, etag: `e${i}`, uploaded: new Date() });
+      const objectId = `obj_00000000000000${10 + i}`;
+      objects.push({ key: `objects/${objectId}.mp3`, size: 1000 + i, etag: `e${i}`, uploaded: new Date() });
+      seedUnindexedEntry(sqlite, objectId, "mp3", `Album/track${i}.mp3`, 1000 + i);
     }
     const env = { MUSIC_BUCKET: makeBucket(objects, 2) }; // force 3 pages for 5 objects
     await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-7", {});

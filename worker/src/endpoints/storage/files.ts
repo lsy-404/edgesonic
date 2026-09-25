@@ -44,9 +44,9 @@ filesRoutes.use("*", async (c, next) => {
 });
 
 // ── Upload (raw body stream — studio-style) ──────────────────────────────
-// POST /rest/files/upload?name=file.mp3&source=r2|webdav&path=music&conflict=error|overwrite|rename
+// POST /rest/files/upload?name=file.mp3&source=r2|webdav&path=Album&conflict=error|overwrite|rename
 //
-// Upload goes directly to music/{path}/{name} on R2 (no more _uploads/
+// Upload uses the requested root-relative logical path on R2 (no more _uploads/
 // placeholder album). We create a song_instance row with tag_scanned=0 and
 // dispatch a metadata task so the browser worker pool parses the file's tags
 // and relinks it to the right master/album/artist via applyMetadataResult.
@@ -101,7 +101,7 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   // audio-only.
   const isAudio = isAudioSuffix(suffix);
   // D1 owns the logical path. R2 receives a fresh immutable object key.
-  const requestedPath = "music/" + (cleanPath ? cleanPath + "/" : "") + name;
+  const requestedPath = (cleanPath ? cleanPath + "/" : "") + name;
 
   const db = env.DB;
   const now = Math.floor(Date.now() / 1000);
@@ -324,7 +324,7 @@ filesRoutes.post("/files/upload-conflicts", permissionMiddleware("upload"), asyn
     const items = await Promise.all(body.files.map(async (file) => {
       const path = normalizeUploadPath(file.path || "");
       if (path === null || !isSafeUploadName(file.name!)) throw new Error("Invalid upload path or name");
-      const key = `music/${path ? `${path}/` : ""}${file.name}`;
+      const key = `${path ? `${path}/` : ""}${file.name}`;
       const exists = source === "r2"
         ? !!await findR2EntryByPath(env.DB, key)
         : await doesUploadTargetExist(env, source, key);
@@ -409,7 +409,7 @@ function isSafeUploadName(name: string): boolean {
 }
 
 function normalizeUploadPath(raw: string): string | null {
-  const path = raw.replace(/^music\/?/, "");
+  const path = raw;
   if (!path) return "";
   if (/[\\\x00-\x1F\x7F]/.test(path)) return null;
   const segments = path.split("/");
@@ -591,7 +591,7 @@ function normalizeUploadContentType(contentType: string | null | undefined, suff
 
 // ── File operations (studio-style structured REST, no notes/color-labels) ──
 
-// POST /storage/files/mkdir body: { source: "r2" | <sourceId>, path: "music/newfolder" }
+// POST /storage/files/mkdir body: { source: "r2" | <sourceId>, path: "newfolder" }
 //
 // Every other source is treated as WebDAV, same as files/list does for any
 // non-r2 source id — MKCOL is idempotent here (405 "already exists" counts
@@ -710,7 +710,7 @@ filesRoutes.post("/files/delete", permissionMiddleware("delete"), async (c) => {
   return c.json({ ok: true });
 });
 
-// POST /storage/files/deleteFolder body: { path: "music/folder" } — R2 only,
+// POST /storage/files/deleteFolder body: { path: "folder" } — R2 only,
 // on the R2 source). The R2 objects are resolved from D1 entries, so a folder
 // delete removes only objects that belong to its logical subtree.
 filesRoutes.post("/files/deleteFolder", permissionMiddleware("delete"), async (c) => {
@@ -745,7 +745,7 @@ filesRoutes.post("/files/deleteFolder", permissionMiddleware("delete"), async (c
   return c.json({ ok: true, deleted: rows.results.length });
 });
 
-// POST /storage/files/moveFolder body: { path: "music/a", dest: "music/b/a" }
+// POST /storage/files/moveFolder body: { path: "a", dest: "b/a" }
 // — R2 only. A folder move updates D1 paths and parent ids; R2 bytes stay at
 // their immutable object keys, so the operation is a single database change.
 filesRoutes.post("/files/moveFolder", permissionMiddleware("upload"), async (c) => {
@@ -867,9 +867,8 @@ filesRoutes.post("/files/copy", permissionMiddleware("upload"), async (c) => {
 //              url and subsonic always return an error.
 //
 //   destPath — Relative path at the destination (e.g. "Music/album/track.mp3").
-//              For R2 destinations `music/` is prepended automatically if not
-//              already present. For WebDAV the path is relative to the
-//              source's root (as stored in the adapter credentials).
+//              For R2 destinations the path is relative to the library root.
+//              For WebDAV it is relative to the source's root.
 //
 // Optional `registerInstance` body field (mirror-to-R2 flow): when
 // present, the endpoint also INSERTs a song_instances row for the new R2
@@ -933,10 +932,7 @@ filesRoutes.post("/files/crossCopy", permissionMiddleware("upload"), async (c) =
   let r2Destination: { objectId: string; key: string; logicalPath: string; suffix: string } | null = null;
 
   if (destSource === "r2") {
-    // Strip leading 'music/' to normalize the logical D1 path, then allocate
-    // an immutable R2 object key.
-    const cleanPath = destPath.replace(/^music\/?/, "");
-    const logicalPath = "music/" + cleanPath;
+    const logicalPath = destPath;
     const suffix = logicalPath.split(".").pop() || "bin";
     const objectId = createStableObjectId(`${logicalPath}:${crypto.randomUUID()}`);
     const key = createStableObjectKey(objectId, suffix);
@@ -956,7 +952,7 @@ filesRoutes.post("/files/crossCopy", permissionMiddleware("upload"), async (c) =
 
     switch (row.type) {
       case "r2": {
-        const logicalPath = "music/" + destPath.replace(/^music\/?/, "");
+        const logicalPath = destPath;
         const suffix = logicalPath.split(".").pop() || "bin";
         const objectId = createStableObjectId(`${logicalPath}:${crypto.randomUUID()}`);
         const key = createStableObjectKey(objectId, suffix);

@@ -37,7 +37,7 @@ function makeBucket(entries: Array<string | [string, number]> = []) {
   };
 }
 
-function makeDb(existingUri?: string, existingPath = "music/song.mp3") {
+function makeDb(existingUri?: string, existingPath = "song.mp3") {
   const calls: string[] = [];
   const storageObjectIds = new Set<string>();
   let masterInserts = 0;
@@ -147,7 +147,7 @@ async function main() {
     const db = makeDb("r2://objects/existing.mp3");
     const result = await makeUpload(bucket, db)("r2");
     assert(result.status === 409, "default policy rejects an existing R2 object");
-    assert(result.body.conflict?.requestedKey === "music/song.mp3", "conflict response identifies the requested key");
+    assert(result.body.conflict?.requestedKey === "song.mp3", "conflict response identifies the requested key");
     assert(result.body.conflict?.policies?.join(",") === "error,overwrite,rename", "conflict response advertises every supported policy");
     assert(bucket.puts.length === 0, "reject never overwrites the object");
   }
@@ -159,13 +159,13 @@ async function main() {
   {
     const result = await checkConflicts(makeBucket(["objects/existing.mp3"]), makeDb("r2://objects/existing.mp3"));
     assert(result.status === 200 && result.body.conflicts?.length === 1, "batch preflight returns only the conflicting files");
-    assert(result.body.items?.[1]?.key === "music/Album/new.flac" && result.body.items?.[1]?.conflict === false, "batch preflight returns each final path");
+    assert(result.body.items?.[1]?.key === "Album/new.flac" && result.body.items?.[1]?.conflict === false, "batch preflight returns each final path");
   }
   {
     const bucket = makeBucket(["objects/existing.mp3"]);
     const result = await makeUpload(bucket, makeDb("r2://objects/existing.mp3"))("r2", "rename");
     assert(result.status === 200 && /^objects\/obj_[0-9a-f]{16}\.mp3$/.test(result.body.key), "rename allocates a fresh stable R2 key");
-    assert(result.body.conflict?.renamed === true && result.body.conflict?.finalKey === "music/song (1).mp3", "success reports the final logical path");
+    assert(result.body.conflict?.renamed === true && result.body.conflict?.finalKey === "song (1).mp3", "success reports the final logical path");
   }
 
   console.log("overwrite reuses the registered original instance:");
@@ -203,8 +203,8 @@ async function main() {
       assert(!methods.some((call) => call.method === "PUT"), "rejected WebDAV upload does not PUT");
       methods.length = 0;
       const renamed = await upload("webdav", "rename");
-      assert(renamed.status === 200 && renamed.body.key === "music/song (1).mp3", "WebDAV rename chooses an available path");
-      assert(methods.some((call) => call.method === "PUT" && call.url.endsWith("music/song%20(1).mp3")), "WebDAV PUT uses the resolved final path");
+      assert(renamed.status === 200 && renamed.body.key === "song (1).mp3", "WebDAV rename chooses an available path");
+      assert(methods.some((call) => call.method === "PUT" && call.url.endsWith("song%20(1).mp3")), "WebDAV PUT uses the resolved final path");
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -89,7 +89,7 @@ function makeR2Bucket() {
 type SourceRec = { id: string; type: string; mode: string; base_url: string; username: string | null; password: string | null };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeD1(sources: SourceRec[]): any {
+function makeD1(sources: SourceRec[], entryPaths: string[]): any {
   return {
     prepare(sql: string) {
       let boundArgs: unknown[] = [];
@@ -118,7 +118,10 @@ function makeD1(sources: SourceRec[]): any {
           return null;
         },
         async all<T = unknown>() { return { results: [] as T[], success: true as const, meta: {} }; },
-        async run() { return { success: true as const, meta: { changes: 0 } }; },
+        async run() {
+          if (sql.includes("INSERT INTO storage_entries")) entryPaths.push(String(boundArgs[3]));
+          return { success: true as const, meta: { changes: 0 } };
+        },
       };
     },
   };
@@ -132,7 +135,8 @@ function makeApp(
   sources: SourceRec[],
   storageKey?: string,
 ) {
-  const db = makeD1(sources);
+  const entryPaths: string[] = [];
+  const db = makeD1(sources, entryPaths);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.use("*", async (c, next) => {
@@ -150,6 +154,7 @@ function makeApp(
   if (storageKey !== undefined) env.STORAGE_KEY = storageKey;
 
   return {
+    entryPaths,
     async post(url: string, body: unknown) {
       const req = new Request(`http://test${url}`, {
         method: "POST",
@@ -207,6 +212,7 @@ async function main() {
     const j = await r.json<{ ok: boolean; destUri: string }>();
     assert(j.ok, "ok=true");
     assert(/^r2:\/\/objects\/obj_[0-9a-f]{16}\.mp3$/.test(j.destUri), `stable destUri preserves suffix (got '${j.destUri}')`);
+    assert(app.entryPaths.includes("dest/track_copy.mp3"), "R2 copy registers the root-relative path");
     // Verify bytes written to R2
     const written = await bucket.get(j.destUri.replace(/^r2:\/\//, ""));
     assert(written !== null, "dest file exists in R2");
@@ -216,6 +222,22 @@ async function main() {
       const text = new TextDecoder().decode(value);
       assert(text === "MP3DATA", `content matches (got '${text}')`);
     }
+  }
+
+  console.log("\ncrossCopy configured R2 source:");
+  {
+    const bucket = makeR2Bucket();
+    await bucket.put("legacy/source.mp3", new TextEncoder().encode("MP3DATA"));
+    const app = makeApp(bucket, [
+      { id: "r2-local", type: "r2", mode: "library", base_url: "", username: null, password: null },
+    ]);
+    const r = await app.post("/storage/files/crossCopy", {
+      srcUri: "r2://legacy/source.mp3",
+      destSource: "r2-local",
+      destPath: "Album/copied.mp3",
+    });
+    assert(r.status === 200, "configured R2 destination accepts the copy");
+    assert(app.entryPaths.includes("Album/copied.mp3"), "configured R2 source keeps the root-relative path");
   }
 
   // ── URL → R2 copy (stream from external URL) ─────────────────────────────

@@ -373,12 +373,11 @@ async function confirmStartMirror() {
           // source's root_path). storage_uri is `webdav://{sourceId}/{relPath}`
           // where relPath already excludes root_path (the scan walks
           // root_path + relPath). So we strip the `webdav://{sourceId}/`
-          // prefix and place the rest under music/ on R2.
-          //  webdav://6debd0f2/Album/song.flac → r2://music/Album/song.flac
+          // prefix and place the rest at the R2 library root.
           // This keeps the original tree shape from the remote without
           // inventing artist/album dirs that may not exist on the source.
           const relPath = item.storageUri.replace(/^webdav:\/\/[^/]+\//, "");
-          const destPath = "music/" + relPath;
+          const destPath = relPath;
           // Determine suffix from the source URI.
           const filename = relPath.split("/").pop() || item.instanceId;
           const suffix = item.suffix || filename.split(".").pop() || "";
