@@ -177,7 +177,7 @@ onMounted(async () => {
         <p v-if="ssoMode !== 'disabled'" class="login-config-hint login-sso-provider">
           {{ t("login.ssoProvider", { provider: ssoProviderName }) }}
         </p>
-        <p v-if="ssoConfigurationError" class="login-config-hint login-config-error">
+        <p v-if="ssoMode !== 'disabled' && ssoConfigurationError" class="login-config-hint login-config-error">
           {{ t("login.ssoConfigurationError") }}
         </p>
 

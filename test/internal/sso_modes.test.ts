@@ -123,7 +123,10 @@ async function main() {
   const requiredMissing = resolveSsoPolicy({ SSO_MODE: "required" }, "https://music.example/login");
   assert.equal(requiredMissing.failClosed, true);
   assert.equal(requiredMissing.localAuthenticationAllowed, false);
-  assert.equal(resolveSsoPolicy({ SSO_MODE: "invalid" }, "https://music.example/login").failClosed, true);
+  const invalidMode = resolveSsoPolicy({ SSO_MODE: "invalid" }, "https://music.example/login");
+  assert.equal(invalidMode.failClosed, true);
+  assert.equal(invalidMode.mode, "disabled");
+  assert.equal(invalidMode.error, "invalid_mode");
 
   const sqlite = buildDatabase();
   const env = configuredEnv(sqlite);

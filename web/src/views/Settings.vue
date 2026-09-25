@@ -2673,7 +2673,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="sub-block">
+        <div v-if="ssoMode !== 'disabled'" class="sub-block">
           <div class="sub-header">
             <span class="mono-label">{{ t("settings.common.email.ssoTitle") }}</span>
             <span class="status-badge" :class="ssoConfigured ? 'success' : (ssoConfigurationError ? 'error' : 'muted')">
