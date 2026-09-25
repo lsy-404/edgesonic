@@ -313,6 +313,30 @@ async function main() {
     assert(row.missing === 1, `vanished file's row marked missing (got missing=${row.missing})`);
   }
 
+  console.log("\ncomplete objects/ scan preserves legacy R2 keys but marks absent stable objects missing:");
+  {
+    const sqlite = buildDb();
+    const now = Math.floor(Date.now() / 1000);
+    sqlite.prepare(`
+      INSERT INTO song_instances (id, master_id, source_id, storage_uri, suffix, size, missing, created_at, updated_at)
+      VALUES
+        ('si-legacy', 'sm-legacy', 'r2-local', 'r2://music/Old Album/legacy.mp3', 'mp3', 5000, 0, ?, ?),
+        ('si-stable-gone', 'sm-stable-gone', 'r2-local', 'r2://objects/obj_0000000000000019.mp3', 'mp3', 5000, 0, ?, ?),
+        ('si-stable-present', 'sm-stable-present', 'r2-local', 'r2://objects/obj_0000000000000020.mp3', 'mp3', 5000, 0, ?, ?)
+    `).run(now, now, now, now, now, now);
+    const db = makeD1(sqlite);
+    seedScanJob(sqlite, "sj-13", "r2-local");
+    const env = { MUSIC_BUCKET: makeBucket([
+      { key: "objects/obj_0000000000000020.mp3", size: 5000, etag: "e1", uploaded: new Date() },
+      { key: "objects/obj_0000000000000021.mp3", size: 1234, etag: "e2", uploaded: new Date() },
+    ]) };
+    await asyncScanR2Source(env, db, { id: "r2-local" }, "sj-13", { etagCheck: true });
+    const rows = sqlite.prepare("SELECT id, missing FROM song_instances WHERE id IN ('si-legacy', 'si-stable-gone', 'si-stable-present') ORDER BY id").all() as Array<{ id: string; missing: number }>;
+    const missingById = Object.fromEntries(rows.map((row) => [row.id, row.missing]));
+    assert(missingById["si-legacy"] === 0, "legacy key outside objects/ listing remains available");
+    assert(missingById["si-stable-gone"] === 1, "absent stable objects/ key is still marked missing");
+    assert(missingById["si-stable-present"] === 0, "listed stable objects/ key remains available");
+  }
   console.log("\nmissing row reappears in a later scan → missing flips back to 0:");
   {
     const sqlite = buildDb();
