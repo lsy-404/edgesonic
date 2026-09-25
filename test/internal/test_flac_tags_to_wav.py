@@ -84,6 +84,8 @@ def write_flac(path: Path, title: str = "FLAC title", app_block: bool = True, re
         payload += flac_block(3, b"\xff" * 8 + b"\0" * 10)
         payload += flac_block(1, b"\0" * 8)
     payload += flac_block(4, vorbis_comment([f"TITLE={title}", "ARTIST=FLAC Artist", "ARTIST=Guest Artist",
+                                             "ALBUM ARTIST=FLAC Album Artist / Guest Album Artist",
+                                             "ALBUMARTIST=FLAC Album Artist", "ALBUMARTIST=Guest Album Artist",
                                              "COMMENT=ExactAudioCopy v1.1", "COMMENT=second comment",
                                              "LYRICS=first lyric", "LYRICS=second lyric",
                                              "MOOD=calm", "MOOD=bright"]))
@@ -115,7 +117,15 @@ class FlacTagsToWavTests(unittest.TestCase):
         self.assertEqual(status, 0)
         output = WAVE(str(self.output))
         self.assertEqual(list(output.tags["TIT2"].text), ["FLAC title"])
-        self.assertEqual(list(output.tags["TPE1"].text), ["FLAC Artist", "Guest Artist"])
+        self.assertEqual(list(output.tags["TPE1"].text), ["FLAC Artist / Guest Artist"])
+        self.assertEqual(list(output.tags["TPE2"].text), ["FLAC Album Artist / Guest Album Artist"])
+        artists = [frame for frame in output.tags.getall("TXXX") if frame.desc == "ARTIST"]
+        album_artists = [frame for frame in output.tags.getall("TXXX") if frame.desc == "ALBUMARTIST"]
+        self.assertEqual(artists[0].text, ["FLAC Artist", "Guest Artist"])
+        self.assertEqual(album_artists[0].text, ["FLAC Album Artist", "Guest Album Artist"])
+        self.assertEqual(report["verification"]["fields"]["TPE1"]["expected_frame_values"], ["FLAC Artist / Guest Artist"])
+        self.assertEqual(report["multivalue_display_normalization"]["TPE2"]["display_values"],
+                         ["FLAC Album Artist", "Guest Album Artist"])
         self.assertEqual(merge_tool.canonical_values(output.tags)["COMM"], ["ExactAudioCopy v1.1", "second comment"])
         self.assertEqual(merge_tool.canonical_values(output.tags)["USLT"], ["first lyric", "second lyric"])
         moods = [frame for frame in output.tags.getall("TXXX") if frame.desc == "MOOD"]
@@ -131,6 +141,11 @@ class FlacTagsToWavTests(unittest.TestCase):
         self.assertIn("APPLICATION", [b["name"] for b in report["unpreserved_flac_blocks"]])
         self.assertEqual(report["verification"]["passed"], True)
         self.assertTrue(self.report.exists())
+
+    def test_display_credit_only_expands_redundant_comma_composites(self):
+        self.assertEqual(merge_tool.display_credit_values(["Singer A, Singer B", "Singer A", "Singer B"]),
+                         ["Singer A", "Singer B"])
+        self.assertEqual(merge_tool.display_credit_values(["Surname, Given"]), ["Surname, Given"])
 
     def test_conflict_aborts_audio_output_and_explicit_resolution_allows_it(self):
         self.pcm = write_wav(self.wav, {"title": "WAV title"})

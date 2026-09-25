@@ -74,7 +74,7 @@ function parseID3v2(buf: Uint8Array): SongTags | null {
     const frameSize = major === 4 ? syncsafe(buf, pos + 4) : be32(buf, pos + 4);
     if (frameSize <= 0 || pos + 10 + frameSize > buf.length) break;
     const body = buf.subarray(pos + 10, pos + 10 + frameSize);
-    const text = () => decodeID3Text(body, preferShiftJis);
+    const text = () => decodeID3Text(body, preferShiftJis).split("\0").map((value) => value.trim()).filter(Boolean).join(" / ");
     switch (id) {
       case "TIT2": tags.title = text(); found = true; break;
       case "TPE1": tags.artist = text(); found = true; break;
