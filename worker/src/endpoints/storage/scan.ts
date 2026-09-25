@@ -937,7 +937,7 @@ export async function asyncScanR2Source(
     {
       const rows = (await db.prepare(
         `SELECT id, storage_uri, source_etag, source_last_modified, size, tag_scanned, missing
-         FROM song_instances WHERE source_id = ?`,
+         FROM song_instances WHERE source_id = ? AND storage_uri LIKE 'r2://objects/%'`,
       ).bind(src.id).all<{
         id: string;
         storage_uri: string;
