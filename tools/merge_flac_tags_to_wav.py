@@ -202,6 +202,9 @@ def _add_frame(tags: ID3, frame_id: str, values: list[str], desc: str = "") -> N
     elif frame_id == "COMM":
         for index, value in enumerate(values, start=1):
             tags.add(COMM(encoding=3, lang="XXX", desc=desc or f"FLAC value {index:06}", text=value))
+    elif frame_id in ("TPE1", "TPE2"):
+        # Use a scalar display credit because the reader models these fields as strings.
+        tags.add(FRAME_CLASSES[frame_id](encoding=3, text=" / ".join(values)))
     else:
         cls = FRAME_CLASSES[frame_id]
         tags.add(cls(encoding=3, text=values))
@@ -217,6 +220,19 @@ def source_for_resolution(value: Any, wav_values: list[str], flac_values: list[s
     if isinstance(value, list) and all(isinstance(item, str) for item in value):
         return value
     raise MergeError("resolution values must be 'wav', 'flac', a string, or a string list")
+
+
+def display_credit_values(values: list[str]) -> list[str]:
+    parts = [part.strip() for value in values for part in value.split(" / ") if part.strip()]
+    standalone = set(parts)
+    result: list[str] = []
+    for value in parts:
+        comma_parts = [part.strip() for part in value.split(",") if part.strip()]
+        if len(comma_parts) > 1 and all(part in standalone for part in comma_parts):
+            result.extend(comma_parts)
+        else:
+            result.append(value)
+    return list(dict.fromkeys(result))
 
 
 def atomic_json(path: Path, payload: dict[str, Any]) -> None:
@@ -277,7 +293,26 @@ def merge(flac_path: Path, wav_path: Path, output_path: Path, report_path: Path,
         custom_comments[key] = values
 
     field_values = {key: vals for key, vals in mapped_comments.items()}
+    multivalue_display_normalization = {}
+    for frame_id in ("TPE1", "TPE2"):
+        values = field_values.get(frame_id, [])
+        unique_values = display_credit_values(values)
+        if unique_values != values:
+            multivalue_display_normalization[frame_id] = {
+                "source_values": values,
+                "display_values": unique_values,
+                "rule": "stable exact-value deduplication before joining with ' / '; original comment values remain in TXXX",
+            }
+            field_values[frame_id] = unique_values
     field_mapping_notes = []
+    for frame_id in ("TPE1", "TPE2"):
+        values = field_values.get(frame_id, [])
+        if len(values) > 1:
+            field_mapping_notes.append({
+                "field": frame_id,
+                "frame": frame_id,
+                "note": "Display credit is joined with ' / ' for readers that expect scalar text; exact source lists are retained in corresponding TXXX comments.",
+            })
     for key, frame_id in FIELD_FRAMES.items():
         values = source_tags.get(key, [])
         if frame_id in ("USLT", "COMM") and len(values) > 1:
@@ -314,6 +349,19 @@ def merge(flac_path: Path, wav_path: Path, output_path: Path, report_path: Path,
             planned_values[field] = wav_values or flac_values
         elif wav_values:
             planned_values[field] = wav_values
+
+    for frame_id in ("TPE1", "TPE2"):
+        values = planned_values.get(frame_id, [])
+        unique_values = display_credit_values(values)
+        if unique_values != values:
+            previous = multivalue_display_normalization.get(frame_id, {})
+            multivalue_display_normalization[frame_id] = {
+                **previous,
+                "selected_values": values,
+                "display_values": unique_values,
+                "rule": "stable exact-value deduplication after conflict resolution, then join with ' / '; original source comments remain in TXXX",
+            }
+            planned_values[frame_id] = unique_values
 
     blocks = parse_flac_blocks(flac_path)
     pictures = []
@@ -358,6 +406,7 @@ def merge(flac_path: Path, wav_path: Path, output_path: Path, report_path: Path,
             for frame in sorted(set(target_values) | set(field_values))
         },
         "field_mapping_notes": field_mapping_notes,
+        "multivalue_display_normalization": multivalue_display_normalization,
         "conflicts": conflicts,
         "custom_comment_conflicts": custom_conflicts,
         "resolutions": resolutions,
@@ -416,7 +465,8 @@ def merge(flac_path: Path, wav_path: Path, output_path: Path, report_path: Path,
             write_values = values
             existing = out_tags.get(frame_id)
             old_values = canonical_values(out_tags).get(frame_id, [])
-            if not old_values or (frame_id in resolutions and old_values != values):
+            needs_scalar_normalization = frame_id in ("TPE1", "TPE2") and old_values != [" / ".join(values)]
+            if not old_values or (frame_id in resolutions and old_values != values) or needs_scalar_normalization:
                 if existing is not None:
                     for frame in list(out_tags.getall(frame_id)):
                         del out_tags[frame.HashKey]
@@ -458,9 +508,9 @@ def merge(flac_path: Path, wav_path: Path, output_path: Path, report_path: Path,
         field_checks = {}
         for frame_id, expected in planned_values.items():
             actual = actual_values.get(frame_id, [])
-            expected_frame_values = expected
+            expected_frame_values = [" / ".join(expected)] if frame_id in ("TPE1", "TPE2") else expected
             ok = actual == expected_frame_values
-            field_checks[frame_id] = {"expected": expected, "expected_frame_values": expected_frame_values,
+            field_checks[frame_id] = {"expected_source_values": expected, "expected_frame_values": expected_frame_values,
                                       "actual": actual, "passed": ok}
             if not ok:
                 raise MergeError(f"verification failed: {frame_id} values differ after readback: expected {expected!r}, got {actual!r}")
