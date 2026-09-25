@@ -39,6 +39,7 @@ function makeBucket(entries: Array<string | [string, number]> = []) {
 
 function makeDb(existingUri?: string, existingPath = "music/song.mp3") {
   const calls: string[] = [];
+  const storageObjectIds = new Set<string>();
   let masterInserts = 0;
   let instanceInserts = 0;
   let updates = 0;
@@ -75,15 +76,28 @@ function makeDb(existingUri?: string, existingPath = "music/song.mp3") {
         async all<T = unknown>() { calls.push(compact); return { results: [] as T[], success: true, meta: {} }; },
         async run() {
           calls.push(compact);
+          if (compact.startsWith("INSERT INTO storage_objects")) {
+            storageObjectIds.add(statement.args[0] as string);
+          }
           if (compact.startsWith("INSERT INTO song_masters")) masterInserts++;
-          if (compact.startsWith("INSERT INTO song_instances")) instanceInserts++;
-          if (compact.startsWith("UPDATE song_instances")) updates++;
+          if (compact.startsWith("INSERT INTO song_instances")) {
+            if (statement.args[4] && !storageObjectIds.has(statement.args[4] as string)) throw new Error("FOREIGN KEY constraint failed");
+            instanceInserts++;
+          }
+          if (compact.startsWith("UPDATE song_instances")) {
+            if (statement.args[2] && !storageObjectIds.has(statement.args[2] as string)) throw new Error("FOREIGN KEY constraint failed");
+            updates++;
+          }
           return { success: true, meta: { changes: 1 } };
         },
       };
       return statement;
     },
-    async batch(statements: Array<{ run(): Promise<unknown> }>) { return Promise.all(statements.map((statement) => statement.run())); },
+    async batch(statements: Array<{ run(): Promise<unknown> }>) {
+      const results: unknown[] = [];
+      for (const statement of statements) results.push(await statement.run());
+      return results;
+    },
   };
   return db;
 }
@@ -121,6 +135,12 @@ async function checkConflicts(bucket: ReturnType<typeof makeBucket>, db: ReturnT
 }
 
 async function main() {
+  console.log("R2 audio storage-object foreign key:");
+  {
+    const result = await makeUpload(makeBucket(), makeDb())("r2");
+    assert(result.status === 200, "new R2 audio creates its storage object before its instance");
+  }
+
   console.log("R2 conflict contract:");
   {
     const bucket = makeBucket(["objects/existing.mp3"]);
