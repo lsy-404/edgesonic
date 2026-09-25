@@ -810,13 +810,28 @@ export function useAuth() {
     return JSON.parse(await tagPost("submit", { instanceId, tags }));
   }
 
+  interface UploadMetadataResult extends SubmitMetadataResult { coverSaved?: boolean; coverStatus?: "saved" | "preserved" | "failed" | "invalid" | "none"; }
+  async function submitUploadedMetadata(
+    instanceId: string,
+    token: string,
+    tags: Record<string, unknown>,
+    cover?: { data: string; mime: string },
+  ): Promise<UploadMetadataResult> {
+    return JSON.parse(await tagPost("submit-upload", { instanceId, token, tags, cover }));
+  }
+
+  interface UploadMetadataFallbackResult { ok: boolean; queued?: boolean; claimed?: boolean; alreadyScanned?: boolean; error?: string; }
+  async function queueUploadedMetadataFallback(instanceId: string, token: string, coverRetry = false): Promise<UploadMetadataFallbackResult> {
+    return JSON.parse(await storagePost("files/upload-metadata-fallback", { instanceId, token, coverRetry }));
+  }
+
   // XHR-based upload exposes onProgress for per-file progress bars.
   // Auth is via signedParams() query string (same as all other storage calls).
   async function uploadFile(
     file: File,
     target: string,
     path?: string,
-    opts?: { masterId?: string; profiles?: string[]; conflict?: "error" | "overwrite" | "rename"; onProgress?: (loaded: number, total: number) => void },
+    opts?: { masterId?: string; profiles?: string[]; conflict?: "error" | "overwrite" | "rename"; metadataMode?: "direct"; onProgress?: (loaded: number, total: number) => void },
   ): Promise<string> {
     const qs = signedParams();
     qs.set("name", file.name);
@@ -825,6 +840,7 @@ export function useAuth() {
     if (opts?.masterId) qs.set("master_id", opts.masterId);
     if (opts?.profiles?.length) qs.set("profiles", opts.profiles.join(","));
     if (opts?.conflict) qs.set("conflict", opts.conflict);
+    if (opts?.metadataMode) qs.set("metadata", "direct");
     return new Promise<string>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${STORAGE_BASE}/files/upload?${qs.toString()}`);
@@ -907,7 +923,7 @@ export function useAuth() {
     login, guestLogin, demoLogin, completeSsoLogin, logout, refreshSsoSession, handleAuthError, authFetch, authPost, uploadFile, checkUploadConflicts, crossCopy, makeSalt, md5,
     getLoginConfig, register, requestPasswordReset, confirmPasswordReset, confirmEmailVerify,
     tagFetch, tagPost, storageFetch, storagePost, edgesonicFetch, edgesonicPost,
-    readTags, writeTags, batchWriteTags, rescanSongs, submitMetadata, tidyFolder,
+    readTags, writeTags, batchWriteTags, rescanSongs, submitMetadata, submitUploadedMetadata, queueUploadedMetadataFallback, tidyFolder,
     signedParams, restUrl, streamUrl, coverArtUrl, downloadUrl };
 }
 

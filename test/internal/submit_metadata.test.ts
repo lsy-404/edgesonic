@@ -26,6 +26,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { metadataRoutes } from "../../worker/src/endpoints/tag/submit";
+import { issueUploadMetadataCapability, verifyUploadMetadataCapability } from "../../worker/src/utils/uploadMetadataCapability";
 
 // ---------------------------------------------------------------------------
 // Tiny harness
@@ -76,6 +77,7 @@ function buildDb() {
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
     );
+    CREATE TABLE work_queue (id TEXT PRIMARY KEY, task_type TEXT, payload TEXT, status TEXT, created_at INTEGER, required_caps TEXT, priority INTEGER, claimed_by TEXT, claimed_at INTEGER, heartbeat_at INTEGER, result_json TEXT, error_message TEXT, attempts INTEGER, max_attempts INTEGER);
     CREATE TABLE user_permissions (
       level INTEGER NOT NULL,
       permission TEXT NOT NULL,
@@ -139,10 +141,12 @@ function buildDb() {
       size INTEGER DEFAULT 0,
       bit_rate INTEGER DEFAULT 0,
       sample_rate INTEGER,
+      bit_depth INTEGER,
       channels INTEGER,
       duration INTEGER,
       missing INTEGER DEFAULT 0,
       tag_scanned INTEGER DEFAULT 0,
+      source_type TEXT DEFAULT 'original',
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
     );
@@ -167,7 +171,7 @@ function buildDb() {
 // ---------------------------------------------------------------------------
 // Hono harness with session-auth fake (bypasses Subsonic auth + esChain).
 // ---------------------------------------------------------------------------
-function makeApp(sqlite: DatabaseSync) {
+function makeApp(sqlite: DatabaseSync, envExtra: Record<string, unknown> = {}) {
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.use("*", async (c, next) => {
     c.set("user", { username: "alice", level: 2, enabled: 1, password: "x" });
@@ -175,7 +179,7 @@ function makeApp(sqlite: DatabaseSync) {
     return next();
   });
   app.route("/tag", metadataRoutes);
-  const env = { DB: makeD1(sqlite) };
+  const env = { DB: makeD1(sqlite), ...envExtra };
   return {
     async post(url: string, body: unknown) {
       const req = new Request(`http://test${url}`, {
@@ -212,6 +216,7 @@ console.log("happy path: existing instance + full tags:");
       duration: 240,
       bitrate: 256,
       sampleRate: 44100,
+      bitDepth: 24,
       channels: 2,
       lyrics: "la la la",
       container: "MPEG 4",     // still diagnostic-only
@@ -243,6 +248,7 @@ console.log("happy path: existing instance + full tags:");
   // the reported 256 — a parser that only saw a slice reports the slice's rate.
   assert(si.bit_rate === 167, `bit_rate measured from size and duration (got ${si.bit_rate})`);
   assert(si.sample_rate === 44100, `sample_rate (got ${si.sample_rate})`);
+  assert(si.bit_depth === 24, `bit_depth (got ${si.bit_depth})`);
   assert(si.channels === 2, `channels (got ${si.channels})`);
   assert(si.duration === 240, `instance duration (got ${si.duration})`);
 
@@ -370,6 +376,63 @@ console.log("partial patch only updates supplied fields:");
   assert(si.tag_scanned === 1, "tag_scanned still flips to 1");
   assert(si.bit_rate === 0, "bit_rate untouched (no field in patch)");
   assert(si.sample_rate === null, "sample_rate untouched (no field in patch)");
+}
+
+console.log("upload-only user can submit metadata only with its scoped upload capability:");
+{
+  const sqlite = buildDb();
+  sqlite.prepare("INSERT INTO user_permissions VALUES (2, 'upload', 1, 0)").run();
+  sqlite.prepare("UPDATE user_permissions SET enabled = 0 WHERE level = 2 AND permission = 'edit_tags'").run();
+  sqlite.prepare("INSERT INTO song_masters (id, album_id, artist_id, title) VALUES ('sm-upload', 'al-old', 'ar-old', 'pending')").run();
+  sqlite.prepare("INSERT INTO song_instances (id, master_id, storage_uri, suffix, size, tag_scanned) VALUES ('si-upload-owned', 'sm-upload', 'r2://new/song.flac', 'flac', 1000, 0)").run();
+  const covers: Array<{ key: string; bytes: Uint8Array }> = [];
+  const envExtra = {
+    WORK_UPLOAD_HMAC_KEY: "test-only-hmac-key-with-sufficient-entropy",
+    MUSIC_BUCKET: { async put(key: string, bytes: Uint8Array) { covers.push({ key, bytes }); } },
+  };
+  const { post } = makeApp(sqlite, envExtra);
+  const nonce = "upload-generation-1";
+  sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status, created_at) VALUES (?, 'manual_upload_pending', ?, 'canceled', 0)")
+    .run("wm-upload-pending-si-upload-owned", JSON.stringify({ instanceId: "si-upload-owned", storageUri: "r2://new/song.flac", uploadNonce: nonce }));
+  const token = await issueUploadMetadataCapability(envExtra as any, "alice", "si-upload-owned", "r2://new/song.flac", nonce);
+  assert(typeof token === "string", "upload capability signed");
+  assert(!(await verifyUploadMetadataCapability(envExtra as any, "alice", "si-upload-owned", "r2://new/song.flac", "upload-generation-2", token!)),
+    "same-URI overwrite generation invalidates the previous upload capability");
+
+  const applied = await post("/tag/submit-upload", {
+    instanceId: "si-upload-owned",
+    token,
+    tags: { title: "Own Upload", artist: "New Artist", album: "New Album", lyrics: "[00:01.00]line" },
+    cover: { data: "AQID", mime: "image/png" },
+  });
+  assert(applied.status === 200, `upload-scoped submit allowed without edit_tags (got ${applied.status})`);
+  const appliedBody = await applied.json() as any;
+  const master = sqlite.prepare("SELECT title, lyrics FROM song_masters WHERE id = 'sm-upload'").get() as any;
+  assert(master.title === "Own Upload", "metadata applied to the new uploaded master");
+  assert(master.lyrics === "[00:01.00]line", "embedded lyrics preserved on direct path");
+  const instance = sqlite.prepare("SELECT tag_scanned FROM song_instances WHERE id = 'si-upload-owned'").get() as any;
+  assert(instance.tag_scanned === 1, "successful direct parse marks the exact instance scanned");
+  assert((sqlite.prepare("SELECT status FROM work_queue WHERE id = 'wm-upload-pending-si-upload-owned'").get() as any)?.status === "completed",
+    "successful direct metadata submission finalizes only its matching generation marker");
+  const album = sqlite.prepare("SELECT cover_r2_key FROM albums WHERE id = ?").get(appliedBody.albumId) as any;
+  assert(covers.length === 1 && covers[0].bytes.length === 3, "embedded image bytes written to R2");
+  assert(album?.cover_r2_key?.startsWith("covers/al-"), "album cover pointer created");
+
+  const generalSubmit = await post("/tag/submit", { instanceId: "si-upload-owned", tags: { title: "Unauthorized" } });
+  assert(generalSubmit.status === 403, "upload capability does not grant general edit_tags permission");
+
+  const replay = await post("/tag/submit-upload", {
+    instanceId: "si-upload-owned", token, tags: { title: "Replay Rewrite" },
+  });
+  assert(replay.status === 409, "successful upload capability cannot be replayed to rewrite tags");
+  const afterReplay = sqlite.prepare("SELECT title FROM song_masters WHERE id = 'sm-upload'").get() as any;
+  assert(afterReplay.title === "Own Upload", "replay leaves metadata unchanged");
+
+  const otherUserToken = await issueUploadMetadataCapability(envExtra as any, "bob", "si-upload-owned", "r2://new/song.flac", nonce);
+  const crossUser = await post("/tag/submit-upload", {
+    instanceId: "si-upload-owned", token: otherUserToken, tags: { title: "Cross User" },
+  });
+  assert(crossUser.status === 403, "capability is bound to the uploading account");
 }
 
 // ---------------------------------------------------------------------------

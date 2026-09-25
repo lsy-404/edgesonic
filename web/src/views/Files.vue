@@ -22,7 +22,7 @@ import { usePlayerStore, type Track } from "../stores/player";
 import { FluentSelect } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
-const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, checkUploadConflicts, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitMetadata } = useAuth();
+const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, checkUploadConflicts, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitUploadedMetadata, queueUploadedMetadataFallback } = useAuth();
 const player = usePlayerStore();
 const route = useRoute();
 
@@ -357,10 +357,8 @@ async function doUpload() {
   let uploadCancelled = false;
   let uploadSkippedCount = 0;
   let metadataPendingCount = 0;
+  let metadataProtectedCount = 0;
   let conflictChoice: UploadConflictChoice | null = null;
-  // uploads push real bytes through this browser; pause the
-  // background metadata pool for the duration so it doesn't compete for
-  // bandwidth.
   try {
     const knownConflicts = ready.length > 0
       ? await checkUploadConflicts(uploadTarget.value, ready.map((item) => ({
@@ -412,6 +410,7 @@ async function doUpload() {
         const raw = await uploadFile(file, uploadTarget.value, uploadPathFor(path.value, item), {
           profiles: kind === "audio" || kind === "variant" ? preTranscodeProfiles.value : undefined,
           conflict: policy,
+          metadataMode: kind === "audio" || kind === "variant" ? "direct" : undefined,
           onProgress: (loaded, size) => {
             uploadProgressList.value[index] = size > 0 ? Math.round((loaded / size) * 100) : 0;
           },
@@ -419,13 +418,54 @@ async function doUpload() {
         uploadProgressList.value[index] = 100;
         uploadDoneCount.value++;
         if (kind === "audio" || kind === "variant") {
+          let response: { id?: string; metadataToken?: string; metadataStatus?: "direct" | "queued" | "queue_failed" | "protected" } = {};
           try {
-            const resp = JSON.parse(raw) as { id?: string };
-            if (!resp.id) throw new Error("Audio upload response did not include an instance ID");
+            response = JSON.parse(raw);
+            if (!response.id) throw new Error("Audio upload response did not include an instance ID");
+            if (response.metadataStatus === "protected") {
+              metadataProtectedCount++;
+              return true;
+            }
+            if (!response.metadataToken) {
+              metadataPendingCount++;
+              return true;
+            }
             const tags = await extractMetadata(file);
-            const submitted = await submitMetadata(resp.id, tags as Record<string, string | number>);
+            const { cover, ...metadataTags } = tags;
+            const submitted = await submitUploadedMetadata(
+              response.id,
+              response.metadataToken,
+              metadataTags as Record<string, unknown>,
+              cover,
+            );
             if (!submitted.ok) throw new Error(submitted.error || "Metadata submission failed");
+            if (cover && submitted.coverStatus === "failed") {
+              try {
+                const fallback = await queueUploadedMetadataFallback(response.id, response.metadataToken, true);
+                if (!fallback.ok || (!fallback.queued && !fallback.claimed && !fallback.alreadyScanned)) {
+                  throw new Error(fallback.error || "Embedded cover retry was not queued");
+                }
+                if (fallback.queued) metadataPendingCount++;
+              } catch (coverErr) {
+                metadataPendingCount++;
+                console.error(`[upload] embedded cover retry failed for ${file.name}:`, coverErr);
+              }
+            } else if (cover && submitted.coverStatus === "invalid") {
+              console.warn(`[upload] embedded cover was rejected for ${file.name}`);
+            }
           } catch (parseErr) {
+            if (response?.id && response.metadataToken) {
+              try {
+                const fallback = await queueUploadedMetadataFallback(response.id, response.metadataToken);
+                if (fallback.ok && (fallback.queued || fallback.claimed || fallback.alreadyScanned)) {
+                  if (fallback.queued) metadataPendingCount++;
+                  return true;
+                }
+                throw new Error(fallback.error || "Metadata fallback was not queued");
+              } catch (fallbackErr) {
+                console.error(`[upload] metadata parse/submit and fallback failed for ${file.name}:`, fallbackErr);
+              }
+            }
             metadataPendingCount++;
             console.error(`[upload] metadata parse/submit failed for ${file.name}:`, parseErr);
           }
@@ -491,7 +531,11 @@ async function doUpload() {
       },
     });
     conversionBusy.value = false;
-    const pendingMessage = metadataPendingCount > 0 ? t("files.metadataPending", { n: metadataPendingCount }) : "";
+    const notices = [
+      metadataPendingCount > 0 ? t("files.metadataPending", { n: metadataPendingCount }) : "",
+      metadataProtectedCount > 0 ? t("files.metadataProtected", { n: metadataProtectedCount }) : "",
+    ].filter(Boolean);
+    const pendingMessage = notices.join(" ");
     if (uploadFailedNames.value.length === 0 && uploadSkippedCount === 0) {
       uploadMsg.value = pendingMessage;
       showToast(pendingMessage || t("files.uploadDone", { n: total }), pendingMessage ? "info" : "success");

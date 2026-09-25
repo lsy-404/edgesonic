@@ -44,6 +44,8 @@ import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import { getFeatureString } from "../../utils/features";
 import { applyMetadataResult } from "../../utils/metadataApply";
+import { writeEmbeddedCover } from "../../utils/embeddedCover";
+import { acquireUploadMetadataLease, releaseUploadMetadataLease, uploadMetadataMarkerId, type UploadMetadataLease } from "../../utils/uploadMetadataQueue";
 import { notifyCoordinator } from "../../coordinator/workCoordinator";
 import type { User } from "../../types/entities";
 
@@ -57,12 +59,62 @@ async function applyQueuedMetadata(
   instanceId: string,
   tags: Record<string, unknown>,
   payload: Record<string, unknown>,
-) {
-  // A completed direct upload parse owns its tags; queued work can still add its cover.
-  if (payload.origin === "upload" && payload.instanceId === instanceId) {
-    const instance = await db.prepare("SELECT master_id, tag_scanned FROM song_instances WHERE id = ?")
-      .bind(instanceId).first<{ master_id: string; tag_scanned: number }>();
-    if (instance?.tag_scanned === 1) return { updated: true, masterId: instance.master_id };
+): Promise<{ updated: boolean; masterId?: string; reason?: string; uploadLease?: UploadMetadataLease }> {
+  if (payload.origin === "upload") {
+    if (payload.instanceId !== instanceId) return { updated: false, reason: "upload task instance mismatch" };
+    const instance = await db.prepare("SELECT master_id, storage_uri, tag_scanned FROM song_instances WHERE id = ? AND source_type = 'original'")
+      .bind(instanceId).first<{ master_id: string; storage_uri: string; tag_scanned: number }>();
+    if (!instance) return { updated: false, reason: "upload instance not found" };
+    if ((typeof payload.sourceUri === "string" && payload.sourceUri !== instance.storage_uri) ||
+        (typeof payload.uploadNonce === "string" && payload.sourceUri !== instance.storage_uri)) {
+      return { updated: false, reason: "upload source changed" };
+    }
+
+    const pending = await db.prepare(
+      "SELECT payload, status FROM work_queue WHERE id = ? AND task_type = 'manual_upload_pending'",
+    ).bind(uploadMetadataMarkerId(instanceId)).first<{ payload: string; status: string }>();
+    if (pending) {
+      let generation: { storageUri?: unknown; uploadNonce?: unknown } | null = null;
+      try { generation = JSON.parse(pending.payload) as { storageUri?: unknown; uploadNonce?: unknown }; }
+      catch { return { updated: false, reason: "invalid upload generation" }; }
+      if (generation?.storageUri !== instance.storage_uri ||
+          typeof generation.uploadNonce !== "string" ||
+          generation.uploadNonce !== payload.uploadNonce) {
+        return { updated: false, reason: "upload generation changed" };
+      }
+    }
+
+    // A completed direct parse owns its tags; matching queued work may still add its cover.
+    if (instance.tag_scanned === 1) {
+      const lease = await acquireUploadMetadataLease(
+        db,
+        instanceId,
+        instance.storage_uri,
+        typeof payload.uploadNonce === "string" ? payload.uploadNonce : undefined,
+      );
+      return lease
+        ? { updated: true, masterId: instance.master_id, uploadLease: lease }
+        : { updated: false, reason: "upload generation is being changed or applied" };
+    }
+
+    const lease = await acquireUploadMetadataLease(
+      db,
+      instanceId,
+      instance.storage_uri,
+      typeof payload.uploadNonce === "string" ? payload.uploadNonce : undefined,
+    );
+    if (!lease) return { updated: false, reason: "upload generation is being changed or applied" };
+    try {
+      const result = await applyMetadataResult(db, instanceId, tags, tags);
+      if (!result.updated) {
+        await releaseUploadMetadataLease(db, lease, false);
+        return result;
+      }
+      return { ...result, uploadLease: lease };
+    } catch (error) {
+      await releaseUploadMetadataLease(db, lease, false);
+      throw error;
+    }
   }
   return applyMetadataResult(db, instanceId, tags, tags);
 }
@@ -174,21 +226,22 @@ workRoutes.post("/work/submit", async (c) => {
   // practical row-size limit at this scale.
   const resultJson = body.result === undefined ? null : JSON.stringify(body.result).slice(0, 500_000);
   let applyAnnotation: { ok: boolean; reason?: string; masterId?: string } | undefined;
+  let uploadTaskPayload: Record<string, unknown> = {};
+  let embeddedCoverFailed = false;
   if (row.task_type === "metadata" && body.result && typeof body.result === "object") {
+    const r = body.result as Record<string, unknown>;
     try {
-      const r = body.result as Record<string, unknown>;
+      const parsed = JSON.parse(row.payload);
+      if (parsed && typeof parsed === "object") uploadTaskPayload = parsed as Record<string, unknown>;
+    } catch { /* malformed payload */ }
+    try {
       const tags = (r.tags && typeof r.tags === "object") ? r.tags as Record<string, unknown> : {};
-      let payload: Record<string, unknown> = {};
-      try {
-        const parsed = JSON.parse(row.payload);
-        if (parsed && typeof parsed === "object") payload = parsed as Record<string, unknown>;
-      } catch { /* malformed payload */ }
       // result.instanceId is what the worker actually processed; fall back to
       // the dispatched payload (52a stores it as a JSON column) when the
       // worker forgot to echo it. Both should always agree.
       let instanceId = typeof r.instanceId === "string" ? r.instanceId : "";
-      if (!instanceId && typeof payload.instanceId === "string") instanceId = payload.instanceId;
-      const apply = await applyQueuedMetadata(env.DB, instanceId, tags, payload);
+      if (!instanceId && typeof uploadTaskPayload.instanceId === "string") instanceId = uploadTaskPayload.instanceId;
+      const apply = await applyQueuedMetadata(env.DB, instanceId, tags, uploadTaskPayload);
       applyAnnotation = apply.updated
         ? { ok: true, masterId: apply.masterId }
         : { ok: false, reason: apply.reason };
@@ -199,32 +252,27 @@ workRoutes.post("/work/submit", async (c) => {
       if (apply.masterId && r.cover && typeof r.cover === "object") {
         try {
           const cover = r.cover as { data?: string; mime?: string };
-          if (typeof cover.data === "string" && cover.data.length > 0) {
-            // Decode base64 to bytes.
-            const bin = atob(cover.data);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-            // Look up the album_id for this master.
-            const masterRow = await env.DB.prepare(
-              "SELECT album_id FROM song_masters WHERE id = ?",
-            ).bind(apply.masterId).first<{ album_id: string }>();
-            if (masterRow?.album_id) {
-              // Album ids already carry the "al-" prefix; prepending a second
-              // one produced the covers/al-al-… keys still present in storage.
-              const coverKey = `covers/${masterRow.album_id}`;
-              const mime = (cover.mime || "image/jpeg").startsWith("image/")
-                ? cover.mime : `image/${cover.mime || "jpeg"}`;
-              await (env as Env).MUSIC_BUCKET.put(coverKey, bytes, {
-                httpMetadata: { contentType: mime },
-              });
-              await env.DB.prepare(
-                "UPDATE albums SET cover_r2_key = ?, updated_at = ? WHERE id = ? AND cover_r2_key IS NULL",
-              ).bind(coverKey, Math.floor(Date.now() / 1000), masterRow.album_id).run();
-            }
+          if (typeof cover.data === "string") {
+            const coverStatus = await writeEmbeddedCover(
+              env.DB,
+              env.MUSIC_BUCKET,
+              apply.masterId,
+              cover as { data: string; mime?: string },
+              apply.uploadLease ? { markerId: uploadMetadataMarkerId(instanceId), payload: apply.uploadLease.payload } : undefined,
+            );
+            if (coverStatus === "invalid") embeddedCoverFailed = true;
           }
         } catch (e) {
+          embeddedCoverFailed = true;
           // Cover write failure is non-fatal — metadata already applied.
           console.error(`[work/submit] cover write failed for ${instanceId}:`, e);
+        }
+      }
+      if (apply.uploadLease) {
+        try {
+          await releaseUploadMetadataLease(env.DB, apply.uploadLease, !embeddedCoverFailed);
+        } catch (error) {
+          console.error(`[work/submit] upload generation lease release failed for ${instanceId}:`, error);
         }
       }
     } catch (e) {
@@ -462,6 +510,7 @@ workRoutes.post("/work/backfillCompleted",
       const apply = await applyQueuedMetadata(env.DB, instanceId, tags, payload);
       if (apply.updated) {
         applied++;
+        if (apply.uploadLease) await releaseUploadMetadataLease(env.DB, apply.uploadLease, true);
       } else {
         failed++;
         if (errors.length < 20) errors.push({ id: cand.id, error: apply.reason || "unknown" });
@@ -536,6 +585,8 @@ export interface DispatchInput {
   // 'queued' with a fresh attempts counter instead of being ignored. Only
   // meaningful when dedupKey is also set.
   upsert?: boolean;
+  // Requeue only terminal rows; leave concurrently active work untouched.
+  upsertTerminalOnly?: boolean;
 }
 
 const REDISPATCH_CONFLICT_CLAUSE = `
@@ -544,6 +595,9 @@ const REDISPATCH_CONFLICT_CLAUSE = `
        max_attempts = excluded.max_attempts, attempts = 0, error_message = NULL,
        claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL,
        result_json = NULL, expires_at = excluded.expires_at`;
+
+const REDISPATCH_TERMINAL_CONFLICT_CLAUSE = `${REDISPATCH_CONFLICT_CLAUSE}
+     WHERE work_queue.status IN ('completed', 'failed', 'canceled')`;
 
 // `env` is required: nothing pulls from the queue any more, so a row inserted
 // without waking the coordinator waits for the reclaim sweep. Callers that
@@ -566,8 +620,10 @@ export async function dispatchWork(
   const requiredCapsJson = input.requiredCaps && input.requiredCaps.length > 0
     ? JSON.stringify(input.requiredCaps)
     : null;
-  const insertVerb = input.dedupKey && !input.upsert ? "INSERT OR IGNORE INTO" : "INSERT INTO";
-  const conflictClause = input.dedupKey && input.upsert ? REDISPATCH_CONFLICT_CLAUSE : "";
+  const insertVerb = input.dedupKey && !input.upsert && !input.upsertTerminalOnly ? "INSERT OR IGNORE INTO" : "INSERT INTO";
+  const conflictClause = input.dedupKey && input.upsertTerminalOnly
+    ? REDISPATCH_TERMINAL_CONFLICT_CLAUSE
+    : input.dedupKey && input.upsert ? REDISPATCH_CONFLICT_CLAUSE : "";
   await db.prepare(
     `${insertVerb} work_queue (id, task_type, payload, required_caps, priority,
                               status, max_attempts, expires_at)

@@ -192,6 +192,7 @@ maintenanceRoutes.post("/maintenance/reclaimStaleWork",
                            ELSE COALESCE(error_message, 'stale claim re-queued')
                          END
      WHERE status = 'claimed'
+       AND task_type != 'manual_upload_pending'
        AND heartbeat_at IS NOT NULL
        AND heartbeat_at < unixepoch() - ?
      RETURNING id, status, attempts`,

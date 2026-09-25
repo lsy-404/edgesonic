@@ -76,6 +76,7 @@ export interface ExtractedMetadata {
   sampleRate?: number;   // Hz
   channels?: number;
   lyrics?: string;
+  cover?: { data: string; mime: string };
   container?: string;
   codec?: string;
 }
@@ -85,8 +86,7 @@ export interface ExtractedMetadata {
  * 失败时抛错；调用方应 try/catch 并 toast 用户。
  */
 export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
-  // skipCovers=true：本路径不处理封面（封面由标签编辑器接管）；省 RAM
-  const meta = await parseBlob(file, { skipCovers: true, duration: true });
+  const meta = await parseBlob(file, { skipCovers: false, duration: true });
   const { format, common } = meta;
 
   const out: ExtractedMetadata = {};
@@ -107,6 +107,13 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
 
   const ly = lyricsTagsToText(common.lyrics) || nativeLyricsFallback(meta.native);
   if (ly) out.lyrics = ly;
+
+  const picture = common.picture?.[0];
+  if (picture?.data && picture.data.byteLength > 0 && picture.data.byteLength <= 200_000) {
+    let binary = "";
+    for (const byte of picture.data) binary += String.fromCharCode(byte);
+    out.cover = { data: btoa(binary), mime: picture.format || "image/jpeg" };
+  }
 
   if (format.container) out.container = format.container;
   if (format.codec) out.codec = format.codec;
