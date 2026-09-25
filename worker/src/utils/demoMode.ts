@@ -164,6 +164,7 @@ export function isAudioSuffix(suffix: string): boolean {
 export const COMPANION_SUFFIXES = new Set([
   "lrc", "ttml", "krc", "elrc", "txt",
   "jpg", "jpeg", "png", "webp", "gif", "avif", "bmp",
+  "cue", "pdf",
 ]);
 
 export function isCompanionSuffix(suffix: string): boolean {
