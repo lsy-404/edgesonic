@@ -1,0 +1,7 @@
+name = "appledouble-retirement-rehearsal"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "edgesonic-db"
+database_id = "b91ba5a7-08c4-4887-a439-e1d226dcd8e6"
