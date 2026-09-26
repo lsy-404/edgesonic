@@ -1,7 +1,8 @@
 # Pending library follow-up
 
-- [x] Start a new branch from the latest main revision.
-- [x] Capture read-only primary snapshots for the two named pending-library groups.
-- [x] Select one identity- and sequence-complete candidate without merging distinct PCM editions.
-- [x] Create guarded forward and rollback SQL and run local Wrangler success, stale, and late-failure rehearsals.
-- [x] Run a production primary preflight without writing production and commit the audit.
+- [x] Capture and compare both 13-track WAV editions, verifying distinct PCM for every pair.
+- [x] Capture all 26 exact production rows and build a field-by-field `VALUES` guard across masters, instances, objects, and entries.
+- [x] Limit master updates to the 26 snapshot IDs; guard edition counts, pending aggregates, stale references, and final album/group integrity.
+- [x] Run real local Wrangler success, stale-snapshot, and forced late-invariant scenarios.
+- [x] Run a production primary SELECT-only preflight; confirm zero rows written.
+- [x] Commit only this task directory on the existing task branch.
