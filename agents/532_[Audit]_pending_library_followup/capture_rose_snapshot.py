@@ -1,0 +1,8 @@
+import json, subprocess
+from pathlib import Path
+root=Path(r"C:\Users\User\.codex\worktrees\accompaniment-album-repair\lsy-404@edgesonic"); cfg=r"F:\Development\lsy-404@edgesonic\worker\wrangler.toml"
+q="SELECT sm.id master_id,si.id instance_id,so.id object_id,se.id entry_id,se.path,se.display_name,so.physical_key,sm.title,sm.duration,si.size,CASE WHEN instr(se.path,'人声版')>0 THEN 'human' ELSE 'yanhe' END edition,CAST(substr(se.display_name,1,2) AS INTEGER) track FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id JOIN storage_entries se ON se.instance_id=si.id AND se.kind='file' JOIN storage_objects so ON so.id=si.storage_object_id WHERE instr(se.path,'你的灵魂长出一支玫瑰')>0 AND (instr(se.path,'人声版')>0 OR instr(se.path,'言和版')>0) ORDER BY edition,track"
+r=json.loads(subprocess.check_output(['npx.cmd','wrangler','d1','execute','edgesonic-db','--config',cfg,'--remote','--json','--command',q],cwd=root/'worker',text=True,encoding='utf8'))[0]['results']
+p=root/'agents/532_[Audit]_pending_library_followup/rose_primary_snapshot.json';p.write_text(json.dumps(r,ensure_ascii=False,indent=2),encoding='utf8')
+vals=',\n'.join("('%s','%s','%s','%s','%s','%s','%s','%s',%d,%d,%d)" % (x['master_id'].replace("'","''"), x['instance_id'].replace("'","''"), x['object_id'].replace("'","''"), x['entry_id'].replace("'","''"), x['path'].replace("'","''"), x['display_name'].replace("'","''"), x['physical_key'].replace("'","''"), x['title'].replace("'","''"), x['duration'], x['size'], x['track']) for x in r)
+(root/'agents/532_[Audit]_pending_library_followup/artifacts/rose_snapshot_values.sql').write_text('-- snapshot values\nVALUES\n'+vals+';\n',encoding='utf8')

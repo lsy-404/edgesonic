@@ -1,0 +1,10 @@
+CREATE TABLE albums(id TEXT PRIMARY KEY,name TEXT,sort_name TEXT,song_count INTEGER,duration INTEGER,size INTEGER,compilation INTEGER,created_at INTEGER,updated_at INTEGER);
+CREATE TABLE song_masters(id TEXT PRIMARY KEY,album_id TEXT,title TEXT,disc INTEGER,track INTEGER,duration INTEGER,updated_at INTEGER);
+CREATE TABLE song_instances(id TEXT PRIMARY KEY,master_id TEXT,storage_object_id TEXT,suffix TEXT,missing INTEGER,tag_scanned INTEGER,size INTEGER);
+CREATE TABLE storage_objects(id TEXT PRIMARY KEY,physical_key TEXT);
+CREATE TABLE storage_entries(id TEXT PRIMARY KEY,instance_id TEXT,path TEXT,display_name TEXT,kind TEXT);
+INSERT INTO albums VALUES('pending-uploads','Pending Uploads',NULL,605,0,0,0,0,0);
+WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<13) INSERT INTO song_masters SELECT 'm'||x,'pending-uploads',printf('%02d title',x),NULL,NULL,100,0 FROM n;
+WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<13) INSERT INTO song_instances SELECT 'i'||x,'m'||x,'o'||x,'wav',0,1,100 FROM n;
+WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<13) INSERT INTO storage_objects SELECT 'o'||x,'objects/o'||x||'.wav' FROM n;
+WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<13) INSERT INTO storage_entries SELECT 'e'||x,'i'||x,'你的灵魂长出一朵玫瑰（2025）/你的灵魂长出一支玫瑰（人声版）/'||printf('%02d title.wav',x),printf('%02d title.wav',x),'file' FROM n;
