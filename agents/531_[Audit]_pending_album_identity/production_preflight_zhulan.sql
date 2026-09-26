@@ -27,68 +27,25 @@ WITH c(master_id,album_id,artist_id,album_artist_id,title,track,disc,master_dura
  ('sm-upload-f22fe5c6-23b','pending-uploads','unknown-artist',NULL,'26 夏心背景板',NULL,NULL,125,0,0,NULL,'si-upload-cf954784-062','r2-local','original','r2://objects/obj_75e77febec2d9c62.wav','wav',22082972,125,0,1,'obj_75e77febec2d9c62','c896d6551c9bd78e5ada690fc85e6262','se-6de27705b74746da97dbe6a7ee0fe9d5','se-e43af23755444b1aa56d4501c7ba77d4','蔗蓝的创作集1.0-蔗蓝（wav）/26 夏心背景板.wav','26 夏心背景板.wav','file',NULL,'obj_75e77febec2d9c62','objects/obj_75e77febec2d9c62.wav',NULL,22082972,NULL,26),
  ('sm-upload-ad9a3f3a-778','pending-uploads','unknown-artist',NULL,'27 冻死在那个夏天',NULL,NULL,207,0,0,NULL,'si-upload-a95d0f14-bd4','r2-local','original','r2://objects/obj_aa4178afb5054634.wav','wav',36477212,207,0,1,'obj_aa4178afb5054634','1e160c627ea957bf0785988a0ed9be44','se-dfefd68eec214c019b9e1736854840bd','se-e43af23755444b1aa56d4501c7ba77d4','蔗蓝的创作集1.0-蔗蓝（wav）/27 冻死在那个夏天.wav','27 冻死在那个夏天.wav','file',NULL,'obj_aa4178afb5054634','objects/obj_aa4178afb5054634.wav',NULL,36477212,NULL,27),
  ('sm-upload-ccea0ae3-484','pending-uploads','unknown-artist',NULL,'28 关于梦与你的一切',NULL,NULL,172,0,0,NULL,'si-upload-ccd602b9-d55','r2-local','original','r2://objects/obj_7dc93fbe81078817.wav','wav',30380828,172,0,1,'obj_7dc93fbe81078817','dc1890d06c3dc3d349a40c80a3eb3991','se-99d01995bb0f4f679fc62be009a097f7','se-e43af23755444b1aa56d4501c7ba77d4','蔗蓝的创作集1.0-蔗蓝（wav）/28 关于梦与你的一切.wav','28 关于梦与你的一切.wav','file',NULL,'obj_7dc93fbe81078817','objects/obj_7dc93fbe81078817.wav',NULL,30380828,NULL,28)
+), exact AS (
+  SELECT c.master_id,c.track_no
+  FROM c JOIN song_masters sm ON sm.id=c.master_id
+  JOIN song_instances si ON si.id=c.instance_id AND si.master_id=sm.id
+  JOIN storage_entries se ON se.id=c.entry_id AND se.instance_id=si.id
+  JOIN storage_objects so ON so.id=c.storage_object_id
+  WHERE sm.album_id IS c.album_id AND sm.artist_id IS c.artist_id AND sm.album_artist_id IS c.album_artist_id AND sm.title IS c.title AND sm.track IS c.track AND sm.disc IS c.disc AND sm.duration IS c.master_duration AND sm.cover_r2_key IS c.master_cover AND si.id IS c.instance_id AND si.source_id IS c.source_id AND si.source_type IS c.source_type AND si.storage_uri IS c.storage_uri AND si.suffix IS c.suffix AND si.size IS c.instance_size AND si.duration IS c.instance_duration AND si.missing IS c.missing AND si.tag_scanned IS c.tag_scanned AND si.storage_object_id IS c.storage_object_id AND si.source_etag IS c.source_etag AND se.id IS c.entry_id AND se.parent_id IS c.parent_id AND se.path IS c.path AND se.display_name IS c.display_name AND se.kind IS c.kind AND se.companion_of IS c.companion_of AND se.object_id IS c.object_id AND so.physical_key IS c.physical_key AND so.legacy_key IS c.legacy_key AND so.size IS c.object_size AND so.etag IS c.object_etag AND so.suffix IS c.suffix AND (sm.lyrics IS NULL)=(c.has_lyrics=0) AND (sm.lyrics_rich IS NULL)=(c.has_rich_lyrics=0)
 )
-INSERT INTO work_queue(id,task_type,payload,status,created_at)
-SELECT 'zhulan-guard-failed','metadata','{}','guard_failed',unixepoch()
-WHERE NOT (
-  (SELECT COUNT(*) FROM c)=28
-  AND (SELECT COUNT(DISTINCT track_no) FROM c)=28
-  AND (SELECT MIN(track_no) FROM c)=1
-  AND (SELECT MAX(track_no) FROM c)=28
-  AND (SELECT COUNT(*) FROM albums WHERE id='pending-uploads' AND song_count=633 AND duration=139321 AND size=24334446389)=1
-  AND (SELECT COUNT(*) FROM albums a WHERE a.id='pending-uploads'
-       AND a.song_count=(SELECT COUNT(*) FROM song_masters WHERE album_id=a.id)
-       AND a.duration=(SELECT COALESCE(SUM(duration),0) FROM song_masters WHERE album_id=a.id)
-       AND a.size=(SELECT COALESCE(SUM(si.size),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=a.id))=1
-  AND (SELECT COUNT(*) FROM c JOIN song_masters sm ON sm.id=c.master_id
-       JOIN song_instances si ON si.id=c.instance_id AND si.master_id=sm.id
-       JOIN storage_entries se ON se.id=c.entry_id AND se.instance_id=si.id
-       JOIN storage_objects so ON so.id=c.storage_object_id
-       WHERE sm.album_id IS c.album_id AND sm.artist_id IS c.artist_id AND sm.album_artist_id IS c.album_artist_id AND sm.title IS c.title AND sm.track IS c.track AND sm.disc IS c.disc AND sm.duration IS c.master_duration AND sm.cover_r2_key IS c.master_cover AND si.id IS c.instance_id AND si.source_id IS c.source_id AND si.source_type IS c.source_type AND si.storage_uri IS c.storage_uri AND si.suffix IS c.suffix AND si.size IS c.instance_size AND si.duration IS c.instance_duration AND si.missing IS c.missing AND si.tag_scanned IS c.tag_scanned AND si.storage_object_id IS c.storage_object_id AND si.source_etag IS c.source_etag AND se.id IS c.entry_id AND se.parent_id IS c.parent_id AND se.path IS c.path AND se.display_name IS c.display_name AND se.kind IS c.kind AND se.companion_of IS c.companion_of AND se.object_id IS c.object_id AND so.physical_key IS c.physical_key AND so.legacy_key IS c.legacy_key AND so.size IS c.object_size AND so.etag IS c.object_etag AND so.suffix IS c.suffix AND (sm.lyrics IS NULL)=(c.has_lyrics=0) AND (sm.lyrics_rich IS NULL)=(c.has_rich_lyrics=0))=28
-  AND (SELECT COUNT(*) FROM storage_entries WHERE path='蔗蓝的创作集1.0-蔗蓝（wav）' OR path LIKE '蔗蓝的创作集1.0-蔗蓝（wav）/%')=30
-  AND EXISTS(SELECT 1 FROM storage_entries WHERE id='se-e43af23755444b1aa56d4501c7ba77d4' AND source_id='r2-local' AND parent_id IS NULL AND path='蔗蓝的创作集1.0-蔗蓝（wav）' AND display_name='蔗蓝的创作集1.0-蔗蓝（wav）' AND kind='folder' AND object_id IS NULL AND instance_id IS NULL AND companion_of IS NULL)
-  AND EXISTS(SELECT 1 FROM storage_entries se JOIN storage_objects so ON so.id=se.object_id WHERE se.id='se-9c7a6e8fe38949a6b6a231dafc7ccad1' AND se.source_id='r2-local' AND se.parent_id='se-e43af23755444b1aa56d4501c7ba77d4' AND se.object_id='obj_568cc33144589d95' AND se.path='蔗蓝的创作集1.0-蔗蓝（wav）/蔗蓝的创作集1.0.cue' AND se.display_name='蔗蓝的创作集1.0.cue' AND se.kind='file' AND se.instance_id IS NULL AND se.companion_of IS NULL AND so.physical_key='objects/obj_568cc33144589d95.cue' AND so.legacy_key IS NULL AND so.suffix='cue' AND so.size=4649 AND so.etag IS NULL)
-  AND NOT EXISTS(SELECT 1 FROM artists WHERE id='ar-abdf58605e' OR name='蔗蓝')
-  AND NOT EXISTS(SELECT 1 FROM albums WHERE id='al-fe198b18b1' OR name='蔗蓝的创作集1.0')
-);
-INSERT INTO artists(id,name,sort_name,created_at,updated_at) VALUES('ar-abdf58605e','蔗蓝','蔗蓝',unixepoch(),unixepoch());
-INSERT INTO work_queue(id,task_type,payload,status,created_at) SELECT 'zhulan-guard-failed','metadata','{}','guard_failed',unixepoch() WHERE changes()!=1;
-INSERT INTO albums(id,name,sort_name,song_count,duration,size,compilation,created_at,updated_at) VALUES('al-fe198b18b1','蔗蓝的创作集1.0','蔗蓝的创作集1.0',0,0,0,0,unixepoch(),unixepoch());
-INSERT INTO work_queue(id,task_type,payload,status,created_at) SELECT 'zhulan-guard-failed','metadata','{}','guard_failed',unixepoch() WHERE changes()!=1;
-WITH c(master_id,track_no) AS (VALUES
- ('sm-upload-1f9017ea-07f',1),
- ('sm-upload-e736c93d-965',2),
- ('sm-upload-e28f7e1d-766',3),
- ('sm-upload-a6848b06-77d',4),
- ('sm-upload-dd6123b1-898',5),
- ('sm-upload-02e005e7-c69',6),
- ('sm-upload-00211c6c-9ec',7),
- ('sm-upload-ad051eb3-7a3',8),
- ('sm-upload-6994d270-a67',9),
- ('sm-upload-1f16389e-357',10),
- ('sm-upload-048a0756-d80',11),
- ('sm-upload-67927a7e-561',12),
- ('sm-upload-23a540dc-0e6',13),
- ('sm-upload-625aa43b-4d2',14),
- ('sm-upload-72a666eb-1fa',15),
- ('sm-upload-c289a81c-56a',16),
- ('sm-upload-2646aee8-8c7',17),
- ('sm-upload-6459b53d-e6e',18),
- ('sm-upload-d2e15dcf-ef7',19),
- ('sm-upload-72dbb920-90d',20),
- ('sm-upload-29aa737e-d7d',21),
- ('sm-upload-82fdd9cb-3dc',22),
- ('sm-upload-1a1b38e3-18e',23),
- ('sm-upload-0534d6fb-3e6',24),
- ('sm-upload-3511d1fa-551',25),
- ('sm-upload-f22fe5c6-23b',26),
- ('sm-upload-ad9a3f3a-778',27),
- ('sm-upload-ccea0ae3-484',28)
-)
-UPDATE song_masters SET album_id='al-fe198b18b1',artist_id='ar-abdf58605e',album_artist_id='ar-abdf58605e',track=(SELECT track_no FROM c WHERE c.master_id=song_masters.id),disc=1,updated_at=unixepoch()
-WHERE id IN(SELECT master_id FROM c) AND album_id='pending-uploads' AND artist_id='unknown-artist' AND track IS NULL AND disc IS NULL;
-INSERT INTO work_queue(id,task_type,payload,status,created_at) SELECT 'zhulan-guard-failed','metadata','{}','guard_failed',unixepoch() WHERE changes()!=28;
-UPDATE albums SET song_count=(SELECT COUNT(*) FROM song_masters WHERE album_id=albums.id),duration=(SELECT COALESCE(SUM(duration),0) FROM song_masters WHERE album_id=albums.id),size=(SELECT COALESCE(SUM(si.size),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),updated_at=unixepoch() WHERE id IN('pending-uploads','al-fe198b18b1');
-INSERT INTO work_queue(id,task_type,payload,status,created_at)
-SELECT 'zhulan-guard-failed','metadata','{}','guard_failed',unixepoch()
-WHERE EXISTS(SELECT 1 FROM work_queue WHERE id='zhulan-force-late-failure');
+SELECT
+  (SELECT COUNT(*) FROM exact) AS exact_rows,
+  (SELECT COUNT(DISTINCT track_no) FROM exact) AS distinct_tracks,
+  (SELECT MIN(track_no) FROM exact) AS first_track,
+  (SELECT MAX(track_no) FROM exact) AS last_track,
+  a.song_count AS pending_count,a.duration AS pending_duration,a.size AS pending_size,
+  (SELECT COUNT(*) FROM song_masters WHERE album_id=a.id) AS computed_count,
+  (SELECT COALESCE(SUM(duration),0) FROM song_masters WHERE album_id=a.id) AS computed_duration,
+  (SELECT COALESCE(SUM(si.size),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=a.id) AS computed_size,
+  (SELECT COUNT(*) FROM storage_entries WHERE path='蔗蓝的创作集1.0-蔗蓝（wav）' OR path LIKE '蔗蓝的创作集1.0-蔗蓝（wav）/%') AS tree_entries,
+  (SELECT COUNT(*) FROM storage_entries se JOIN storage_objects so ON so.id=se.object_id WHERE se.id='se-9c7a6e8fe38949a6b6a231dafc7ccad1' AND se.object_id='obj_568cc33144589d95' AND so.physical_key='objects/obj_568cc33144589d95.cue' AND so.legacy_key IS NULL AND so.suffix='cue' AND so.size=4649 AND so.etag IS NULL) AS cue_object_match,
+  (SELECT COUNT(*) FROM artists WHERE id='ar-abdf58605e' OR name='蔗蓝') AS artist_conflicts,
+  (SELECT COUNT(*) FROM albums WHERE id='al-fe198b18b1' OR name='蔗蓝的创作集1.0') AS album_conflicts
+FROM albums a WHERE a.id='pending-uploads';
