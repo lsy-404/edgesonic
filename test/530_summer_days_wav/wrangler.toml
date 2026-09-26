@@ -1,0 +1,8 @@
+name = "summer-days-wav-rehearsal"
+main = "worker.js"
+compatibility_date = "2025-05-24"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "summer-days-wav-rehearsal"
+database_id = "summer-days-wav-rehearsal"
