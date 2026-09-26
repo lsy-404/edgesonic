@@ -47,14 +47,14 @@ Seed 'success'
 Invoke-D1 'success' @('--file',$candidate) | Out-Null
 $success = Invoke-D1 'success' @('--command',"SELECT (SELECT song_count FROM albums WHERE id='al-86f72c214f') target_count,(SELECT duration FROM albums WHERE id='al-86f72c214f') target_duration,(SELECT size FROM albums WHERE id='al-86f72c214f') target_size,(SELECT song_count FROM albums WHERE id='pending-uploads') pending_count,(SELECT duration FROM albums WHERE id='pending-uploads') pending_duration,(SELECT size FROM albums WHERE id='pending-uploads') pending_size,(SELECT COUNT(DISTINCT track) FROM song_masters WHERE album_id='al-86f72c214f' AND track BETWEEN 1 AND 8) unique_tracks")
 $successRow = (ConvertFrom-Json -InputObject $success)[0].results[0]
-if ($successRow.target_count -ne 8 -or $successRow.target_duration -ne 1540 -or $successRow.target_size -ne 271656352 -or $successRow.pending_count -ne 575 -or $successRow.pending_duration -ne 128561 -or $successRow.pending_size -ne 22410550173 -or $successRow.unique_tracks -ne 8) { throw "Unexpected success state: $success" }
+if ($successRow.target_count -ne 8 -or $successRow.target_duration -ne 1540 -or $successRow.target_size -ne 271656352 -or $successRow.pending_count -ne 549 -or $successRow.pending_duration -ne 122071 -or $successRow.pending_size -ne 21265357877 -or $successRow.unique_tracks -ne 8) { throw "Unexpected success state: $success" }
 
 Seed 'stale'
 Invoke-D1 'stale' @('--command',"UPDATE storage_objects SET physical_key='objects/changed.wav' WHERE id='obj_10b259d1d3a7dea8'") | Out-Null
 Invoke-D1 'stale' @('--file',$candidate) -failure | Out-Null
 $stale = Invoke-D1 'stale' @('--command',"SELECT (SELECT COUNT(*) FROM song_masters WHERE album_id='al-86f72c214f') target_rows,(SELECT COUNT(*) FROM song_masters WHERE album_id='pending-uploads') pending_rows,(SELECT COUNT(*) FROM work_queue) queue_rows")
 $staleRow = (ConvertFrom-Json -InputObject $stale)[0].results[0]
-if ($staleRow.target_rows -ne 2 -or $staleRow.pending_rows -ne 581 -or $staleRow.queue_rows -ne 0) { throw "Stale state changed: $stale" }
+if ($staleRow.target_rows -ne 2 -or $staleRow.pending_rows -ne 555 -or $staleRow.queue_rows -ne 0) { throw "Stale state changed: $stale" }
 
 Seed 'late'
 Invoke-D1 'late' @('--command',"INSERT INTO work_queue(id,task_type,payload,status,created_at) VALUES('radio-a-force-late-failure','metadata','{}','queued',unixepoch())") | Out-Null

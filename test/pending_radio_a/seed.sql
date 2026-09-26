@@ -1,9 +1,9 @@
-INSERT INTO albums(id,name,song_count,duration,size) VALUES('pending-uploads','Pending Uploads',581,129701,22611646437),('al-86f72c214f','矩尺镜海·蚀刻于此媒介A',2,0,70560088);
-WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<575)
-INSERT INTO song_masters(id,album_id,artist_id,title,duration) SELECT 'filler-'||x,'pending-uploads','unknown-artist','filler',223+CASE WHEN x<=336 THEN 1 ELSE 0 END FROM n;
-WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<575)
+INSERT INTO albums(id,name,song_count,duration,size) VALUES('pending-uploads','Pending Uploads',555,123211,21466454141),('al-86f72c214f','矩尺镜海·蚀刻于此媒介A',2,0,70560088);
+WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<549)
+INSERT INTO song_masters(id,album_id,artist_id,title,duration) SELECT 'filler-'||x,'pending-uploads','unknown-artist','filler',222+CASE WHEN x<=193 THEN 1 ELSE 0 END FROM n;
+WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<549)
 INSERT INTO song_instances(id,master_id,source_id,source_type,suffix,size,duration,missing,tag_scanned,storage_object_id)
-SELECT 'filler-si-'||x,'filler-'||x,'r2-local','original','wav',38974869+CASE WHEN x<=498 THEN 1 ELSE 0 END,223+CASE WHEN x<=336 THEN 1 ELSE 0 END,0,1,'filler-object' FROM n;
+SELECT 'filler-si-'||x,'filler-'||x,'r2-local','original','wav',38734713+CASE WHEN x<=440 THEN 1 ELSE 0 END,222+CASE WHEN x<=193 THEN 1 ELSE 0 END,0,1,'filler-object' FROM n;
 INSERT INTO song_masters(id,album_id,artist_id,title,track,duration) VALUES
  ('sm-5e95a72c01','al-86f72c214f','ar-bc386c9156','系统万象',3,150),
  ('sm-c1be4c1e30','al-86f72c214f','ar-bc386c9156','致邀请老用户',4,250);

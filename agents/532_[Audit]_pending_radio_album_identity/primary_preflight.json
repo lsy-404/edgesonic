@@ -16,12 +16,12 @@
   },
   "pending_album": {
     "id": "pending-uploads",
-    "song_count": 581,
-    "duration": 129701,
-    "size": 22611646437,
-    "actual_count": 581,
-    "actual_duration": 129701,
-    "actual_size": 22611646437
+    "song_count": 555,
+    "duration": 123211,
+    "size": 21466454141,
+    "actual_count": 555,
+    "actual_duration": 123211,
+    "actual_size": 21466454141
   },
   "predicted_after_candidate": {
     "target_album": {
@@ -31,9 +31,9 @@
       "unique_tracks_1_through_8": 8
     },
     "pending_album": {
-      "song_count": 575,
-      "duration": 128561,
-      "size": 22410550173
+      "song_count": 549,
+      "duration": 122071,
+      "size": 21265357877
     }
   }
 }
