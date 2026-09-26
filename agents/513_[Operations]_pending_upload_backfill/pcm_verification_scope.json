@@ -1,0 +1,783 @@
+{
+  "source": "Primary D1 read-only joined metadata/object/path query at 2026-09-26; rows_written=0",
+  "cases": [
+    {
+      "case": "freesia",
+      "pending_album_name": "Freesia",
+      "pending_count": 12,
+      "pending_track_null_count": 9,
+      "pending_disc_null_count": 12,
+      "existing_scope": "Fressia/al-9544935a62",
+      "existing_count": 12,
+      "existing_album_ids": [
+        "al-9544935a62"
+      ],
+      "existing_names": [
+        "Fressia"
+      ],
+      "strict_track_title_matches": 11,
+      "glyph_fold_track_title_matches": 12,
+      "pairs": [
+        {
+          "track_index_from_path": 1,
+          "candidate": {
+            "master_id": "sm-upload-6c0a0dc9-c4a",
+            "title": "Tr.01 人偶之梦",
+            "track": 1,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_78c96f0a3be4e75e",
+            "physical_key": "objects/obj_78c96f0a3be4e75e.wav",
+            "etag": null,
+            "size": 46800984,
+            "path": "Freesia/wav/Tr.01 人偶之梦.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1102",
+              "title": "人偶之梦",
+              "track": 1,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_9acca43942e2c4cf",
+              "physical_key": "objects/obj_9acca43942e2c4cf.flac",
+              "etag": "cf8c69d2298d1067c5b27aaf4fea45fc",
+              "size": 33395385,
+              "path": "Freesia/01 人偶之梦.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 2,
+          "candidate": {
+            "master_id": "sm-upload-66bdb06b-1cb",
+            "title": "Tr.02 泪之诗",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_2fde7e739c042926",
+            "physical_key": "objects/obj_2fde7e739c042926.wav",
+            "etag": null,
+            "size": 52813868,
+            "path": "Freesia/wav/Tr.02 泪之诗.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1101",
+              "title": "泪之诗",
+              "track": 2,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_f0030467f3c2edeb",
+              "physical_key": "objects/obj_f0030467f3c2edeb.flac",
+              "etag": "ff0b52aa17c2a31d8df725a960e83a8e",
+              "size": 35070000,
+              "path": "Freesia/02 泪之诗.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 3,
+          "candidate": {
+            "master_id": "sm-upload-637470c0-5af",
+            "title": "Tr.03 轮回∞Samsara",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_a966a361f2a48670",
+            "physical_key": "objects/obj_a966a361f2a48670.wav",
+            "etag": null,
+            "size": 46555180,
+            "path": "Freesia/wav/Tr.03 轮回∞Samsara.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1097",
+              "title": "轮回∞Samsara",
+              "track": 3,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_e692b9a691a15860",
+              "physical_key": "objects/obj_e692b9a691a15860.flac",
+              "etag": "ce3fee7fa8a55c3e124cf6d0fe4d225f",
+              "size": 34028616,
+              "path": "Freesia/03 轮回∞Samsara.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 4,
+          "candidate": {
+            "master_id": "sm-upload-8b4e6e46-206",
+            "title": "Tr.04 涟漪",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_ffc38ddae66d7cb1",
+            "physical_key": "objects/obj_ffc38ddae66d7cb1.wav",
+            "etag": null,
+            "size": 44515372,
+            "path": "Freesia/wav/Tr.04 涟漪.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1098",
+              "title": "涟漪",
+              "track": 4,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_44894a46f832eafb",
+              "physical_key": "objects/obj_44894a46f832eafb.flac",
+              "etag": "965fdac5963aaf5d162910f1a6b2770c",
+              "size": 29794620,
+              "path": "Freesia/04 涟漪.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 5,
+          "candidate": {
+            "master_id": "sm-upload-33959ca1-297",
+            "title": "Tr.05 雪之花",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_801649780593a9b1",
+            "physical_key": "objects/obj_801649780593a9b1.wav",
+            "etag": null,
+            "size": 51994668,
+            "path": "Freesia/wav/Tr.05 雪之花.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1107",
+              "title": "雪之花",
+              "track": 5,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_ef805b8ae0c67ffe",
+              "physical_key": "objects/obj_ef805b8ae0c67ffe.flac",
+              "etag": "68b5df4e5f97a1c3177c576c018544f9",
+              "size": 37002257,
+              "path": "Freesia/05 雪之花.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 6,
+          "candidate": {
+            "master_id": "sm-upload-34c51de9-aa4",
+            "title": "Tr.06 云之翼",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_3092d9dec90192d3",
+            "physical_key": "objects/obj_3092d9dec90192d3.wav",
+            "etag": null,
+            "size": 40656940,
+            "path": "Freesia/wav/Tr.06 云之翼.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1100",
+              "title": "云之翼",
+              "track": 6,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_67c3a46a0eb20b21",
+              "physical_key": "objects/obj_67c3a46a0eb20b21.flac",
+              "etag": "37d40b35bd34d165cd37d6b394598cb9",
+              "size": 29965818,
+              "path": "Freesia/06 云之翼.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 7,
+          "candidate": {
+            "master_id": "sm-upload-debc2a1c-66a",
+            "title": "Tr.07 D!s!llus!on",
+            "track": 7,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_b9943b42a23d56ae",
+            "physical_key": "objects/obj_b9943b42a23d56ae.wav",
+            "etag": null,
+            "size": 46784600,
+            "path": "Freesia/wav/Tr.07 D!s!llus!on.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1096",
+              "title": "D!s!llus!on",
+              "track": 7,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_0783f7b6681da190",
+              "physical_key": "objects/obj_0783f7b6681da190.flac",
+              "etag": "b4038e695e6a372e6e1ff939353bc97c",
+              "size": 32931427,
+              "path": "Freesia/07 D!s!llus!on.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 8,
+          "candidate": {
+            "master_id": "sm-upload-b33cfb39-448",
+            "title": "Tr.08 D!scolor",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_3f0dd4874e31b706",
+            "physical_key": "objects/obj_3f0dd4874e31b706.wav",
+            "etag": "3d79eb63947f2f12811401c1e13f5d75",
+            "size": 44367916,
+            "path": "Freesia/wav/Tr.08 D!scolor.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1105",
+              "title": "D!scoloЯ",
+              "track": 8,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_cc8c8f3bf5f30600",
+              "physical_key": "objects/obj_cc8c8f3bf5f30600.flac",
+              "etag": "186252d2ab6c7b306aac0d38789a3f92",
+              "size": 31560845,
+              "path": "Freesia/08 D!scoloЯ.flac"
+            }
+          ],
+          "title_equal_after_number_strip": false,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 9,
+          "candidate": {
+            "master_id": "sm-upload-89d8af71-0b6",
+            "title": "Tr.09 渊之心",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_68d2e803cd35b435",
+            "physical_key": "objects/obj_68d2e803cd35b435.wav",
+            "etag": "dab129dc3647c7945553fb23c2b60995",
+            "size": 47767596,
+            "path": "Freesia/wav/Tr.09 渊之心.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1099",
+              "title": "渊之心",
+              "track": 9,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_b9f816f7bfcbcacc",
+              "physical_key": "objects/obj_b9f816f7bfcbcacc.flac",
+              "etag": "309e113f5d0d0c92e8ccb8f3ee67e86f",
+              "size": 33152296,
+              "path": "Freesia/09 渊之心.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 10,
+          "candidate": {
+            "master_id": "sm-upload-95621150-291",
+            "title": "Tr.10 心的葬礼",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_bb630ca72a5898bc",
+            "physical_key": "objects/obj_bb630ca72a5898bc.wav",
+            "etag": "e602d40168eeaeeac7e50a4cc7468da7",
+            "size": 39526444,
+            "path": "Freesia/wav/Tr.10 心的葬礼.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1106",
+              "title": "心的葬礼",
+              "track": 10,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_52a743f102614631",
+              "physical_key": "objects/obj_52a743f102614631.flac",
+              "etag": "7d541bb1ea698f569769759b56e35496",
+              "size": 28179966,
+              "path": "Freesia/10 心的葬礼.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 11,
+          "candidate": {
+            "master_id": "sm-upload-64363012-149",
+            "title": "Tr.11 神明废墟",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_87ed2ff23cc31c9c",
+            "physical_key": "objects/obj_87ed2ff23cc31c9c.wav",
+            "etag": null,
+            "size": 45875244,
+            "path": "Freesia/wav/Tr.11 神明废墟.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1095",
+              "title": "神明废墟",
+              "track": 11,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_533c7640af20a636",
+              "physical_key": "objects/obj_533c7640af20a636.flac",
+              "etag": "a6f9e1f467f6c39798030206975b8af8",
+              "size": 32453497,
+              "path": "Freesia/11 神明废墟.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 12,
+          "candidate": {
+            "master_id": "sm-upload-6b506d3e-f76",
+            "title": "Tr.12 Freesia",
+            "track": 12,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_4d6316c99694296a",
+            "physical_key": "objects/obj_4d6316c99694296a.wav",
+            "etag": null,
+            "size": 56475738,
+            "path": "Freesia/wav/Tr.12 Freesia.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "1103",
+              "title": "Freesia",
+              "track": 12,
+              "disc": 1,
+              "album_id": "al-9544935a62",
+              "album_name": "Fressia",
+              "suffix": "flac",
+              "storage_object_id": "obj_4109578a305002c4",
+              "physical_key": "objects/obj_4109578a305002c4.flac",
+              "etag": "1b4f6ab9172b4d73e7a0a0975b23dcf4",
+              "size": 40430890,
+              "path": "Freesia/12 Freesia.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        }
+      ]
+    },
+    {
+      "case": "pages",
+      "pending_album_name": "页间曲-星韵社",
+      "pending_count": 10,
+      "pending_track_null_count": 10,
+      "pending_disc_null_count": 10,
+      "existing_scope": "页间曲 singleton albums",
+      "existing_count": 10,
+      "existing_album_ids": [
+        "al-00d48fe122",
+        "al-1c10f4d14a",
+        "al-4abb0b6368",
+        "al-7e5eae45c8",
+        "al-8829e799ff",
+        "al-e9abb8fbe6",
+        "al-eb1cffa10c",
+        "al-f249e24866",
+        "al-f88b0a5876"
+      ],
+      "existing_names": [
+        "页间曲"
+      ],
+      "strict_track_title_matches": 9,
+      "glyph_fold_track_title_matches": 9,
+      "pairs": [
+        {
+          "track_index_from_path": 1,
+          "candidate": {
+            "master_id": "sm-upload-a4de5316-99a",
+            "title": "01 问",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_a017b97683140b01",
+            "physical_key": "objects/obj_a017b97683140b01.wav",
+            "etag": "e7355a4918c292a08b80bef23d1013d8",
+            "size": 36194972,
+            "path": "页间曲-星韵社/wav/01 问.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "2029",
+              "title": "问",
+              "track": 1,
+              "disc": 1,
+              "album_id": "al-7e5eae45c8",
+              "album_name": "页间曲",
+              "suffix": "flac",
+              "storage_object_id": "obj_b02513e7262bbae3",
+              "physical_key": "objects/obj_b02513e7262bbae3.flac",
+              "etag": "272b6ef6506e23fd4f7e4d68c0b1f622",
+              "size": 28058363,
+              "path": "页间曲Page Interlude（无词/1 问.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 2,
+          "candidate": {
+            "master_id": "sm-upload-cc1e80b9-244",
+            "title": "02 星间吟游歌姬",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_eac64617b22155c6",
+            "physical_key": "objects/obj_eac64617b22155c6.wav",
+            "etag": "12274512d3e630bc20cf78c10c1b76b5",
+            "size": 38765708,
+            "path": "页间曲-星韵社/wav/02 星间吟游歌姬.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "2025",
+              "title": "星间吟游歌姬",
+              "track": 2,
+              "disc": 1,
+              "album_id": "al-e9abb8fbe6",
+              "album_name": "页间曲",
+              "suffix": "flac",
+              "storage_object_id": "obj_e6ba83d837e923be",
+              "physical_key": "objects/obj_e6ba83d837e923be.flac",
+              "etag": "5023e0cf64a200bf72a6eeea113f106f",
+              "size": 29797990,
+              "path": "页间曲Page Interlude（无词/2 星间吟游歌姬.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 3,
+          "candidate": {
+            "master_id": "sm-upload-0112a6d9-283",
+            "title": "03 光降落的序章",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_3951ea51a3598435",
+            "physical_key": "objects/obj_3951ea51a3598435.wav",
+            "etag": "7ddfce8d58e6a0fd8f19abdc3f949753",
+            "size": 22642748,
+            "path": "页间曲-星韵社/wav/03 光降落的序章.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "2031",
+              "title": "光降落的序章",
+              "track": 3,
+              "disc": 1,
+              "album_id": "al-00d48fe122",
+              "album_name": "页间曲",
+              "suffix": "flac",
+              "storage_object_id": "obj_3bb6626b4fd09faf",
+              "physical_key": "objects/obj_3bb6626b4fd09faf.flac",
+              "etag": "c5c3fbd12f2fa03ddd3d7723ef2820e2",
+              "size": 10292617,
+              "path": "页间曲Page Interlude（无词/3 光降落的序章.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 4,
+          "candidate": {
+            "master_id": "sm-upload-2c6e632f-4ae",
+            "title": "04 守望与羁绊的微光航行",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_4aa1b1019085490e",
+            "physical_key": "objects/obj_4aa1b1019085490e.wav",
+            "etag": "57dc76d1dd3a7cab71b962e3226e08dd",
+            "size": 46581404,
+            "path": "页间曲-星韵社/wav/04 守望与羁绊的微光航行.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "2024",
+              "title": "守望与羁绊的微光航行",
+              "track": 4,
+              "disc": 1,
+              "album_id": "al-1c10f4d14a",
+              "album_name": "页间曲",
+              "suffix": "flac",
+              "storage_object_id": "obj_d00fddada1743506",
+              "physical_key": "objects/obj_d00fddada1743506.flac",
+              "etag": "1dede56c9c2aa5db060f71b6bfa6f74b",
+              "size": 33962822,
+              "path": "页间曲Page Interlude（无词/4 守望与羁绊的微光航行.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 5,
+          "candidate": {
+            "master_id": "sm-upload-bba1a72e-f0c",
+            "title": "05 恋に落ちた",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_4f01ea7acc0f704d",
+            "physical_key": "objects/obj_4f01ea7acc0f704d.wav",
+            "etag": "9c51aca6273793db68828d4216e5c945",
+            "size": 33033884,
+            "path": "页间曲-星韵社/wav/05 恋に落ちた.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "2028",
+              "title": "恋に落ちた",
+              "track": 5,
+              "disc": 1,
+              "album_id": "al-f88b0a5876",
+              "album_name": "页间曲",
+              "suffix": "flac",
+              "storage_object_id": "obj_36133307d4ebe3a7",
+              "physical_key": "objects/obj_36133307d4ebe3a7.flac",
+              "etag": "01e3cd828ec421d02ea885ce16b4df88",
+              "size": 25172852,
+              "path": "页间曲Page Interlude（无词/5 恋に落ちた.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 6,
+          "candidate": {
+            "master_id": "sm-upload-d642ecae-43c",
+            "title": "06 恋b",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_7020ea3c9a06d09e",
+            "physical_key": "objects/obj_7020ea3c9a06d09e.wav",
+            "etag": "69f7075233373d5b878a3c4426228269",
+            "size": 45802892,
+            "path": "页间曲-星韵社/wav/06 恋b.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "2027",
+              "title": "恋♭",
+              "track": 6,
+              "disc": 1,
+              "album_id": "al-f249e24866",
+              "album_name": "页间曲",
+              "suffix": "flac",
+              "storage_object_id": "obj_1379356ac944e750",
+              "physical_key": "objects/obj_1379356ac944e750.flac",
+              "etag": "8b6d9be3d3d116543dab97aa37941c24",
+              "size": 33112694,
+              "path": "页间曲Page Interlude（无词/6 恋♭.flac"
+            }
+          ],
+          "title_equal_after_number_strip": false,
+          "title_equal_after_fressia_glyph_fold": false
+        },
+        {
+          "track_index_from_path": 7,
+          "candidate": {
+            "master_id": "sm-upload-fa2c02f7-a2d",
+            "title": "07 蝶说，春也可哀，秋也可爱",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_3cd07d2e8ca77a3b",
+            "physical_key": "objects/obj_3cd07d2e8ca77a3b.wav",
+            "etag": "c5cc07b9c4bd219958e5e3aae3bb764b",
+            "size": 37276892,
+            "path": "页间曲-星韵社/wav/07 蝶说，春也可哀，秋也可爱.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "2032",
+              "title": "蝶说，春也可哀，秋也可爱",
+              "track": 7,
+              "disc": 1,
+              "album_id": "al-eb1cffa10c",
+              "album_name": "页间曲",
+              "suffix": "flac",
+              "storage_object_id": "obj_05e3559120ca20e9",
+              "physical_key": "objects/obj_05e3559120ca20e9.flac",
+              "etag": "0f79851bf09bbe4073b2bccf31724b70",
+              "size": 28295489,
+              "path": "页间曲Page Interlude（无词/7 蝶说，春也可哀，秋也可爱.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 8,
+          "candidate": {
+            "master_id": "sm-upload-8ca7055e-888",
+            "title": "08 淬火",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_99ab13036d3cc476",
+            "physical_key": "objects/obj_99ab13036d3cc476.wav",
+            "etag": "a2d65e2f37a33b3099d31a41c3a16c0a",
+            "size": 49876556,
+            "path": "页间曲-星韵社/wav/08 淬火.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "2030",
+              "title": "淬火",
+              "track": 8,
+              "disc": 1,
+              "album_id": "al-4abb0b6368",
+              "album_name": "页间曲",
+              "suffix": "flac",
+              "storage_object_id": "obj_bc2aa819779c71ee",
+              "physical_key": "objects/obj_bc2aa819779c71ee.flac",
+              "etag": "2d33a71606f94c962b7aef16fd39a6d9",
+              "size": 38003417,
+              "path": "页间曲Page Interlude（无词/8 淬火.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 9,
+          "candidate": {
+            "master_id": "sm-upload-6a381b8f-020",
+            "title": "09 The coming wave",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_434e631727e6d45c",
+            "physical_key": "objects/obj_434e631727e6d45c.wav",
+            "etag": "d54de73f6507b4073cd5ef46fcc25990",
+            "size": 47700956,
+            "path": "页间曲-星韵社/wav/09 The coming wave.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "2033",
+              "title": "The Coming Wave",
+              "track": 9,
+              "disc": 1,
+              "album_id": "al-8829e799ff",
+              "album_name": "页间曲",
+              "suffix": "flac",
+              "storage_object_id": "obj_b4e9d710e3aabca8",
+              "physical_key": "objects/obj_b4e9d710e3aabca8.flac",
+              "etag": "0e15ff74b962c08704e1264be317e12a",
+              "size": 32699335,
+              "path": "页间曲Page Interlude（无词/9 The Coming Wave.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        },
+        {
+          "track_index_from_path": 10,
+          "candidate": {
+            "master_id": "sm-upload-d11b6d58-141",
+            "title": "10 迟来",
+            "track": null,
+            "disc": null,
+            "suffix": "wav",
+            "storage_object_id": "obj_fc7bd9a9e4da4905",
+            "physical_key": "objects/obj_fc7bd9a9e4da4905.wav",
+            "etag": "8126c0e901ca70c5a574a1ffaaa61c93",
+            "size": 41369372,
+            "path": "页间曲-星韵社/wav/10 迟来.wav"
+          },
+          "existing_options": [
+            {
+              "master_id": "2026",
+              "title": "迟来",
+              "track": 10,
+              "disc": 1,
+              "album_id": "al-4abb0b6368",
+              "album_name": "页间曲",
+              "suffix": "flac",
+              "storage_object_id": "obj_73f365525156a9cf",
+              "physical_key": "objects/obj_73f365525156a9cf.flac",
+              "etag": "c4ce94cd98de37bd9542645c3318bd05",
+              "size": 29141034,
+              "path": "页间曲Page Interlude（无词/10 迟来.flac"
+            }
+          ],
+          "title_equal_after_number_strip": true,
+          "title_equal_after_fressia_glyph_fold": true
+        }
+      ]
+    }
+  ],
+  "pcm_method_plan": [
+    "For each pair, read only the listed R2 physical_key from its storage binding. Record object ID, size, ETag, and response metadata; do not infer same audio from ETag or size.",
+    "Parse embedded tags independently (title, album, artist, track/disc, sample rate, channels, bit depth). Preserve raw tag strings in the receipt.",
+    "Decode each lossless object to interleaved signed 32-bit PCM at the original sample rate/channel layout and hash the decoded sample bytes. Exact byte match at same rate/layout is positive identity evidence. If rate/layout differ, report as unresolved and use a documented conversion or listening review; do not claim exact PCM equality after resampling.",
+    "Do not delete or rewrite any object. If all pairs match, propose moving WAV instances onto existing FLAC masters, with a per-pair guarded mapping and keeper album decision. If any differ, retain both masters and propose an explicit display group/version mapping."
+  ]
+}

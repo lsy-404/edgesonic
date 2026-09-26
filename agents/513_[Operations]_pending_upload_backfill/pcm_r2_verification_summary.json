@@ -1,0 +1,27 @@
+{
+  "created_at_utc": "2026-09-26T11:03:48.8115214Z",
+  "method": "ffmpeg pcm_s32le SHA-256",
+  "source_object_count": 44,
+  "cohorts": [
+    {
+      "cohort": "freesia",
+      "pair_count": 12,
+      "strict_pcm_equal_count": 0,
+      "distinct_pcm_count": 12,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "wav_minus_flac_sample_count_min": 2092.0,
+      "wav_minus_flac_sample_count_max": 4052.0
+    },
+    {
+      "cohort": "pages",
+      "pair_count": 10,
+      "strict_pcm_equal_count": 0,
+      "distinct_pcm_count": 10,
+      "sample_rate_hz": 44100,
+      "channels": 2,
+      "wav_minus_flac_sample_count_min": 2095.0,
+      "wav_minus_flac_sample_count_max": 3185.0
+    }
+  ]
+}

@@ -1,0 +1,2068 @@
+{
+  "created_at_utc": "2026-09-26T11:03:48.8115214Z",
+  "decoder": "ffmpeg pcm_s32le SHA-256",
+  "pairs": [
+    {
+      "case": "freesia",
+      "track": 1,
+      "candidate": {
+        "master_id": "sm-upload-6c0a0dc9-c4a",
+        "storage_object_id": "obj_78c96f0a3be4e75e",
+        "physical_key": "objects/obj_78c96f0a3be4e75e.wav",
+        "suffix": "wav",
+        "source_sha256": "737aa0ccff783724d8e97d4ff59ffaec5e70d89e9eb0795ac12da23e3df966da",
+        "pcm_s32le_sha256": "3fbe7169c664642be69c7b8f052287a09254ee5f918b54a8e74e5568f980048e",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 11700224,
+              "duration": "265.311202"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "265.311202",
+            "size": "46800984",
+            "bit_rate": "1411202",
+            "tags": {
+              "track": "1",
+              "encoder": "Lavf58.12.100"
+            }
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1102",
+        "storage_object_id": "obj_9acca43942e2c4cf",
+        "physical_key": "objects/obj_9acca43942e2c4cf.flac",
+        "suffix": "flac",
+        "source_sha256": "caf1d296752397c4ea209735dea1a06885c2c87c60595f0b344b4e9c42393e89",
+        "pcm_s32le_sha256": "868e01d25b604d743437a32af8cf3122e4a5a1e26021649ed25763c7cae89afd",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 11697672,
+              "duration": "265.253333",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 23872800,
+              "duration": "265.253333",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "265.253333",
+            "size": "33395385",
+            "bit_rate": "1007199",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "人偶之梦",
+              "track": "1",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[tool: 歌词滚动姬 https://lrc-maker.github.io]\n[length: 04:25.253]\n[00:00.000] 人偶之梦\n[00:02.817] 作曲&编曲：Zeno\n[00:06.524] 作词：Zeno\n[00:09.786] 曲绘：匙\n[00:14.396] 专辑：Freesia\n[00:17.701] { 人偶的心倾听着他人的梦，人偶在梦中追寻永恒的心。故事总会讲完，而梦终会消散 }\n[00:29.965] 不知从何处降生天真的人偶\n[00:34.202] 无知的双眸 注视什么\n[00:37.488] 夜空中星光之雨不停滑落\n[00:41.635] 那是 无色的梦\n[00:45.361] 这就是被人称为「灵魂」的种子\n[00:49.402] 简单的仪式 从此开始\n[00:52.919] 倾听这夜空中亡灵的诉说\n[00:56.851] 将那 思念 全部化作歌声\n[01:18.899] 能不能看清眼中的泪水\n[01:21.887] 透出生命的颜色\n[01:26.322] 即使那是模糊不清的幻之影\n[01:29.932] 也令人颤抖\n[01:33.927] 纯粹的过去与飘渺的未来相交\n[01:38.525] 声音不停颤抖\n[01:41.496] 似乎在那不断反复的话语之中\n[01:45.831] 祈求着什么\n[01:48.301] 请告诉我为何心不停的跳动\n[01:52.294] 这颗心究竟装着什么\n[01:55.992] 告诉我人到底在守护什么\n[01:59.752] 为何 与众不同\n[02:03.370] 若能够找到那名为「爱」的齿轮\n[02:07.764] 能否让心跳 永不停止\n[02:11.064] 诉说着天空中亡灵的诉说\n[02:15.063] 我已不再是我\n[02:18.750] 只是一场 幻梦\n[02:55.980] 能不能听见天空的呼喊\n[02:58.858] 透出生命的音色\n[03:03.321] 即使那是模糊不清的幻之音\n[03:06.909] 也令人动容\n[03:11.131] 用青鸾之羽为被遗失的爱立下\n[03:15.279] 永不变的誓言\n[03:18.708] 似乎在那不断反复的话语之间\n[03:23.001] 感受到什么\n[03:25.411] 那就是被人称为「神明」的信使\n[03:29.480] 孤单的仪式 如此相似\n[03:32.997] 不停地用干枯的声音歌唱\n[03:37.037] 心中 逐渐 刺痛\n[03:40.366] 这就是被人称为「灵魂」的种子\n[03:44.661] 生命的果实 成熟之时\n[03:48.243] 再无人倾听那亡灵的诉说\n[03:52.181] 眼泪 化作 星火\n[03:55.800] 也从天空 坠落",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-6.39 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.636810"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 2,
+      "candidate": {
+        "master_id": "sm-upload-66bdb06b-1cb",
+        "storage_object_id": "obj_2fde7e739c042926",
+        "physical_key": "objects/obj_2fde7e739c042926.wav",
+        "suffix": "wav",
+        "source_sha256": "e5372ff3652544f80e3ed3a5389b382b9f8ac988709be30bae0e54cdbaaa1ef9",
+        "pcm_s32le_sha256": "8624816cea15328de5073ce1ae35b624a7bd2666876efbef05572fcdadc00818",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 13203456,
+              "duration": "299.398095"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "299.398095",
+            "size": "52813868",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1101",
+        "storage_object_id": "obj_f0030467f3c2edeb",
+        "physical_key": "objects/obj_f0030467f3c2edeb.flac",
+        "suffix": "flac",
+        "source_sha256": "a8595ca9df179dfa6e4cbe6cb853a34e968f3e73c48e9e7268a15040517e4e6a",
+        "pcm_s32le_sha256": "df8b90781fff8c37681e3faa96fcddb480d61b7b3ea7ec820f28f937a058259f",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 13201188,
+              "duration": "299.346667",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 26941200,
+              "duration": "299.346667",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "299.346667",
+            "size": "35070000",
+            "bit_rate": "937241",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "泪之诗",
+              "track": "2",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[tool: 歌词滚动姬 https://lrc-maker.github.io]\n[length: 04:59.347]\n[00:00.000] 泪之诗\n[00:06.508] 作曲&编曲：Zeno\n[00:10.568] 作词：Zeno\n[00:15.321] 曲绘：匙\n[00:19.424] 专辑：Freesia\n[00:23.545] { 无法触及彼此的星球，将泪水洒向空中，化作流星将思念之心传递 }\n[00:31.387] 谁知道\n[00:34.158] 那流星的祈祷\n[00:37.433] 用一千年去围绕\n[00:40.547] 只为一个拥抱\n[00:45.206] 天之遥\n[00:47.088] 遥不可及轨道\n[00:50.347] 思念洒向那渺远\n[00:53.764] 化作流星雨只有\n[00:57.193] 眼泪知道\n[01:12.659] 在故事的开头\n[01:15.105] 在混沌之中\n[01:16.429] 有无数的尽头\n[01:19.111] 在无尽的时空之中\n[01:21.997] 穿梭而过\n[01:25.744] “请不要 忘记我”\n[01:28.864] 就算是 一闪而过\n[01:32.224] 已陷入了无法逃离的漩涡\n[01:36.648] 谁知道\n[01:39.269] 那流星的祈祷\n[01:42.533] 用一千年去围绕\n[01:46.000] 只为一个拥抱\n[01:50.586] 天之遥\n[01:52.612] 遥不可及轨道\n[01:55.788] 思念洒向那渺远\n[01:58.939] 化作流星雨寻找\n[02:02.492] 你的微笑\n[02:05.975] 面对心中飘渺的旋律\n[02:07.595] 那哭泣的我（燃烧）\n[02:10.789] 面对心中斑斑的锈迹\n[02:13.857] 那悲伤的我（燃烧）\n[02:18.006] 面对心中无数的回忆\n[02:20.390] 那叹息的我（燃烧）\n[02:24.506] 在这无法逃离的漩涡之中紧握着手\n[03:13.438] “请不要 忘记我”\n[03:16.576] 就算是 擦身而过\n[03:19.904] 已陷入了无法逃离的漩涡\n[03:25.065] 我只好\n[03:27.324] 在黑夜中祈祷\n[03:30.339] 将思念化作星空\n[03:33.601] 最美丽的那一个梦\n[03:38.067] 泪知道\n[03:40.174] 那坠落的轨道\n[03:43.377] 在那夜空中闪耀\n[03:46.713] 你一定看得到\n[03:50.529] 我知道\n[03:53.328] 在那星光之中\n[03:56.826] 穿越无数的时空\n[03:59.806] 总有一天会找到\n[04:03.324] 一个拥抱\n[04:05.801] 奏响心中最飘渺的旋律\n[04:08.177] 为哭泣的你（燃烧）\n[04:12.253] 洗去心中斑斑的锈迹\n[04:14.853] 为悲伤的你（燃烧）\n[04:18.722] 重拾心中无数的回忆\n[04:21.203] 为叹息的你（燃烧）\n[04:25.326] 在这无法逃离的漩涡之中紧紧相拥",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-6.77 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.670227"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 3,
+      "candidate": {
+        "master_id": "sm-upload-637470c0-5af",
+        "storage_object_id": "obj_a966a361f2a48670",
+        "physical_key": "objects/obj_a966a361f2a48670.wav",
+        "suffix": "wav",
+        "source_sha256": "c5fc877ca9721e78561703a78e8f29f68bb106689205fe74aecb708cc0e6c3de",
+        "pcm_s32le_sha256": "7737799e70b7d8c792de03c9b1b2f2853873c754217c0302548e76246eebd48c",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 11638784,
+              "duration": "263.918005"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "263.918005",
+            "size": "46555180",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1097",
+        "storage_object_id": "obj_e692b9a691a15860",
+        "physical_key": "objects/obj_e692b9a691a15860.flac",
+        "suffix": "flac",
+        "source_sha256": "1466a18c2e99816a174d471538aa25064be4b27681ea795dd83190baf3acece6",
+        "pcm_s32le_sha256": "496facc09378856a380d0529e4cd4a0329d8e8cd054bcb8217678b3486252ec2",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 11634756,
+              "duration": "263.826667",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 23744400,
+              "duration": "263.826667",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "263.826667",
+            "size": "34028616",
+            "bit_rate": "1031847",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "轮回∞Samsara",
+              "track": "3",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[tool: 歌词滚动姬 https://lrc-maker.github.io]\n[length: 04:23.827]\n[00:00.000] 轮回∞Samsara\n[00:05.329] 作曲&编曲：Zeno\n[00:09.499] 作词：Zeno\n[00:15.182] 曲绘：匙\n[00:20.360] 专辑：Freesia\n[00:23.472] { 人在得到失去的过程中学习如何珍惜，而人偶在循环的梦境中学会人的感情 }\n[00:28.813] 告诉我\n[00:29.532] 在不断流逝的时间之中\n[00:32.683] 我们应该如何拥有\n[00:36.166] 在祈求寻觅和相遇之后\n[00:39.665] 渴望已经不再足够\n[00:42.376] 听我说\n[00:43.454] 四季轮回花盛开的时候\n[00:48.241] 心不停颤抖\n[00:50.276] 注视着遥远记忆的残留\n[00:54.956] 奏出思念漩涡\n[00:57.155] 灰白 天空 阻碍\n[00:59.119] 透明眼中仅剩下的色彩\n[01:03.341] 声音 纯粹 刺破\n[01:05.718] 不属于此那遗失的未来\n[01:09.991] 当微弱的歌声发出光芒\n[01:14.129] 逐渐将沉寂的世界照亮\n[01:17.561] 期盼着什么\n[01:19.458] 向往着什么\n[01:21.462] 探出双手\n[01:35.925] 告诉我\n[01:36.915] 在不断流逝的时间之中\n[01:39.741] 究竟有何值得拥有\n[01:43.233] 在祈求寻觅和相遇之后\n[01:46.560] 话语已经不再足够\n[01:49.376] 听我说\n[01:50.040] 四季轮回花凋谢的时候\n[01:55.296] 梦沉睡其中\n[01:57.492] 等待下一个无言的笑容\n[02:01.838] 绽放出的温柔\n[02:30.148] 带着泪水我们降生在这颗星球\n[02:35.159] 不知何为忧愁\n[02:38.507] 经历苦痛和伤悲之后才学会如何泪流\n[02:46.139] 沾湿的面容就算被谎言包裹\n[02:51.816] 每一次哭喊都被心中真实的爱痕刺痛\n[03:09.968] 告诉我\n[03:10.905] 该如何防抗那时间之流\n[03:13.899] 才不会让记忆消融\n[03:17.338] 在彷徨和若有所失之后\n[03:20.694] 刻骨之痛逐渐崩落\n[03:23.349] 听我说\n[03:24.259] 流于轮回缘因业而交错\n[03:29.205] 在梦醒之后\n[03:31.472] 经历一千次擦身的邂逅\n[03:35.838] 才换一个回眸\n[03:37.847] 洗去过往我们相遇在这颗星球\n[03:42.220] 星光指引左右\n[03:45.630] 经历别离和孤单之后才学会相互包容\n[03:53.269] 喜悦的心中就算被思念刺痛\n[03:58.912] 每一滴泪水都因心中那爱恨不停喷涌",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-6.09 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.560852"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 4,
+      "candidate": {
+        "master_id": "sm-upload-8b4e6e46-206",
+        "storage_object_id": "obj_ffc38ddae66d7cb1",
+        "physical_key": "objects/obj_ffc38ddae66d7cb1.wav",
+        "suffix": "wav",
+        "source_sha256": "b5de23c0e8da235a2bc8837799d66427f8327edc9393c931b7cb6945f24054be",
+        "pcm_s32le_sha256": "afbb32bcc75a447906246d67acc3af90922926d1ba2c302370276b1a0ac23186",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 11128832,
+              "duration": "252.354467"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "252.354467",
+            "size": "44515372",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1098",
+        "storage_object_id": "obj_44894a46f832eafb",
+        "physical_key": "objects/obj_44894a46f832eafb.flac",
+        "suffix": "flac",
+        "source_sha256": "048b33fd10264251732fce391e7e94c61b2e42413a31efa4cc0b0673b9a5d7cb",
+        "pcm_s32le_sha256": "7fd2d9d63497218e27b1375b23998277cdf4c0eb9b455f907798d81c02d89340",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 11125548,
+              "duration": "252.280000",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 22705200,
+              "duration": "252.280000",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "252.280000",
+            "size": "29794620",
+            "bit_rate": "944811",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "涟漪",
+              "track": "4",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[tool: 歌词滚动姬 https://lrc-maker.github.io]\n[length: 04:12.280]\n[00:00.000] 涟漪\n[00:05.477] 作曲&编曲：Zeno\n[00:10.378] 作词：Zeno\n[00:15.453] 曲绘：匙\n[00:20.468] 专辑：Freesia\n[00:25.488] { 贝壳将吞入泥沙与孤独之心一起孕育出了美丽的珍珠，却没能将它献给自己喜爱的睡莲 }\n[00:43.707] 将漂浮的声音都吞没\n[00:46.819] 描绘着贝壳上的轮廓\n[00:50.410] 趁暮色未干枯\n[00:52.257] 让泪水藏匿那未曾见过的颜色\n[00:57.169] 如果胸中回想同一个景色\n[01:01.057] 透着纯白寂静光泽\n[01:04.916] 请慢慢闭上眼\n[01:06.653] 摇曳着那水面\n[01:08.499] 黑夜吞噬了地平线\n[01:11.531] 那哭泣的歌声\n[01:13.627] 破碎的波纹\n[01:15.361] 即使挥手 无法割舍\n[01:18.999] 遗忘的话\n[01:20.595] 那嗜睡的花\n[01:22.211] 就请你于此沉睡吧\n[01:25.857] 你盛开于那盛夏的污浊\n[01:29.580] 我流连于那温柔的疼痛\n[01:33.044] 燃烧坠落的那星火\n[01:36.132] 如梦一闪而过\n[01:40.327] 在泪水溢满的湖中种下\n[01:43.934] 那翠绿婆娑的情枝欲芽\n[01:47.363] 梦中缓慢生长萌发\n[01:50.635] 蚕食心底流沙\n[01:54.520] 陪我\n[01:55.425] 多一些多一些的时间\n[01:58.773] 让困倦随着时间忘却\n[02:02.220] 困在没有呼吸的世界\n[02:05.855] 与你之间逐渐失去关联\n[02:09.481] 一天天一天天地沉淀\n[02:13.079] 让涟漪随风拥抱湖面\n[02:16.625] 困在没有交集的世界\n[02:20.262] 归于泥泞在那天亮之前\n[02:52.281] 你盛开于那盛夏的污浊\n[02:56.104] 我流连于那温柔的疼痛\n[02:59.468] 燃烧坠落的那星火\n[03:02.679] 如梦一闪而过\n[03:06.480] 在泪水溢满的湖中种下\n[03:10.346] 那翠绿婆娑的情枝欲芽\n[03:13.902] 梦中缓慢生长萌发\n[03:17.211] 蚕食心底流沙\n[03:21.164] 陪我\n[03:21.767] 多一些多一些的时间\n[03:25.312] 让困倦随着时间忘却\n[03:28.698] 困在没有呼吸的世界\n[03:32.224] 与你之间逐渐失去关联\n[03:35.994] 一天天一天天地沉淀\n[03:39.538] 让涟漪随风拥抱湖面\n[03:43.273] 困在没有交集的世界\n[03:46.667] 归于泥泞在那天亮之前",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-6.55 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.622345"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 5,
+      "candidate": {
+        "master_id": "sm-upload-33959ca1-297",
+        "storage_object_id": "obj_801649780593a9b1",
+        "physical_key": "objects/obj_801649780593a9b1.wav",
+        "suffix": "wav",
+        "source_sha256": "675aa8f0e0ef2733821ad992ef09e4af87bf1166b7a44bcdb72cb0e0435936df",
+        "pcm_s32le_sha256": "cdf821340b26a38da1d932fc39df5b1a5c6c7d4bcfec1e09badd92882851aa7a",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 12998656,
+              "duration": "294.754104"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "294.754104",
+            "size": "51994668",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1107",
+        "storage_object_id": "obj_ef805b8ae0c67ffe",
+        "physical_key": "objects/obj_ef805b8ae0c67ffe.flac",
+        "suffix": "flac",
+        "source_sha256": "b99f6287198f57a6437ef159e886d842cc848f3605b5aed000c9e25adffd7479",
+        "pcm_s32le_sha256": "ae285f4a7d3fbbe4f95ed89e38273f529fa79286ba93aa3d1ed7b947bac2a63c",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 12996564,
+              "duration": "294.706667",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 26523600,
+              "duration": "294.706667",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "294.706667",
+            "size": "37002257",
+            "bit_rate": "1004449",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "雪之花",
+              "track": "5",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[tool: 歌词滚动姬 https://lrc-maker.github.io]\n[length: 04:54.707]\n[00:00.000] 雪之花\n[00:03.508] 作曲&编曲：Zeno\n[00:07.537] 作词：Zeno\n[00:11.561] 曲绘：匙\n[00:15.664] 专辑：Freesia\n[00:19.595] { 雪花送不出温暖的拥抱，让这歌声将温暖之心传达 }\n[00:51.379] 在那片天空 未苏醒时候\n[00:54.719] 在孤独中等候\n[00:57.653] 你每一个笑容 每一次的诉说\n[01:01.988] 都让我得到比付出更多\n[01:05.651] 可是你和我 从来没想过\n[01:09.228] 时光匆匆流走\n[01:11.868] 那时候你的手 轻握着我的手\n[01:16.929] 夜空中 流星叹息这永久\n[01:20.840] 遥远的以后 这个世界已经没有我\n[01:27.996] 难过的时候 是否有人陪在你左右\n[01:35.101] 霓虹的灯火 为每一个梦不停闪烁\n[01:42.548] 泡沫的星空 让歌声穿透\n[02:04.515] 那泪水的琥珀 为谁而守候\n[02:07.814] 在绽放的尽头\n[02:10.936] 每一次的升空 每一次的坠落\n[02:14.979] 都让我一无所有\n[02:19.062] 可是你却说 从来没想过\n[02:22.540] 就这样子放手\n[02:25.392] 那时候你的手 轻握着我的手\n[02:29.762] 抬起头 将誓言撒向夜空\n[02:34.046] 遥远的以后 就算世界已经没有我\n[02:41.388] 难过的时候 一定有人陪在你左右\n[02:48.541] 霓虹的灯火 陪每一个梦不停闪烁\n[02:55.913] 泡沫的星空 让歌声穿透\n[03:03.212] 雪之花 为你不停歌唱\n[03:08.902] 唱到声音都嘶哑\n[03:12.168] 连泪水都蒸发\n[03:15.894] 只为了你而歌唱\n[04:02.295] 遥远的以后 就算世界已经没有我\n[04:09.213] 难过的时候 一定有人陪在你左右\n[04:16.482] 霓虹的灯火 为每一个梦不停闪烁\n[04:23.844] 泡沫的星空 让歌声穿透\n[04:30.782] 雪之花 为你不停歌唱\n[04:36.618] 唱到身体都融化\n[04:40.045] 连灵魂都蒸发\n[04:44.124] 只为了你而歌唱",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-6.63 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.618591"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 6,
+      "candidate": {
+        "master_id": "sm-upload-34c51de9-aa4",
+        "storage_object_id": "obj_3092d9dec90192d3",
+        "physical_key": "objects/obj_3092d9dec90192d3.wav",
+        "suffix": "wav",
+        "source_sha256": "bad72fd8b3f2257449ad77975ded27c77654fc7bb9a3b68472234a938b4fdc6b",
+        "pcm_s32le_sha256": "257b728c560af47208cfecaec0da462a0a8d55dcb0185e6816aac76e5ee0157f",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 10164224,
+              "duration": "230.481270"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "230.481270",
+            "size": "40656940",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1100",
+        "storage_object_id": "obj_67c3a46a0eb20b21",
+        "physical_key": "objects/obj_67c3a46a0eb20b21.flac",
+        "suffix": "flac",
+        "source_sha256": "8d1cdac484d64454370c866ca535f3b7ff450d32387cf8f71535940652cdb5c4",
+        "pcm_s32le_sha256": "be647a068491664bc35d59029b2e305af39822ac7f7c4bd5e167819c0387c296",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 10161816,
+              "duration": "230.426667",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 20738400,
+              "duration": "230.426667",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "230.426667",
+            "size": "29965818",
+            "bit_rate": "1040359",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "云之翼",
+              "track": "6",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[tool: 歌词滚动姬 https://lrc-maker.github.io]\n[length: 03:50.427]\n[00:00.780] 从天空中飘散\n[00:04.076] 是云的翅膀\n[00:06.746] 从此哪也不去\n[00:08.429] 永远守候在你的身旁\n[00:13.618] 云之翼\n[00:16.803] 作曲&编曲：Zeno\n[00:19.895] 作词：Zeno\n[00:22.298] 曲绘：匙\n[00:24.567] 专辑：Freesia\n[00:26.404] { 在天空祝福着的，是云朵的守候之心 }\n[00:39.072] 那双手就像雪花\n[00:41.962] 轻握着就仿佛要融化\n[00:45.657] 那脆弱的冰冷\n[00:49.141] 在阴霾天空之下绽放\n[00:52.610] 等待天明太阳缓慢的升起\n[00:55.770] 话语和泪水一起蒸发\n[00:58.918] 那未来的景色映照在我们的前方\n[01:05.253] 在云的彼端是否有一片花束的海洋\n[01:11.605] 在那盛开着永恒的祝福啊\n[01:18.258] 如果有一天不能与你再一同飞翔\n[01:25.051] 请将我和你的心在这里安葬\n[01:32.921] 从天空中飘散\n[01:35.810] 是云的翅膀\n[01:38.620] 从此岁月无声\n[01:40.140] 永远守候在你的身旁\n[01:57.993] 那笑容就像微风\n[02:00.977] 轻抚着将我的心融化\n[02:04.919] 那温暖的歌声\n[02:07.791] 在遥远星空之中回荡\n[02:11.413] 你向流星许下重复的愿望\n[02:14.451] 心中浮云也被风吹散\n[02:17.788] 那未来的景色映照在我们的脚下\n[02:24.223] 在云的彼端一定有一片花束的海洋\n[02:30.598] 在那盛开着永恒的祝福啊\n[02:37.035] 等到那一天不能与你再一同飞翔\n[02:43.986] 就让这翅膀将思念带到天彼岸\n[02:50.441] 穿越无边无际无影无形的时光\n[02:55.862] 追逐着梦境里\n[02:58.968] 遗失的那无数个光芒\n[03:03.645] 握着千言万语汇聚而成的希望\n[03:09.090] 祝福着天空中\n[03:12.128] 飘舞的那唯一的蔚蓝",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-5.66 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.604675"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 7,
+      "candidate": {
+        "master_id": "sm-upload-debc2a1c-66a",
+        "storage_object_id": "obj_b9943b42a23d56ae",
+        "physical_key": "objects/obj_b9943b42a23d56ae.wav",
+        "suffix": "wav",
+        "source_sha256": "5591bbdd29a0f658ccc1b5742e958a941fef1cb6b585bca84de8a712d9c404ec",
+        "pcm_s32le_sha256": "ce083529a5960301d48d02cf605d7f2a19f256088dd2cabcd392b065d75e6486",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 11696128,
+              "duration": "265.218322"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "265.218322",
+            "size": "46784600",
+            "bit_rate": "1411202",
+            "tags": {
+              "track": "7",
+              "encoder": "Lavf58.12.100"
+            }
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1096",
+        "storage_object_id": "obj_0783f7b6681da190",
+        "physical_key": "objects/obj_0783f7b6681da190.flac",
+        "suffix": "flac",
+        "source_sha256": "52ea336739f345a297b32d89666cfbe341fb7ca6c20d60932122549047d78f03",
+        "pcm_s32le_sha256": "2cd8651a82792f3840af96fb9bbf727169643467a6a7557aa0d8eae9f4244a3f",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 11692380,
+              "duration": "265.133333",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 23862000,
+              "duration": "265.133333",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "265.133333",
+            "size": "32931427",
+            "bit_rate": "993656",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "D!s!llus!on",
+              "track": "7",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[ti:]\n[ar:]\n[al:]\n[by:九九Lrc歌词网～www.99Lrc.com]\n[00:00.00]作曲&编曲：Zeno\n[00:04.73]作词：Zeno\n[00:09.10]曲绘：匙\n[00:14.58]专辑：Freesia\n[00:19.13]{ 在幻想世界中流浪的，是不愿长大的倔强之心 }\n[00:31.85]如果有一本书能够将这个\n[00:36.59]故事重现\n[00:39.54]应该用哪一种角度去描绘\n[00:43.99]你的脸\n[00:46.87]如果将透着世界的万花镜\n[00:50.89]全部打碎\n[00:53.95]就连说出的谎言也会沾染\n[00:58.45]七色辉\n[01:00.49]碎屑也随风飞\n[01:06.70]那就让我置身虚无之乡\n[01:10.21]不停止地流浪\n[01:14.20]走到何时才能遇见未来\n[01:17.06]有你陪伴在身旁\n[01:21.55]这一切只不过是倔强却假装坚强\n[01:28.86]用不属于现实的过往\n[01:32.94]将泪水涂抹成霞光\n[01:37.83]如果有一张书页夹在\n[01:42.02]你我之间\n[01:44.97]应该用哪一种颜色去续写\n[01:49.05]下个画面\n[01:52.00]如果将投射世界的放映机\n[01:56.27]全部打碎\n[01:59.43]就连未曾说出口的爱也会\n[02:03.94]化成灰\n[02:05.31]那就让我置身世界之外\n[02:08.19]不停止地呼喊\n[02:12.27]不停呼喊你的名字直到\n[02:15.20]哪天有你的答案\n[02:19.64]就算再也学不会坚强也不会绝望\n[02:27.07]用不属于现实的过往\n[02:31.20]将泪水涂抹成霞光\n[02:36.84](whisper)\n[03:48.83]那就让我置身虚无之乡\n[03:52.31]不停止地流浪\n[03:56.05]就算在你没有那个未来\n[03:58.85]]有你陪伴在身旁\n[04:03.23]当一切表面上的坚强都融于时光\n[04:10.58]用不属于现实的过往\n[04:14.66]将泪水涂抹成霞光",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-6.64 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.624451"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 8,
+      "candidate": {
+        "master_id": "sm-upload-b33cfb39-448",
+        "storage_object_id": "obj_3f0dd4874e31b706",
+        "physical_key": "objects/obj_3f0dd4874e31b706.wav",
+        "suffix": "wav",
+        "source_sha256": "d3f8476c007dec10489323a31eb57aa5dbe0522ee0f55482c22494aa04de8635",
+        "pcm_s32le_sha256": "3aaa239d6089bd9b16e6fbb2ce51d739cd710d1263d38e086d1104210f48911a",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 11091968,
+              "duration": "251.518549"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "251.518549",
+            "size": "44367916",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1105",
+        "storage_object_id": "obj_cc8c8f3bf5f30600",
+        "physical_key": "objects/obj_cc8c8f3bf5f30600.flac",
+        "suffix": "flac",
+        "source_sha256": "df7b2fa37db93bfa687a86cc4ca45ae7a5a3dbc76dfdf1525b915e63d45c7f90",
+        "pcm_s32le_sha256": "e92fcdf3030de62daca8d46cad5de55c411655b08fd148704fc75078e3bab4cf",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 11087916,
+              "duration": "251.426667",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 22628400,
+              "duration": "251.426667",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "251.426667",
+            "size": "31560845",
+            "bit_rate": "1004216",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "D!scoloЯ",
+              "track": "8",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[ti:]\n[ar:]\n[al:]\n[by:九九Lrc歌词网～www.99Lrc.com]\n[00:00.00]作曲&编曲：Zeno\n[00:00.70]作词：Zeno\n[00:01.99]曲绘：匙\n[00:02.79]专辑：Freesia\n[00:03.79]{ 将色彩献给永恒的契约，将失色的固执之心留下 }\n[00:05.60]在哭泣之前\n[00:08.19]泪水浸湿画面\n[00:11.19]视而不见\n[00:13.16]停滞时间\n[00:14.90]相遇和吻别\n[00:18.01]在痛哭之后\n[00:20.58]将它抛在脑后\n[00:24.05]记忆之中\n[00:25.64]随波逐流\n[00:27.32]画面定格成灰色\n[00:31.12]啊~~\n[00:49.88]只为你盛开\n[00:51.19]在这星光都消失的黑夜\n[00:55.04]一个人的邀约\n[00:58.26]许下心愿fly me away\n[01:02.48]只为你等待\n[01:03.90]用全部色彩沾染永恒的誓言\n[01:09.05]亲爱的啊请听见吧\n[01:12.32]请珍惜那爱的花\n[01:28.47]来不及拒绝\n[01:31.37]黑与白的纯洁\n[01:34.53]视而不见\n[01:36.07]假装不见\n[01:38.07]凝望成永别\n[01:41.16]找不到出口\n[01:44.08]是与非的借口\n[01:47.19]混乱之中\n[01:48.74]何去何从\n[01:50.62]心已被掏空\n[01:53.18]来啊 尽情歌唱吧\n[01:56.91]如果你能够爱上我的歌声的话\n[02:01.35]就像过去\n[02:04.62]你曾经爱过的那样\n[02:08.52]只为你盛开\n[02:09.89]在这星光都消失的黑夜\n[02:13.82]一个人的邀约\n[02:16.90]许下心愿fly me away\n[02:21.11]只为你等待\n[02:22.60]用全部色彩沾染永恒的誓言\n[02:27.80]亲爱的啊请听见吧\n[02:31.03]请珍惜那爱的花\n[02:34.51]看啊\n[02:36.14]那绚烂的裙摆\n[02:39.10]不消失的色彩\n[02:42.21]用一生去记载\n[02:46.92]盛开 生是一时间的憔悴\n[02:53.32]枯萎 死是一世界的妩媚\n[03:22.58]只为你盛开\n[03:23.94]在这星光都消失的世界\n[03:27.82]两个人的遥远\n[03:31.00]许下心愿take me away\n[03:35.20]只为你等待\n[03:36.75]用全部色彩沾染永恒的誓言\n[03:41.88]亲爱的啊请听见吧\n[03:45.23]如果这就是我最后的一首歌\n[03:49.82]尽全力歌唱着\n[03:52.98]心中的爱之歌",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-6.89 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.619690"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 9,
+      "candidate": {
+        "master_id": "sm-upload-89d8af71-0b6",
+        "storage_object_id": "obj_68d2e803cd35b435",
+        "physical_key": "objects/obj_68d2e803cd35b435.wav",
+        "suffix": "wav",
+        "source_sha256": "4b8bb03925d2b8e25df6eb21e9b906e988fff81131cc2d91d628d857543e4711",
+        "pcm_s32le_sha256": "f27de206148d12d297a6cfd040b35f4a03f517f49958f3d04395610af72dbb01",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 11941888,
+              "duration": "270.791111"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "270.791111",
+            "size": "47767596",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1099",
+        "storage_object_id": "obj_b9f816f7bfcbcacc",
+        "physical_key": "objects/obj_b9f816f7bfcbcacc.flac",
+        "suffix": "flac",
+        "source_sha256": "acfdaa7fcdae82fb27e5cd406c242fb5e807690b0fb07a57583936c406c5be3f",
+        "pcm_s32le_sha256": "0bcf871abd2b0249f5c1751c61ab5d18395c7589db75603328542863930b8ec0",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 11938164,
+              "duration": "270.706667",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 24363600,
+              "duration": "270.706667",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "270.706667",
+            "size": "33152296",
+            "bit_rate": "979726",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "渊之心",
+              "track": "9",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[tool: 歌词滚动姬 https://lrc-maker.github.io]\n[length: 04:30.707]\n[00:00.000] 渊之心\n[00:02.686] 作曲&编曲：Zeno\n[00:06.577] 作词：Zeno\n[00:09.353] 曲绘：匙\n[00:12.253] 专辑：Freesia\n[00:14.996] { 在梦境的循环中不断找寻着的，是无法被填满的渊之心 }\n[00:36.571] 相遇在过去\n[00:40.454] 没有回忆的森林\n[00:44.285] 今天也回到这里\n[00:47.411] 睁开我的眼找寻你\n[00:52.398] 双手紧握着\n[00:56.229] 没有什么可失去\n[01:00.190] 回过头你的身影\n[01:03.303] 让我看一眼 也许就能忘记\n[01:10.949] 啊~看不清\n[01:18.887] 也无法回忆\n[01:22.683] 在我身边\n[01:25.495] 早已什么都失去\n[01:27.457] 深深爱着你\n[01:29.289] 却再无法相遇\n[01:31.363] 灿烂着蓝天的云\n[01:35.190] 飘落我的心里却早已化作雨\n[01:41.223] 啊\n[01:43.010] 请你将我再次忘记\n[01:48.809] 让爱坠入这深渊里\n[02:58.039] 忘记\n[03:01.897] 啊~看不清\n[03:09.756] 也无法回忆\n[03:13.830] 在相遇之前\n[03:16.571] 路有多远\n[03:18.599] 相遇之后\n[03:20.545] 回忆有多痛\n[03:22.491] 在你身后\n[03:24.444] 自甘堕落\n[03:26.501] 这样的我\n[03:28.057] 已无力再拥有\n[03:33.705] 在我身边\n[03:36.212] 早已什么都失去\n[03:38.163] 深深爱着你\n[03:39.955] 却再无法相遇\n[03:42.340] 灿烂着蓝天的云\n[03:46.061] 飘落我的心里却早已化作雨\n[03:51.946] 啊\n[03:53.927] 请你将我再次忘记\n[03:59.711] 让爱坠入这深渊里",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-7.41 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.687775"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 10,
+      "candidate": {
+        "master_id": "sm-upload-95621150-291",
+        "storage_object_id": "obj_bb630ca72a5898bc",
+        "physical_key": "objects/obj_bb630ca72a5898bc.wav",
+        "suffix": "wav",
+        "source_sha256": "9f68cf429efe72ca70e5ed8394ac4227ff79854dfea10c088b86717eeb7030d6",
+        "pcm_s32le_sha256": "17f5122848c3f7c3e519e3c2bc3cc26692180b691178ec7520b3c995b6924bbc",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 9881600,
+              "duration": "224.072562"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "224.072562",
+            "size": "39526444",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1106",
+        "storage_object_id": "obj_52a743f102614631",
+        "physical_key": "objects/obj_52a743f102614631.flac",
+        "suffix": "flac",
+        "source_sha256": "514f034f0f39bce22d17d66d4deea86cd23bdbf3d20600ed0d143e44b13b1246",
+        "pcm_s32le_sha256": "72053eaa24a07dfc0b6d5c0fc98f5ed52063094ef5ced28804e56fd80e7e21a1",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 9878400,
+              "duration": "224.000000",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 20160000,
+              "duration": "224.000000",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "224.000000",
+            "size": "28179966",
+            "bit_rate": "1006427",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "心的葬礼",
+              "track": "10",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[tool: 歌词滚动姬 https://lrc-maker.github.io]\n[length: 03:44.000]\n[00:00.000] 心的葬礼\n[00:02.993] 作曲&编曲：Zeno\n[00:05.535] 作词：Zeno\n[00:08.367] 曲绘：匙\n[00:11.178] 专辑：Freesia\n[00:13.644] { 埋葬整个梦境中已失序的心，下个梦再见…… }\n[00:36.688] 相互纠缠十指之间\n[00:39.425] 透明的眷恋\n[00:42.503] 因果轮回循环之前\n[00:45.209] 飘渺的画卷\n[00:48.206] 是谁唤醒了我\n[00:49.609] 用无穷的寂寞\n[00:51.152] 将整颗心包裹\n[00:52.452] 温柔的黑夜之中\n[00:54.234] 银色月光洒落\n[00:55.582] 爱上燃尽的那颗星球\n[00:59.176] 用力散发的最后温度\n[01:00.793] 开始的话就不会再停下\n[01:03.538] 那离别的序章\n[01:06.273] 消逝的话就不会再出现\n[01:09.602] 时间 逐渐\n[01:10.858] 刺破心中的茧\n[01:12.892] 空白目光消失之处\n[01:17.193] 囚禁泪的角度\n[01:20.090] 回忆的果实被谁拥有\n[01:24.751] 遥远的群星也失神无主\n[01:28.437] 梦中盛开的诱惑的花朵\n[01:31.461] 将那失序的心一同\n[01:33.422] 安抚\n[01:57.769] 心神若化作一具空壳\n[02:03.921] 便能填入无穷无尽的彩色\n[02:09.452] 我们该如何继续爱呢\n[02:15.736] 去选择不属于我们的选择\n[02:31.453] 你我目光交织之处\n[02:35.709] 心残存的温度\n[02:38.322] 美丽的羽翼破茧而出\n[02:43.429] 摇曳的裙摆是你的舞步\n[02:46.855] 指引着心中记忆的花都\n[02:49.876] 将那失序的心一同\n[02:51.801] 埋入\n[02:56.655] 这颗不属于你的心\n[02:59.458] 也已经不再属于我\n[03:02.679] 化作尘土\n[03:04.264] 下一个相遇有多远\n[03:07.360] 倘若还能够再相见\n[03:09.936] 请守护这一个梦\n[03:11.759] 直到这颗星终结",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-6.43 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.593170"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 11,
+      "candidate": {
+        "master_id": "sm-upload-64363012-149",
+        "storage_object_id": "obj_87ed2ff23cc31c9c",
+        "physical_key": "objects/obj_87ed2ff23cc31c9c.wav",
+        "suffix": "wav",
+        "source_sha256": "9e7d388bc28c7295e6082342c80f6d192df1cea42849f86006ea7b4ab6658ba2",
+        "pcm_s32le_sha256": "3b0f9c8787612f434c75485fa1d5b332665a6111e17bfd12cb192c3c32866b9d",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 11468800,
+              "duration": "260.063492"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "260.063492",
+            "size": "45875244",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1095",
+        "storage_object_id": "obj_533c7640af20a636",
+        "physical_key": "objects/obj_533c7640af20a636.flac",
+        "suffix": "flac",
+        "source_sha256": "04b9a49a08d896e3f15710142b5e9e3e9709a88a0e71b217249e2d3ac18837ab",
+        "pcm_s32le_sha256": "964e36e8bc2a9be9893ce04d05c12860b59309d1c22869f1ff7d78bcefa8c9ff",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 11466000,
+              "duration": "260.000000",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 23400000,
+              "duration": "260.000000",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "260.000000",
+            "size": "32453497",
+            "bit_rate": "998569",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "神明废墟",
+              "track": "11",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[tool: 歌词滚动姬 https://lrc-maker.github.io]\n[length: 04:20.000]\n[00:00.000] 神明废墟\n[00:05.529] 作曲&编曲：Zeno\n[00:08.996] 作词：Zeno\n[00:12.189] 曲绘：匙\n[00:15.871] 专辑：Freesia\n[00:19.441] { 亡灵们寻找着消失的神明，祈求神明将人偶迷失的灵魂收回 }\n[00:46.607] 暮色中飘舞 崩裂的尘土\n[00:49.405] 迷雾中透露 蝴蝶的归途\n[00:52.768] 森林的深处 将身躯困住\n[00:55.793] 银色的汤匙 把泪水享用\n[00:58.871] 看不见的双手 将世界转动\n[01:04.919] 那干枯的喉咙 将命运诉说\n[01:11.649] 于是我\n[01:13.918] 徘徊于黑夜的夹缝之中\n[01:17.958] 无助地将罪孽重复\n[01:20.431] 虚情假意的爱染满尘土\n[01:25.524] （破碎的心已散落）\n[01:27.052] 当失去的那信仰之中\n[01:29.887] 映照出孩子那清澈的双眸\n[01:33.056] 还能再祈求什么\n[01:37.016] 迷茫中接受 狐狸的引路\n[01:39.861] 彷徨中领悟 神明的困惑\n[01:43.216] 裂缝的终途 心化作粉末\n[01:46.313] 任月光洒落 将阴影穿透\n[01:49.463] 看不见的双手 将世界转动\n[01:55.493] 那干枯的喉咙 将命运诉说\n[02:02.114] “因为你\n[02:04.428] 固执着你所不明白的道理\n[02:08.256] 于是我\n[02:10.689] 又变的无处可寻”\n[02:14.242] 游走于明灭的灯火之中\n[02:17.835] 将冰冷的身躯靠拢\n[02:20.285] 找寻着只属于我的归路\n[02:25.377] （四散的心已消融）\n[02:26.771] 于是哭泣的虚幻生命\n[02:29.731] 又回归那孩子天真的梦境\n[02:32.870] 已不再祈求什么\n[03:21.598] 在无人知晓的秘境之中\n[03:24.958] 心神只剩下了空壳\n[03:26.833] 被遗忘的旋律充满天空\n[03:31.964] （回荡着飘啊飘啊）\n[03:33.834] 于是叹息那相遇相离\n[03:36.678] 祈求着找寻着那些遗忘的\n[03:39.801] 任性的神明\n[03:42.521] 你若睁开双眼看爱支离破碎\n[03:48.480] 请你伸出双手让那灵魂回归\n[03:54.940] 你若侧耳听见那微弱的歌声\n[03:59.448] 请让它接近太阳\n[04:01.406] 将这灵魂都融化",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-5.85 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.581940"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "freesia",
+      "track": 12,
+      "candidate": {
+        "master_id": "sm-upload-6b506d3e-f76",
+        "storage_object_id": "obj_4d6316c99694296a",
+        "physical_key": "objects/obj_4d6316c99694296a.wav",
+        "suffix": "wav",
+        "source_sha256": "56e1f445923dfadeb5ef885fc876e9c31d7a54787913208f1b26e8cccc16329a",
+        "pcm_s32le_sha256": "61d5e3d830f0e71cd53e75e43619ec4e0905b6ede0715c934c86ba1d4ce92750",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 14118912,
+              "duration": "320.156735"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "320.156735",
+            "size": "56475738",
+            "bit_rate": "1411202",
+            "tags": {
+              "track": "12",
+              "encoder": "Lavf58.12.100"
+            }
+          }
+        }
+      },
+      "existing": {
+        "master_id": "1103",
+        "storage_object_id": "obj_4109578a305002c4",
+        "physical_key": "objects/obj_4109578a305002c4.flac",
+        "suffix": "flac",
+        "source_sha256": "6d83303906f5cef34ad9dbdeae6f25bd72a96b9c33793cecf83e3c1fdd7af132",
+        "pcm_s32le_sha256": "735825bc645e35a117cb23c9f4f579818bca22051d12fc3096e8c1ef62caf3da",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 14114940,
+              "duration": "320.066667",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            },
+            {
+              "index": 1,
+              "codec_name": "webp",
+              "codec_long_name": "WebP",
+              "codec_type": "video",
+              "codec_tag_string": "[0][0][0][0]",
+              "duration_ts": 28806000,
+              "duration": "320.066667",
+              "tags": {
+                "comment": "Cover (front)"
+              }
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "320.066667",
+            "size": "40430890",
+            "bit_rate": "1010561",
+            "tags": {
+              "WM/MCDI": "C+96+4E4C+A5FF+F34A+13D33+1938A+1D70C+224B9+26E62+2BDB1+2FF51+34B7D+3A943",
+              "title": "Freesia",
+              "track": "12",
+              "genre": "未知流派",
+              "date": "2022",
+              "lyrics": "[length: 05:20.080]\n[tool: 歌词滚动姬 https://lrc-maker.github.io]\n[00:00.000] Freesia\n[00:03.257] 作曲&编曲：Zeno\n[00:08.398] 作词：Zeno\n[00:12.016] 曲绘：匙\n[00:14.533] 专辑：Freesia\n[00:16.731] { 人偶不再歌唱，但人偶的歌声会永远将自己的主人陪伴}\n[00:32.534] 静静飘落的时光\n[00:36.399] 轻轻覆盖你我身上\n[00:40.239] 尘埃一般的忧伤\n[00:43.401] 沉淀在你我的心房\n[00:48.468] 渐渐沉没的夕阳\n[00:52.329] 梦境来临前的曙光\n[00:56.221] 轻轻的在你脸庞\n[00:59.289] 吻上一缕不易察觉的\n[01:03.770] 暗香\n[01:20.151] 静静翻过的书香\n[01:24.002] 轻轻拂过你我身旁\n[01:27.932] 涟漪一般的过往\n[01:31.128] 回荡在你我的心上\n[01:35.846] 渐渐升起的朝阳\n[01:39.884] 星空消失前的微亮\n[01:43.871] 轻轻的在你耳旁\n[01:46.964] 留下一句“那就这样”\n[01:50.633] 如果我们顺着记忆的方向\n[01:54.589] 回到最初认识的地方\n[01:58.409] 也许我还是没办法去回答\n[02:02.436] 当时你问我的话\n[02:06.435] 如果我们顺着记忆的方向\n[02:10.330] 也许就能够找到答案\n[02:14.335] 但是我却无法再对你讲啦\n[02:18.603] 就如那鲜花飘散\n[02:54.140] 如果能\n[02:55.277] 将泪滴归还给诗句\n[02:58.788] 将羽翼留给那片云\n[03:02.732] 将流星遗失在天际\n[03:06.643] 将歌声传达给那深渊的心\n[03:14.132] 即使让芬芳都消散\n[03:22.106] 绽放吧 freesia\n[03:58.379] 将春天归还给书签\n[04:02.675] 将夏天留给了睡莲\n[04:06.170] 将秋天遗失在麦田\n[04:10.022] 将冬天包裹飞雪\n[04:14.062] 心留下记忆也留下\n[04:17.920] 任时光的碎片冲刷\n[04:21.476] 已经不再孤单\n[04:25.282] 即使不是你在我身旁\n[04:29.611] 继续歌唱\n[04:33.478] 就算让芬芳都消散\n[04:41.722] 绽放吧 freesia\n[04:45.557] 如果我们顺着记忆的方向\n[04:49.117] 回到最初认识的地方\n[04:53.177] 也许我还是没办法去回答\n[04:57.353] 当时你问我的话\n[05:01.087] 如果我们顺着记忆的方向\n[05:04.965] 也许就能够找到答案\n[05:08.979] 但是我却无法再对你讲啦\n[05:13.155] 就如那鲜花飘散",
+              "artist": "Zeno",
+              "album": "Fressia",
+              "album_artist": "Zeno",
+              "ALBUM ARTIST": "Zeno",
+              "REPLAYGAIN_TRACK_GAIN": "-7.22 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.767914"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "pages",
+      "track": 1,
+      "candidate": {
+        "master_id": "sm-upload-a4de5316-99a",
+        "storage_object_id": "obj_a017b97683140b01",
+        "physical_key": "objects/obj_a017b97683140b01.wav",
+        "suffix": "wav",
+        "source_sha256": "3bf39a358ad8adac53ec33f00d5a6b1f1efd1d29fd2f9a344fd4aec3423b90e4",
+        "pcm_s32le_sha256": "98b8446b1e2f1025dd56eb96be186c989a94020725e72dc306fc02a03df75092",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 9048732,
+              "duration": "205.186667"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "205.186667",
+            "size": "36194972",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "2029",
+        "storage_object_id": "obj_b02513e7262bbae3",
+        "physical_key": "objects/obj_b02513e7262bbae3.flac",
+        "suffix": "flac",
+        "source_sha256": "56f51ca2ed3f069e60521159a942325da29c56c275553a73f74b155ebf3cf08d",
+        "pcm_s32le_sha256": "5ac3c49a63d2438b5239e1a6cb198aa7cfd2db29027f35985efddbb23920fd10",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 9045547,
+              "duration": "205.114444",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "205.114444",
+            "size": "28058363",
+            "bit_rate": "1094349",
+            "tags": {
+              "ALBUM": "页间曲",
+              "ARTIST": "comdull、X-Dimension、予澈",
+              "comments": "@星韵社 \ndizzylab.net",
+              "ENCODER": "Lavf58.45.100",
+              "TITLE": "问",
+              "DATE": "2025-10-11",
+              "track": "1",
+              "REPLAYGAIN_TRACK_GAIN": "-8.75 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.988525"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "pages",
+      "track": 2,
+      "candidate": {
+        "master_id": "sm-upload-cc1e80b9-244",
+        "storage_object_id": "obj_eac64617b22155c6",
+        "physical_key": "objects/obj_eac64617b22155c6.wav",
+        "suffix": "wav",
+        "source_sha256": "908d57d4c69d2cf41ad13065513324de8ba3a4cc1da1131c8ea83cb074a35378",
+        "pcm_s32le_sha256": "0cb4eb8bcfba865cb65698709ac83de1c2d2793eb2518e38ee274e651b5f9323",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 9691416,
+              "duration": "219.760000"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "219.760000",
+            "size": "38765708",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "2025",
+        "storage_object_id": "obj_e6ba83d837e923be",
+        "physical_key": "objects/obj_e6ba83d837e923be.flac",
+        "suffix": "flac",
+        "source_sha256": "32bf74ad1a3b4645c0cd0e2ef7507a03e82703378bd8656b72de6ab1be591a31",
+        "pcm_s32le_sha256": "170bb47f2916a3d01392fbb01dfdbd8d7b93ac454476dc7b9a0ded44ddada9be",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 9688612,
+              "duration": "219.696417",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "219.696417",
+            "size": "29797990",
+            "bit_rate": "1085060",
+            "tags": {
+              "artist": "Yuink、X-Dimension、予澈",
+              "comments": "@星韵社 \ndizzylab.net",
+              "album": "页间曲",
+              "title": "星间吟游歌姬",
+              "date": "2025-10-11",
+              "track": "2",
+              "encoder": "Lavf58.45.100",
+              "REPLAYGAIN_TRACK_GAIN": "-7.16 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.988525"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "pages",
+      "track": 3,
+      "candidate": {
+        "master_id": "sm-upload-0112a6d9-283",
+        "storage_object_id": "obj_3951ea51a3598435",
+        "physical_key": "objects/obj_3951ea51a3598435.wav",
+        "suffix": "wav",
+        "source_sha256": "7573d076c252f1daa79409c654e0cd712b8564f602756a21ceb5d42030446b11",
+        "pcm_s32le_sha256": "a4aa7ef94ff52f5a08fbb534a9585862bfb0ebd95440379be5e9afe8f743db6a",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 5660676,
+              "duration": "128.360000"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "128.360000",
+            "size": "22642748",
+            "bit_rate": "1411202"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "2031",
+        "storage_object_id": "obj_3bb6626b4fd09faf",
+        "physical_key": "objects/obj_3bb6626b4fd09faf.flac",
+        "suffix": "flac",
+        "source_sha256": "8a2e0b7ec5ceef295e01b40740f8c669aeefcc33b89ab77fdfb09bcc41ca6d75",
+        "pcm_s32le_sha256": "ed5b05352a103f090e3122f734b66f9ace05ba1bd27fe7216273449c7e64ece0",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 5658581,
+              "duration": "128.312494",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "128.312494",
+            "size": "10292617",
+            "bit_rate": "641721",
+            "tags": {
+              "artist": "o0杳0o、X-Dimension、GoNorthMang",
+              "comments": "@星韵社 \ndizzylab.net",
+              "album": "页间曲",
+              "title": "光降落的序章",
+              "date": "2025-10-11",
+              "track": "3",
+              "encoder": "Lavf58.45.100",
+              "REPLAYGAIN_TRACK_GAIN": "-6.20 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.988525"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "pages",
+      "track": 4,
+      "candidate": {
+        "master_id": "sm-upload-2c6e632f-4ae",
+        "storage_object_id": "obj_4aa1b1019085490e",
+        "physical_key": "objects/obj_4aa1b1019085490e.wav",
+        "suffix": "wav",
+        "source_sha256": "d841fcb643a69f8d5b9ee6d631f711a1807e7edb67857a7de0b751bfb38889b0",
+        "pcm_s32le_sha256": "caf9399dd2c38be3320c6e07312914700bc982b65b928da8766c4e03a4737383",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 11645340,
+              "duration": "264.066667"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "264.066667",
+            "size": "46581404",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "2024",
+        "storage_object_id": "obj_d00fddada1743506",
+        "physical_key": "objects/obj_d00fddada1743506.flac",
+        "suffix": "flac",
+        "source_sha256": "c46158cc611499d3f9d0cb67ae619126bd985657de70c0d2e483f4e049df2567",
+        "pcm_s32le_sha256": "5cbf7edbbbd951a5996a407a8d4d6326565908da43d2f8871a354f6a1b2e6678",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 11642400,
+              "duration": "264.000000",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "264.000000",
+            "size": "33962822",
+            "bit_rate": "1029176",
+            "tags": {
+              "artist": "CRS、纪余珊、X-Dimension、予澈",
+              "comments": "@星韵社 \ndizzylab.net",
+              "album": "页间曲",
+              "title": "守望与羁绊的微光航行",
+              "date": "2025-10-11",
+              "track": "4",
+              "encoder": "Lavf58.45.100",
+              "REPLAYGAIN_TRACK_GAIN": "-7.59 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.988525"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "pages",
+      "track": 5,
+      "candidate": {
+        "master_id": "sm-upload-bba1a72e-f0c",
+        "storage_object_id": "obj_4f01ea7acc0f704d",
+        "physical_key": "objects/obj_4f01ea7acc0f704d.wav",
+        "suffix": "wav",
+        "source_sha256": "e9cd5a21ab924293490b104c2a69beb238c6fbf92c36edfb08e3c9ea91b53c78",
+        "pcm_s32le_sha256": "2e135c6a5d8e8222fb3152494c47ebaad60ebbaef4a18decee737f7d3d36c287",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 8258460,
+              "duration": "187.266667"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "187.266667",
+            "size": "33033884",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "2028",
+        "storage_object_id": "obj_36133307d4ebe3a7",
+        "physical_key": "objects/obj_36133307d4ebe3a7.flac",
+        "suffix": "flac",
+        "source_sha256": "478c82f43b6789ae54bfb67bd1306951d8260c80b22e0842bc2378b83b75ff3d",
+        "pcm_s32le_sha256": "b0ddbd9434016d9c6ee242f620017cc45828f53eebc45c939c5f0573d81cac25",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 8255756,
+              "duration": "187.205351",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "187.205351",
+            "size": "25172852",
+            "bit_rate": "1075732",
+            "tags": {
+              "artist": "m1rac、灰域漫游者",
+              "comments": "@星韵社 \ndizzylab.net",
+              "album": "页间曲",
+              "title": "恋に落ちた",
+              "date": "2025-10-11",
+              "track": "5",
+              "encoder": "Lavf58.45.100",
+              "REPLAYGAIN_TRACK_GAIN": "-8.83 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.988525"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "pages",
+      "track": 6,
+      "candidate": {
+        "master_id": "sm-upload-d642ecae-43c",
+        "storage_object_id": "obj_7020ea3c9a06d09e",
+        "physical_key": "objects/obj_7020ea3c9a06d09e.wav",
+        "suffix": "wav",
+        "source_sha256": "ef94db294925778e6ba6fb147218a8991c41cb2c7387f0bea662ec2f69d756a9",
+        "pcm_s32le_sha256": "05b57dfd6f5eafd07c9233e85b3313943e1a21ab748b9385e2505a57ab321d54",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 11450712,
+              "duration": "259.653333"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "259.653333",
+            "size": "45802892",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "2027",
+        "storage_object_id": "obj_1379356ac944e750",
+        "physical_key": "objects/obj_1379356ac944e750.flac",
+        "suffix": "flac",
+        "source_sha256": "01036ec1a0009c9733249866d58638dd817b87c1224f9d6dfb57af605bdaf47f",
+        "pcm_s32le_sha256": "ed828406c0744a626d2802c7ce3f7ca2a071b440f8b11aedcad277c63953db25",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 11448281,
+              "duration": "259.598209",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "259.598209",
+            "size": "33112694",
+            "bit_rate": "1020429",
+            "tags": {
+              "artist": "ひかり、m1rac、qwq自动机、袋子",
+              "comments": "@星韵社 \ndizzylab.net",
+              "album": "页间曲",
+              "title": "恋♭",
+              "date": "2025-10-11",
+              "track": "6",
+              "encoder": "Lavf58.45.100",
+              "REPLAYGAIN_TRACK_GAIN": "-8.18 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.988525"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "pages",
+      "track": 7,
+      "candidate": {
+        "master_id": "sm-upload-fa2c02f7-a2d",
+        "storage_object_id": "obj_3cd07d2e8ca77a3b",
+        "physical_key": "objects/obj_3cd07d2e8ca77a3b.wav",
+        "suffix": "wav",
+        "source_sha256": "8414edfd9afd4b906088e5808021f6f16b052b23cd3e2e843bb56dad0fc01148",
+        "pcm_s32le_sha256": "5996a5358e51c72aaa8e09e5bdfee302a88104bbc39e530cd6b2ab99e3365d4f",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 9319212,
+              "duration": "211.320000"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "211.320000",
+            "size": "37276892",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "2032",
+        "storage_object_id": "obj_05e3559120ca20e9",
+        "physical_key": "objects/obj_05e3559120ca20e9.flac",
+        "suffix": "flac",
+        "source_sha256": "8cfebbdc93fd6f7596e914917856811267bc8897c0da8b18779d8b87b26bb821",
+        "pcm_s32le_sha256": "d8a1233b0199e5b3bdbade2f3ad5aa19c10328b8fffe5d94babacf428073f15c",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 9316519,
+              "duration": "211.258934",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "211.258934",
+            "size": "28295489",
+            "bit_rate": "1071499",
+            "tags": {
+              "artist": "南北百合朝、_B3nwa1ker_、木羲kigiko、X-Dimension、lain",
+              "comments": "@星韵社 \ndizzylab.net",
+              "album": "页间曲",
+              "title": "蝶说，春也可哀，秋也可爱",
+              "date": "2025-10-11",
+              "track": "7",
+              "encoder": "Lavf58.45.100",
+              "REPLAYGAIN_TRACK_GAIN": "-7.65 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.988525"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "pages",
+      "track": 8,
+      "candidate": {
+        "master_id": "sm-upload-8ca7055e-888",
+        "storage_object_id": "obj_99ab13036d3cc476",
+        "physical_key": "objects/obj_99ab13036d3cc476.wav",
+        "suffix": "wav",
+        "source_sha256": "1c697cdec1fffcfee197c0883922acd8a4ed04aa16299d4f0bc6bb7148a0ef3c",
+        "pcm_s32le_sha256": "52e380e6fff4eeeef3c23c01584d71e0e139020b1defb3318b758689b9603e8e",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 12469128,
+              "duration": "282.746667"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "282.746667",
+            "size": "49876556",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "2030",
+        "storage_object_id": "obj_bc2aa819779c71ee",
+        "physical_key": "objects/obj_bc2aa819779c71ee.flac",
+        "suffix": "flac",
+        "source_sha256": "99225fa3a55feb10f8d195468d98093519485e48c6ae1f8f4bfa74712ece0afd",
+        "pcm_s32le_sha256": "5594cd1901d3784b2753a8bfbda0dd377b7e0f9bf7a05840ca9539de6392655d",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 12466672,
+              "duration": "282.690975",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "282.690975",
+            "size": "38003417",
+            "bit_rate": "1075475",
+            "tags": {
+              "artist": "纪余珊、菠萝罐头、浪隐波风、X-Dimension、予澈",
+              "comments": "@星韵社 \ndizzylab.net",
+              "album": "页间曲",
+              "title": "淬火",
+              "date": "2025-10-11",
+              "track": "8",
+              "encoder": "Lavf58.45.100",
+              "REPLAYGAIN_TRACK_GAIN": "-8.85 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.988525"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "pages",
+      "track": 9,
+      "candidate": {
+        "master_id": "sm-upload-6a381b8f-020",
+        "storage_object_id": "obj_434e631727e6d45c",
+        "physical_key": "objects/obj_434e631727e6d45c.wav",
+        "suffix": "wav",
+        "source_sha256": "48fb366a7e7cc84c4322618f948ab375dc11b059f5dd0d45853cec3f9237c899",
+        "pcm_s32le_sha256": "b89a6cb2cc170f0fc8a11e88bb179be3c53bda388f88be576d0a10273cf644bc",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 11925228,
+              "duration": "270.413333"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "270.413333",
+            "size": "47700956",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "2033",
+        "storage_object_id": "obj_b4e9d710e3aabca8",
+        "physical_key": "objects/obj_b4e9d710e3aabca8.flac",
+        "suffix": "flac",
+        "source_sha256": "4947b4fbb7be88da622c3a528396d887146aced0cb84cf6f1b6347b61544c88e",
+        "pcm_s32le_sha256": "9acf73e86ca1eddf1e53c72f836fa39b577a57953569918d29dc31d7f1502099",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 11923078,
+              "duration": "270.364580",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "270.364580",
+            "size": "32699335",
+            "bit_rate": "967562",
+            "tags": {
+              "artist": "Dasein、墨绫P、X-Dimension、GLanDoSS",
+              "comments": "@星韵社 \ndizzylab.net",
+              "album": "页间曲",
+              "title": "The Coming Wave",
+              "date": "2025-10-11",
+              "track": "9",
+              "encoder": "Lavf58.45.100",
+              "REPLAYGAIN_TRACK_GAIN": "-7.47 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.988525"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    },
+    {
+      "case": "pages",
+      "track": 10,
+      "candidate": {
+        "master_id": "sm-upload-d11b6d58-141",
+        "storage_object_id": "obj_fc7bd9a9e4da4905",
+        "physical_key": "objects/obj_fc7bd9a9e4da4905.wav",
+        "suffix": "wav",
+        "source_sha256": "6ca9fc7fddba41e50ff96b9244c2f0890a9e6c97de8812c0ecdcc25ea1e49287",
+        "pcm_s32le_sha256": "90ce03c2266c8b2c0a8b4f59c241f365fef9a5f14101c8a7fad77fd1d2de5696",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "pcm_s16le",
+              "codec_long_name": "PCM signed 16-bit little-endian",
+              "codec_type": "audio",
+              "codec_tag_string": "[1][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "duration_ts": 10342332,
+              "duration": "234.520000"
+            }
+          ],
+          "format": {
+            "format_name": "wav",
+            "duration": "234.520000",
+            "size": "41369372",
+            "bit_rate": "1411201"
+          }
+        }
+      },
+      "existing": {
+        "master_id": "2026",
+        "storage_object_id": "obj_73f365525156a9cf",
+        "physical_key": "objects/obj_73f365525156a9cf.flac",
+        "suffix": "flac",
+        "source_sha256": "39d3b67dd6df98a5de2c64287c917e951cf68ee3f8ccb70ce9a284ff107058be",
+        "pcm_s32le_sha256": "1efdcc06c1e4d390ea399158b680d7f59b61d46adab345aed80adb30fd289743",
+        "probe": {
+          "programs": [],
+          "stream_groups": [],
+          "streams": [
+            {
+              "index": 0,
+              "codec_name": "flac",
+              "codec_long_name": "FLAC (Free Lossless Audio Codec)",
+              "codec_type": "audio",
+              "codec_tag_string": "[0][0][0][0]",
+              "sample_fmt": "s16",
+              "sample_rate": "44100",
+              "channels": 2,
+              "channel_layout": "stereo",
+              "duration_ts": 10339481,
+              "duration": "234.455351",
+              "bits_per_raw_sample": "16",
+              "side_data_list": [
+                {}
+              ]
+            }
+          ],
+          "format": {
+            "format_name": "flac",
+            "duration": "234.455351",
+            "size": "29141034",
+            "bit_rate": "994339",
+            "tags": {
+              "artist": "纪余珊、CRS、X-Dimension、lain",
+              "comments": "@星韵社 \ndizzylab.net",
+              "album": "页间曲",
+              "title": "迟来",
+              "date": "2025-10-11",
+              "track": "10",
+              "encoder": "Lavf58.45.100",
+              "REPLAYGAIN_TRACK_GAIN": "-7.56 dB",
+              "REPLAYGAIN_TRACK_PEAK": "0.988525"
+            }
+          }
+        }
+      },
+      "pcm_equal": false
+    }
+  ]
+}

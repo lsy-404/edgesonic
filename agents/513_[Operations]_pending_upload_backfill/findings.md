@@ -89,3 +89,38 @@ This confirms catalog association only. The stored title values and null track/d
 | 逆进化ЯEVOLUTION | 10 |
 | 黑猫出现在白天-七点半 | 14 |
 | 黑白 | 11 |
+
+## R2 PCM verification for held version cohorts
+
+At 2026-09-26, this task fetched the exact 44 immutable production R2 objects named in the primary D1 scope snapshots: 12 `Freesia/wav` WAV files and their 12 `Fressia` FLAC counterparts, plus 10 `页间曲-星韵社/wav` WAV files and their 10 existing `页间曲` FLAC counterparts. The R2 reads used `wrangler r2 object get --remote`; no R2 or D1 write was issued.
+
+For each matched track, FFmpeg decoded audio stream 0 to `pcm_s32le`, then SHA-256 hashed the complete decoded byte stream. The raw-object SHA-256 and FFprobe container/stream/tag inventory are in `pcm_r2_comparison.json`. This is a strict whole-stream comparison: it includes every decoded sample and does not treat padding, silence, or matching titles as equality.
+
+| Cohort | Pairs | Equal PCM | Distinct PCM | Classification |
+|---|---:|---:|---:|---|
+| Freesia WAV vs Fressia FLAC | 12 | 0 | 12 | Keep both editions |
+| 页间曲-星韵社 WAV vs 页间曲 FLAC fragments | 10 | 0 | 10 | Keep both editions |
+
+All 44 streams are stereo 44.1 kHz signed 16-bit audio, but each paired WAV/FLAC has a different complete PCM digest and decoded sample count. The WAV objects have little or no descriptive embedded metadata, while the FLAC counterparts carry album, artist, title, date, replay-gain, and, for Freesia, lyric data. Tags therefore reinforce that the FLAC catalog metadata can inform a separate metadata operation but cannot justify deleting or merging any WAV master.
+
+The existing `Fressia` album and all nine existing `页间曲` fragment album rows are currently ungrouped in `album_display_group_members`. The pending WAV masters remain unmodified. The later guarded candidate below uses the Fressia album directly and consolidates the page FLAC fragments before it groups the resulting editions. No exact PCM pairs were found, so the conditional metadata-merge-and-keep-WAV path is not authorized for either cohort.
+
+## Guarded version-group candidate
+
+The current candidate is D1-only and has not been applied to production. It creates two WAV edition albums, groups `Freesia` with existing `Fressia`, and groups a new `页间曲` WAV edition with a consolidated existing FLAC `页间曲` album. The page FLAC inventory was freshly verified as 10 masters with unique track values 1 through 10: nine album rows hold those masters, with one row holding tracks 8 and 10. The candidate retains `al-7e5eae45c8` (track 1) as the canonical FLAC album, moves the other nine FLAC masters into it, then removes the eight empty, unreferenced fragment albums.
+
+For each WAV master, the candidate keeps its ID, title, R2 object, instance, storage-entry tree, and master-specific credit rows. It copies only source-supported fields from the paired FLAC master: artist, album artist, genre, per-track cover, participants, lyrics, rich lyrics, track, and disc. The Freesia WAV album receives the existing Fressia album cover; the page edition receives no album cover because its verified source album has none. No audio, title, storage object, storage entry, or `song_artists` record is merged or deleted.
+
+`version_group_apply.sql` guards all 22 pending WAV/master-instance-entry-object snapshots, source album cardinalities, unique page tracks, new album/group ID collisions, pre-existing display membership, and annotations on the eight fragment albums. It then asserts every individual move and aggregate update. `version_group_rollback.sql` restores the original WAV metadata and page fragment assignment. It removes only its four group memberships and deletes a created group or WAV album only when no external member, master, annotation, or reference remains.
+
+Fresh production-primary SELECT preflight passed with `rows_written=0`: 22 pending WAV masters, 22 matched FLAC masters, 10 page FLAC tracks with 10 distinct numbers, zero target-ID collisions, zero existing display memberships, and zero fragment annotations. The source snapshots, candidate map, SQL digests, and primary receipt are in `version_group_primary_inventory.json`, `version_group_master_metadata.json`, `version_group_candidate.json`, `version_group_preflight_primary.json`, and the three `version_group_*.sql` files.
+
+Local SQLite rehearsal passed: successful apply produced two target albums, two two-member display groups, a 10-track consolidated page FLAC album, and zero moved candidates left in pending; early rollback restored the full starting state; a title-stale candidate was rejected atomically; late rollback restored all 22 candidate masters and page fragments while preserving an externally added target master, annotation, and display-group member. The candidate remains a review-only proposal pending a new production preflight immediately before any execution.
+
+The revised candidate labels the new editions `Freesia (WAV)` and `页间曲 (WAV)`, so the edition picker distinguishes them from their FLAC members. It sets their supported release years to 2022 and 2025. Freesia copies the evidenced `未知流派` genre and album cover; page has no evidenced album genre or cover and remains null for both. Its guard now snapshots all ten source album metadata rows, including name, sort name, year, genre, cover, counts, duration, size, and compilation. Aggregate updates recompute duration with song count and size.
+
+Production-primary preflight also confirmed zero `clone_id_map` album mappings for the eight retiring page fragments. It found zero WAV `song_artists` rows and exactly one FLAC artist-credit row per paired track. The apply candidate guards those counts, copies the 22 source artist-credit rows to the distinct WAV masters, and the rollback removes only those copied rows. The revised local rehearsal retains the zero-to-22 WAV credit transition on apply and restores zero candidate credits on rollback.
+
+## Production postflight receipt
+
+After the guarded production apply, an independent primary SELECT query returned `rows_written=0` and confirmed both Freesia albums at 12 tracks, both page albums at 10 tracks, four expected display-group memberships, and zero remaining retired page fragment rows. All 22 WAV masters retained their exact title snapshots and original instance, storage-entry, and storage-object linkage; they have 22 copied artist-credit rows. `version_group_postflight_primary.json` contains the primary receipt.
