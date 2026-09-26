@@ -46,7 +46,7 @@ WITH expected(master_id, original_album_id, track_number, instance_id, entry_id,
   JOIN storage_objects so ON so.id=e.object_id AND so.physical_key=e.physical_key
 )
 UPDATE song_masters
-SET album_id='al-qichengzhuanhe-wav', track=(SELECT track_number FROM expected WHERE master_id=song_masters.id), updated_at=unixepoch()
+SET album_id='al-qichengzhuanhe-wav', track=(SELECT track_number FROM expected WHERE master_id=song_masters.id), disc=1, updated_at=unixepoch()
 WHERE id IN (SELECT master_id FROM expected)
   AND (SELECT count(*) FROM valid_source)=7
   AND EXISTS (SELECT 1 FROM albums WHERE id='al-qichengzhuanhe-wav' AND name='起程转合' AND cover_r2_key='objects/obj_52c5c2fbd8c092f8.jpg')

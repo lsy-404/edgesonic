@@ -11,17 +11,17 @@ WITH expected(master_id, original_album_id, track_number, instance_id, entry_id,
 ), valid_post AS (
   SELECT e.master_id
   FROM expected e
-  JOIN song_masters sm ON sm.id=e.master_id AND sm.album_id='al-qichengzhuanhe-wav' AND sm.track=e.track_number AND sm.disc IS NULL
+  JOIN song_masters sm ON sm.id=e.master_id AND sm.album_id='al-qichengzhuanhe-wav' AND sm.track=e.track_number AND sm.disc=1
   JOIN song_instances si ON si.id=e.instance_id AND si.master_id=sm.id AND si.storage_object_id=e.object_id AND si.storage_uri='r2://' || e.physical_key AND si.missing=0
   JOIN storage_entries se ON se.id=e.entry_id AND se.instance_id=si.id AND se.object_id=e.object_id AND se.path=e.entry_path
   JOIN storage_objects so ON so.id=e.object_id AND so.physical_key=e.physical_key
 )
 UPDATE song_masters
-SET album_id=(SELECT original_album_id FROM expected WHERE master_id=song_masters.id), track=NULL, updated_at=unixepoch()
+SET album_id=(SELECT original_album_id FROM expected WHERE master_id=song_masters.id), track=NULL, disc=NULL, updated_at=unixepoch()
 WHERE id IN (SELECT master_id FROM expected)
   AND (SELECT count(*) FROM valid_post)=7
   AND EXISTS (SELECT 1 FROM albums WHERE id='al-qichengzhuanhe-wav' AND name='起程转合' AND cover_r2_key='objects/obj_52c5c2fbd8c092f8.jpg')
-  AND album_id='al-qichengzhuanhe-wav' AND track=(SELECT track_number FROM expected WHERE master_id=song_masters.id) AND disc IS NULL;
+  AND album_id='al-qichengzhuanhe-wav' AND track=(SELECT track_number FROM expected WHERE master_id=song_masters.id) AND disc=1;
 
 UPDATE albums
 SET song_count=(SELECT count(*) FROM song_masters WHERE album_id=albums.id),
