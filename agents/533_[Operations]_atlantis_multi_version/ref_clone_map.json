@@ -1,0 +1,120 @@
+[
+  {
+    "results": [
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1073",
+        "local_id": "1882"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1074",
+        "local_id": "1887"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1075",
+        "local_id": "1886"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1076",
+        "local_id": "1881"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1077",
+        "local_id": "1884"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1078",
+        "local_id": "1888"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1079",
+        "local_id": "1883"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1080",
+        "local_id": "1885"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1881",
+        "local_id": "1881"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1882",
+        "local_id": "1882"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1883",
+        "local_id": "1883"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1884",
+        "local_id": "1884"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1885",
+        "local_id": "1885"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1886",
+        "local_id": "1886"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1887",
+        "local_id": "1887"
+      },
+      {
+        "source_key": "3cefe80ca6403146e431eead1748b07f",
+        "item_type": "song",
+        "remote_id": "1888",
+        "local_id": "1888"
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "WNAM",
+      "served_by_colo": "DFW",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 3.9225
+      },
+      "duration": 3.9225,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 366927872,
+      "rows_read": 3065,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]
