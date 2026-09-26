@@ -1,4 +1,3 @@
-BEGIN IMMEDIATE;
 CREATE TEMP TABLE candidate(master_id TEXT,instance_id TEXT,object_id TEXT,entry_id TEXT,disc INTEGER,track INTEGER,title TEXT,path TEXT);
 INSERT INTO candidate VALUES
 ('sm-upload-2598e63c-2ca','si-upload-24f22661-f90','obj_61f13c2104e31523','se-3c78a1798a1d4049a9f6624abb8406d7',1,1,'01 WE ARE','Find-Zero/CD 1 人声碟/01 WE ARE.wav'),
@@ -39,10 +38,9 @@ INSERT INTO assertion SELECT CASE WHEN
  NOT EXISTS(SELECT 1 FROM candidate c JOIN playlist_songs p ON p.song_master_id=c.master_id) AND
  NOT EXISTS(SELECT 1 FROM candidate c JOIN annotations a ON a.item_type='song' AND a.item_id=c.master_id)
  THEN 1 ELSE 0 END;
-INSERT INTO albums(id,name,sort_name,genre,compilation,song_count,duration,size) VALUES('al-find-zero-wav','Find-Zero','find-zero','未知流派',0,0,0,0);
+INSERT INTO albums(id,name,sort_name,genre,compilation,song_count,duration,size) VALUES('al-find-zero-wav','Find-Zero (WAV)','find-zero-wav','未知流派',0,0,0,0);
 INSERT INTO album_display_groups(id,display_name,sort_name) VALUES('dg-find-zero-editions','Find-Zero','find-zero');
 INSERT INTO album_display_group_members(group_id,album_id,sort_order) VALUES('dg-find-zero-editions','al-0494f8ac9c',0),('dg-find-zero-editions','al-find-zero-wav',1);
 UPDATE song_masters SET album_id='al-find-zero-wav',disc=(SELECT disc FROM candidate WHERE master_id=song_masters.id),track=(SELECT track FROM candidate WHERE master_id=song_masters.id),updated_at=unixepoch() WHERE id IN(SELECT master_id FROM candidate) AND album_id='pending-uploads' AND track IS NULL AND disc IS NULL;
 INSERT INTO assertion SELECT CASE WHEN (SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav')=25 AND (SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav' AND (disc NOT IN(1,2) OR track IS NULL))=0 THEN 1 ELSE 0 END;
 UPDATE albums SET song_count=(SELECT COUNT(*) FROM song_masters WHERE album_id=albums.id),duration=(SELECT COALESCE(SUM(si.duration),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),size=(SELECT COALESCE(SUM(si.size),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),updated_at=unixepoch() WHERE id IN('pending-uploads','al-find-zero-wav');
-COMMIT;

@@ -1,4 +1,3 @@
-BEGIN IMMEDIATE;
 CREATE TEMP TABLE candidate(master_id TEXT,instance_id TEXT,object_id TEXT,entry_id TEXT,disc INTEGER,track INTEGER,title TEXT,path TEXT);
 INSERT INTO candidate VALUES
 ('sm-upload-2598e63c-2ca','si-upload-24f22661-f90','obj_61f13c2104e31523','se-3c78a1798a1d4049a9f6624abb8406d7',1,1,'01 WE ARE','Find-Zero/CD 1 人声碟/01 WE ARE.wav'),
@@ -41,4 +40,3 @@ UPDATE song_masters SET album_id='pending-uploads',disc=NULL,track=NULL,updated_
 UPDATE albums SET song_count=(SELECT COUNT(*) FROM song_masters WHERE album_id=albums.id),duration=(SELECT COALESCE(SUM(si.duration),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),size=(SELECT COALESCE(SUM(si.size),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),updated_at=unixepoch() WHERE id='pending-uploads';
 DELETE FROM album_display_groups WHERE id='dg-find-zero-editions';
 DELETE FROM albums WHERE id='al-find-zero-wav' AND NOT EXISTS(SELECT 1 FROM song_masters WHERE album_id='al-find-zero-wav');
-COMMIT;
