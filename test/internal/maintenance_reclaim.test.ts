@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //
-// The endpoint mirrors 052a's scheduled workReclaim sweep but is triggered by
+// The endpoint mirrors the scheduled work reclaim sweep but is triggered by
 // an admin. We exercise the same buckets workReclaim covers, plus the auth
 // guard and the no-op shape:
 //
@@ -154,7 +154,11 @@ function seedRow(sqlite: DatabaseSync, opts: SeedOpts) {
   );
 }
 
-function makeApp(sqlite: DatabaseSync, user: { username: string; level: number }) {
+function makeApp(
+  sqlite: DatabaseSync,
+  user: { username: string; level: number },
+  workCoordinator?: { idFromName(name: string): string; get(id: string): { fetch(url: string): Promise<unknown> } },
+) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.use("*", async (c, next) => {
@@ -170,7 +174,7 @@ function makeApp(sqlite: DatabaseSync, user: { username: string; level: number }
     async put(key: string, value: string) { kvStore.set(key, value); },
     async delete(key: string) { kvStore.delete(key); },
   };
-  const env = { DB: makeD1(sqlite), KV: kv };
+  const env = { DB: makeD1(sqlite), KV: kv, WORK_COORDINATOR: workCoordinator };
   return {
     async post(url: string, body: unknown) {
       const req = new Request(`http://test${url}`, {
@@ -205,7 +209,12 @@ async function main() {
     sqlite.prepare(`INSERT INTO work_queue (id, task_type, payload, status, claimed_at, heartbeat_at, created_at)
       VALUES ('wm-upload-pending-live', 'manual_upload_pending', '{}', 'claimed', ?, ?, 0)`)
       .run(oldHeartbeat, oldHeartbeat);
-    const { post } = makeApp(sqlite, { username: "admin", level: 3 });
+    let notifications = 0;
+    const coordinator = {
+      idFromName: (name: string) => name,
+      get: () => ({ fetch: async () => { notifications++; } }),
+    };
+    const { post } = makeApp(sqlite, { username: "admin", level: 3 }, coordinator);
     const r = await post("/edgesonic/maintenance/reclaimStaleWork", {});
     assert(r.status === 200, `200 (got ${r.status})`);
     const body = await r.json() as ReclaimBody;
@@ -228,6 +237,7 @@ async function main() {
     assert(byId["w-a"].attempts === 1, `w-a attempts preserved (got ${byId["w-a"].attempts})`);
     assert(byId["w-b"].attempts === 2, `w-b attempts preserved (got ${byId["w-b"].attempts})`);
     assert(byId["w-c"].attempts === 0, `w-c attempts preserved (got ${byId["w-c"].attempts})`);
+    assert(notifications === 1, `coordinator notified once after requeue (got ${notifications})`);
   }
 
   console.log("\nStale row with attempts>=max → failed terminal:");

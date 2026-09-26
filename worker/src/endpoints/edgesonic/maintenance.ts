@@ -162,8 +162,8 @@ maintenanceRoutes.post("/maintenance/reclaimStaleWork",
   async (c) => {
   const env = c.env as Env;
 
-  // Feature key was registered in 052a (default 60s) — the same one workReclaim
-  // reads, so the manual button reuses the operator's tuning.
+  // The same key as the scheduled reclaim uses, so the manual button reuses
+  // the operator's tuning.
   const raw = await getFeatureString(env, "worker_claim_ttl_seconds", "60");
   const parsed = parseInt(raw, 10);
   const ttl = Number.isFinite(parsed) && parsed > 0 ? parsed : 60;
@@ -205,6 +205,7 @@ maintenanceRoutes.post("/maintenance/reclaimStaleWork",
     if (row.status === "queued") requeued++;
     else if (row.status === "failed") failed++;
   }
+  if (requeued > 0) await wakePool(env);
   return c.json({
     ok: true,
     reclaimed: items.length,
