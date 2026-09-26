@@ -3,7 +3,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $worker = Join-Path $root 'worker'
 $fixture = Join-Path $PSScriptRoot 'fixtures\quad3_version_group.sql'
 $config = Join-Path $PSScriptRoot 'fixtures\quad3_wrangler.toml'
-$candidate = Join-Path $root 'agents\524_[Operations]_quadimension_3_version_group\apply_guarded.sql'
+$candidate = Join-Path $root 'agents\527_[Operations]_quadimension_3_version_group\apply_guarded.sql'
 
 function Invoke-D1File([string]$persist, [string]$file) {
   Push-Location $worker
