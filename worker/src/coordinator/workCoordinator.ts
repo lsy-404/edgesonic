@@ -133,14 +133,8 @@ export class WorkCoordinator implements DurableObject {
         break;
       case "release":
         if (msg.id && agent.holding.includes(msg.id)) {
-          // A local capacity change prevented this task from starting. No
-          // /work/submit request exists yet, so return the claimed row here.
-          await this.env.DB.prepare(
-            `UPDATE work_queue
-                SET status = 'queued', claimed_by = NULL, claimed_at = NULL,
-                    heartbeat_at = NULL, attempts = MAX(0, attempts - 1)
-              WHERE id = ? AND status = 'claimed' AND claimed_by = ?`,
-          ).bind(msg.id, agent.username).run();
+          // An attachment has no claim generation. It can release its local
+          // slot, but only the TTL sweep may return the D1 row safely.
           agent.holding = agent.holding.filter((id) => id !== msg.id);
           ws.serializeAttachment(agent);
           await this.dispatch();
@@ -167,33 +161,17 @@ export class WorkCoordinator implements DurableObject {
     await this.releaseHeld(ws);
   }
 
-  // Put back whatever this agent was holding when it went away. The claim TTL
-  // sweep would eventually do this, but it runs on the cron and the browser
-  // that vanished is the common case — a closed laptop, a killed tab. Doing
-  // it here turns a wait of up to an hour into a wait of milliseconds.
+  // Clear this connection's local accounting. A later connection under the
+  // same username can hold the same id, so attachment state must not mutate
+  // D1 without a per-claim generation token.
   private async releaseHeld(ws: WebSocket): Promise<void> {
     const agent = ws.deserializeAttachment() as AgentState | null;
     try { ws.close(); } catch { /* already closing */ }
     if (!agent?.holding.length) return;
 
-    // The attempt is un-burned: the task never ran to a verdict, so charging
-    // it one of its retries would punish it for this browser's disconnect.
-    for (const id of agent.holding) {
-      try {
-        await this.env.DB.prepare(
-          `UPDATE work_queue
-              SET status = 'queued', claimed_by = NULL, claimed_at = NULL,
-                  heartbeat_at = NULL, attempts = MAX(0, attempts - 1)
-            WHERE id = ? AND status = 'claimed' AND claimed_by = ?`,
-        ).bind(id, agent.username).run();
-      } catch (e) {
-        // Leave it to the sweep rather than abandoning the remaining ids.
-        console.error(`[coordinator] release failed for ${id}:`, e);
-      }
-    }
     agent.holding = [];
     try { ws.serializeAttachment(agent); } catch { /* socket already gone */ }
-    // Those rows are queued again and somebody else may be idle.
+    // A remaining live socket may still have queued work to claim.
     await this.dispatch();
   }
 

@@ -82,10 +82,10 @@ function main(): void {
       "dispatch filters sockets on readyState");
     assert(src.includes("webSocketClose"),
       "close handler present so dead agents leave the pool");
-    // Two independent places return a row to 'queued' without burning the
-    // attempt: a send that throws mid-dispatch, and an agent disconnecting.
-    assert((src.match(/attempts = MAX\(0, attempts - 1\)/g) || []).length >= 2,
-      "both the failed-send and the disconnect paths un-burn the attempt");
+    // Attachments have no generation token, so only the synchronous failed
+    // send path may return a row; close/release merely clears local capacity.
+    assert((src.match(/attempts = MAX\(0, attempts - 1\)/g) || []).length === 1,
+      "only a synchronous failed send may return a claimed row");
     assert(src.includes("setWebSocketAutoResponse"),
       "keepalive is answered without waking a hibernating object");
     assert(src.includes("serializeAttachment"),
@@ -102,7 +102,7 @@ function main(): void {
     assert((msgBody.match(/await this\.dispatch\(\)/g) || []).length >= 2,
       "both a freed slot and a config change re-run dispatch");
     assert(src.includes("releaseHeld"),
-      "a disconnect releases the rows that agent was holding");
+      "a disconnect clears the rows that agent was holding");
     assert(src.includes('case "release"'),
       "an unstarted task is returned to queued instead of acknowledged as done");
     assert(/worker_pool_enabled[\s\S]{0,120}return \{ dispatched: 0/.test(src),
@@ -121,6 +121,11 @@ function main(): void {
       "the poll route is gone");
     assert(/dispatchWork\(\s*\n?\s*db: D1Database,\s*\n?\s*input: DispatchInput,\s*\n?\s*env: Env/.test(src),
       "dispatchWork requires env, so the compiler catches a dispatch that never wakes anyone");
+    const reclaim = fs.readFileSync(path.resolve(__dirname, "../../worker/src/utils/workReclaim.ts"), "utf-8");
+    assert(reclaim.includes("status = 'claimed' AND heartbeat_at < ?"),
+      "stale reclaim uses heartbeat cutoff as a compare-and-swap condition");
+    assert(reclaim.includes("meta.changes === 1"),
+      "reclaim counts and wakes only rows its compare-and-swap actually changed");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

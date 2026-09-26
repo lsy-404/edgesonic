@@ -61,39 +61,36 @@ export async function reclaimStaleWork(env: Env): Promise<ReclaimReport> {
   const failStmts: D1PreparedStatement[] = [];
   for (const row of stale) {
     if (row.attempts >= row.max_attempts) {
-      report.failed++;
       failStmts.push(
         env.DB.prepare(
           `UPDATE work_queue
            SET status = 'failed',
                error_message = COALESCE(error_message, 'stale claim: max attempts exceeded'),
                claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL
-           WHERE id = ?`,
-        ).bind(row.id),
+           WHERE id = ? AND status = 'claimed' AND heartbeat_at < ?`,
+        ).bind(row.id, cutoff),
       );
     } else {
-      report.reQueued++;
       reQueueStmts.push(
         env.DB.prepare(
           `UPDATE work_queue
            SET status = 'queued',
                error_message = COALESCE(error_message, 'stale claim re-queued'),
                claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL
-           WHERE id = ?`,
-        ).bind(row.id),
+           WHERE id = ? AND status = 'claimed' AND heartbeat_at < ?`,
+        ).bind(row.id, cutoff),
       );
     }
   }
-  // D1 batch caps at ~100 statements; we chunk for safety.
-  for (let i = 0; i < reQueueStmts.length; i += 80) {
-    await env.DB.batch(reQueueStmts.slice(i, i + 80));
+  for (const stmt of reQueueStmts) {
+    if ((await stmt.run()).meta.changes === 1) report.reQueued++;
   }
-  for (let i = 0; i < failStmts.length; i += 80) {
-    await env.DB.batch(failStmts.slice(i, i + 80));
+  for (const stmt of failStmts) {
+    if ((await stmt.run()).meta.changes === 1) report.failed++;
   }
   // Rows put back here would otherwise sit until some unrelated enqueue
   // happened to wake the coordinator — this sweep runs from the cron with no
   // browser involved, so nothing else is going to trigger a dispatch.
-  if (reQueueStmts.length > 0) await wakePool(env);
+  if (report.reQueued > 0) await wakePool(env);
   return report;
 }
