@@ -130,6 +130,7 @@ function buildDb() {
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
     );
+    CREATE INDEX idx_songmasters_album_artist ON song_masters(album_artist_id);
     CREATE TABLE song_artists (
       song_id TEXT NOT NULL,
       artist_id TEXT NOT NULL,
@@ -291,6 +292,8 @@ console.log("work/submit (metadata, success) → tag_scanned=1 + relink + physic
   assert(sm.genre === "ambient", `genre updated (got ${sm.genre})`);
   assert(typeof sm.artist_id === "string" && sm.artist_id.startsWith("ar-") && sm.artist_id !== "ar-old", `artist_id relinked (got ${sm.artist_id})`);
   assert(typeof sm.album_id === "string" && sm.album_id.startsWith("al-") && sm.album_id !== "al-old", `album_id relinked (got ${sm.album_id})`);
+  assert(!sqlite.prepare("SELECT 1 FROM albums WHERE id = 'al-old'").get(), "the vacated old album is removed");
+  assert(!sqlite.prepare("SELECT 1 FROM artists WHERE id = 'ar-old'").get(), "the displaced unused artist is removed");
 
   // brand-new artist + album rows exist
   const ar = sqlite.prepare("SELECT name FROM artists WHERE id=?").get(sm.artist_id) as any;
@@ -307,6 +310,43 @@ console.log("work/submit (metadata, success) → tag_scanned=1 + relink + physic
   const wq = sqlite.prepare("SELECT status, result_json FROM work_queue WHERE id='wt-metadata-inst-1'").get() as any;
   assert(wq.status === "completed", `queue row status (got ${wq.status})`);
   assert(typeof wq.result_json === "string" && wq.result_json.includes("Cosmic Drift"), "result_json stored");
+}
+
+console.log("metadata relink cleanup is candidate-scoped and preserves surviving references:");
+{
+  const sqlite = buildDb();
+  sqlite.exec(`
+    INSERT INTO artists (id, name) VALUES
+      ('ar-credit', 'Credit Artist'), ('ar-orphan', 'Unrelated Artist');
+    INSERT INTO albums (id, name) VALUES
+      ('al-orphan', 'Unrelated Empty Album'), ('al-keep', 'Still Referenced Album');
+    UPDATE song_masters SET album_artist_id = 'ar-old' WHERE id = 'sg-1';
+    INSERT INTO song_masters (id, album_id, artist_id, album_artist_id, title)
+      VALUES ('sg-keep', 'al-old', 'ar-old', NULL, 'Keep Old Artist');
+    INSERT INTO song_artists (song_id, artist_id, position) VALUES
+      ('sg-1', 'ar-credit', 0), ('sg-keep', 'ar-credit', 0);
+    INSERT INTO song_masters (id, album_id, artist_id, title)
+      VALUES ('sg-keep-album', 'al-keep', 'ar-orphan', 'Keep Other Album');
+  `);
+  const cleanupSql: string[] = [];
+  const db = makeD1(sqlite, async (query) => {
+    if (/^\s*DELETE FROM (albums|artists)/i.test(query)) cleanupSql.push(query);
+  });
+  const result = await applyMetadataResult(db, "inst-1", {
+    title: "Relinked", artist: "New Artist", album: "New Album", albumArtist: "New Artist",
+  }, {});
+  assert(result.updated, "metadata relink succeeds");
+  assert(sqlite.prepare("SELECT 1 FROM albums WHERE id = 'al-old'").get(), "old album remains while another master references it");
+  assert(sqlite.prepare("SELECT 1 FROM albums WHERE id = 'al-orphan'").get(), "unrelated empty album remains untouched");
+  assert(sqlite.prepare("SELECT 1 FROM artists WHERE id = 'ar-old'").get(), "old artist remains as another master's album artist");
+  assert(sqlite.prepare("SELECT 1 FROM artists WHERE id = 'ar-credit'").get(), "old credit artist remains while another song credit references it");
+  assert(sqlite.prepare("SELECT 1 FROM artists WHERE id = 'ar-orphan'").get(), "unrelated artist remains untouched");
+  assert(cleanupSql.length === 2, `only old album and candidate artists are checked (got ${cleanupSql.length} statements)`);
+  assert(cleanupSql.every((query) => /WHERE id = \?|WHERE id IN \(/i.test(query)), "both cleanup statements use frozen candidate IDs");
+  assert(!cleanupSql.some((query) => /DELETE FROM artists\s+WHERE NOT EXISTS/i.test(query)), "no global artist sweep runs on apply");
+  const queryPlan = sqlite.prepare("EXPLAIN QUERY PLAN SELECT 1 FROM song_masters WHERE album_artist_id = ?")
+    .all("ar-old") as Array<{ detail: string }>;
+  assert(queryPlan.some((row) => row.detail.includes("idx_songmasters_album_artist")), "album-artist reference check uses its index");
 }
 
 console.log("work/submit rejects a claimed result from an overwritten upload generation:");

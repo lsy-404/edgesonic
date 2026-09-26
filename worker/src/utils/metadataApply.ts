@@ -45,7 +45,6 @@ import {
   parseAlbumArtistCredit,
   parseArtistCredits,
   songArtistStatements,
-  UNUSED_ARTIST_CLEANUP_SQL,
 } from "./artistCredits";
 import { recoverMetadataFromStoragePath } from "./storageMetadata";
 
@@ -223,7 +222,7 @@ export async function applyMetadataResult(
 //  * md5(linkArtistName + " " + albumName)[:10] -> album id
 //  * INSERT OR IGNORE both, UPDATE song_masters with the new fk's
 //  * Refresh album song_count/size aggregates for old + new ids
-//  * Sweep empty artist/album rows
+//  * Remove only rows that this relink may have made unused
 // ---------------------------------------------------------------------------
 export async function relinkArtistAlbum(
   db: D1Database,
@@ -257,6 +256,18 @@ export async function relinkArtistAlbum(
     ? "al-" + md5(linkArtistName + " " + albumName).substring(0, 10)
     : master.album_id;
   const oldAlbumId = master.album_id;
+  const oldSongArtistIds = artistChanged
+    ? (await db.prepare("SELECT artist_id FROM song_artists WHERE song_id = ?")
+      .bind(master.id).all<{ artist_id: string }>()).results.map((row) => row.artist_id)
+    : [];
+  const cleanupArtistIds = new Set<string>();
+  if (artistChanged) {
+    cleanupArtistIds.add(master.artist_id);
+    oldSongArtistIds.forEach((id) => cleanupArtistIds.add(id));
+  }
+  if (tags.albumArtist !== undefined && albumArtist?.id !== master.album_artist_id && master.album_artist_id) {
+    cleanupArtistIds.add(master.album_artist_id);
+  }
 
   await db.batch([
     ...artistInsertStatements(db, [...artistCredits, ...albumArtistCredits], now),
@@ -296,8 +307,21 @@ export async function relinkArtistAlbum(
        WHERE id = ?`,
     ).bind(aid, aid, now, aid).run();
   }
-  await db.prepare("DELETE FROM albums WHERE NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = albums.id)").run();
-  await db.prepare(UNUSED_ARTIST_CLEANUP_SQL).run();
+  if (oldAlbumId !== albumId) {
+    await db.prepare(
+      "DELETE FROM albums WHERE id = ? AND NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = ?)",
+    ).bind(oldAlbumId, oldAlbumId).run();
+  }
+  if (cleanupArtistIds.size > 0) {
+    const ids = [...cleanupArtistIds];
+    const placeholders = ids.map(() => "?").join(", ");
+    await db.prepare(
+      `DELETE FROM artists WHERE id IN (${placeholders})
+        AND NOT EXISTS (SELECT 1 FROM song_masters WHERE artist_id = artists.id)
+        AND NOT EXISTS (SELECT 1 FROM song_masters WHERE album_artist_id = artists.id)
+        AND NOT EXISTS (SELECT 1 FROM song_artists WHERE artist_id = artists.id)`,
+    ).bind(...ids).run();
+  }
 
   return { albumId, artistId };
 }

@@ -407,6 +407,7 @@ CREATE TABLE IF NOT EXISTS song_masters (
 );
 CREATE INDEX IF NOT EXISTS idx_songmasters_album ON song_masters(album_id);
 CREATE INDEX IF NOT EXISTS idx_songmasters_artist ON song_masters(artist_id);
+CREATE INDEX IF NOT EXISTS idx_songmasters_album_artist ON song_masters(album_artist_id);
 CREATE INDEX IF NOT EXISTS idx_songmasters_title ON song_masters(title);
 
 CREATE TABLE IF NOT EXISTS lyrics_search_documents (
