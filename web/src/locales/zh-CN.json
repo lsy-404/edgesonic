@@ -311,6 +311,8 @@
     "playAlbum": "播放专辑",
     "loadFailed": "加载艺术家失败",
     "albumCount": "{n} 张专辑",
+    "albumEditionCount": "{n} 个版本",
+    "backToAlbums": "返回专辑列表",
     "trackCount": "{n} 首曲目",
     "noArtists": "未找到艺术家 — 请先添加存储源",
     "noAlbums": "该艺术家暂无专辑",

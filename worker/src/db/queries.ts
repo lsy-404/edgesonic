@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import type { Artist, Album, SongMaster, SongInstance, Annotation, User, Playlist, Bookmark, PlayQueue, TranscodeJob, InternetRadioStation, PodcastChannel, PodcastEpisode, Share } from "../types/entities";
+import type { Artist, Album, AlbumDisplayGroup, AlbumDisplayGroupMember, SongMaster, SongInstance, Annotation, User, Playlist, Bookmark, PlayQueue, TranscodeJob, InternetRadioStation, PodcastChannel, PodcastEpisode, Share } from "../types/entities";
 import { advanceLyricsSearchIndex, lyricsSearchGrams, normalizeLyricsSearchQuery } from "../utils/lyricsSearch";
 
 export interface SongNames {
@@ -111,6 +111,71 @@ export function createQueries(db: D1Database) {
     // Albums
     async getAlbum(id: string): Promise<Album | null> {
       return db.prepare("SELECT * FROM albums WHERE id = ?").bind(id).first<Album>();
+    },
+
+    async listAlbumDisplayGroups(): Promise<AlbumDisplayGroup[]> {
+      const result = await db.prepare(
+        `SELECT g.id, g.display_name, g.sort_name, m.album_id,
+                COUNT(*) OVER (PARTITION BY g.id) AS member_count
+         FROM album_display_groups g
+         JOIN album_display_group_members m ON m.group_id = g.id
+         JOIN albums a ON a.id = m.album_id
+         ORDER BY COALESCE(g.sort_name, g.display_name) ASC, m.sort_order ASC, a.id ASC`
+      ).all<{
+        id: string;
+        display_name: string;
+        sort_name: string | null;
+        album_id: string;
+        member_count: number;
+      }>();
+      const groups = new Map<string, AlbumDisplayGroup>();
+      for (const row of result.results) {
+        if (row.member_count < 2) continue;
+        let group = groups.get(row.id);
+        if (!group) {
+          group = {
+            id: row.id,
+            display_name: row.display_name,
+            sort_name: row.sort_name,
+            member_album_ids: [],
+            member_count: row.member_count,
+          };
+          groups.set(row.id, group);
+        }
+        group.member_album_ids.push(row.album_id);
+      }
+      return Array.from(groups.values());
+    },
+
+    async getAlbumDisplayGroup(id: string): Promise<{
+      id: string;
+      display_name: string;
+      members: AlbumDisplayGroupMember[];
+    } | null> {
+      const group = await db.prepare(
+        `SELECT g.id, g.display_name
+         FROM album_display_groups g
+         JOIN album_display_group_members m ON m.group_id = g.id
+         JOIN albums a ON a.id = m.album_id
+         WHERE g.id = ?
+         GROUP BY g.id
+         HAVING COUNT(*) >= 2`
+      ).bind(id).first<{ id: string; display_name: string }>();
+      if (!group) return null;
+
+      const members = await db.prepare(
+        `SELECT a.id, a.name, a.year, a.cover_r2_key, a.song_count, a.created_at,
+                (SELECT ar.name
+                 FROM song_masters sm JOIN artists ar ON ar.id = sm.artist_id
+                 WHERE sm.album_id = a.id
+                 ORDER BY sm.track IS NULL, sm.track, sm.id
+                 LIMIT 1) AS artist_name
+         FROM album_display_group_members m
+         JOIN albums a ON a.id = m.album_id
+         WHERE m.group_id = ?
+         ORDER BY m.sort_order ASC, a.id ASC`
+      ).bind(id).all<AlbumDisplayGroupMember>();
+      return { ...group, members: members.results };
     },
 
     async getAlbumsByArtist(artistId: string): Promise<Album[]> {

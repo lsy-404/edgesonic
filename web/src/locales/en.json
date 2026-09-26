@@ -310,6 +310,8 @@
     "playAlbum": "PLAY ALBUM",
     "loadFailed": "Failed to load artists",
     "albumCount": "{n} ALBUMS",
+    "albumEditionCount": "{n} editions",
+    "backToAlbums": "Back to albums",
     "trackCount": "{n} TRACKS",
     "noArtists": "NO ARTISTS FOUND — ADD A STORAGE SOURCE FIRST",
     "noAlbums": "NO ALBUMS FOR THIS ARTIST",

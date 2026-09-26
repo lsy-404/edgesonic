@@ -19,11 +19,12 @@ import { showInfo } from "../stores/toast";
 import { isInstrumentalTitle } from "../lib/instrumental";
 import type { ScrapeResult } from "../lib/scrape";
 import { buildLibrarySearchParams, buildLibrarySearchRoute } from "../lib/librarySearch";
+import { foldAlbumDisplayCards, type AlbumDisplayGroupSummary, type AlbumDisplayCard } from "../lib/albumDisplayGroups";
 import { FluentSelect } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 
-const { authFetch, writeTags, batchWriteTags, rescanSongs, coverArtUrl, downloadUrl, isAdmin, hasPerm } = useAuth();
+const { authFetch, edgesonicFetch, writeTags, batchWriteTags, rescanSongs, coverArtUrl, downloadUrl, isAdmin, hasPerm } = useAuth();
 const player = usePlayerStore();
 const detail = useDetailStore();
 const BATCH_MAX = 50;
@@ -48,6 +49,9 @@ interface Album {
   starred: boolean;
   starredAt?: string;
   createdAt?: string;
+}
+interface AlbumDisplayGroupDetail extends AlbumDisplayGroupSummary {
+  editions: Album[];
 }
 
 type Tab = "artists" | "albums" | "songs";
@@ -162,6 +166,12 @@ let artistInfoRequest = 0;
 
 const currentArtist = ref<Artist | null>(null);
 const currentAlbum = ref<Album | null>(null);
+const currentDisplayGroup = ref<AlbumDisplayGroupDetail | null>(null);
+const displayGroups = ref<AlbumDisplayGroupSummary[]>([]);
+let displayGroupsLoaded = false;
+let displayGroupsPromise: Promise<void> | null = null;
+const groupDetailLoading = ref(false);
+let groupDetailRequest = 0;
 const loading = ref(false);
 const error = ref("");
 let detailRequest = 0;
@@ -198,10 +208,13 @@ watch(albumWaterfallEl, (el) => {
   });
   waterfallRO.observe(el);
 });
-const albumWaterfallCols = computed<Album[][]>(() => {
+const albumDisplayCards = computed<AlbumDisplayCard<Album>[]>(() =>
+  foldAlbumDisplayCards(allAlbums.value, displayGroups.value)
+);
+const albumWaterfallCols = computed<AlbumDisplayCard<Album>[][]>(() => {
   const n = waterfallColCount.value;
-  const cols: Album[][] = Array.from({ length: n }, () => []);
-  allAlbums.value.forEach((al, i) => cols[i % n].push(al));
+  const cols: AlbumDisplayCard<Album>[][] = Array.from({ length: n }, () => []);
+  albumDisplayCards.value.forEach((item, i) => cols[i % n].push(item));
   return cols;
 });
 
@@ -271,9 +284,12 @@ function refreshTargets(): void {
 
 function switchTab(next: Tab) {
   detailRequest++;
+  groupDetailRequest++;
   tab.value = next;
   currentArtist.value = null;
   currentAlbum.value = null;
+  currentDisplayGroup.value = null;
+  groupDetailLoading.value = false;
   albums.value = [];
   songs.value = [];
   error.value = "";
@@ -351,14 +367,14 @@ async function loadMoreAlbums() {
   const request = albumLoadRequest;
   loading.value = true;
   try {
-    const xml = await authFetch("getAlbumList2", {
+    const [xml] = await Promise.all([authFetch("getAlbumList2", {
       type: sortMode.value === "newest"
         ? "newest"
         : sortMode.value === "newestAdded" ? "newest"
         : sortMode.value === "oldestAdded" ? "oldest"
         : sortMode.value === "nameDesc" ? "alphabeticalByNameDesc" : "alphabeticalByName",
       size: String(ALBUM_PAGE), offset: String(albumOffset.value),
-    });
+    }), ensureAlbumDisplayGroups()]);
     const page = parseXmlAttrs(xml, "album").map((a) => ({
       id: a.id || "", name: a.name || "", artist: a.artist || "",
       year: a.year || "", coverArt: a.coverArt || "", songCount: a.songCount || "",
@@ -372,6 +388,56 @@ async function loadMoreAlbums() {
     if (request === albumLoadRequest) error.value = t("library.loadFailed");
   } finally {
     if (request === albumLoadRequest) loading.value = false;
+  }
+}
+
+async function ensureAlbumDisplayGroups(): Promise<void> {
+  if (displayGroupsLoaded) return;
+  if (displayGroupsPromise) return displayGroupsPromise;
+  displayGroupsPromise = (async () => {
+    try {
+      const response = JSON.parse(await edgesonicFetch("album-display-groups")) as {
+        ok?: boolean;
+        groups?: AlbumDisplayGroupSummary[];
+      };
+      if (response.ok && Array.isArray(response.groups)) displayGroups.value = response.groups;
+    } catch {
+      displayGroups.value = [];
+    } finally {
+      displayGroupsLoaded = true;
+      displayGroupsPromise = null;
+    }
+  })();
+  return displayGroupsPromise;
+}
+
+async function openDisplayGroup(group: AlbumDisplayGroupSummary) {
+  const request = ++groupDetailRequest;
+  currentAlbum.value = null;
+  currentArtist.value = null;
+  currentDisplayGroup.value = { ...group, editions: [] };
+  songs.value = [];
+  albums.value = [];
+  error.value = "";
+  groupDetailLoading.value = true;
+  try {
+    const response = JSON.parse(await edgesonicFetch(`album-display-groups/${encodeURIComponent(group.id)}`)) as {
+      ok?: boolean;
+      group?: { id: string; name: string; editions: Album[] };
+    };
+    if (request !== groupDetailRequest) return;
+    if (!response.ok || !response.group || response.group.editions.length < 2) throw new Error("Display group unavailable");
+    currentDisplayGroup.value = {
+      ...group,
+      name: response.group.name,
+      editions: response.group.editions,
+    };
+  } catch {
+    if (request === groupDetailRequest) error.value = t("library.loadFailed");
+  } finally {
+    if (request === groupDetailRequest) {
+      groupDetailLoading.value = false;
+    }
   }
 }
 
@@ -683,6 +749,8 @@ async function loadArtistInfo(artist: Artist, signal?: AbortSignal) {
 }
 
 async function openAlbum(album: Album) {
+  groupDetailRequest++;
+  currentDisplayGroup.value = null;
   if (!props.embedded) {
     detail.openAlbum(album.id);
     return;
@@ -1021,8 +1089,10 @@ function backToList() {
     return;
   }
   detailRequest++;
+  groupDetailRequest++;
   currentArtist.value = null;
   currentAlbum.value = null;
+  currentDisplayGroup.value = null;
   albums.value = [];
   songs.value = [];
   artistInfo.value = null;
@@ -1032,12 +1102,14 @@ function backToList() {
 
 function backToAlbums() {
   detailController?.abort();
-  if (props.embedded && !currentArtist.value) {
+  if (props.embedded && !currentArtist.value && !currentDisplayGroup.value) {
     detail.close();
     return;
   }
   detailRequest++;
+  groupDetailRequest++;
   currentAlbum.value = null;
+  currentDisplayGroup.value = null;
   songs.value = [];
   error.value = "";
 }
@@ -1279,10 +1351,11 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       <div class="media-detail-titles">
         <div class="mono-label breadcrumb">
           <a @click="backToList">{{ starredOnly ? t("library.starredBreadcrumb") : t("library.breadcrumb") }}</a>
+          <template v-if="currentDisplayGroup"> / <span>{{ currentDisplayGroup.name }}</span></template>
           <template v-if="currentArtist"> / <a @click="backToAlbums">{{ currentArtist.name }}</a></template>
           <template v-if="currentAlbum"> / <span>{{ currentAlbum.name }}</span></template>
         </div>
-        <h1 class="page-title">{{ currentAlbum?.name || currentArtist?.name || (starredOnly ? t("library.starredTitle") : t("library.title")) }}</h1>
+        <h1 class="page-title">{{ currentAlbum?.name || currentDisplayGroup?.name || currentArtist?.name || (starredOnly ? t("library.starredTitle") : t("library.title")) }}</h1>
       </div>
       <div v-if="currentArtist || currentAlbum" class="detail-actions">
         <StarButton
@@ -1350,7 +1423,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 
     <template v-if="!isSearchActive">
     <!-- View tabs and sorting (hidden while drilled into an artist/album) -->
-    <div v-if="!currentArtist && !currentAlbum && !embedded" class="library-controls">
+    <div v-if="!currentArtist && !currentAlbum && !currentDisplayGroup && !embedded" class="library-controls">
       <div class="view-tabs">
       <button :class="['view-tab', { active: tab === 'songs' }]" @click="switchTab('songs')"><Icon name="music" /> {{ t("library.tabSongs") }}</button>
       <button :class="['view-tab', { active: tab === 'albums' }]" @click="switchTab('albums')"><Icon name="album" /> {{ t("library.tabAlbums") }}</button>
@@ -1428,6 +1501,29 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       </div>
       <div v-if="loading" class="empty-state">{{ t("common.loading") }}</div>
       <div v-else-if="!albumSongs.length && !error" class="empty-state">{{ t("library.noTracks") }}</div>
+    </div>
+
+    <div v-else-if="currentDisplayGroup" class="artist-detail">
+      <button class="btn-secondary btn-sm" @click="backToAlbums">{{ t("library.backToAlbums") }}</button>
+      <div class="album-grid group-editions">
+        <button
+          v-for="edition in currentDisplayGroup.editions"
+          :key="edition.id"
+          type="button"
+          class="card hoverable album-card group-edition-card"
+          @click="openAlbum(edition)"
+        >
+          <div class="album-cover">
+            <BudgetedImage v-if="edition.coverArt" :src="coverArtUrl(edition.coverArt, 256)" :alt="edition.name" @error="edition.coverArt = ''" />
+            <span v-else class="album-cover-placeholder"><Icon name="note" /></span>
+          </div>
+          <div class="album-body">
+            <span class="album-name">{{ edition.name }}</span>
+            <span class="mono-label">{{ edition.artist || "—" }}<template v-if="edition.year"> · {{ edition.year }}</template><template v-if="edition.songCount"> · {{ t("library.trackCount", { n: edition.songCount }) }}</template></span>
+          </div>
+        </button>
+      </div>
+      <div v-if="groupDetailLoading" class="empty-state">{{ t("common.loading") }}</div>
     </div>
 
     <!-- Drill-down: albums of an artist -->
@@ -1602,25 +1698,32 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
     <div v-else-if="!starredOnly && tab === 'albums'">
       <div class="album-grid album-waterfall" ref="albumWaterfallEl">
         <div v-for="(col, ci) in albumWaterfallCols" :key="ci" class="waterfall-col">
-          <div v-for="al in col" :key="al.id" class="card hoverable album-card" @click="openAlbum(al)">
+          <div
+            v-for="item in col"
+            :key="item.key"
+            class="card hoverable album-card"
+            @click="item.kind === 'group' ? openDisplayGroup(item.group) : openAlbum(item.album)"
+          >
             <div class="album-cover">
-              <BudgetedImage v-if="al.coverArt" :src="coverArtUrl(al.coverArt, 256)" :alt="al.name" @error="al.coverArt = ''" />
+              <BudgetedImage v-if="item.kind === 'album' ? item.album.coverArt : item.representative.coverArt" :src="coverArtUrl(item.kind === 'album' ? item.album.coverArt : item.representative.coverArt, 256)" :alt="item.kind === 'album' ? item.album.name : item.group.name" @error="item.kind === 'album' ? item.album.coverArt = '' : item.representative.coverArt = ''" />
               <span v-else class="album-cover-placeholder"><Icon name="note" /></span>
             </div>
             <div class="album-body">
-              <div class="album-name">{{ al.name }}</div>
-              <div class="mono-label">{{ al.artist || "—" }}<template v-if="al.songCount"> · {{ t("library.trackCount", { n: al.songCount }) }}</template></div>
+              <div class="album-name">{{ item.kind === 'album' ? item.album.name : item.group.name }}</div>
+              <div class="mono-label" v-if="item.kind === 'album'">{{ item.album.artist || "—" }}<template v-if="item.album.songCount"> · {{ t("library.trackCount", { n: item.album.songCount }) }}</template></div>
+              <div class="mono-label" v-else>{{ t("library.albumEditionCount", { n: item.group.memberCount }) }}</div>
             </div>
             <!-- Per-album share. -->
             <StarButton
+              v-if="item.kind === 'album'"
               class="card-like-btn"
-              :id="al.id"
+              :id="item.album.id"
               kind="album"
-              :starred="al.starred"
-              @update:starred="onStarChanged('album', al, $event)"
+              :starred="item.album.starred"
+              @update:starred="onStarChanged('album', item.album, $event)"
               @error="onStarError"
             />
-            <button class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', al.id, al.name)"><Icon name="up" /></button>
+            <button v-if="item.kind === 'album'" class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', item.album.id, item.album.name)"><Icon name="up" /></button>
             <div class="corner corner-tr"></div>
             <div class="corner corner-bl"></div>
           </div>
@@ -2236,6 +2339,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 .song-row { position: relative; }
 
 .album-card { position: relative; }
+.group-edition-card { display: block; width: 100%; text-align: left; }
 .card-like-btn {
   position: absolute;
   top: 0.45rem;

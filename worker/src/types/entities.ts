@@ -37,6 +37,24 @@ export interface Album {
   updated_at: number;
 }
 
+export interface AlbumDisplayGroup {
+  id: string;
+  display_name: string;
+  sort_name: string | null;
+  member_album_ids: string[];
+  member_count: number;
+}
+
+export interface AlbumDisplayGroupMember {
+  id: string;
+  name: string;
+  year: number | null;
+  cover_r2_key: string | null;
+  song_count: number;
+  created_at: number;
+  artist_name: string | null;
+}
+
 export interface SongMaster {
   id: string;
   album_id: string;
