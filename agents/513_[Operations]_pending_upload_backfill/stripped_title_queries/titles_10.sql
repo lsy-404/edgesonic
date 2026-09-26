@@ -1,0 +1,1 @@
+SELECT sm.id AS master_id,sm.title,sm.track,sm.disc,sm.album_id,a.name AS album_name FROM song_masters sm JOIN albums a ON a.id=sm.album_id WHERE sm.album_id!='pending-uploads' AND lower(trim(sm.title)) IN ('青蓝色的尽头','青蓝色的尽头-洛天依','静默少女','飞鸟','鸠占鹊巢','黄昏のマリーゴールド','黑猫出现在白天','黑猫出现在白天-inst') ORDER BY sm.title,sm.album_id

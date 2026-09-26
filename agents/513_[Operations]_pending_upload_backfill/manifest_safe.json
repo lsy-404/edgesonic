@@ -1,0 +1,1512 @@
+{
+  "task": "513",
+  "generated_at_utc": "2026-09-26T10:33:17+00:00",
+  "source": "primary D1 SELECT snapshot; see findings.md for audit time/meta",
+  "candidate_map_file": "agents/513_[Operations]_pending_upload_backfill/candidate_map_safe.json",
+  "candidate_count": 310,
+  "target_album_count": 33,
+  "excluded_snapshot_count": 752,
+  "candidate_map_sha256": "b60e703efafc69a4bd0b6f188c9435e49d9f46c3c5fda81643eccf86066975f5",
+  "postflight_total_sql_sha256": "145c592182bc80abc6a63b3610f877d323335cfcff8f83957a0add0f033e2008",
+  "postflight_excluded_sql_sha256": "c4be69eb2c37f311ec06cee0ae28c3c3b6db7548464a126c0ed1ce880706f021",
+  "groups": [
+    {
+      "batch_id": "batch_001_3d159900_wav_12",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+      "codec": "wav",
+      "album_name": "\u661f\u5ea7-\u6251\u514b",
+      "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
+      "master_count": 12,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-004b6062-e62",
+        "sm-upload-0eebf238-f29",
+        "sm-upload-15e574ee-8ae",
+        "sm-upload-1e608bde-aeb",
+        "sm-upload-39152c54-b80",
+        "sm-upload-43974d21-5b5",
+        "sm-upload-43a886a9-559",
+        "sm-upload-9bfc667e-5ef",
+        "sm-upload-bb441daa-4a0",
+        "sm-upload-dbc1d60c-3c2",
+        "sm-upload-e18930ac-8e1",
+        "sm-upload-ed4828e7-cf9"
+      ],
+      "master_ids_sha256": "b56cb158b02b8f870e9716382eba64c04fd73972c1511cc9d9864611e34d658f",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_001_3d159900_wav_12.sql",
+          "sha256": "b72f2c1e5c06f85ebc04dd339a1d8c4c1f01ec5115ebcacf17f285728aa51888",
+          "bytes": 5125
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_001_3d159900_wav_12.sql",
+          "sha256": "9e2a108bf82aa221919aed4e5c09b32a117e07dc91db107d3cb2ca14130ad5fe",
+          "bytes": 20434
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_001_3d159900_wav_12.sql",
+          "sha256": "0d87652338d935bee60e245b9f3900939119f6c7f5efe6b8285d15a49f150b67",
+          "bytes": 19004
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_001_3d159900_wav_12.sql",
+          "sha256": "3fd40093e21b6c688c7f1d88c7197eee79489527fd755cc45c6bbdf2b3786741",
+          "bytes": 1295
+        }
+      }
+    },
+    {
+      "batch_id": "batch_002_9349782e_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+      "codec": "wav",
+      "album_name": "\u5fd8\u5ddd\u98ce\u534e\u5f55\u00b7\u6eaf\u6d04",
+      "target_album_id": "al-71bf81052233fba89504b82c9349782e",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-0c73cb05-35e",
+        "sm-upload-2ee8f752-0ca",
+        "sm-upload-481244dd-64a",
+        "sm-upload-5cb2b5d2-c80",
+        "sm-upload-6204a4fa-7d4",
+        "sm-upload-62e99b99-1d9",
+        "sm-upload-a6899ade-703",
+        "sm-upload-ada463c4-049",
+        "sm-upload-ae0d532d-833",
+        "sm-upload-b84182f5-1a9"
+      ],
+      "master_ids_sha256": "ce41104c559007c40bd455984c4c99df4f3b4b8c742b9046c57fc41175a5454e",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_002_9349782e_wav_10.sql",
+          "sha256": "6c558e00f51b45c3f00698d56729e8aaa6fa453e64fc3d9b2d0dc579ec166f2f",
+          "bytes": 4776
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_002_9349782e_wav_10.sql",
+          "sha256": "ce2a295ec4271af291e4c7c439aa43ffd0f39a3be186a3d39b35ad598973c9d0",
+          "bytes": 17532
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_002_9349782e_wav_10.sql",
+          "sha256": "85e959f1a6b1c9eb866c076302750f3077d2e1fa2196fea9e2d71144cf1ae7e5",
+          "bytes": 16092
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_002_9349782e_wav_10.sql",
+          "sha256": "94a870d9af4a5ec5279eafdf0c3be5a4bdfb4e41e638263ee5dab8c3b4574347",
+          "bytes": 1205
+        }
+      }
+    },
+    {
+      "batch_id": "batch_003_47859379_wav_16",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+      "codec": "wav",
+      "album_name": "bilibili \u4e59\u5df3\u86c7\u5e74\u62dc\u5e74\u7eaa\uff1a\u8de8\u8d8a\u6570\u5343\u663c\u591c",
+      "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
+      "master_count": 16,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-1e2f1e4b7ae042fe9e1ffc8ff5768369",
+        "sm-70c6f0dada0f40efbf94b99f514d791a",
+        "sm-c86a75e7bd6c409c80504a463e1ff433",
+        "sm-upload-1805dfeb-63c",
+        "sm-upload-37d48b57-ed8",
+        "sm-upload-387d305f-426",
+        "sm-upload-5f9bc5da-1ad",
+        "sm-upload-6899401d-dbe",
+        "sm-upload-811fea79-705",
+        "sm-upload-90b61b6f-15e",
+        "sm-upload-9483fe4b-134",
+        "sm-upload-9baef4f8-44e",
+        "sm-upload-b61ffb2c-af6",
+        "sm-upload-b721a47b-0fb",
+        "sm-upload-f279b49d-8f9",
+        "sm-upload-fdfb8b5a-f7f"
+      ],
+      "master_ids_sha256": "0484f15700f58b866a29949f27a76e20c1f8e5d04a5b809f9f523b0e9517ec86",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_003_47859379_wav_16.sql",
+          "sha256": "d6e5b7b4ccc80af17c6ccee8aa6aeee8b902835de6ee4798ac5bbc3d9ad403c2",
+          "bytes": 5850
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_003_47859379_wav_16.sql",
+          "sha256": "1d7222ae89a98102d39435d9d9d82e3402f85d9300aa86b85197b158b623893b",
+          "bytes": 27128
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_003_47859379_wav_16.sql",
+          "sha256": "6be8feecaaf0811000dc01bde3303780ee662f4bd11c36cc730acb9bbb4529e0",
+          "bytes": 25660
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_003_47859379_wav_16.sql",
+          "sha256": "26adfae25d8b7304641a6c367cd8885284a30c8b114aacc61431a478295da283",
+          "bytes": 1611
+        }
+      }
+    },
+    {
+      "batch_id": "batch_004_f5fb4151_wav_05",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-3289ebb925dd456ba14e6bfd5f5685f8",
+      "codec": "wav",
+      "album_name": "\u4e16\u754c\u6c89\u7761\u7ae5\u8bdd",
+      "target_album_id": "al-04d3a5af95307e73856b859df5fb4151",
+      "master_count": 5,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-0eb138eb-495",
+        "sm-upload-1fa15574-293",
+        "sm-upload-884d87d8-f8d",
+        "sm-upload-8d28b118-c2d",
+        "sm-upload-c2754cf8-e65"
+      ],
+      "master_ids_sha256": "51008db995d4abc779bee0ac4b189cc2dbcf6d71fe29aea0614f9fd5b445506a",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_004_f5fb4151_wav_05.sql",
+          "sha256": "08277f2c56f1d684e7baf39b6d08507da8ec037559d393f056570b80a0b40f8d",
+          "bytes": 4160
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_004_f5fb4151_wav_05.sql",
+          "sha256": "0cc14bc20781b6f934aa6e49abbd9d78dd9604d2ea59488f848a72a9d359f1d3",
+          "bytes": 10895
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_004_f5fb4151_wav_05.sql",
+          "sha256": "77e986deb92fe90173f391fbd0d19ddf66321622fec861690bb8996c9cdfe881",
+          "bytes": 9461
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_004_f5fb4151_wav_05.sql",
+          "sha256": "183bfdeddd2497348250d9b68047fdb79a2c43f3485663785b775416272d742c",
+          "bytes": 950
+        }
+      }
+    },
+    {
+      "batch_id": "batch_005_44608fa2_wav_07",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-32e5359531684b188a19b66cee7d9c20",
+      "codec": "wav",
+      "album_name": "\u88ab\u90a3\u4e2a\u590f\u5929\u538c\u6076\u7684\u6211\u4eec",
+      "target_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
+      "master_count": 7,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-079b5a30-681",
+        "sm-upload-11bfd8b6-551",
+        "sm-upload-22d36802-2ad",
+        "sm-upload-3e173d57-c25",
+        "sm-upload-604ea1ac-255",
+        "sm-upload-605d34a4-800",
+        "sm-upload-cdea3d45-1a9"
+      ],
+      "master_ids_sha256": "63908f4a13a6d74dfa739f76af2137a22945d3200aabbb145c4cc98dde6ad9cc",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_005_44608fa2_wav_07.sql",
+          "sha256": "3b78bb0898d6463f86fbea4656496de0e00d294eb08ceb44a0a9009376f99f47",
+          "bytes": 4456
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_005_44608fa2_wav_07.sql",
+          "sha256": "dc4aee20ce627907d72d68193498b9c293aa40fa0f06943721c3ed91d9a81fe7",
+          "bytes": 13815
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_005_44608fa2_wav_07.sql",
+          "sha256": "1158f70d0cd9b0c32a9f898c55acb0e559a7333f920b9d257348ece8c967f136",
+          "bytes": 12369
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_005_44608fa2_wav_07.sql",
+          "sha256": "f10bfc7a468cc7682382dcd1dfbd225729ca23d151fb06a87acdc80fbc8df958",
+          "bytes": 1062
+        }
+      }
+    },
+    {
+      "batch_id": "batch_006_9fe5b934_wav_12",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+      "codec": "wav",
+      "album_name": "\u65e7\u672a\u6765\u042fEMIXTION",
+      "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
+      "master_count": 12,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-1dd2c3ea-51a",
+        "sm-upload-45c17eb9-747",
+        "sm-upload-52918a7d-d0d",
+        "sm-upload-55d617d1-946",
+        "sm-upload-59b1f46e-a95",
+        "sm-upload-6175a166-606",
+        "sm-upload-7bdaf28e-f9e",
+        "sm-upload-ba3fca4b-62d",
+        "sm-upload-ce7ca9dd-629",
+        "sm-upload-e424797b-1e7",
+        "sm-upload-f5f11cb1-5e6",
+        "sm-upload-fac12da8-c8b"
+      ],
+      "master_ids_sha256": "795e6bc0aca88a0bcbd7b422ce50ff37d8b860e2dd0e31e2285657a39d6395fe",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_006_9fe5b934_wav_12.sql",
+          "sha256": "8122f5ced44896cbd382b6875d3bc4f98ee2af9fe44b3df3bde9b0d353f8763e",
+          "bytes": 5360
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_006_9fe5b934_wav_12.sql",
+          "sha256": "125b827570b0220d09c12aac3007cf2a221f1ab90d5e70116d5d656101a6303d",
+          "bytes": 21566
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_006_9fe5b934_wav_12.sql",
+          "sha256": "6fd0a9fa34e01e2b9d4ef942ccdae913a02d63972923c5d9f9b88ab9fcff37dd",
+          "bytes": 20130
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_006_9fe5b934_wav_12.sql",
+          "sha256": "bc75fb05086fa071843b10fc925a326940890a975d168bea54abcbd8de8ca815",
+          "bytes": 1301
+        }
+      }
+    },
+    {
+      "batch_id": "batch_007_255c609f_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+      "codec": "wav",
+      "album_name": "\u9006\u8fdb\u5316\u042fEVOLUTION",
+      "target_album_id": "al-3e2385da217b494f06495b58255c609f",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-05511bcc-4d5",
+        "sm-upload-43d08570-b2e",
+        "sm-upload-553e0240-555",
+        "sm-upload-620c477b-70a",
+        "sm-upload-660bdf12-2ce",
+        "sm-upload-70333488-8b5",
+        "sm-upload-8e189cf4-bc2",
+        "sm-upload-c659b405-246",
+        "sm-upload-f1efcbe8-2fb",
+        "sm-upload-f4c839d7-939"
+      ],
+      "master_ids_sha256": "94119a1807bb11252df46f4285535a3e20e4e99f61470e94d1bdb92a6d96bedf",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_007_255c609f_wav_10.sql",
+          "sha256": "c6ef627939ef05b32779f19d717963c3d5e8d606f29a4b54ae0512479c7836b4",
+          "bytes": 4849
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_007_255c609f_wav_10.sql",
+          "sha256": "a744f64dc6fd5be95cbd533581b7b6b016d89621bd360e751c77a418a7d1b353",
+          "bytes": 17788
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_007_255c609f_wav_10.sql",
+          "sha256": "89baf4bcd7ae1c7a6053c056c1730db49a1e8885bf5a4d034e8c064279cd4f0c",
+          "bytes": 16351
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_007_255c609f_wav_10.sql",
+          "sha256": "b7821b48f491f568749061a4c8672e777280549a4152ccb2949d454cbb58ebf2",
+          "bytes": 1202
+        }
+      }
+    },
+    {
+      "batch_id": "batch_008_6cfb5fdf_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+      "codec": "wav",
+      "album_name": "\u5170\u97f3.2024.\u300a\u5f62\u795e\u5408\u4e00\u300b",
+      "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-0e5df05d-8f8",
+        "sm-upload-229fabb8-45d",
+        "sm-upload-5ef32f7a-887",
+        "sm-upload-741e30e9-2a8",
+        "sm-upload-9a2b0423-b81",
+        "sm-upload-c44b0f7c-761",
+        "sm-upload-cc9304d5-527",
+        "sm-upload-d0988a3b-ddc",
+        "sm-upload-f994d933-d13",
+        "sm-upload-fd16b9a8-697"
+      ],
+      "master_ids_sha256": "903ea00394ffe819c7e2110f4d531112863f0dc184672f3ce09e6be1f2fded09",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_008_6cfb5fdf_wav_10.sql",
+          "sha256": "5d445085038cc4fb5816ca41c02c71203958de732492e8aff1cfb66ab91911fd",
+          "bytes": 5098
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_008_6cfb5fdf_wav_10.sql",
+          "sha256": "801939b21c4c7fa44c986f9d169dbe121b94b3e6cec57d0e375c032c228cd728",
+          "bytes": 18864
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_008_6cfb5fdf_wav_10.sql",
+          "sha256": "3dd5401b16aad68f26228f775fa9b95de3ad88a2c23f7bf334330afbd155b7b5",
+          "bytes": 17417
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_008_6cfb5fdf_wav_10.sql",
+          "sha256": "4771474fa1c0a9dd7b52531135eb01fe529ebae09c075cb76f0262eaab15c3ea",
+          "bytes": 1212
+        }
+      }
+    },
+    {
+      "batch_id": "batch_009_cf66a64d_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+      "codec": "wav",
+      "album_name": "SE\uff1eEN(Sya)SEVEN",
+      "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-0f2858ab-23e",
+        "sm-upload-2fa950da-a07",
+        "sm-upload-40ec654c-f08",
+        "sm-upload-5c324864-c88",
+        "sm-upload-5cd6f1b2-596",
+        "sm-upload-5d8c3e73-3b9",
+        "sm-upload-8492670d-25f",
+        "sm-upload-afdf5f4f-429",
+        "sm-upload-b4b6cc03-4a0",
+        "sm-upload-d1382210-3d5"
+      ],
+      "master_ids_sha256": "54fdcba6cc200f543382f99b42617cf48987799aa4cfe9ffdc8323c1064ecd41",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_009_cf66a64d_wav_10.sql",
+          "sha256": "aa5269f8f354288287966b19cf7cc5d1e49b26b866e5a4fe7f3308b4bcf3db2a",
+          "bytes": 4813
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_009_cf66a64d_wav_10.sql",
+          "sha256": "e5a84d668086783662367d4ca9242b06dca49efb7b948cf7a4e715f1e530e9a0",
+          "bytes": 17668
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_009_cf66a64d_wav_10.sql",
+          "sha256": "2b8c644929769a039e9df49f7c845b6bae823b3b59e7b94ffb705ba7e8761722",
+          "bytes": 16234
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_009_cf66a64d_wav_10.sql",
+          "sha256": "0f15be5c4fe38a6c2f13d9940bfaf1cf8afa4bd855bf60aef9a0840630bfb33f",
+          "bytes": 1199
+        }
+      }
+    },
+    {
+      "batch_id": "batch_010_aa30d1e1_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+      "codec": "wav",
+      "album_name": "\u4f17\u866b\u7686\u6b4c",
+      "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-0f2e057c-5a1",
+        "sm-upload-2a26712c-984",
+        "sm-upload-3c2f0270-93c",
+        "sm-upload-8b54d965-cef",
+        "sm-upload-95c704d9-7a3",
+        "sm-upload-9d07ba09-a49",
+        "sm-upload-cd65bb92-34f",
+        "sm-upload-e94697d9-8e4",
+        "sm-upload-f748f953-ced",
+        "sm-upload-fa58b133-8bc"
+      ],
+      "master_ids_sha256": "ace103fa5498adc4afdc5ba8fbcbab669d05bdc8d824b328e079b91e3e7c5eda",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_010_aa30d1e1_wav_10.sql",
+          "sha256": "0a97949b35996514f9e7bcd2d6a75e3ec96a45df2f512b85b1c730a1bbc8f929",
+          "bytes": 5082
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_010_aa30d1e1_wav_10.sql",
+          "sha256": "03f5c86eff7a453e2fa03ac36d7c6f74ad046d69d5c179d04457dde4bf0c213a",
+          "bytes": 18714
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_010_aa30d1e1_wav_10.sql",
+          "sha256": "58f82ee68098242db038e0ac0a4aa87c280f105603e4083a8111939d998d70ff",
+          "bytes": 17285
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_010_aa30d1e1_wav_10.sql",
+          "sha256": "633f367eba113e08ec9eeceb79137f9caf5c6faf3c5f95608a12d94133604510",
+          "bytes": 1194
+        }
+      }
+    },
+    {
+      "batch_id": "batch_011_4131044b_wav_04",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-4d81506c43c249f3b64dc32c47d15111",
+      "codec": "wav",
+      "album_name": "\u6625\u534e\u79cb\u62fe",
+      "target_album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
+      "master_count": 4,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-46552f7f-fae",
+        "sm-upload-56571117-ce0",
+        "sm-upload-a0ec2a9f-fe9",
+        "sm-upload-f3f4157d-6ee"
+      ],
+      "master_ids_sha256": "81463bda8e6bceabe3818af3e3ac4b58b991e38092dc814e8f1c9f162f89e0db",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_011_4131044b_wav_04.sql",
+          "sha256": "b1364d8bdd6980520490846f3d23a7c8bd9836739b1db30dad2003f5461bf3bc",
+          "bytes": 3936
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_011_4131044b_wav_04.sql",
+          "sha256": "b060f0308ccee44b23ccd46d34617fd5ab9003fa70a39f05d25f263f4ebc94ff",
+          "bytes": 9165
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_011_4131044b_wav_04.sql",
+          "sha256": "9261bfd0c82fde56ce8d1172014be147268770c87cec09eba6266347efda63f6",
+          "bytes": 7737
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_011_4131044b_wav_04.sql",
+          "sha256": "5e5f90f67007dd64fc4571dc977f3089ecb1676c24944fdf558852fdeb7a6116",
+          "bytes": 894
+        }
+      }
+    },
+    {
+      "batch_id": "batch_012_1408f656_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+      "codec": "wav",
+      "album_name": "\u5e7d\u7075\u6444\u5f71",
+      "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-03470670-934",
+        "sm-upload-374b472d-1d7",
+        "sm-upload-5b301238-460",
+        "sm-upload-690ad431-b59",
+        "sm-upload-6d9de5af-539",
+        "sm-upload-748d72b1-fc1",
+        "sm-upload-9bf8a3dc-49c",
+        "sm-upload-a4759b23-456",
+        "sm-upload-d178378d-bc5",
+        "sm-upload-f55d9ac5-408"
+      ],
+      "master_ids_sha256": "ad9f23adbee91167be7eda309888134c677253741b34bca88af1afc79e34c8a8",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_012_1408f656_wav_10.sql",
+          "sha256": "2eefe61501e4052ca6b6add081a92b67575101890d2b6d1b1f2d6efb76629772",
+          "bytes": 4752
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_012_1408f656_wav_10.sql",
+          "sha256": "70f1b8454fc8c7a9f499e8f748419eace7113f4bbf4582da3be5b7c189cdf3b6",
+          "bytes": 17304
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_012_1408f656_wav_10.sql",
+          "sha256": "6064c7850a657eab0338dfa6ef81cc6f9948087de32007e18eb52f9593fc5992",
+          "bytes": 15875
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_012_1408f656_wav_10.sql",
+          "sha256": "4114878fae2fd9b453e7775630158ae4cec546ff7465687a9b13826135bcf87c",
+          "bytes": 1194
+        }
+      }
+    },
+    {
+      "batch_id": "batch_013_0fb87970_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-6023b463feaa42e389ed86f8554d69b6",
+      "codec": "wav",
+      "album_name": "\u5fc3\u8bed",
+      "target_album_id": "al-216f4095bcd91c9197f8cb640fb87970",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-1128b5a0-ce0",
+        "sm-upload-1cd9d081-b6d",
+        "sm-upload-206e47d9-a48",
+        "sm-upload-432ba270-b5e",
+        "sm-upload-5615bc1e-d29",
+        "sm-upload-5fdc3794-8b3",
+        "sm-upload-8f59da34-f13",
+        "sm-upload-9094c1a3-3a5",
+        "sm-upload-96f3cedc-994",
+        "sm-upload-c3ebd766-3c7"
+      ],
+      "master_ids_sha256": "12581103f148b478c6b5fc5119226858785e86f679478dd5310049ea553687e2",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_013_0fb87970_wav_10.sql",
+          "sha256": "77372eb21fb4fcbdeb96ca29e37de27c43d72acf52e2021c7feb72fc4dc7d406",
+          "bytes": 4766
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_013_0fb87970_wav_10.sql",
+          "sha256": "02253efaba5f6bd60ef1d9be1facffad532e7d8d0609ae16a507e744cb7c6f76",
+          "bytes": 17288
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_013_0fb87970_wav_10.sql",
+          "sha256": "150cb49e073831878d2afaa739f3b96e71a421c4bdf23756bb3334303a35c739",
+          "bytes": 15865
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_013_0fb87970_wav_10.sql",
+          "sha256": "3025c4e8e1b468e078b409bb59cdd9b83c7acaf061e8771e9f5c689190172cd5",
+          "bytes": 1188
+        }
+      }
+    },
+    {
+      "batch_id": "batch_014_3cc00b92_wav_05",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-6fbe9b356f8040fe84f33e4c4662a998",
+      "codec": "wav",
+      "album_name": "\u82b1\u3068\u7d04\u675f",
+      "target_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
+      "master_count": 5,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-21b7d621-482",
+        "sm-upload-342fe6c2-97a",
+        "sm-upload-6e85a152-b10",
+        "sm-upload-8b0078a9-701",
+        "sm-upload-a4b6dd5d-b13"
+      ],
+      "master_ids_sha256": "f3a016a33ca7bda6bac876a42166badda93fd7a876427152af4cdc39a3ca3888",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_014_3cc00b92_wav_05.sql",
+          "sha256": "fd7e8c14dcdaac99feb45588a4f32c1de16bae053d3635031bd42d7169f27bd6",
+          "bytes": 4195
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_014_3cc00b92_wav_05.sql",
+          "sha256": "0f0b5bc81514691c2627abd7d37c06dbf4d3e1a505e98196ff4b297d07f5268b",
+          "bytes": 11013
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_014_3cc00b92_wav_05.sql",
+          "sha256": "b113a9325bfc125461b7a7a58ffa4b21066156f57b48aae3d9de7ce11e37732b",
+          "bytes": 9585
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_014_3cc00b92_wav_05.sql",
+          "sha256": "c97daa04c92dc17081ea6ff5a1a80b7d900f6aea300f86cc952f47d1597d9cd7",
+          "bytes": 944
+        }
+      }
+    },
+    {
+      "batch_id": "batch_015_4854213f_flac_05",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-745ffebfbe864d65b6393dc1b745b514",
+      "codec": "flac",
+      "album_name": "\u56db\u5b63\u6709\u65f6",
+      "target_album_id": "al-0e047abb5cbbdac294a9db7f4854213f",
+      "master_count": 5,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-826bbf27707049f088b67dcfe4b2909d",
+        "sm-ff03e1e966b7481cb1db2620812de72e",
+        "sm-upload-1dad7e8b-f48",
+        "sm-upload-225801dc-e26",
+        "sm-upload-958b08f3-738"
+      ],
+      "master_ids_sha256": "f3c33756c6e9aeb6457909e7629ff21e9a99252400a6f791e6bad707071ab1d2",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_015_4854213f_flac_05.sql",
+          "sha256": "e45e58422003a950e3a90c93e9419c1d30a4e80e80e4b86f26a0ad009375db4b",
+          "bytes": 4254
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_015_4854213f_flac_05.sql",
+          "sha256": "0173681ce115aeec4b5927b24ef6cffc27565f170c97a2929e4abc90bc3438f9",
+          "bytes": 11197
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_015_4854213f_flac_05.sql",
+          "sha256": "1a0e89e291320ae56f745d658c561d1ce899ee2727de02488b718ce279f60ea6",
+          "bytes": 9766
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_015_4854213f_flac_05.sql",
+          "sha256": "d65ec236ce5442895007c59e5ed50275c53f48035f338b4381b6d4a451c32fc8",
+          "bytes": 997
+        }
+      }
+    },
+    {
+      "batch_id": "batch_016_bc83cf23_wav_08",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-75979773002b4fed977cd3e51f85e28d",
+      "codec": "wav",
+      "album_name": "\u4eba\u9020\u6811\u7684\u5e7d\u7075",
+      "target_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
+      "master_count": 8,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-1dd661f9659f4669ba92d344dbb67f38",
+        "sm-c92fa5ec76c8405d9c7cec39c7e97587",
+        "sm-cc2b8a2847e94a7586e169984ce00b4d",
+        "sm-upload-10cb9874-55d",
+        "sm-upload-23889318-5b0",
+        "sm-upload-a2d38eb8-164",
+        "sm-upload-c011a487-1d5",
+        "sm-upload-ecbc0416-dfd"
+      ],
+      "master_ids_sha256": "d24bc2d9e296f316a8e2a92db9b5a6f18aec88eb008f58b85629221ab680b02c",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_016_bc83cf23_wav_08.sql",
+          "sha256": "827e613c96a77e0fee4e56c073c20f4cd05e6a8309ca7964842de66ce4bd9bd3",
+          "bytes": 4836
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_016_bc83cf23_wav_08.sql",
+          "sha256": "cd08d5eafae631eb32cd5c3e156c6c2f8cfb48c128f8f04ca61bf95377ab8dc6",
+          "bytes": 15995
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_016_bc83cf23_wav_08.sql",
+          "sha256": "b128b2d5748f29bf21cdef4da0ab0b2c625743f680ef32efec194f667d8403f8",
+          "bytes": 14561
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_016_bc83cf23_wav_08.sql",
+          "sha256": "942967dc496acee595791a322be5630c9a5d997512cfc1a4a38ac4e8cd71b1a5",
+          "bytes": 1178
+        }
+      }
+    },
+    {
+      "batch_id": "batch_017_cd16c784_wav_08",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-75d346df2f574adeb9b44b73a2dc9fd4",
+      "codec": "wav",
+      "album_name": "\u4f4e\u8bed\u8005",
+      "target_album_id": "al-44bf6641ecfaf08f307a0587cd16c784",
+      "master_count": 8,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-08c5fd9b-a07",
+        "sm-upload-0f6e0515-62c",
+        "sm-upload-5979a6ff-f6c",
+        "sm-upload-746012d3-887",
+        "sm-upload-75a8634a-1b1",
+        "sm-upload-8aa9653f-bb6",
+        "sm-upload-9ac28768-466",
+        "sm-upload-b4e17f3c-27c"
+      ],
+      "master_ids_sha256": "4d2185ce9b13613a141f949c38bda2aa1e7e194ef7d62344bae3888002277812",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_017_cd16c784_wav_08.sql",
+          "sha256": "a90741d2080fda2ba963356d139eca9532ad56c2ddb467f9d141e265807ce23a",
+          "bytes": 4557
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_017_cd16c784_wav_08.sql",
+          "sha256": "eacd39d3301430a8bde15cad912aa07f8708af22570b7a4f08359981e87d4d5a",
+          "bytes": 14835
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_017_cd16c784_wav_08.sql",
+          "sha256": "479aa403bf7935754ab2f934c0078247706b2706f44fefb11e06a64fe3d8731b",
+          "bytes": 13410
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_017_cd16c784_wav_08.sql",
+          "sha256": "b83faaf8d70306a349cea72535afdbfd08cfaa94ebcf3c39f525655b501ee59c",
+          "bytes": 1091
+        }
+      }
+    },
+    {
+      "batch_id": "batch_018_89b22aec_wav_11",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+      "codec": "wav",
+      "album_name": "\u9ed1\u767d",
+      "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
+      "master_count": 11,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-22e86a0b11974fe4915430f2119da7c4",
+        "sm-4d0d004dd8d74ebaadc851d5efab5525",
+        "sm-be8ba6dfd67f4f9a91bdb33b44d41d3a",
+        "sm-cdeaab57721d46afb6365cca2b0a146f",
+        "sm-e23ea8bf9f4846d7bfbda205e7b09672",
+        "sm-f9ae632a2ba14540a099fbb663bd3750",
+        "sm-upload-152098f7-f9e",
+        "sm-upload-2207d12c-443",
+        "sm-upload-3d0dfe07-125",
+        "sm-upload-abf7fe3c-d54",
+        "sm-upload-ce73a06c-13b"
+      ],
+      "master_ids_sha256": "1ac25d88a20f400e0bedc62c646a01203d318bc6534a436c335f891d710c5944",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_018_89b22aec_wav_11.sql",
+          "sha256": "35cb2ab3ab65a9f1a180828030e29bda99a628863beee6de5868613881b52138",
+          "bytes": 5180
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_018_89b22aec_wav_11.sql",
+          "sha256": "5992dc5a832dc0807feb13630c3810f87f5930a96f06a2ebf18e7ca18f6b3711",
+          "bytes": 19594
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_018_89b22aec_wav_11.sql",
+          "sha256": "5402fe6a416b723ecf131d4cf645794b0671e176bda4d1a04e3800387a73d4be",
+          "bytes": 18171
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_018_89b22aec_wav_11.sql",
+          "sha256": "ea442ad56e5fb0e17aaed5e48c58245f6d93b7c2396e33bf0bca003a99355848",
+          "bytes": 1394
+        }
+      }
+    },
+    {
+      "batch_id": "batch_019_85f2f0fb_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+      "codec": "wav",
+      "album_name": "AI\u7eeb",
+      "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-04e4f884-8c1",
+        "sm-upload-15add848-cb6",
+        "sm-upload-8027cffa-3f0",
+        "sm-upload-914669ae-daf",
+        "sm-upload-baaca575-1e5",
+        "sm-upload-c422ca21-bc0",
+        "sm-upload-c5006572-e0e",
+        "sm-upload-c80b56a6-9cb",
+        "sm-upload-e38cb628-82f",
+        "sm-upload-e4b4a430-9bf"
+      ],
+      "master_ids_sha256": "68ed32cc574bbe9fa9230dbe0137a68e1dcfe36805784cb5af5394a9ad72a3df",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_019_85f2f0fb_wav_10.sql",
+          "sha256": "9b3cb4f280c735b85ad44b70e96b1add6adaee4623801e37326dd39d7586eb92",
+          "bytes": 4865
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_019_85f2f0fb_wav_10.sql",
+          "sha256": "02c6b443a1fb94f0af81d74aa7d2b23e04582b0b3be1bc7b845c73390d105a4d",
+          "bytes": 17672
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_019_85f2f0fb_wav_10.sql",
+          "sha256": "c60bb80f10fe51c15b6665e991b8a6d9a571f2120ee1c46500b5b1448f025c62",
+          "bytes": 16250
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_019_85f2f0fb_wav_10.sql",
+          "sha256": "a9641dbed95a140ba085cb2d91fbcc7543189cfa7a373419c9b80983ab762381",
+          "bytes": 1187
+        }
+      }
+    },
+    {
+      "batch_id": "batch_020_60f1e1a8_wav_16",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+      "codec": "wav",
+      "album_name": "cop\u5341\u5468\u5e74\u7eaa\u5ff5\u4e13\u8f91",
+      "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
+      "master_count": 16,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-0796f5d3-fd3",
+        "sm-upload-0d698ddd-586",
+        "sm-upload-34a4e79c-3ac",
+        "sm-upload-3e4a3e0c-5e1",
+        "sm-upload-412884aa-3c6",
+        "sm-upload-5189133a-af2",
+        "sm-upload-55fa915d-2e6",
+        "sm-upload-642c5555-32e",
+        "sm-upload-68e21ac4-af0",
+        "sm-upload-962f69d3-a47",
+        "sm-upload-be4c6092-980",
+        "sm-upload-c823de32-b12",
+        "sm-upload-d38bae55-e32",
+        "sm-upload-d4898d69-3e7",
+        "sm-upload-d9e8676f-0f4",
+        "sm-upload-e258a0c1-196"
+      ],
+      "master_ids_sha256": "bb275fdf916a8501bd6a9aeb2d197018cee311f4b41b28d194613e2a680d7467",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_020_60f1e1a8_wav_16.sql",
+          "sha256": "0902868a56f503abe5516d6f09721f58265dfce00dd35e45e91b690acdf14c76",
+          "bytes": 5706
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_020_60f1e1a8_wav_16.sql",
+          "sha256": "62d9bc10af137584e5f4f7ee7c573853d55ab41dde66899b28ebfd05d187a6ed",
+          "bytes": 26224
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_020_60f1e1a8_wav_16.sql",
+          "sha256": "2f956281cb5604d1bdf375795ecdf0114d46a0ccd6897f95db813bcab295bb4f",
+          "bytes": 24783
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_020_60f1e1a8_wav_16.sql",
+          "sha256": "aa6fe0542e5eae7e82a6e5b43d6dd5c9389c611141d8a28251ca993a7b0879f9",
+          "bytes": 1506
+        }
+      }
+    },
+    {
+      "batch_id": "batch_021_558e2e31_wav_07",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-82848db02c064f558f97f6e9f71030a4",
+      "codec": "wav",
+      "album_name": "Stay",
+      "target_album_id": "al-07915266661ed52013a2a9b3558e2e31",
+      "master_count": 7,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-1de39a7a-1f1",
+        "sm-upload-424bd1ff-5a3",
+        "sm-upload-4fd0058b-e08",
+        "sm-upload-740bc22a-fef",
+        "sm-upload-ac402330-2bd",
+        "sm-upload-b2ddad51-47e",
+        "sm-upload-d60777bc-dc0"
+      ],
+      "master_ids_sha256": "fe62809c749b220b8a3d536d4cd46619b529c58521f72ccf83686639164717a9",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_021_558e2e31_wav_07.sql",
+          "sha256": "ca7eb74d2192a5ed4196ccef10524e82e780e34a01d221c5e8de6aa9dd82ffc1",
+          "bytes": 4363
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_021_558e2e31_wav_07.sql",
+          "sha256": "fb5df0544c3348d57a29ecc01269c3721343925a43b7e0861607ae99cccfee35",
+          "bytes": 13293
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_021_558e2e31_wav_07.sql",
+          "sha256": "85bb6147811dae608d5a8ae17acd798e576df5151154002a425cdc97334c537f",
+          "bytes": 11873
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_021_558e2e31_wav_07.sql",
+          "sha256": "38cb312d459424e959a936aa9a53abcc48fd6a7c842c4042fa98951b69b40c65",
+          "bytes": 1036
+        }
+      }
+    },
+    {
+      "batch_id": "batch_022_e9e5d1d1_wav_07",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-83ff22b8a4ab423f9b13bea30a6da02a",
+      "codec": "wav",
+      "album_name": "\u6d1b\u5929\u4f9d\u7684\u6784\u6210",
+      "target_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
+      "master_count": 7,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-0b952309-f12",
+        "sm-upload-4f002225-23e",
+        "sm-upload-505a75f1-b7c",
+        "sm-upload-b6fe712d-3a5",
+        "sm-upload-b8855014-029",
+        "sm-upload-bafd2d2b-bd0",
+        "sm-upload-d8657b96-c3e"
+      ],
+      "master_ids_sha256": "d0f1ccc90f8e1a276ca9dbb7ba03b4de6ced8c80893252ca0e679ad322122fcc",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_022_e9e5d1d1_wav_07.sql",
+          "sha256": "675d2f79ef991092c6fc9645fec29f35fe4d0c0c014a67f9271533c0fe6e9090",
+          "bytes": 4424
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_022_e9e5d1d1_wav_07.sql",
+          "sha256": "2cff9980975e3c304e1e98eb1d8adc1a8688b7d43855196c12e6a91db9dbdf63",
+          "bytes": 13607
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_022_e9e5d1d1_wav_07.sql",
+          "sha256": "d568f9ad708b77b6da9fee67aa46c7b874063402db2d614000dbc8d722f2c3d4",
+          "bytes": 12173
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_022_e9e5d1d1_wav_07.sql",
+          "sha256": "76f268d85eaab92afbc5a84a6a25512d54520af3d1e9ff66d02a1b0c83a0850f",
+          "bytes": 1050
+        }
+      }
+    },
+    {
+      "batch_id": "batch_023_ab49c3aa_wav_12",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-85be26492c6440ff82e959bcfec2ef85",
+      "codec": "wav",
+      "album_name": "\u5982\u671f\u5f52\u8fd8",
+      "target_album_id": "al-cd703f7e5c09e82d79eee0fcab49c3aa",
+      "master_count": 12,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-03f927a6-a92",
+        "sm-upload-11a81433-a92",
+        "sm-upload-245d4826-0d3",
+        "sm-upload-56e53753-a5e",
+        "sm-upload-7c0baf4d-48f",
+        "sm-upload-923fa920-814",
+        "sm-upload-af7bb2d0-c0b",
+        "sm-upload-b1671870-9ac",
+        "sm-upload-cc730a2d-690",
+        "sm-upload-e6226df5-f61",
+        "sm-upload-f4b8da7e-d1b",
+        "sm-upload-f5f302ee-f59"
+      ],
+      "master_ids_sha256": "6a968efab032b9bfb613010152c6ab1876b45863ad336cf9c96b9dda2dfc7b02",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_023_ab49c3aa_wav_12.sql",
+          "sha256": "2bb035fb91fa0ef08f71434890ce8851299c0e76919bfe41e7d561569d4af48a",
+          "bytes": 5155
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_023_ab49c3aa_wav_12.sql",
+          "sha256": "f7ceea217df33bd8d88bfb7e58b130489372d65c0ff2d4a38d5df79ed8adf7fa",
+          "bytes": 20540
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_023_ab49c3aa_wav_12.sql",
+          "sha256": "b2ae3cad5b0ee9d1ae7d38a3d2673b87824a0b6d8d031762eabab507dedad93d",
+          "bytes": 19111
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_023_ab49c3aa_wav_12.sql",
+          "sha256": "69b657638c2dc26d8a42bf75de553d5df7d41e64a33ac8582661e6639a787262",
+          "bytes": 1294
+        }
+      }
+    },
+    {
+      "batch_id": "batch_024_5b59c9ae_wav_09",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+      "codec": "wav",
+      "album_name": "OTOME",
+      "target_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
+      "master_count": 9,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-57aa6388-1d3",
+        "sm-upload-702be9dc-d25",
+        "sm-upload-87176740-d8e",
+        "sm-upload-8f24fa72-b29",
+        "sm-upload-b908a83a-97a",
+        "sm-upload-be0b96c2-963",
+        "sm-upload-d0a56a7b-4f8",
+        "sm-upload-de754d56-ea4",
+        "sm-upload-fcb9b5ca-27c"
+      ],
+      "master_ids_sha256": "a1b6c22d828aba3497172a60035c058054cc11321d0ed99c661ba10851602746",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_024_5b59c9ae_wav_09.sql",
+          "sha256": "e5261f9850a118015ce1c1897db18fe1fc14b675c9e933790f1dda2ecc8caa1d",
+          "bytes": 4711
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_024_5b59c9ae_wav_09.sql",
+          "sha256": "7877f89cf4ddf698dba2acf962f8c3be58084a57166859b526dd53804e8cb7aa",
+          "bytes": 16248
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_024_5b59c9ae_wav_09.sql",
+          "sha256": "337caf8324f6d163c7db6419d17d3fdca98495586fa0a6af623aec7df440c108",
+          "bytes": 14827
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_024_5b59c9ae_wav_09.sql",
+          "sha256": "e5779abb71e02ad1f80d783ecf0fb5a064a8ad5f98c53ea55ac71dfcb4236444",
+          "bytes": 1137
+        }
+      }
+    },
+    {
+      "batch_id": "batch_025_e3640d3b_wav_08",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+      "codec": "wav",
+      "album_name": "sakuya\u85af\u7247~THE NOCTURNE",
+      "target_album_id": "al-3601f0337902ef9583048198e3640d3b",
+      "master_count": 8,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-9259e6f5144348d3b9f1881d95c31d97",
+        "sm-upload-00474c5a-882",
+        "sm-upload-12d68563-b7d",
+        "sm-upload-2e7224ec-39c",
+        "sm-upload-3020e076-7c7",
+        "sm-upload-47be279d-a1f",
+        "sm-upload-4af9cee4-3d9",
+        "sm-upload-5080d6c6-ec3"
+      ],
+      "master_ids_sha256": "8d1f6e97ab80d15d1324a9f7daaef8f2c5c2af93e52141d5300764d293417492",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_025_e3640d3b_wav_08.sql",
+          "sha256": "4bf388ffa96c5cf7fd96ed8844226962680e3673058ac0bda53ba709b306eea6",
+          "bytes": 4555
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_025_e3640d3b_wav_08.sql",
+          "sha256": "d1061445797a01e2878d8494d60798bbe7ef05414f68d47feeb061c3a9974abb",
+          "bytes": 14993
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_025_e3640d3b_wav_08.sql",
+          "sha256": "b1359addec4d3db56c66179549f6152ba8dcd224af773f556938a892e53a1ce5",
+          "bytes": 13552
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_025_e3640d3b_wav_08.sql",
+          "sha256": "f2b855e839e31ab7277f2c6817807baee5d3aee7fea6a085e561f7078f302e35",
+          "bytes": 1133
+        }
+      }
+    },
+    {
+      "batch_id": "batch_026_22c0a8f2_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-a0056771145d4523beec2130498ef23e",
+      "codec": "wav",
+      "album_name": "\u56de\u58f0\u6f2b\u8fc7\u8352\u539f",
+      "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-205b475a8daa49e7aac80f692e08ef85",
+        "sm-77217bc2bfde468a9df2c5898f54cfbf",
+        "sm-cb51493104794550b49f7988b8d268e5",
+        "sm-upload-0243c28d-146",
+        "sm-upload-0bbfaed5-aa8",
+        "sm-upload-2913df11-776",
+        "sm-upload-4a6b97de-6d6",
+        "sm-upload-5d55b9ac-edb",
+        "sm-upload-67747466-85e",
+        "sm-upload-e6ce4e4e-0b8"
+      ],
+      "master_ids_sha256": "2726b9110b4704020ec836328ae0bcf0a899e8e9dde566997b7697da89379338",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_026_22c0a8f2_wav_10.sql",
+          "sha256": "2c2e0548110429ca53b661ecb76a6552c4b151d47eb26bb98397ab3405200972",
+          "bytes": 4899
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_026_22c0a8f2_wav_10.sql",
+          "sha256": "d87e20d6fcda00e228db3def84e5aca3923a4a87ef70f1e00fac9df406d8d466",
+          "bytes": 17886
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_026_22c0a8f2_wav_10.sql",
+          "sha256": "e2d21129799ee2884fa2065db230921c73c726a4e312326cdd21c2e72c3cc94a",
+          "bytes": 16451
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_026_22c0a8f2_wav_10.sql",
+          "sha256": "df87cf5d8ecb81117e78c4a801f5ac29276a5a8d9ec3c470d324035f736a6604",
+          "bytes": 1278
+        }
+      }
+    },
+    {
+      "batch_id": "batch_027_28afc804_wav_11",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-b6db70c3a2264b868dacf4f4678c6054",
+      "codec": "wav",
+      "album_name": "\u8d4f\u5473\u671f\u9650",
+      "target_album_id": "al-d661f426bd5bde71baa8114128afc804",
+      "master_count": 11,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-313044d5-8e7",
+        "sm-upload-56bf2361-db0",
+        "sm-upload-5ccdcea5-f34",
+        "sm-upload-705493af-48f",
+        "sm-upload-795396d6-0dc",
+        "sm-upload-7c38c335-00f",
+        "sm-upload-88b0c03f-c5d",
+        "sm-upload-b4d0e9bd-ff0",
+        "sm-upload-debcd1ae-909",
+        "sm-upload-e4a10341-0e6",
+        "sm-upload-eebc0991-9f4"
+      ],
+      "master_ids_sha256": "07120074fcff21eeefbe487acde8efe2b76c2667371509640aa50871fba529b8",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_027_28afc804_wav_11.sql",
+          "sha256": "8922f440c80e2c51584a30d6d623227bb01a2e44b5fc4154537102868c1be5d4",
+          "bytes": 4998
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_027_28afc804_wav_11.sql",
+          "sha256": "bd4f8cd8060da6e7168a9bd07fd63740f9ff2278e63c5df38235bb3993640d5a",
+          "bytes": 19100
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_027_28afc804_wav_11.sql",
+          "sha256": "afb29bd3c608f830919d9a914049cf55bcbf1726ef15c1d59259519dfe7d7386",
+          "bytes": 17671
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_027_28afc804_wav_11.sql",
+          "sha256": "58868d3dfbf31cdeedd10a32828a81843847404231fd59f4c43fdf37f783e161",
+          "bytes": 1244
+        }
+      }
+    },
+    {
+      "batch_id": "batch_028_690057c2_wav_01",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-c7876d840373456ca0d7f774c5f39224",
+      "codec": "wav",
+      "album_name": "\u8854\u98ce\u4e0e\u613f",
+      "target_album_id": "al-d1eb61467eb114e11bfea9d9690057c2",
+      "master_count": 1,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-d3e438fe-c79"
+      ],
+      "master_ids_sha256": "ce63f12183287c3963b6528cbf573a7121860f264d459ca3dd75e8c3b8b03a62",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_028_690057c2_wav_01.sql",
+          "sha256": "520c4aece1d9a8e3c74d3936501aa1c3909d7a754fcd600b118b6e9618c4de67",
+          "bytes": 3516
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_028_690057c2_wav_01.sql",
+          "sha256": "6aa1b563b3ab30ff37242d2cbf4a8229407d10c51e020be243513bf1cc646829",
+          "bytes": 5045
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_028_690057c2_wav_01.sql",
+          "sha256": "814c71f91585a2741a1bc9a491bcdd435f2d14d6bad275820232eb8b5e3aa1d8",
+          "bytes": 3617
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_028_690057c2_wav_01.sql",
+          "sha256": "1d1215dafcd75cb40af536168f15633ae5fc99e4b9c9f0713347a20f72082c73",
+          "bytes": 744
+        }
+      }
+    },
+    {
+      "batch_id": "batch_029_78334fe1_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+      "codec": "wav",
+      "album_name": "\u5b9e\u529b\u81f3\u4e0a-\u5947\u602a\u96f7\u5b50QGRay",
+      "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-04afa76593a947bab6e7aa9ab1fac848",
+        "sm-a04802ee79434c569c4a8037334fffe9",
+        "sm-aea8f18fd18a48d29d2a9b8e6c9cbfdc",
+        "sm-upload-0223d040-b1c",
+        "sm-upload-04789844-9c6",
+        "sm-upload-096c103b-c28",
+        "sm-upload-139421cf-b09",
+        "sm-upload-3ccc4425-662",
+        "sm-upload-5028ec56-8ea",
+        "sm-upload-558f35c9-d77"
+      ],
+      "master_ids_sha256": "369e5752b3a167de611f0791fb85f529658822f5c6f4be9d05ffc26ada1f9601",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_029_78334fe1_wav_10.sql",
+          "sha256": "d30cd27d244c2bb5a5bd88e0b2dbb56ec2e36516b8c1ea9dced8acb0876885cf",
+          "bytes": 4896
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_029_78334fe1_wav_10.sql",
+          "sha256": "bb4b00d79551b4b5c25d476f0ae55225d06c521a4193d728da800f6bd5359053",
+          "bytes": 18018
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_029_78334fe1_wav_10.sql",
+          "sha256": "144cbc4c1219f191d9fd9dfbae7bd6e3a486392107df728e79b834ac71a18343",
+          "bytes": 16571
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_029_78334fe1_wav_10.sql",
+          "sha256": "f3f4bb780309d104d6138b48037f1eddc159433662699803377a93c28e9db8c9",
+          "bytes": 1290
+        }
+      }
+    },
+    {
+      "batch_id": "batch_030_2c4cb6bc_wav_14",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+      "codec": "wav",
+      "album_name": "\u9ed1\u732b\u51fa\u73b0\u5728\u767d\u5929-\u4e03\u70b9\u534a",
+      "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
+      "master_count": 14,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-093f74ab-8b9",
+        "sm-upload-42481750-586",
+        "sm-upload-4438c1e4-e9b",
+        "sm-upload-4663e1f2-1e1",
+        "sm-upload-4a92f357-06e",
+        "sm-upload-58a0f37c-7c7",
+        "sm-upload-5ca7125b-fa4",
+        "sm-upload-61fbaa65-987",
+        "sm-upload-64e68350-1e0",
+        "sm-upload-a68ccf5a-864",
+        "sm-upload-bc3bb5a0-94b",
+        "sm-upload-cab08fa5-c3a",
+        "sm-upload-f1c183f2-879",
+        "sm-upload-f2cf4e7c-18e"
+      ],
+      "master_ids_sha256": "3a93b221b621c0f92f66dad7d0a862c2c4dac9b3b0636ef34e07238c1f71a7d6",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_030_2c4cb6bc_wav_14.sql",
+          "sha256": "e09f3de3ffe8944b9c8f423af88dfff0210ed2d59c58bf3eb7a76c9c9e604f5d",
+          "bytes": 5413
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_030_2c4cb6bc_wav_14.sql",
+          "sha256": "e7589584d7a10b98763feade5b80c2868fbbc7c71297b6af60aa2b47b780f6da",
+          "bytes": 23500
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_030_2c4cb6bc_wav_14.sql",
+          "sha256": "f1be5c406d85f811bc09eafe487f86c350f159fa41cb2713a099f129a510c97f",
+          "bytes": 22052
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_030_2c4cb6bc_wav_14.sql",
+          "sha256": "e8088d0911a2d0b96a20340070d9c1b43ba54a52b9877b1112288f00cae25b4a",
+          "bytes": 1413
+        }
+      }
+    },
+    {
+      "batch_id": "batch_031_ddf53069_wav_13",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+      "codec": "wav",
+      "album_name": "Still With U",
+      "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
+      "master_count": 13,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-26c13d22-002",
+        "sm-upload-64d8dc24-596",
+        "sm-upload-67b27f56-b5b",
+        "sm-upload-6a01492c-ebe",
+        "sm-upload-74718096-633",
+        "sm-upload-831d9eee-6f0",
+        "sm-upload-986e39a0-94d",
+        "sm-upload-aa969a9a-7db",
+        "sm-upload-b831ca53-608",
+        "sm-upload-bbb56a95-410",
+        "sm-upload-db5279a1-e00",
+        "sm-upload-e327ba41-cf6",
+        "sm-upload-eba9f299-c67"
+      ],
+      "master_ids_sha256": "5c3fbf716027a675aa6af8abe2398c564c3b79298aba454444be226f84f3ad5f",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_031_ddf53069_wav_13.sql",
+          "sha256": "82cca2b8de0e06466f526269088cc2e675788bee7fe96e27400fd5a3d8a2b0e1",
+          "bytes": 5237
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_031_ddf53069_wav_13.sql",
+          "sha256": "ee5e75abd4e090f1d8f6dbf9acaf22a7cf0100d5e664067863f25c67d0a4a93f",
+          "bytes": 21628
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_031_ddf53069_wav_13.sql",
+          "sha256": "23ce2075a3ff8001d9f6d1678fd7b8fbd2b2bd8f92a245e45963607b7804826f",
+          "bytes": 20199
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_031_ddf53069_wav_13.sql",
+          "sha256": "522068ae761ff2467da3a88305af26b96cb703297a889ea86a6fdd482c77b2df",
+          "bytes": 1344
+        }
+      }
+    },
+    {
+      "batch_id": "batch_032_60e8f228_wav_10",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-f104690a5b024491962419b76618435d",
+      "codec": "wav",
+      "album_name": "\u54c8\u5229\u6ce2\u7279\u00b7\u5b66\u9662\u5370\u8c61\u66f2",
+      "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
+      "master_count": 10,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-upload-1c1d6c3a-6ac",
+        "sm-upload-2cc2cded-f96",
+        "sm-upload-2ed4a91f-50f",
+        "sm-upload-54a04d18-b6d",
+        "sm-upload-85febee1-add",
+        "sm-upload-8c8ff71c-39c",
+        "sm-upload-8dac0faa-885",
+        "sm-upload-a4e20343-e35",
+        "sm-upload-f35ebe3d-fb5",
+        "sm-upload-f8b47093-229"
+      ],
+      "master_ids_sha256": "339b54b4bcb638919ca2685f5bf315d1fd82f44a775800034c90b48aff9c1140",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_032_60e8f228_wav_10.sql",
+          "sha256": "2de70e17599b32be02c5debe4bf86856ad3baf4f33e8f1ee8e544f5644ed25de",
+          "bytes": 4922
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_032_60e8f228_wav_10.sql",
+          "sha256": "13a84a3485dd89343ce5aeb4c7b2aae8529ec4f967efccaa52e945edb01d9833",
+          "bytes": 18188
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_032_60e8f228_wav_10.sql",
+          "sha256": "8fa746a959f162da798743e81551e42aa93e8b788094c3a28d436a59d6781b7e",
+          "bytes": 16742
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_032_60e8f228_wav_10.sql",
+          "sha256": "78ec2f585fb96554567e6da142eed2c7ebcc6d4ed7ea5c7d9ba4c18220422ed5",
+          "bytes": 1211
+        }
+      }
+    },
+    {
+      "batch_id": "batch_033_7493b190_wav_09",
+      "status": "NOT_EXECUTED",
+      "source_id": "r2-local",
+      "parent_id": "se-ff6720bc195c4371b5e2bc76ff2f7e80",
+      "codec": "wav",
+      "album_name": "FM404",
+      "target_album_id": "al-21bc6e49fd136ed02abc87af7493b190",
+      "master_count": 9,
+      "expected_other_album_master_ids": [],
+      "master_ids": [
+        "sm-c4bc660d53934a4abe63a6ea0c65f452",
+        "sm-upload-3f53a506-748",
+        "sm-upload-5299f3bf-7dc",
+        "sm-upload-5ca9ba5e-a37",
+        "sm-upload-c20923fb-d86",
+        "sm-upload-c73ba5d8-d49",
+        "sm-upload-d094806c-15f",
+        "sm-upload-d4547cef-c76",
+        "sm-upload-ff03659c-53d"
+      ],
+      "master_ids_sha256": "0790dfda898794c2d63eb6ae998f793c410da96a652d43ad3d76a9af2657a8cd",
+      "files": {
+        "preflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/preflight/batch_033_7493b190_wav_09.sql",
+          "sha256": "d4c01286a9d9b47fc84fc1eee09b7ae304654bbf45cf3252138784f6b25a6c6a",
+          "bytes": 4668
+        },
+        "apply": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/apply/batch_033_7493b190_wav_09.sql",
+          "sha256": "653baf173ee8ca127ed6746e0e81752059c6ed6aafe7a9c8e9fd2cb8f6900bd4",
+          "bytes": 16050
+        },
+        "rollback": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/rollback/batch_033_7493b190_wav_09.sql",
+          "sha256": "a437e61d40bd26a37e676013929f96a5e7df03c7f9a20a8914ae0c37e82302c9",
+          "bytes": 14629
+        },
+        "postflight": {
+          "path": "agents/513_[Operations]_pending_upload_backfill/batches_safe/postflight/batch_033_7493b190_wav_09.sql",
+          "sha256": "3b1cddd94d7eeaeafc9939ec1aa625e6b24ba6a168fb17391d3e1a5ffc257a08",
+          "bytes": 1163
+        }
+      }
+    }
+  ]
+}

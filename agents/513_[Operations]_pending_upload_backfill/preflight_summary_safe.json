@@ -1,0 +1,207 @@
+{
+  "status": "PASS",
+  "recorded_at_utc": "2026-09-26T10:34:14.7496032Z",
+  "manifest_sha256": "1fafd3214b643a4ef27529adae3c524aca21a8aaba42b16a5f443e5f07a99c66",
+  "groups": 33,
+  "masters": 310.0,
+  "receipts": [
+    {
+      "batch_id": "batch_001_3d159900_wav_12",
+      "status": "PASS",
+      "masters": 12,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_001_3d159900_wav_12.json"
+    },
+    {
+      "batch_id": "batch_002_9349782e_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_002_9349782e_wav_10.json"
+    },
+    {
+      "batch_id": "batch_003_47859379_wav_16",
+      "status": "PASS",
+      "masters": 16,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_003_47859379_wav_16.json"
+    },
+    {
+      "batch_id": "batch_004_f5fb4151_wav_05",
+      "status": "PASS",
+      "masters": 5,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_004_f5fb4151_wav_05.json"
+    },
+    {
+      "batch_id": "batch_005_44608fa2_wav_07",
+      "status": "PASS",
+      "masters": 7,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_005_44608fa2_wav_07.json"
+    },
+    {
+      "batch_id": "batch_006_9fe5b934_wav_12",
+      "status": "PASS",
+      "masters": 12,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_006_9fe5b934_wav_12.json"
+    },
+    {
+      "batch_id": "batch_007_255c609f_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_007_255c609f_wav_10.json"
+    },
+    {
+      "batch_id": "batch_008_6cfb5fdf_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_008_6cfb5fdf_wav_10.json"
+    },
+    {
+      "batch_id": "batch_009_cf66a64d_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_009_cf66a64d_wav_10.json"
+    },
+    {
+      "batch_id": "batch_010_aa30d1e1_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_010_aa30d1e1_wav_10.json"
+    },
+    {
+      "batch_id": "batch_011_4131044b_wav_04",
+      "status": "PASS",
+      "masters": 4,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_011_4131044b_wav_04.json"
+    },
+    {
+      "batch_id": "batch_012_1408f656_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_012_1408f656_wav_10.json"
+    },
+    {
+      "batch_id": "batch_013_0fb87970_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_013_0fb87970_wav_10.json"
+    },
+    {
+      "batch_id": "batch_014_3cc00b92_wav_05",
+      "status": "PASS",
+      "masters": 5,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_014_3cc00b92_wav_05.json"
+    },
+    {
+      "batch_id": "batch_015_4854213f_flac_05",
+      "status": "PASS",
+      "masters": 5,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_015_4854213f_flac_05.json"
+    },
+    {
+      "batch_id": "batch_016_bc83cf23_wav_08",
+      "status": "PASS",
+      "masters": 8,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_016_bc83cf23_wav_08.json"
+    },
+    {
+      "batch_id": "batch_017_cd16c784_wav_08",
+      "status": "PASS",
+      "masters": 8,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_017_cd16c784_wav_08.json"
+    },
+    {
+      "batch_id": "batch_018_89b22aec_wav_11",
+      "status": "PASS",
+      "masters": 11,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_018_89b22aec_wav_11.json"
+    },
+    {
+      "batch_id": "batch_019_85f2f0fb_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_019_85f2f0fb_wav_10.json"
+    },
+    {
+      "batch_id": "batch_020_60f1e1a8_wav_16",
+      "status": "PASS",
+      "masters": 16,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_020_60f1e1a8_wav_16.json"
+    },
+    {
+      "batch_id": "batch_021_558e2e31_wav_07",
+      "status": "PASS",
+      "masters": 7,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_021_558e2e31_wav_07.json"
+    },
+    {
+      "batch_id": "batch_022_e9e5d1d1_wav_07",
+      "status": "PASS",
+      "masters": 7,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_022_e9e5d1d1_wav_07.json"
+    },
+    {
+      "batch_id": "batch_023_ab49c3aa_wav_12",
+      "status": "PASS",
+      "masters": 12,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_023_ab49c3aa_wav_12.json"
+    },
+    {
+      "batch_id": "batch_024_5b59c9ae_wav_09",
+      "status": "PASS",
+      "masters": 9,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_024_5b59c9ae_wav_09.json"
+    },
+    {
+      "batch_id": "batch_025_e3640d3b_wav_08",
+      "status": "PASS",
+      "masters": 8,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_025_e3640d3b_wav_08.json"
+    },
+    {
+      "batch_id": "batch_026_22c0a8f2_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_026_22c0a8f2_wav_10.json"
+    },
+    {
+      "batch_id": "batch_027_28afc804_wav_11",
+      "status": "PASS",
+      "masters": 11,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_027_28afc804_wav_11.json"
+    },
+    {
+      "batch_id": "batch_028_690057c2_wav_01",
+      "status": "PASS",
+      "masters": 1,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_028_690057c2_wav_01.json"
+    },
+    {
+      "batch_id": "batch_029_78334fe1_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_029_78334fe1_wav_10.json"
+    },
+    {
+      "batch_id": "batch_030_2c4cb6bc_wav_14",
+      "status": "PASS",
+      "masters": 14,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_030_2c4cb6bc_wav_14.json"
+    },
+    {
+      "batch_id": "batch_031_ddf53069_wav_13",
+      "status": "PASS",
+      "masters": 13,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_031_ddf53069_wav_13.json"
+    },
+    {
+      "batch_id": "batch_032_60e8f228_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_032_60e8f228_wav_10.json"
+    },
+    {
+      "batch_id": "batch_033_7493b190_wav_09",
+      "status": "PASS",
+      "masters": 9,
+      "receipt": "C:\\Users\\User\\.codex\\worktrees\\album-display-groups\\lsy-404@edgesonic\\agents\\513_[Operations]_pending_upload_backfill\\batches_safe\\preflight_receipts_1fafd3214b64\\batch_033_7493b190_wav_09.json"
+    }
+  ]
+}

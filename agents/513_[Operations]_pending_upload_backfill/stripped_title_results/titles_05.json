@@ -1,0 +1,54 @@
+{
+  "results": [
+    {
+      "master_id": "sm-1053d19867",
+      "title": "妄语人间",
+      "track": 10,
+      "disc": 1,
+      "album_id": "al-c1f0658019",
+      "album_name": "数风流"
+    },
+    {
+      "master_id": "sm-235ff11b51",
+      "title": "始见千秋",
+      "track": 7,
+      "disc": 1,
+      "album_id": "al-c1f0658019",
+      "album_name": "数风流"
+    },
+    {
+      "master_id": "sm-1bd71bc457",
+      "title": "将军行",
+      "track": 9,
+      "disc": 1,
+      "album_id": "al-c1f0658019",
+      "album_name": "数风流"
+    },
+    {
+      "master_id": "sm-438d82eab5",
+      "title": "归钓吟",
+      "track": 6,
+      "disc": 1,
+      "album_id": "al-c1f0658019",
+      "album_name": "数风流"
+    }
+  ],
+  "success": true,
+  "meta": {
+    "served_by": "v3-prod",
+    "served_by_region": "WNAM",
+    "served_by_colo": "DFW",
+    "served_by_primary": true,
+    "timings": {
+      "sql_duration_ms": 2.9402
+    },
+    "duration": 2.9402,
+    "changes": 0,
+    "last_row_id": 1663,
+    "changed_db": false,
+    "size_after": 365232128,
+    "rows_read": 6203,
+    "rows_written": 0,
+    "total_attempts": 1
+  }
+}

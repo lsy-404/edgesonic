@@ -1,0 +1,104 @@
+{
+  "source": "primary read-only final_sidecars snapshot",
+  "rows": [
+    {
+      "parent_id": "se-3289ebb925dd456ba14e6bfd5f5685f8",
+      "cue_count": 0,
+      "lyric_count": 1,
+      "image_count": 0,
+      "companion_count": 0,
+      "candidate_groups_under_parent": [
+        {
+          "album_name": "世界沉睡童话",
+          "master_count": 5
+        }
+      ],
+      "association": "parent-level inventory only; does not prove a sidecar belongs to any listed group"
+    },
+    {
+      "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+      "cue_count": 1,
+      "lyric_count": 0,
+      "image_count": 0,
+      "companion_count": 0,
+      "candidate_groups_under_parent": [
+        {
+          "album_name": "旧未来ЯEMIXTION",
+          "master_count": 12
+        }
+      ],
+      "association": "parent-level inventory only; does not prove a sidecar belongs to any listed group"
+    },
+    {
+      "parent_id": "se-4d81506c43c249f3b64dc32c47d15111",
+      "cue_count": 1,
+      "lyric_count": 0,
+      "image_count": 0,
+      "companion_count": 0,
+      "candidate_groups_under_parent": [
+        {
+          "album_name": "春华秋拾",
+          "master_count": 4
+        }
+      ],
+      "association": "parent-level inventory only; does not prove a sidecar belongs to any listed group"
+    },
+    {
+      "parent_id": "se-6fbe9b356f8040fe84f33e4c4662a998",
+      "cue_count": 1,
+      "lyric_count": 0,
+      "image_count": 0,
+      "companion_count": 0,
+      "candidate_groups_under_parent": [
+        {
+          "album_name": "花と約束",
+          "master_count": 5
+        }
+      ],
+      "association": "parent-level inventory only; does not prove a sidecar belongs to any listed group"
+    },
+    {
+      "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+      "cue_count": 1,
+      "lyric_count": 0,
+      "image_count": 0,
+      "companion_count": 0,
+      "candidate_groups_under_parent": [
+        {
+          "album_name": "AI绫",
+          "master_count": 10
+        }
+      ],
+      "association": "parent-level inventory only; does not prove a sidecar belongs to any listed group"
+    },
+    {
+      "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+      "cue_count": 1,
+      "lyric_count": 0,
+      "image_count": 0,
+      "companion_count": 0,
+      "candidate_groups_under_parent": [
+        {
+          "album_name": "sakuya薯片~THE NOCTURNE",
+          "master_count": 8
+        }
+      ],
+      "association": "parent-level inventory only; does not prove a sidecar belongs to any listed group"
+    },
+    {
+      "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+      "cue_count": 1,
+      "lyric_count": 0,
+      "image_count": 0,
+      "companion_count": 0,
+      "candidate_groups_under_parent": [
+        {
+          "album_name": "实力至上-奇怪雷子QGRay",
+          "master_count": 10
+        }
+      ],
+      "association": "parent-level inventory only; does not prove a sidecar belongs to any listed group"
+    }
+  ],
+  "warning": "Grouped by storage parent, not album directory. Parent may contain multiple groups; no sidecar-to-album/track association is inferred. album_id-only batch SQL leaves all rows/refs untouched."
+}

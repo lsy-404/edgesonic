@@ -1,0 +1,49 @@
+{
+  "batch_id": "batch_023_ab49c3aa_wav_12",
+  "status": "PASS",
+  "recorded_at_utc": "2026-09-26T10:34:00.3274901Z",
+  "manifest_sha256": "1fafd3214b643a4ef27529adae3c524aca21a8aaba42b16a5f443e5f07a99c66",
+  "preflight_sql_sha256": "2bb035fb91fa0ef08f71434890ce8851299c0e76919bfe41e7d561569d4af48a",
+  "expected_masters": 12,
+  "expected_other_album_master_ids": [],
+  "checks": {
+    "success": true,
+    "served_by_primary": true,
+    "rows_written_zero": true,
+    "exact_pending": true,
+    "tag_snapshot": true,
+    "no_target_collision": true,
+    "no_title_conflict": true,
+    "no_track_conflict": true,
+    "other_members_allowlisted": true
+  },
+  "result": {
+    "batch_id": "batch_023_ab49c3aa_wav_12",
+    "expected_masters": 12,
+    "exact_pending_storage_matches": 12,
+    "metadata_snapshot_matches": 12,
+    "target_album_rows": 0,
+    "duplicate_title_groups": 0,
+    "duplicate_disc_track_groups": 0,
+    "other_album_members": 0,
+    "unallowlisted_other_members": 0,
+    "allowlisted_other_members": 0
+  },
+  "meta": {
+    "served_by": "v3-prod",
+    "served_by_region": "WNAM",
+    "served_by_colo": "DFW",
+    "served_by_primary": true,
+    "timings": {
+      "sql_duration_ms": 2.3294
+    },
+    "duration": 2.3294,
+    "changes": 0,
+    "last_row_id": 1675,
+    "changed_db": false,
+    "size_after": 365232128,
+    "rows_read": 315,
+    "rows_written": 0,
+    "total_attempts": 1
+  }
+}

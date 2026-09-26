@@ -1,0 +1,2251 @@
+{
+  "safe_candidate_groups": [
+    {
+      "target_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
+      "album_name": "AI绫",
+      "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-04e4f884-8c1",
+        "sm-upload-15add848-cb6",
+        "sm-upload-8027cffa-3f0",
+        "sm-upload-914669ae-daf",
+        "sm-upload-baaca575-1e5",
+        "sm-upload-c422ca21-bc0",
+        "sm-upload-c5006572-e0e",
+        "sm-upload-c80b56a6-9cb",
+        "sm-upload-e38cb628-82f",
+        "sm-upload-e4b4a430-9bf"
+      ],
+      "first_path": "AI绫/wav/05 #0412歌声人形 协议纪录.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-21bc6e49fd136ed02abc87af7493b190",
+      "album_name": "FM404",
+      "parent_id": "se-ff6720bc195c4371b5e2bc76ff2f7e80",
+      "suffix": "wav",
+      "master_count": 9,
+      "master_ids": [
+        "sm-c4bc660d53934a4abe63a6ea0c65f452",
+        "sm-upload-3f53a506-748",
+        "sm-upload-5299f3bf-7dc",
+        "sm-upload-5ca9ba5e-a37",
+        "sm-upload-c20923fb-d86",
+        "sm-upload-c73ba5d8-d49",
+        "sm-upload-d094806c-15f",
+        "sm-upload-d4547cef-c76",
+        "sm-upload-ff03659c-53d"
+      ],
+      "first_path": "FM404/wav/9金陵叹.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
+      "album_name": "OTOME",
+      "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+      "suffix": "wav",
+      "master_count": 9,
+      "master_ids": [
+        "sm-upload-57aa6388-1d3",
+        "sm-upload-702be9dc-d25",
+        "sm-upload-87176740-d8e",
+        "sm-upload-8f24fa72-b29",
+        "sm-upload-b908a83a-97a",
+        "sm-upload-be0b96c2-963",
+        "sm-upload-d0a56a7b-4f8",
+        "sm-upload-de754d56-ea4",
+        "sm-upload-fcb9b5ca-27c"
+      ],
+      "first_path": "OTOME/wav/08 树·伴奏.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
+      "album_name": "SE＞EN(Sya)SEVEN",
+      "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-0f2858ab-23e",
+        "sm-upload-2fa950da-a07",
+        "sm-upload-40ec654c-f08",
+        "sm-upload-5c324864-c88",
+        "sm-upload-5cd6f1b2-596",
+        "sm-upload-5d8c3e73-3b9",
+        "sm-upload-8492670d-25f",
+        "sm-upload-afdf5f4f-429",
+        "sm-upload-b4b6cc03-4a0",
+        "sm-upload-d1382210-3d5"
+      ],
+      "first_path": "SE＞EN(Sya)SEVEN/音频WAV/09-我是如此地.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-07915266661ed52013a2a9b3558e2e31",
+      "album_name": "Stay",
+      "parent_id": "se-82848db02c064f558f97f6e9f71030a4",
+      "suffix": "wav",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-1de39a7a-1f1",
+        "sm-upload-424bd1ff-5a3",
+        "sm-upload-4fd0058b-e08",
+        "sm-upload-740bc22a-fef",
+        "sm-upload-ac402330-2bd",
+        "sm-upload-b2ddad51-47e",
+        "sm-upload-d60777bc-dc0"
+      ],
+      "first_path": "Stay/Stay/音频/01 瑕疵品.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
+      "album_name": "Still With U",
+      "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+      "suffix": "wav",
+      "master_count": 13,
+      "master_ids": [
+        "sm-upload-26c13d22-002",
+        "sm-upload-64d8dc24-596",
+        "sm-upload-67b27f56-b5b",
+        "sm-upload-6a01492c-ebe",
+        "sm-upload-74718096-633",
+        "sm-upload-831d9eee-6f0",
+        "sm-upload-986e39a0-94d",
+        "sm-upload-aa969a9a-7db",
+        "sm-upload-b831ca53-608",
+        "sm-upload-bbb56a95-410",
+        "sm-upload-db5279a1-e00",
+        "sm-upload-e327ba41-cf6",
+        "sm-upload-eba9f299-c67"
+      ],
+      "first_path": "Still With U/06 静默少女.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-b67665d31c26b1883a27db8a47859379",
+      "album_name": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜",
+      "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+      "suffix": "wav",
+      "master_count": 16,
+      "master_ids": [
+        "sm-1e2f1e4b7ae042fe9e1ffc8ff5768369",
+        "sm-70c6f0dada0f40efbf94b99f514d791a",
+        "sm-c86a75e7bd6c409c80504a463e1ff433",
+        "sm-upload-1805dfeb-63c",
+        "sm-upload-37d48b57-ed8",
+        "sm-upload-387d305f-426",
+        "sm-upload-5f9bc5da-1ad",
+        "sm-upload-6899401d-dbe",
+        "sm-upload-811fea79-705",
+        "sm-upload-90b61b6f-15e",
+        "sm-upload-9483fe4b-134",
+        "sm-upload-9baef4f8-44e",
+        "sm-upload-b61ffb2c-af6",
+        "sm-upload-b721a47b-0fb",
+        "sm-upload-f279b49d-8f9",
+        "sm-upload-fdfb8b5a-f7f"
+      ],
+      "first_path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/02 春日游.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-379190d71773f7eda5c8e71260f1e1a8",
+      "album_name": "cop十周年纪念专辑",
+      "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+      "suffix": "wav",
+      "master_count": 16,
+      "master_ids": [
+        "sm-upload-0796f5d3-fd3",
+        "sm-upload-0d698ddd-586",
+        "sm-upload-34a4e79c-3ac",
+        "sm-upload-3e4a3e0c-5e1",
+        "sm-upload-412884aa-3c6",
+        "sm-upload-5189133a-af2",
+        "sm-upload-55fa915d-2e6",
+        "sm-upload-642c5555-32e",
+        "sm-upload-68e21ac4-af0",
+        "sm-upload-962f69d3-a47",
+        "sm-upload-be4c6092-980",
+        "sm-upload-c823de32-b12",
+        "sm-upload-d38bae55-e32",
+        "sm-upload-d4898d69-3e7",
+        "sm-upload-d9e8676f-0f4",
+        "sm-upload-e258a0c1-196"
+      ],
+      "first_path": "cop十周年纪念专辑/flac/16.不停歇的旅途(合唱ver.).wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-3601f0337902ef9583048198e3640d3b",
+      "album_name": "sakuya薯片~THE NOCTURNE",
+      "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+      "suffix": "wav",
+      "master_count": 8,
+      "master_ids": [
+        "sm-9259e6f5144348d3b9f1881d95c31d97",
+        "sm-upload-00474c5a-882",
+        "sm-upload-12d68563-b7d",
+        "sm-upload-2e7224ec-39c",
+        "sm-upload-3020e076-7c7",
+        "sm-upload-47be279d-a1f",
+        "sm-upload-4af9cee4-3d9",
+        "sm-upload-5080d6c6-ec3"
+      ],
+      "first_path": "sakuya薯片~THE NOCTURNE/wav/08.A GHOST FROM KALEIDOS.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-04d3a5af95307e73856b859df5fb4151",
+      "album_name": "世界沉睡童话",
+      "parent_id": "se-3289ebb925dd456ba14e6bfd5f5685f8",
+      "suffix": "wav",
+      "master_count": 5,
+      "master_ids": [
+        "sm-upload-0eb138eb-495",
+        "sm-upload-1fa15574-293",
+        "sm-upload-884d87d8-f8d",
+        "sm-upload-8d28b118-c2d",
+        "sm-upload-c2754cf8-e65"
+      ],
+      "first_path": "世界沉睡童话/Secret track by 他城.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
+      "album_name": "人造树的幽灵",
+      "parent_id": "se-75979773002b4fed977cd3e51f85e28d",
+      "suffix": "wav",
+      "master_count": 8,
+      "master_ids": [
+        "sm-1dd661f9659f4669ba92d344dbb67f38",
+        "sm-c92fa5ec76c8405d9c7cec39c7e97587",
+        "sm-cc2b8a2847e94a7586e169984ce00b4d",
+        "sm-upload-10cb9874-55d",
+        "sm-upload-23889318-5b0",
+        "sm-upload-a2d38eb8-164",
+        "sm-upload-c011a487-1d5",
+        "sm-upload-ecbc0416-dfd"
+      ],
+      "first_path": "人造树的幽灵/wav/08 世界末日 - Armgeddon.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
+      "album_name": "众虫皆歌",
+      "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-0f2e057c-5a1",
+        "sm-upload-2a26712c-984",
+        "sm-upload-3c2f0270-93c",
+        "sm-upload-8b54d965-cef",
+        "sm-upload-95c704d9-7a3",
+        "sm-upload-9d07ba09-a49",
+        "sm-upload-cd65bb92-34f",
+        "sm-upload-e94697d9-8e4",
+        "sm-upload-f748f953-ced",
+        "sm-upload-fa58b133-8bc"
+      ],
+      "first_path": "众虫皆歌/歌曲本体/008 无拘的秘信(feat.Yari Riako,Karandox Lopez).wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-44bf6641ecfaf08f307a0587cd16c784",
+      "album_name": "低语者",
+      "parent_id": "se-75d346df2f574adeb9b44b73a2dc9fd4",
+      "suffix": "wav",
+      "master_count": 8,
+      "master_ids": [
+        "sm-upload-08c5fd9b-a07",
+        "sm-upload-0f6e0515-62c",
+        "sm-upload-5979a6ff-f6c",
+        "sm-upload-746012d3-887",
+        "sm-upload-75a8634a-1b1",
+        "sm-upload-8aa9653f-bb6",
+        "sm-upload-9ac28768-466",
+        "sm-upload-b4e17f3c-27c"
+      ],
+      "first_path": "低语者/03沉默的守护者.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-d302ed534fe12110d275ff786cfb5fdf",
+      "album_name": "兰音.2024.《形神合一》",
+      "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-0e5df05d-8f8",
+        "sm-upload-229fabb8-45d",
+        "sm-upload-5ef32f7a-887",
+        "sm-upload-741e30e9-2a8",
+        "sm-upload-9a2b0423-b81",
+        "sm-upload-c44b0f7c-761",
+        "sm-upload-cc9304d5-527",
+        "sm-upload-d0988a3b-ddc",
+        "sm-upload-f994d933-d13",
+        "sm-upload-fd16b9a8-697"
+      ],
+      "first_path": "兰音.2024.《形神合一》/01.《形神合一》.2024.兰音.24bits.48khz.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
+      "album_name": "哈利波特·学院印象曲",
+      "parent_id": "se-f104690a5b024491962419b76618435d",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-1c1d6c3a-6ac",
+        "sm-upload-2cc2cded-f96",
+        "sm-upload-2ed4a91f-50f",
+        "sm-upload-54a04d18-b6d",
+        "sm-upload-85febee1-add",
+        "sm-upload-8c8ff71c-39c",
+        "sm-upload-8dac0faa-885",
+        "sm-upload-a4e20343-e35",
+        "sm-upload-f35ebe3d-fb5",
+        "sm-upload-f8b47093-229"
+      ],
+      "first_path": "哈利波特·学院印象曲/wav/04 格兰芬多印象曲.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-0e047abb5cbbdac294a9db7f4854213f",
+      "album_name": "四季有时",
+      "parent_id": "se-745ffebfbe864d65b6393dc1b745b514",
+      "suffix": "flac",
+      "master_count": 5,
+      "master_ids": [
+        "sm-826bbf27707049f088b67dcfe4b2909d",
+        "sm-ff03e1e966b7481cb1db2620812de72e",
+        "sm-upload-1dad7e8b-f48",
+        "sm-upload-225801dc-e26",
+        "sm-upload-958b08f3-738"
+      ],
+      "first_path": "四季有时/flac/有时p; 洛天依 - 纸糖.flac",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
+      "album_name": "回声漫过荒原",
+      "parent_id": "se-a0056771145d4523beec2130498ef23e",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-205b475a8daa49e7aac80f692e08ef85",
+        "sm-77217bc2bfde468a9df2c5898f54cfbf",
+        "sm-cb51493104794550b49f7988b8d268e5",
+        "sm-upload-0243c28d-146",
+        "sm-upload-0bbfaed5-aa8",
+        "sm-upload-2913df11-776",
+        "sm-upload-4a6b97de-6d6",
+        "sm-upload-5d55b9ac-edb",
+        "sm-upload-67747466-85e",
+        "sm-upload-e6ce4e4e-0b8"
+      ],
+      "first_path": "回声漫过荒原/wav/08 语言下空无一物.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-cd703f7e5c09e82d79eee0fcab49c3aa",
+      "album_name": "如期归还",
+      "parent_id": "se-85be26492c6440ff82e959bcfec2ef85",
+      "suffix": "wav",
+      "master_count": 12,
+      "master_ids": [
+        "sm-upload-03f927a6-a92",
+        "sm-upload-11a81433-a92",
+        "sm-upload-245d4826-0d3",
+        "sm-upload-56e53753-a5e",
+        "sm-upload-7c0baf4d-48f",
+        "sm-upload-923fa920-814",
+        "sm-upload-af7bb2d0-c0b",
+        "sm-upload-b1671870-9ac",
+        "sm-upload-cc730a2d-690",
+        "sm-upload-e6226df5-f61",
+        "sm-upload-f4b8da7e-d1b",
+        "sm-upload-f5f302ee-f59"
+      ],
+      "first_path": "如期归还/wav/Sec.11 漆鸟择墓栖.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-f79d077d5e583272b3cc93b078334fe1",
+      "album_name": "实力至上-奇怪雷子QGRay",
+      "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-04afa76593a947bab6e7aa9ab1fac848",
+        "sm-a04802ee79434c569c4a8037334fffe9",
+        "sm-aea8f18fd18a48d29d2a9b8e6c9cbfdc",
+        "sm-upload-0223d040-b1c",
+        "sm-upload-04789844-9c6",
+        "sm-upload-096c103b-c28",
+        "sm-upload-139421cf-b09",
+        "sm-upload-3ccc4425-662",
+        "sm-upload-5028ec56-8ea",
+        "sm-upload-558f35c9-d77"
+      ],
+      "first_path": "实力至上-奇怪雷子QGRay/wav/01 实力之上.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-513e3da59502f103e5112f7b1408f656",
+      "album_name": "幽灵摄影",
+      "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-03470670-934",
+        "sm-upload-374b472d-1d7",
+        "sm-upload-5b301238-460",
+        "sm-upload-690ad431-b59",
+        "sm-upload-6d9de5af-539",
+        "sm-upload-748d72b1-fc1",
+        "sm-upload-9bf8a3dc-49c",
+        "sm-upload-a4759b23-456",
+        "sm-upload-d178378d-bc5",
+        "sm-upload-f55d9ac5-408"
+      ],
+      "first_path": "幽灵摄影/wav/01 幽灵.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-216f4095bcd91c9197f8cb640fb87970",
+      "album_name": "心语",
+      "parent_id": "se-6023b463feaa42e389ed86f8554d69b6",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-1128b5a0-ce0",
+        "sm-upload-1cd9d081-b6d",
+        "sm-upload-206e47d9-a48",
+        "sm-upload-432ba270-b5e",
+        "sm-upload-5615bc1e-d29",
+        "sm-upload-5fdc3794-8b3",
+        "sm-upload-8f59da34-f13",
+        "sm-upload-9094c1a3-3a5",
+        "sm-upload-96f3cedc-994",
+        "sm-upload-c3ebd766-3c7"
+      ],
+      "first_path": "心语/wav/不夜城.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-71bf81052233fba89504b82c9349782e",
+      "album_name": "忘川风华录·溯洄",
+      "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-0c73cb05-35e",
+        "sm-upload-2ee8f752-0ca",
+        "sm-upload-481244dd-64a",
+        "sm-upload-5cb2b5d2-c80",
+        "sm-upload-6204a4fa-7d4",
+        "sm-upload-62e99b99-1d9",
+        "sm-upload-a6899ade-703",
+        "sm-upload-ada463c4-049",
+        "sm-upload-ae0d532d-833",
+        "sm-upload-b84182f5-1a9"
+      ],
+      "first_path": "忘川风华录·溯洄/wav/10 竹林间.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
+      "album_name": "旧未来ЯEMIXTION",
+      "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+      "suffix": "wav",
+      "master_count": 12,
+      "master_ids": [
+        "sm-upload-1dd2c3ea-51a",
+        "sm-upload-45c17eb9-747",
+        "sm-upload-52918a7d-d0d",
+        "sm-upload-55d617d1-946",
+        "sm-upload-59b1f46e-a95",
+        "sm-upload-6175a166-606",
+        "sm-upload-7bdaf28e-f9e",
+        "sm-upload-ba3fca4b-62d",
+        "sm-upload-ce7ca9dd-629",
+        "sm-upload-e424797b-1e7",
+        "sm-upload-f5f11cb1-5e6",
+        "sm-upload-fac12da8-c8b"
+      ],
+      "first_path": "旧未来ЯEMIXTION（wav）/wav/04 04 旋梯（ Nekock · LK Remake ).wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-8722d4ca7293612ea92d2f283d159900",
+      "album_name": "星座-扑克",
+      "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+      "suffix": "wav",
+      "master_count": 12,
+      "master_ids": [
+        "sm-upload-004b6062-e62",
+        "sm-upload-0eebf238-f29",
+        "sm-upload-15e574ee-8ae",
+        "sm-upload-1e608bde-aeb",
+        "sm-upload-39152c54-b80",
+        "sm-upload-43974d21-5b5",
+        "sm-upload-43a886a9-559",
+        "sm-upload-9bfc667e-5ef",
+        "sm-upload-bb441daa-4a0",
+        "sm-upload-dbc1d60c-3c2",
+        "sm-upload-e18930ac-8e1",
+        "sm-upload-ed4828e7-cf9"
+      ],
+      "first_path": "星座-扑克/wav/Track 02.金牛座.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
+      "album_name": "春华秋拾",
+      "parent_id": "se-4d81506c43c249f3b64dc32c47d15111",
+      "suffix": "wav",
+      "master_count": 4,
+      "master_ids": [
+        "sm-upload-46552f7f-fae",
+        "sm-upload-56571117-ce0",
+        "sm-upload-a0ec2a9f-fe9",
+        "sm-upload-f3f4157d-6ee"
+      ],
+      "first_path": "春华秋拾/wav/02 笼中藤.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
+      "album_name": "洛天依的构成",
+      "parent_id": "se-83ff22b8a4ab423f9b13bea30a6da02a",
+      "suffix": "wav",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-0b952309-f12",
+        "sm-upload-4f002225-23e",
+        "sm-upload-505a75f1-b7c",
+        "sm-upload-b6fe712d-3a5",
+        "sm-upload-b8855014-029",
+        "sm-upload-bafd2d2b-bd0",
+        "sm-upload-d8657b96-c3e"
+      ],
+      "first_path": "洛天依的构成/wav/07.四千三百次的回答.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-725a42450daa5e1b1472c6d73cc00b92",
+      "album_name": "花と約束",
+      "parent_id": "se-6fbe9b356f8040fe84f33e4c4662a998",
+      "suffix": "wav",
+      "master_count": 5,
+      "master_ids": [
+        "sm-upload-21b7d621-482",
+        "sm-upload-342fe6c2-97a",
+        "sm-upload-6e85a152-b10",
+        "sm-upload-8b0078a9-701",
+        "sm-upload-a4b6dd5d-b13"
+      ],
+      "first_path": "花と約束/wav/04 0と1の世界で、あなたへ.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-d1eb61467eb114e11bfea9d9690057c2",
+      "album_name": "衔风与愿",
+      "parent_id": "se-c7876d840373456ca0d7f774c5f39224",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-d3e438fe-c79"
+      ],
+      "first_path": "衔风与愿/01 衔风与愿.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
+      "album_name": "被那个夏天厌恶的我们",
+      "parent_id": "se-32e5359531684b188a19b66cee7d9c20",
+      "suffix": "wav",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-079b5a30-681",
+        "sm-upload-11bfd8b6-551",
+        "sm-upload-22d36802-2ad",
+        "sm-upload-3e173d57-c25",
+        "sm-upload-604ea1ac-255",
+        "sm-upload-605d34a4-800",
+        "sm-upload-cdea3d45-1a9"
+      ],
+      "first_path": "被那个夏天厌恶的我们/03 浅浅话.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-d661f426bd5bde71baa8114128afc804",
+      "album_name": "赏味期限",
+      "parent_id": "se-b6db70c3a2264b868dacf4f4678c6054",
+      "suffix": "wav",
+      "master_count": 11,
+      "master_ids": [
+        "sm-upload-313044d5-8e7",
+        "sm-upload-56bf2361-db0",
+        "sm-upload-5ccdcea5-f34",
+        "sm-upload-705493af-48f",
+        "sm-upload-795396d6-0dc",
+        "sm-upload-7c38c335-00f",
+        "sm-upload-88b0c03f-c5d",
+        "sm-upload-b4d0e9bd-ff0",
+        "sm-upload-debcd1ae-909",
+        "sm-upload-e4a10341-0e6",
+        "sm-upload-eebc0991-9f4"
+      ],
+      "first_path": "赏味期限/wav/06 未命名剧本.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-3e2385da217b494f06495b58255c609f",
+      "album_name": "逆进化ЯEVOLUTION",
+      "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-05511bcc-4d5",
+        "sm-upload-43d08570-b2e",
+        "sm-upload-553e0240-555",
+        "sm-upload-620c477b-70a",
+        "sm-upload-660bdf12-2ce",
+        "sm-upload-70333488-8b5",
+        "sm-upload-8e189cf4-bc2",
+        "sm-upload-c659b405-246",
+        "sm-upload-f1efcbe8-2fb",
+        "sm-upload-f4c839d7-939"
+      ],
+      "first_path": "逆进化ЯEVOLUTION/wav/02 Reversed whiteness.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
+      "album_name": "黑猫出现在白天-七点半",
+      "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+      "suffix": "wav",
+      "master_count": 14,
+      "master_ids": [
+        "sm-upload-093f74ab-8b9",
+        "sm-upload-42481750-586",
+        "sm-upload-4438c1e4-e9b",
+        "sm-upload-4663e1f2-1e1",
+        "sm-upload-4a92f357-06e",
+        "sm-upload-58a0f37c-7c7",
+        "sm-upload-5ca7125b-fa4",
+        "sm-upload-61fbaa65-987",
+        "sm-upload-64e68350-1e0",
+        "sm-upload-a68ccf5a-864",
+        "sm-upload-bc3bb5a0-94b",
+        "sm-upload-cab08fa5-c3a",
+        "sm-upload-f1c183f2-879",
+        "sm-upload-f2cf4e7c-18e"
+      ],
+      "first_path": "黑猫出现在白天-七点半/wav/14 黑猫出现在白天-inst.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    },
+    {
+      "target_id": "al-0f93c4e539eb79562fce224989b22aec",
+      "album_name": "黑白",
+      "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+      "suffix": "wav",
+      "master_count": 11,
+      "master_ids": [
+        "sm-22e86a0b11974fe4915430f2119da7c4",
+        "sm-4d0d004dd8d74ebaadc851d5efab5525",
+        "sm-be8ba6dfd67f4f9a91bdb33b44d41d3a",
+        "sm-cdeaab57721d46afb6365cca2b0a146f",
+        "sm-e23ea8bf9f4846d7bfbda205e7b09672",
+        "sm-f9ae632a2ba14540a099fbb663bd3750",
+        "sm-upload-152098f7-f9e",
+        "sm-upload-2207d12c-443",
+        "sm-upload-3d0dfe07-125",
+        "sm-upload-abf7fe3c-d54",
+        "sm-upload-ce73a06c-13b"
+      ],
+      "first_path": "黑白/wav/07 萤火之语.wav",
+      "status": "SAFE_CANDIDATE",
+      "reason": "Literal album folder name; no exact/normalized existing album-name collision, no exact track-title reuse, and no related existing display-group title found in the read-only snapshots. Scoped primary preflight still required."
+    }
+  ],
+  "held_groups": [
+    {
+      "target_id": "al-c2a03ed17e6cbc5f7ab5fd4aecb9e912",
+      "album_name": "2024虚拟歌手夏浪派对——「创作」",
+      "parent_id": "se-28e502ac48a94259a7a1d017bb1454af",
+      "suffix": "wav",
+      "master_count": 13,
+      "master_ids": [
+        "sm-upload-0173b7aa-4d2",
+        "sm-upload-0a2c1aa1-d61",
+        "sm-upload-1b11dd75-443",
+        "sm-upload-29f1144e-d59",
+        "sm-upload-2bc07e10-7f5",
+        "sm-upload-3d910efd-d9a",
+        "sm-upload-46df7ded-c30",
+        "sm-upload-86659454-78b",
+        "sm-upload-a3fa1559-c7c",
+        "sm-upload-a6b70033-945",
+        "sm-upload-b68a6ed4-526",
+        "sm-upload-cd57e04e-ff9",
+        "sm-upload-e177b11f-4c3"
+      ],
+      "first_path": "2024虚拟歌手夏浪派对——「创作」/wav/07 南北缘.wav",
+      "status": "HOLD",
+      "reason": "2024 event WAV release overlaps existing FLAC release family and now-kept #14 track; requires explicit cross-format display mapping."
+    },
+    {
+      "target_id": "al-9e153f3fe253cadd66ab4c8beb32ed78",
+      "album_name": "2025虚拟歌手夏浪派对——「回响」",
+      "parent_id": "se-2a7ff4dbb5e7413193588bf6dafe09db",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-9eb3e1f2-7b3"
+      ],
+      "first_path": "2025虚拟歌手夏浪派对——「回响」/wav/14 ONE SEIF.wav",
+      "status": "HOLD",
+      "reason": "One pending track #14 under event root; incomplete edition grouping needs review."
+    },
+    {
+      "target_id": "al-75b28a419716ec812731f4889fb54d93",
+      "album_name": "BACK WORDS",
+      "parent_id": "se-b8162ded9aee4765a072f7f4f9942e73",
+      "suffix": "wav",
+      "master_count": 8,
+      "master_ids": [
+        "sm-upload-1430c3f1-010",
+        "sm-upload-47c5c9f3-084",
+        "sm-upload-52e08414-4ed",
+        "sm-upload-6e20c736-0cc",
+        "sm-upload-6f46e835-b8c",
+        "sm-upload-73552634-767",
+        "sm-upload-c60fc7c5-42b",
+        "sm-upload-dff38a54-73f"
+      ],
+      "first_path": "BACK WORDS/wav/05 喰月.wav",
+      "status": "HOLD",
+      "reason": "Normalization-equivalent to existing Backwords; verify alias vs distinct release."
+    },
+    {
+      "target_id": "al-193e83cba6644a5062c6f6b9552ffe65",
+      "album_name": "Dear2：致亲爱之人",
+      "parent_id": "se-c34c70b3b907452e9cda0585a887f0a6",
+      "suffix": "wav",
+      "master_count": 8,
+      "master_ids": [
+        "sm-upload-036ed18e-e20",
+        "sm-upload-399de5ce-a41",
+        "sm-upload-3daf36ea-560",
+        "sm-upload-6762c9c7-543",
+        "sm-upload-8363976f-7e7",
+        "sm-upload-b3c18c8b-5f6",
+        "sm-upload-ee73dfb2-d6b",
+        "sm-upload-f66d2cf1-502"
+      ],
+      "first_path": "Dear2：致亲爱之人/wav/9.那些我恐惧至极的事.wav",
+      "status": "HOLD",
+      "reason": "Near-name relation to existing Dear album is unresolved; keep out pending identity review."
+    },
+    {
+      "target_id": "al-8885b4ce079e7e34148afd72d9dc73d1",
+      "album_name": "与",
+      "parent_id": "se-5a70f5ca8bbd4cfab5a2c91d71c729ee",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-84f16ee0-a54"
+      ],
+      "first_path": "αrtist5~塔与少女~/与/白鸟.wav",
+      "status": "HOLD",
+      "reason": "Nested under αrtist5~塔与少女~ project root; not an independent release name."
+    },
+    {
+      "target_id": "al-bf067e2ddfc3f6671b99453e674fdfa7",
+      "album_name": "依睐幻想曲",
+      "parent_id": "se-a3f8397e47a244f2a226cbd62c5c9f78",
+      "suffix": "wav",
+      "master_count": 12,
+      "master_ids": [
+        "sm-upload-06e9d80d-ced",
+        "sm-upload-1b9e87e5-e75",
+        "sm-upload-34be6b30-7b2",
+        "sm-upload-35859101-8de",
+        "sm-upload-52e69347-8bd",
+        "sm-upload-75015390-321",
+        "sm-upload-764a399c-09b",
+        "sm-upload-a033d1c8-d42",
+        "sm-upload-c0499da8-dce",
+        "sm-upload-c4212729-351",
+        "sm-upload-d5e87754-8e4",
+        "sm-upload-dd8520c4-e2d"
+      ],
+      "first_path": "依睐幻想曲/WAV/8 魅惑擦边守则.wav",
+      "status": "HOLD",
+      "reason": "Related to existing explicit display group ag-yilai-vocal-instrumental; confirm separate release vs group membership."
+    },
+    {
+      "target_id": "al-10f54d2edd0e22c0d709a516b3d208ba",
+      "album_name": "依路相随 CD",
+      "parent_id": "se-c232dc7d155a4b46a0a7a82a0e757b21",
+      "suffix": "wav",
+      "master_count": 19,
+      "master_ids": [
+        "sm-upload-036746a3-793",
+        "sm-upload-0dcbc2d6-e71",
+        "sm-upload-1061fcb8-1b0",
+        "sm-upload-28ae6eea-a09",
+        "sm-upload-2a6b03e6-857",
+        "sm-upload-49aa735b-831",
+        "sm-upload-52d5951f-304",
+        "sm-upload-58f52e60-bc9",
+        "sm-upload-5d078c15-59c",
+        "sm-upload-6f117817-461",
+        "sm-upload-79569f2d-07f",
+        "sm-upload-9e3c22f4-d38",
+        "sm-upload-a3ecaad5-ca9",
+        "sm-upload-db940fe5-632",
+        "sm-upload-e27cf825-3bf",
+        "sm-upload-e2c7e35c-8a7",
+        "sm-upload-e53db2c9-bbc",
+        "sm-upload-f417a3b4-786",
+        "sm-upload-f790db73-1cb"
+      ],
+      "first_path": "依路相随 CD/wav/04.一念.wav",
+      "status": "HOLD",
+      "reason": "CD format marker is part of folder label; verify it is an edition name rather than format annotation."
+    },
+    {
+      "target_id": "al-92c90019fd62defce481a4deadf1f10b",
+      "album_name": "再见，碳酸海-纯白P",
+      "parent_id": "se-a9ae53d00851418dade3f9e84d45a379",
+      "suffix": "wav",
+      "master_count": 13,
+      "master_ids": [
+        "sm-upload-09d501a6-e92",
+        "sm-upload-1bd85b35-348",
+        "sm-upload-21c889f9-9cf",
+        "sm-upload-30170e52-baf",
+        "sm-upload-3d25daa2-90f",
+        "sm-upload-44b56346-b73",
+        "sm-upload-550ae4cf-443",
+        "sm-upload-5823ac82-dba",
+        "sm-upload-6049b317-cf0",
+        "sm-upload-83fb3a9d-170",
+        "sm-upload-a95860a5-d13",
+        "sm-upload-bdc3da5d-269",
+        "sm-upload-e9529fb4-df5"
+      ],
+      "first_path": "再见，碳酸海-纯白P/wav/2 世界第一可爱.wav",
+      "status": "HOLD",
+      "reason": "Existing 再见，碳酸海 album shares release base; verify edition/creator suffix before display."
+    },
+    {
+      "target_id": "al-7f30f6e28de0db2ffcd10ce8ce145594",
+      "album_name": "塔",
+      "parent_id": "se-bb19c432c6464ea7a0ae42d220a58328",
+      "suffix": "wav",
+      "master_count": 2,
+      "master_ids": [
+        "sm-upload-0b516294-a96",
+        "sm-upload-1a81082e-3e5"
+      ],
+      "first_path": "αrtist5~塔与少女~/塔/+《塔与少女们的无题诗》.wav",
+      "status": "HOLD",
+      "reason": "Nested under αrtist5~塔与少女~ project root; not an independent release name."
+    },
+    {
+      "target_id": "al-a2aca543f2e6bec09f12bec66c60cf04",
+      "album_name": "孔乙甲",
+      "parent_id": "se-155c2565240d4eaf875444e5c67b8e55",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-d0a22604-806"
+      ],
+      "first_path": "起点/孔乙甲/mix【洛天依】孔乙甲.wav",
+      "status": "HOLD",
+      "reason": "Nested under 起点 root, one track; parent context does not establish independent release."
+    },
+    {
+      "target_id": "al-e688bf04fa4e49b1fa73372927230a59",
+      "album_name": "少女",
+      "parent_id": "se-b07460247f2341e98a29819bea6e4ac3",
+      "suffix": "wav",
+      "master_count": 5,
+      "master_ids": [
+        "sm-upload-2110f96a-7f6",
+        "sm-upload-370c6f06-6c0",
+        "sm-upload-59c79040-ee6",
+        "sm-upload-63fa8532-93b",
+        "sm-upload-d7a77e50-b0f"
+      ],
+      "first_path": "αrtist5~塔与少女~/少女/2《象牙塔少女》.wav",
+      "status": "HOLD",
+      "reason": "Nested under αrtist5~塔与少女~ project root; not an independent release name."
+    },
+    {
+      "target_id": "al-42c27191a6a9ecae2f5d3d37c6aa660e",
+      "album_name": "平行四界 REBIRTH",
+      "parent_id": "se-361263870dda45da819560ce9adae352",
+      "suffix": "wav",
+      "master_count": 8,
+      "master_ids": [
+        "sm-265caaee9d2c4c3dba07fb5232d10f1e",
+        "sm-3716a13487a6424681cafa207d632b8c",
+        "sm-4009d76eeb7e410d9e49788549235aa5",
+        "sm-7023212ba61a4139a67197d27bc0ed80",
+        "sm-upload-003d79f2-ed1",
+        "sm-upload-04d81a49-f8a",
+        "sm-upload-2e1cf2cd-ff4",
+        "sm-upload-969adf06-09c"
+      ],
+      "first_path": "平行四界 REBIRTH/wav/3 错误的.wav",
+      "status": "HOLD",
+      "reason": "Normalization-equivalent to existing 平行四界REBIRTH."
+    },
+    {
+      "target_id": "al-38ecf13e098b8c0e87ee74bf30fc79ab",
+      "album_name": "平行四界3",
+      "parent_id": "se-6f8791532b85436786f049f26438bb57",
+      "suffix": "wav",
+      "master_count": 9,
+      "master_ids": [
+        "sm-upload-03ccb298-4a1",
+        "sm-upload-14ec6786-592",
+        "sm-upload-4bd88968-092",
+        "sm-upload-55c19ccc-aa2",
+        "sm-upload-820671c5-bbe",
+        "sm-upload-9a545ddf-565",
+        "sm-upload-b8fabd82-f0b",
+        "sm-upload-bf258535-10a",
+        "sm-upload-dc94f069-0d2"
+      ],
+      "first_path": "平四1-6/平行四界3/05  - Overresonated.wav",
+      "status": "HOLD",
+      "reason": "Nested under 平四1-6 collection root; volume alias/display identity needs review."
+    },
+    {
+      "target_id": "al-2e91b86eb0543d04ee95850bffee4020",
+      "album_name": "平行四界5",
+      "parent_id": "se-a1fc619bab3a4b249497ab6c3a8057f1",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-1c5e734b-599"
+      ],
+      "first_path": "平四1-6/平行四界5/10  -最后的歌.wav",
+      "status": "HOLD",
+      "reason": "Nested under 平四1-6 collection root; volume alias/display identity needs review."
+    },
+    {
+      "target_id": "al-85221d9a4c9286752ee5213528e6373f",
+      "album_name": "平行四界×轻文轻小说 EP Vol.1",
+      "parent_id": "se-a5498b32a1df4717a2f4288ee21f3374",
+      "suffix": "wav",
+      "master_count": 4,
+      "master_ids": [
+        "sm-64a555a3d6aa4888b38c0aa21bcd1643",
+        "sm-aae306af4a53465ab24d044e5e8078fd",
+        "sm-c4cfbae381de40e59e29edfa62a0b9e0",
+        "sm-upload-1906de8c-ded"
+      ],
+      "first_path": "平行四界×轻文轻小说 EP Vol.1/wav/7. 剑雪清寒 -Instrumental-.wav",
+      "status": "HOLD",
+      "reason": "Existing EP album with same base and no volume suffix; verify if volume alias."
+    },
+    {
+      "target_id": "al-e8749d853fe9f842e485ba64eb7ca482",
+      "album_name": "星遇-夜屠灵",
+      "parent_id": "se-8e268993bc584c3a9629947efab72b13",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-20946fa1370640fd82971d95e7eb5287",
+        "sm-fec7ceee1cde49b3bbfd49d474bbf057",
+        "sm-upload-0c6f6a5e-65c",
+        "sm-upload-1098e66a-e15",
+        "sm-upload-2272176e-438",
+        "sm-upload-45a8b8dc-7a3",
+        "sm-upload-7ed056f2-f3d",
+        "sm-upload-c168eeee-548",
+        "sm-upload-d16ff2e9-47c",
+        "sm-upload-ffd381e7-b5b"
+      ],
+      "first_path": "星遇-夜屠灵/【星遇】CD音频/08 山际城缘游 母带 44.1kHz 16bit.wav",
+      "status": "HOLD",
+      "reason": "Related 星遇 existing album/source aliases are already present; hold for explicit display-group review."
+    },
+    {
+      "target_id": "al-a1dda35a85f67c21f0ffe0662908fd2a",
+      "album_name": "春雨 - EP",
+      "parent_id": "se-230851d06753473fac03ef87130c22ec",
+      "suffix": "wav",
+      "master_count": 2,
+      "master_ids": [
+        "sm-upload-489780b2-a32",
+        "sm-upload-7ba4c8f5-079"
+      ],
+      "first_path": "Days幻梦年华乐团合集/3-三月雨（Dizzylab可补票）/春雨 相关资源/春雨 - EP/春雨 2016.3.25.wav",
+      "status": "HOLD",
+      "reason": "Nested in Days compilation resources, only two tracks; confirm independent EP before creating user-visible album."
+    },
+    {
+      "target_id": "al-a1a28300ffffd8a316a2cb41dcf37064",
+      "album_name": "生息Leave in breath",
+      "parent_id": "se-9013670e1ead47f0a181016b3068041f",
+      "suffix": "wav",
+      "master_count": 9,
+      "master_ids": [
+        "sm-b65460de6f2e45ca97eb2b641e582eac",
+        "sm-upload-0b2be3ef-3ab",
+        "sm-upload-2505730d-ec6",
+        "sm-upload-2f06e54a-1c1",
+        "sm-upload-3b20eb7c-66c",
+        "sm-upload-661b246a-2b5",
+        "sm-upload-776fa646-bcc",
+        "sm-upload-7e6f06d7-9b4",
+        "sm-upload-94cddcc9-807"
+      ],
+      "first_path": "生息Leave in breath/wav/2 Live in Breaths.wav",
+      "status": "HOLD",
+      "reason": "Normalization-equivalent to existing 生息Leave in Breath."
+    },
+    {
+      "target_id": "al-314a6b5fb4f73db3e67012554d779bc1",
+      "album_name": "矩尺镜海·蚀刻于此媒介B",
+      "parent_id": "se-cc9368c480864e68b672b159b2215a01",
+      "suffix": "wav",
+      "master_count": 16,
+      "master_ids": [
+        "sm-upload-07b8aecc-f33",
+        "sm-upload-185bd48c-77e",
+        "sm-upload-1cc8aa27-9dc",
+        "sm-upload-2951ebf2-1c9",
+        "sm-upload-2ba61d46-fe7",
+        "sm-upload-2fd6c848-5ba",
+        "sm-upload-3b9e63ad-845",
+        "sm-upload-49ee7714-3f3",
+        "sm-upload-67c07f86-3f8",
+        "sm-upload-696becc9-1c2",
+        "sm-upload-6d92e829-e2e",
+        "sm-upload-744f6b02-73d",
+        "sm-upload-75a80b93-ab3",
+        "sm-upload-90dda889-de5",
+        "sm-upload-a02fe32f-3d6",
+        "sm-upload-d1f9252b-84f"
+      ],
+      "first_path": "矩尺镜海·蚀刻于此媒介/矩尺镜海·蚀刻于此媒介B/11 献给黑色圣母的檄文.wav",
+      "status": "HOLD",
+      "reason": "A/B sibling of existing A release; hold for one explicit release display-group decision."
+    },
+    {
+      "target_id": "al-273cce4b1cd11119c8c966a7e579d57c",
+      "album_name": "秘宝旅人ll-Polaris",
+      "parent_id": "se-ddf26f7be0ba4b19b061a5414c58055e",
+      "suffix": "wav",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-03a0b8b1-b03",
+        "sm-upload-0d0ef7c6-418",
+        "sm-upload-12efc92b-19d",
+        "sm-upload-838a557c-189",
+        "sm-upload-8dd193b9-445",
+        "sm-upload-b93ef90b-212",
+        "sm-upload-bc8ff97d-33b"
+      ],
+      "first_path": "秘宝旅人ll-Polaris/wav/05 Rumination.wav",
+      "status": "HOLD",
+      "reason": "Name contains existing Polaris title; verify separate release identity before exposing another album row."
+    },
+    {
+      "target_id": "al-f383d5da703bf79d3cd0eb67f6c5f0bf",
+      "album_name": "1-Sing Sing Sing",
+      "parent_id": "se-3c97803789a6434c84e8cb06f062c935",
+      "suffix": "mp3",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-0988a7f0-95b",
+        "sm-upload-6dd860df-e26",
+        "sm-upload-89039ab1-c99",
+        "sm-upload-b0b79ed9-aaf",
+        "sm-upload-b9176c05-804",
+        "sm-upload-d2dd47ff-975",
+        "sm-upload-dc44617c-cfd"
+      ],
+      "first_path": "洛天依共鸣合集/1-Sing Sing Sing/歌曲/MP3(有损)/02 洛天依 Feel Your Dream.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-4d5feebe016afc2ba6b39de69bfd9b12",
+      "album_name": "1-失落的机械城：边境小镇物语",
+      "parent_id": "se-ec07cd68395d4a6ca9e56f0414b892d7",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-6fa941bd95b44a3a8785f0dd22dcda41",
+        "sm-dc862190d17d4aecb5dbfb8aa1d4ff30",
+        "sm-upload-2f165f2b-a36",
+        "sm-upload-4279dd20-237",
+        "sm-upload-471bed73-68f",
+        "sm-upload-64dd1197-694",
+        "sm-upload-68e2b91f-f14",
+        "sm-upload-af71ca76-0a5",
+        "sm-upload-b26e8096-fe9",
+        "sm-upload-c94b0bcd-1e7"
+      ],
+      "first_path": "Days幻梦年华乐团合集/1-失落的机械城：边境小镇物语/CD级无损WAV/07 酒館狂歡夜：  Carnival Night at the Pub  　酒場のナイトカーニバル.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-11d0d547226d6fc27024a932c53873e2",
+      "album_name": "2-Dance Dance Dance",
+      "parent_id": "se-c3a50b01b8414b6e8d62ffa26bdf371d",
+      "suffix": "mp3",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-08f4dcfd-115",
+        "sm-upload-44f8db7e-56a",
+        "sm-upload-534f21a7-0cf",
+        "sm-upload-6df8a1b7-f5c",
+        "sm-upload-8d288bbb-cc5",
+        "sm-upload-c437e390-883",
+        "sm-upload-fa3b178c-93a"
+      ],
+      "first_path": "洛天依共鸣合集/2-Dance Dance Dance/MP3（有损）/06 洛天依 Evolution.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-7e1e4fa641bf2e5604f5be26d4f5855e",
+      "album_name": "2-Summer Days",
+      "parent_id": "se-490ce26c57434b328ad9f3e67cfb4ef3",
+      "suffix": "wav",
+      "master_count": 8,
+      "master_ids": [
+        "sm-upload-05875896-e06",
+        "sm-upload-2108ede5-c31",
+        "sm-upload-521326c5-da0",
+        "sm-upload-7033e52e-a49",
+        "sm-upload-ad152a69-a46",
+        "sm-upload-dd26cda1-cef",
+        "sm-upload-e2b18d47-ca7",
+        "sm-upload-f039ff21-f82"
+      ],
+      "first_path": "Days幻梦年华乐团合集/2-Summer Days/WAV（无损）/03 夏日恋歌.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-c2a0150d7842862543efb4073e95a7dd",
+      "album_name": "3-三月雨（Dizzylab可补票）",
+      "parent_id": "se-d4950ff97dd24ac99589c3fc785befb1",
+      "suffix": "wav",
+      "master_count": 6,
+      "master_ids": [
+        "sm-upload-04ddb9fc-772",
+        "sm-upload-12a6b5ed-3d1",
+        "sm-upload-4f64544e-4fd",
+        "sm-upload-4fe8e521-7d4",
+        "sm-upload-586f8a4f-545",
+        "sm-upload-760d11bf-bdc"
+      ],
+      "first_path": "Days幻梦年华乐团合集/3-三月雨（Dizzylab可补票）/母带级无损WAV/05.今生如梦.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-1d2eb716ec563488bbaca0a85d3188bc",
+      "album_name": "3-梦的七次方",
+      "parent_id": "se-6b380baddcbc458bb8624e732229a024",
+      "suffix": "mp3",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-6dd92dda-311",
+        "sm-upload-6f195c7f-ac7",
+        "sm-upload-9c2b4a2c-523",
+        "sm-upload-bbf51f89-54e",
+        "sm-upload-c673529f-eac",
+        "sm-upload-dbc0283b-fb6",
+        "sm-upload-e75932e6-eaa"
+      ],
+      "first_path": "洛天依共鸣合集/3-梦的七次方/MP3（有损）/06 洛天依 See u Tomorrow.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-a694fc78b6206f3ba10783cfa7329d89",
+      "album_name": "4-忆香（Dizzylab可补票）",
+      "parent_id": "se-3bbf0dd0836a4341b50b338a87a42d89",
+      "suffix": "flac",
+      "master_count": 8,
+      "master_ids": [
+        "sm-upload-0bb1b291-dda",
+        "sm-upload-27882a85-1aa",
+        "sm-upload-2f316e65-faf",
+        "sm-upload-8999d61a-f09",
+        "sm-upload-8c63f318-7dd",
+        "sm-upload-8f847352-a6a",
+        "sm-upload-9a7516ae-d60",
+        "sm-upload-cdf7abd8-f37"
+      ],
+      "first_path": "Days幻梦年华乐团合集/4-忆香（Dizzylab可补票）/06 相见欢.flac",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-2989da153952a657b6cd84e513bd3880",
+      "album_name": "4-星",
+      "parent_id": "se-c2a40ac00e3947f3b375aa26660e5eff",
+      "suffix": "mp3",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-3347c9ca-11c",
+        "sm-upload-345a7a7b-d81",
+        "sm-upload-4d6f5de5-ba9",
+        "sm-upload-55bd128d-ce7",
+        "sm-upload-bb7d2674-981",
+        "sm-upload-cef527aa-194",
+        "sm-upload-d9fadc26-45a"
+      ],
+      "first_path": "洛天依共鸣合集/4-星/MP3(有损)/05 洛天依 Why.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-5c3fa6c77b8c5e1a4179f3c41ea1605f",
+      "album_name": "5-失落的机械城Ⅱ：虚浮之都（Dizzylab可补票）",
+      "parent_id": "se-3fc68eb22a3849ef85440baa52f492d4",
+      "suffix": "wav",
+      "master_count": 6,
+      "master_ids": [
+        "sm-upload-28b216b1-4fc",
+        "sm-upload-3a93947f-2d4",
+        "sm-upload-6bc661d9-907",
+        "sm-upload-dabb4451-aaf",
+        "sm-upload-e0494b32-bca",
+        "sm-upload-ff7ec85f-193"
+      ],
+      "first_path": "Days幻梦年华乐团合集/5-失落的机械城Ⅱ：虚浮之都（Dizzylab可补票）/母带版无损伴奏/机械舞者 INST.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-f2a0644c85ab0c9608e4951167e81ef5",
+      "album_name": "5-失落的机械城Ⅱ：虚浮之都（Dizzylab可补票）",
+      "parent_id": "se-c0dd94446bb541f499c89e73963f2da6",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-34c17e19-77b",
+        "sm-upload-39771834-f9f",
+        "sm-upload-50bda9ad-1f9",
+        "sm-upload-742acf26-96b",
+        "sm-upload-8ea6de30-ae4",
+        "sm-upload-a1063840-bb8",
+        "sm-upload-aecdc13e-49e",
+        "sm-upload-b4bc5287-8a8",
+        "sm-upload-c42224ba-1f0",
+        "sm-upload-dfb4f9c8-8cf"
+      ],
+      "first_path": "Days幻梦年华乐团合集/5-失落的机械城Ⅱ：虚浮之都（Dizzylab可补票）/母带版无损音乐/2. 酒馆小憩.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-4ea9321ae8bb75761280fbc53fb67b42",
+      "album_name": "VSINGER专辑《绫》",
+      "parent_id": "se-37e162687a824863876fae184199f2a6",
+      "suffix": "wav",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-241924cb-e22",
+        "sm-upload-2720bc95-d45",
+        "sm-upload-28d4aa6d-7e7",
+        "sm-upload-4aa98b37-552",
+        "sm-upload-53292b1a-2d7",
+        "sm-upload-a0268c9a-e36",
+        "sm-upload-a0d0914e-d16"
+      ],
+      "first_path": "VSINGER专辑《绫》/wav/02 乐行者.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-729a0f6888c3aac8af10113df5181aa5",
+      "album_name": "VSINGER专辑《绫》",
+      "parent_id": "se-d28fadb4cf8d41f6a4d8144083e9d853",
+      "suffix": "mp3",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-8e43402e-757",
+        "sm-upload-a52f35ec-230",
+        "sm-upload-ac31345a-7c5",
+        "sm-upload-c81217c0-b53",
+        "sm-upload-c86a85b7-a52",
+        "sm-upload-cb8b6eb9-6c3",
+        "sm-upload-d6182d5d-19d"
+      ],
+      "first_path": "VSINGER专辑《绫》/mp3/Track3《山巅》.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-80fa23b3b97bb88f8eb270ca6ad25a72",
+      "album_name": "sv重置版",
+      "parent_id": "se-cdb125f015a844b7aa9e357f3c146dde",
+      "suffix": "mp3",
+      "master_count": 6,
+      "master_ids": [
+        "sm-upload-039c5d56-14d",
+        "sm-upload-2a146b11-014",
+        "sm-upload-2c5d382c-3f0",
+        "sm-upload-711a32f5-bb0",
+        "sm-upload-722c02e4-d08",
+        "sm-upload-7967a479-69c"
+      ],
+      "first_path": "『亚特兰蒂斯Atlantis』/sv重置版/月光掌sv1.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-0c43c9837b8677dbee54f2786b761006",
+      "album_name": "【星遇】mp3",
+      "parent_id": "se-d919eb7bf7a04a209e14cf02a163831e",
+      "suffix": "mp3",
+      "master_count": 10,
+      "master_ids": [
+        "sm-3a50c2091cf34d4cb1d86e082eab2793",
+        "sm-d5fdb30772c14e27852befdead7f804c",
+        "sm-e89d7c25287f4185a0fbc9a7bb1f9a80",
+        "sm-upload-270c70ab-258",
+        "sm-upload-73886ec3-eea",
+        "sm-upload-83bb1b16-b40",
+        "sm-upload-a8ccc028-46c",
+        "sm-upload-ac4a03ea-675",
+        "sm-upload-be8db7e3-17b",
+        "sm-upload-c5175dc8-2bb"
+      ],
+      "first_path": "星遇-夜屠灵/【星遇】mp3/05 单行道 母带 44.1kHz 16bit.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-cad3cd3929c080285deaddfbbfe69c90",
+      "album_name": "三月雨专辑含伴奏",
+      "parent_id": "se-86536729be7b46529fbb5cf99ad9811a",
+      "suffix": "mp3",
+      "master_count": 3,
+      "master_ids": [
+        "sm-11b8f9d109e34068a067814a417fd475",
+        "sm-76b5ac39270843d693fb4aaab3d02239",
+        "sm-upload-173e3ce1-a8e"
+      ],
+      "first_path": "三月雨/三月雨专辑含伴奏/03.靡靡之音.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-5f35d56318cc723f690b95b291541958",
+      "album_name": "二专曲子wav",
+      "parent_id": "se-be5b1feb32954c3aa09fa666f6dde514",
+      "suffix": "wav",
+      "master_count": 9,
+      "master_ids": [
+        "sm-upload-01fceb485fa5",
+        "sm-upload-3886a9bf-b60",
+        "sm-upload-4112720b-fa8",
+        "sm-upload-55d2c5e9-eb1",
+        "sm-upload-6e11f84d-6a1",
+        "sm-upload-728672e8-b19",
+        "sm-upload-c1675846-f75",
+        "sm-upload-d69a58fb-3bf",
+        "sm-upload-e168750c-805"
+      ],
+      "first_path": "名字/二专曲子wav/04.鸥.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-1e09fc9adbfbfe721e05423e1e1d34b6",
+      "album_name": "八月、盛夏、绣球花",
+      "parent_id": "se-f4e95c88a44f4871a31eca4e8b032d0a",
+      "suffix": "wav",
+      "master_count": 6,
+      "master_ids": [
+        "sm-upload-17ac33a3-19b",
+        "sm-upload-1d75235f-ad9",
+        "sm-upload-2d9a5410-175",
+        "sm-upload-49630aa4-9d8",
+        "sm-upload-75222c1d-65d",
+        "sm-upload-ae194ed5-067"
+      ],
+      "first_path": "八月、盛夏、绣球花/WAV/04 04 某个雨天的追忆.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-45ffd025c14ae2ae5751f91990f91192",
+      "album_name": "八音迭奏",
+      "parent_id": "se-a8afcb9bc2734391b18f969abb71ecf0",
+      "suffix": "mp3",
+      "master_count": 7,
+      "master_ids": [
+        "sm-023732192907465eb5b7ec03e6bbb16c",
+        "sm-60ffe0f60df04e558059ab9ecb23ebeb",
+        "sm-7950f702a80440c292e0fcefdc1f0890",
+        "sm-8c7e149cd674479dabf23b1141506be4",
+        "sm-8cf6676b4bd9425f98f09af09c817bd0",
+        "sm-b5b5033d106d4ec2a5d89898324b4c1e",
+        "sm-ce2e9c00d4104acc9644a264099c6b41"
+      ],
+      "first_path": "八音迭奏/mp3/文学少女的忧郁.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-72a8d66d6ee762de630b35ba255c1134",
+      "album_name": "埋藏在深海里的游乐场",
+      "parent_id": "se-ceeaac1862f54a86931c136940389354",
+      "suffix": "wav",
+      "master_count": 7,
+      "master_ids": [
+        "sm-upload-09df13d3-4f2",
+        "sm-upload-7eff2b11-383",
+        "sm-upload-8b314b47-25d",
+        "sm-upload-8f4293ad-50c",
+        "sm-upload-c96883ee-da0",
+        "sm-upload-ca50817b-487",
+        "sm-upload-e6306e5d-74c"
+      ],
+      "first_path": "埋藏在深海里的游乐场/05 音轨05.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-7064619fc40caf10f0f5ed6fbf12cd44",
+      "album_name": "夏夜幻象",
+      "parent_id": "se-e532c6efe9364105b1f4fa58d85e4ad9",
+      "suffix": "flac",
+      "master_count": 8,
+      "master_ids": [
+        "sm-upload-19b9c59d-345",
+        "sm-upload-2b17b5fb-c70",
+        "sm-upload-2fdc8946-5c6",
+        "sm-upload-34a20fb4-1f0",
+        "sm-upload-8f994bd7-40a",
+        "sm-upload-ae96eb0c-57f",
+        "sm-upload-e8efe881-ece",
+        "sm-upload-effd7ff7-8a6"
+      ],
+      "first_path": "夏夜幻象/歌词/2-深夜逃离-instrumental.flac",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-a2051ed7fb324fd791aefcecf354127f",
+      "album_name": "夏日应时而至-CD版",
+      "parent_id": "se-8453a56489914f569f5c71138ac513bf",
+      "suffix": "wav",
+      "master_count": 6,
+      "master_ids": [
+        "sm-c768555f39cc424ea12e9efa2cc368b7",
+        "sm-upload-0e2f52c8-9bd",
+        "sm-upload-66d68eb4-690",
+        "sm-upload-9af5d8a3-e25",
+        "sm-upload-a04f063a-4bb",
+        "sm-upload-c928b5b7-a6b"
+      ],
+      "first_path": "夏日应时而至 (彩胶板)/夏日应时而至-CD版/04 鲛绡歌.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-88117a4832d9320a6e849dd96feda2dc",
+      "album_name": "夏日应时而至-CD版",
+      "parent_id": "se-cc42e238db7f45af931c8be3dd601263",
+      "suffix": "wav",
+      "master_count": 6,
+      "master_ids": [
+        "sm-upload-1974c770-571",
+        "sm-upload-2b5dbaae-067",
+        "sm-upload-77c2f1a6-991",
+        "sm-upload-828d77af-dff",
+        "sm-upload-c47fbaa2-d55",
+        "sm-upload-d08be97d-731"
+      ],
+      "first_path": "夏日应时而至-CD版/04 鲛绡歌.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-69a212a4c8de74c135124c904c31f10c",
+      "album_name": "天南海北酥",
+      "parent_id": "se-56f9219fb1e8416aa6c148d83c01c6ff",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-92c5eaf0-c04"
+      ],
+      "first_path": "天南海北酥/天南海北酥（WAV）/13 夏花挽浪.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-23496ad9d826f13be906acf707099343",
+      "album_name": "失落的机械城Ⅱ：虚浮之都",
+      "parent_id": "se-2ba3767141eb4c669ba42f835bf7a7c2",
+      "suffix": "wav",
+      "master_count": 5,
+      "master_ids": [
+        "sm-03b8c4e1aba440c0b32ff28e9dc67e2a",
+        "sm-32347ceb107a49fc95e4486f30bf0a95",
+        "sm-d2a9d4db6405441db9742d569ed7c05b",
+        "sm-eaa419bb46294fc2941b4d0cfcafe4a2",
+        "sm-upload-f61ec22c-001"
+      ],
+      "first_path": "失落的机械城Ⅱ：虚浮之都/wav/10. 落日余歌-启程之诗.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-06625f5a0e48ebeec2c5d2498bb257b3",
+      "album_name": "妄想症PARANOIA",
+      "parent_id": "se-acf12b666b454119b5855199505f0372",
+      "suffix": "m4a",
+      "master_count": 2,
+      "master_ids": [
+        "sm-upload-72047a2b-045",
+        "sm-upload-82d74cb5-17d"
+      ],
+      "first_path": "妄想症PARANOIA/mp3/DELA、雨狸 - 二重变革.m4a",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-c5af148540622d0ad3b177e2751b4d1e",
+      "album_name": "妄想症PARANOIA",
+      "parent_id": "se-acf12b666b454119b5855199505f0372",
+      "suffix": "mp3",
+      "master_count": 8,
+      "master_ids": [
+        "sm-upload-32985176-682",
+        "sm-upload-414aea0e-0c4",
+        "sm-upload-560a8fb0-1c1",
+        "sm-upload-57ca3ec6-212",
+        "sm-upload-640070b2-f74",
+        "sm-upload-c0d3251a-365",
+        "sm-upload-c433125c-2ae",
+        "sm-upload-f884d581-a0e"
+      ],
+      "first_path": "妄想症PARANOIA/mp3/DELA、雨狸 - 四重罪孽.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-6539abb32f809f66cb1ca75c4cfeb9db",
+      "album_name": "拾",
+      "parent_id": "se-4b31fb47f4e74e518eb52403bc7b33e6",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-0b49611b-5a5",
+        "sm-upload-27f8d545-63a",
+        "sm-upload-34066532-35b",
+        "sm-upload-61490c0e-efc",
+        "sm-upload-64bc1cea-4c7",
+        "sm-upload-78705c56-b8e",
+        "sm-upload-881302b0-3b8",
+        "sm-upload-cb353688-512",
+        "sm-upload-db82ac97-066",
+        "sm-upload-fcfc778e-c42"
+      ],
+      "first_path": "拾/wav/1再生.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-7bbaf50481bbaa0ac6e07b712f4f3c7c",
+      "album_name": "月光入侵计划",
+      "parent_id": "se-dfff4bf6280a4589b9401f7372459795",
+      "suffix": "wav",
+      "master_count": 5,
+      "master_ids": [
+        "sm-upload-07f9d148-761",
+        "sm-upload-552f00e7-c63",
+        "sm-upload-6e6b52af-6d2",
+        "sm-upload-9e3adc18-9a2",
+        "sm-upload-e5e33a1f-230"
+      ],
+      "first_path": "月光入侵计划/wav/07.气泡水的电波梦 ins.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-01553061501a144435fd638652a61a5b",
+      "album_name": "枫烬-夜屠灵",
+      "parent_id": "se-35f1087829314c6795fe3adc09248930",
+      "suffix": "mp3",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-05bb819c-f2e",
+        "sm-upload-2614a8b2-2a9",
+        "sm-upload-32e2bc21-0db",
+        "sm-upload-3b93f7af-3eb",
+        "sm-upload-49a7ec5a-aab",
+        "sm-upload-6819c147-600",
+        "sm-upload-a3a0a4e4-e6f",
+        "sm-upload-d73d4fd7-31c",
+        "sm-upload-fece9174-25f",
+        "sm-upload-ffc2fb83-087"
+      ],
+      "first_path": "枫烬-夜屠灵/mp3/06 花的七种语言 定稿.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-5f1125447aeabade12ad69fc61452cb5",
+      "album_name": "枫烬-夜屠灵",
+      "parent_id": "se-6fa73caf8b814601907839c78ff00208",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-3e9304e4-70c",
+        "sm-upload-76fed751-d74",
+        "sm-upload-7e4d143b-d45",
+        "sm-upload-c0d6b0e9-651",
+        "sm-upload-c94e08dc-ac5",
+        "sm-upload-d20be5fe-d42",
+        "sm-upload-dda8687d-2d4",
+        "sm-upload-f9d7bb36-cb7",
+        "sm-upload-fec206f8-33f",
+        "sm-upload-ff839b9e-a8f"
+      ],
+      "first_path": "枫烬-夜屠灵/wav/02 放逐自我 定稿.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-f5ab6375d02ced24bac13e43c5d19320",
+      "album_name": "深潜之宙",
+      "parent_id": "se-e6f819d1f30d4ae1a0d962b1ef6c3074",
+      "suffix": "wav",
+      "master_count": 5,
+      "master_ids": [
+        "sm-0f20fb59147340c996caf0daf6ab8c8b",
+        "sm-3afc598ebee94cee8710b7ee041ccb66",
+        "sm-515e61b0d9574065b2cad562b9e34ad1",
+        "sm-dbda185aa8c9450a8049d4408f6c807c",
+        "sm-f31b3b2abe0d4c56b2cbb1db0d5f318b"
+      ],
+      "first_path": "深潜之宙/flac/3.现代浪漫传奇.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-dadb3356f1a5d1b767023b58b1beaa45",
+      "album_name": "狐狸座之死",
+      "parent_id": "se-b6e7cc6c764f4103a27d794bcd7752aa",
+      "suffix": "mp3",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-ec95e7e9-878"
+      ],
+      "first_path": "狐狸座之死/【试听】狐狸座之死.mp3",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-403b9fc0e593b872fce917243ab1550c",
+      "album_name": "狐狸座之死",
+      "parent_id": "se-b6e7cc6c764f4103a27d794bcd7752aa",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-fd59a6118b82423c900c4b54c1ab05b1"
+      ],
+      "first_path": "狐狸座之死/【HIFI】狐狸座之死.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-8a76b6066d8134ad5676b5b2c6ad5b87",
+      "album_name": "百变绫绫",
+      "parent_id": "se-aff4b6f4c5f24228a30519b959ee518b",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-4f085b7e-170"
+      ],
+      "first_path": "百变绫绫/wav/03.闺阁闲谈.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-71c9446e3f36decf0ff055f44c449923",
+      "album_name": "百变绫绫(Ins)",
+      "parent_id": "se-1fd07d5fcff74e52a34cce850eeb0e76",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-22fa2f7b-14c"
+      ],
+      "first_path": "百变绫绫/百变绫绫(Ins)/03.闺阁闲谈（Ins).wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-da06a5c2ba6f76cb089d6f9ffa64effa",
+      "album_name": "矩尺镜海·蚀刻于此媒介A",
+      "parent_id": "se-698bb4fd7be549aaa70de23aa64ae9a1",
+      "suffix": "wav",
+      "master_count": 6,
+      "master_ids": [
+        "sm-upload-0c44154f-289",
+        "sm-upload-26849242-9c3",
+        "sm-upload-39219943-6af",
+        "sm-upload-525717c0-4b4",
+        "sm-upload-92016e7a-88a",
+        "sm-upload-9ec727e1-f07"
+      ],
+      "first_path": "矩尺镜海·蚀刻于此媒介/矩尺镜海·蚀刻于此媒介A/05 答案不唯一.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-35fd7b8070b3c3b9bbeb3506399163cd",
+      "album_name": "网易云版",
+      "parent_id": "se-f72515fbc84245b7aef00ba997425c97",
+      "suffix": "flac",
+      "master_count": 9,
+      "master_ids": [
+        "sm-upload-2be9f90a-93f",
+        "sm-upload-2f48ea96-f4a",
+        "sm-upload-3e4198eb-7df",
+        "sm-upload-5e93fe21-196",
+        "sm-upload-b6a6427e-355",
+        "sm-upload-c22fcd82-c8d",
+        "sm-upload-c55d80fb-dd6",
+        "sm-upload-d8591925-af7",
+        "sm-upload-e3158d71-9c5"
+      ],
+      "first_path": "暗适应ЯEMOTION/网易云版/自我的存在证明-Nekock·LK_初音ミク.flac",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-584a2b8b0f684a5359c45a897d3d6c34",
+      "album_name": "蔗蓝的创作集1.0-蔗蓝",
+      "parent_id": "se-e43af23755444b1aa56d4501c7ba77d4",
+      "suffix": "wav",
+      "master_count": 28,
+      "master_ids": [
+        "sm-upload-00211c6c-9ec",
+        "sm-upload-02e005e7-c69",
+        "sm-upload-048a0756-d80",
+        "sm-upload-0534d6fb-3e6",
+        "sm-upload-1a1b38e3-18e",
+        "sm-upload-1f16389e-357",
+        "sm-upload-1f9017ea-07f",
+        "sm-upload-23a540dc-0e6",
+        "sm-upload-2646aee8-8c7",
+        "sm-upload-29aa737e-d7d",
+        "sm-upload-3511d1fa-551",
+        "sm-upload-625aa43b-4d2",
+        "sm-upload-6459b53d-e6e",
+        "sm-upload-67927a7e-561",
+        "sm-upload-6994d270-a67",
+        "sm-upload-72a666eb-1fa",
+        "sm-upload-72dbb920-90d",
+        "sm-upload-82fdd9cb-3dc",
+        "sm-upload-a6848b06-77d",
+        "sm-upload-ad051eb3-7a3",
+        "sm-upload-ad9a3f3a-778",
+        "sm-upload-c289a81c-56a",
+        "sm-upload-ccea0ae3-484",
+        "sm-upload-d2e15dcf-ef7",
+        "sm-upload-dd6123b1-898",
+        "sm-upload-e28f7e1d-766",
+        "sm-upload-e736c93d-965",
+        "sm-upload-f22fe5c6-23b"
+      ],
+      "first_path": "蔗蓝的创作集1.0-蔗蓝（wav）/07 思绪驯服者.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-d27a8cc1386b381ef0445986ad4b6b56",
+      "album_name": "虚拟工程师日志 episodes-of-engineers-virtualization",
+      "parent_id": "se-3d1b65c0c35147569244642a19a143bc",
+      "suffix": "flac",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-570447bc-61a"
+      ],
+      "first_path": "虚拟工程师日志 episodes-of-engineers-virtualization/wav/06 intro 无知与童心.flac",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-b9c7adbdfb9ed5253efbd4b4708998c7",
+      "album_name": "虚拟工程师日志 episodes-of-engineers-virtualization",
+      "parent_id": "se-3d1b65c0c35147569244642a19a143bc",
+      "suffix": "wav",
+      "master_count": 6,
+      "master_ids": [
+        "sm-upload-145f10bc-344",
+        "sm-upload-31300a3c-1c0",
+        "sm-upload-4e10b5f4-8bf",
+        "sm-upload-74266922-a55",
+        "sm-upload-b71d6a6fb302",
+        "sm-upload-f72ecc07-5a9"
+      ],
+      "first_path": "虚拟工程师日志 episodes-of-engineers-virtualization/wav/03 石室激光器.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-44dfc81ee358ec7c6c9f46baafa503ec",
+      "album_name": "行星症候群",
+      "parent_id": "se-5203b9b28ac948fea3bef90d3faf9dde",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-05493f48-746"
+      ],
+      "first_path": "行星症候群/wav/01 Falling Miracle.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-19e3dd0cc1bdd1d18ea35653ef80829c",
+      "album_name": "赤·潮",
+      "parent_id": "se-3ebda4527ca441f39dece68ad7ef248e",
+      "suffix": "wav",
+      "master_count": 8,
+      "master_ids": [
+        "sm-upload-00e6ddee-fbd",
+        "sm-upload-2a13a993-390",
+        "sm-upload-30133f58-967",
+        "sm-upload-326cf26c-b34",
+        "sm-upload-34d0601e-0b6",
+        "sm-upload-80056974-25d",
+        "sm-upload-a8c0e3ab-99c",
+        "sm-upload-fa9feee5-574"
+      ],
+      "first_path": "赤·潮/wav/05 星散见空山.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-009fbc967f79b605c1cbe9a1a683477e",
+      "album_name": "过热",
+      "parent_id": "se-042109dd619e4cf79485ca521b4fc61c",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-upload-7a816ccf-ff6"
+      ],
+      "first_path": "过热/01.过热.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-ad51b68f24378c80d89e9172b96683fe",
+      "album_name": "透明小说-潮汐逃逸（wav+flac）",
+      "parent_id": "se-d620cabf953a47a89d881f0490b61719",
+      "suffix": "wav",
+      "master_count": 11,
+      "master_ids": [
+        "sm-upload-09ade4bf-395",
+        "sm-upload-25fa0a55-ac9",
+        "sm-upload-33eadc68-93f",
+        "sm-upload-36d2a5bb-ecc",
+        "sm-upload-46fc3aa6-4c5",
+        "sm-upload-608ee68b-af8",
+        "sm-upload-64ac5b94-ffd",
+        "sm-upload-67602238-3e0",
+        "sm-upload-a8431d8c-ea2",
+        "sm-upload-c12628e3-5ac",
+        "sm-upload-fd53bc1d-fbb"
+      ],
+      "first_path": "透明小说-潮汐逃逸（wav+flac）/wav/08 海产罐头信笺ge.wav",
+      "status": "HOLD",
+      "reason": "Source folder name collision/alias/multiple physical groups; requires corrected display name or explicit display-group mapping."
+    },
+    {
+      "target_id": "al-a0a7da932911642ba10b4630dc80362a",
+      "album_name": "起程转合",
+      "parent_id": "se-0f8ff225958a4acc8d59e3de7d79479d",
+      "suffix": "wav",
+      "master_count": 6,
+      "master_ids": [
+        "sm-upload-05d63157-24d",
+        "sm-upload-4ae38963-7a5",
+        "sm-upload-6409cedf-390",
+        "sm-upload-7848fe50-1d6",
+        "sm-upload-85d97fa1-651",
+        "sm-upload-da9171ca-fd6"
+      ],
+      "first_path": "起程转合/wav/2.百鸟参临.wav",
+      "status": "HOLD",
+      "reason": "Fresh primary preflight found one other same-source+parent+codec member outside pending: sm-upload-ddebd497-12a (3.真风流) under album al-3ff61cef3d (Pending Uploads), path 起程转合/wav/3.真风流.wav. Do not alter this non-pending member in this operation."
+    },
+    {
+      "target_id": "al-0650d44bf5d828e65f1a51f15143438f",
+      "album_name": "Freesia",
+      "parent_id": "se-de897d726d4246c7b00fe6563c30a422",
+      "suffix": "wav",
+      "master_count": 12,
+      "master_ids": [
+        "sm-upload-33959ca1-297",
+        "sm-upload-34c51de9-aa4",
+        "sm-upload-637470c0-5af",
+        "sm-upload-64363012-149",
+        "sm-upload-66bdb06b-1cb",
+        "sm-upload-6b506d3e-f76",
+        "sm-upload-6c0a0dc9-c4a",
+        "sm-upload-89d8af71-0b6",
+        "sm-upload-8b4e6e46-206",
+        "sm-upload-95621150-291",
+        "sm-upload-b33cfb39-448",
+        "sm-upload-debc2a1c-66a"
+      ],
+      "first_path": "Freesia/wav/Tr.05 雪之花.wav",
+      "status": "HOLD",
+      "reason": "Primary track comparison confirmed 12/12 same sequence and matching names with existing al-9544935a62 “Fressia” (track 8 has D!scolor vs D!scoloЯ glyph variation). Hold; resolve as same release via audio/tag evidence and merge/display group; do not create a new album row."
+    },
+    {
+      "target_id": "al-0225685d1960bf9e11319374c252b4f9",
+      "album_name": "✡星临✡",
+      "parent_id": "se-64f86529bb7841af8fec94b8c6056712",
+      "suffix": "wav",
+      "master_count": 8,
+      "master_ids": [
+        "sm-upload-122f15f4-d8c",
+        "sm-upload-1561109d-155",
+        "sm-upload-3ce92649-53e",
+        "sm-upload-8c995229-db4",
+        "sm-upload-99a2869b-a76",
+        "sm-upload-c1d33c88-c02",
+        "sm-upload-e3fa187f-6f0",
+        "sm-upload-fa89218f-266"
+      ],
+      "first_path": "✡星临✡（WAV）/wav/07、醉江天.wav",
+      "status": "HOLD",
+      "reason": "Primary preflight found four unallowlisted non-pending members; hold whole group."
+    },
+    {
+      "target_id": "al-23d035075e8002f56a87b16113cac344",
+      "album_name": "你的灵魂长出一支玫瑰（人声版）",
+      "parent_id": "se-47d77eeefe2b494985dab6ba07ade1a5",
+      "suffix": "wav",
+      "master_count": 13,
+      "master_ids": [
+        "sm-upload-029009bc-97a",
+        "sm-upload-1273fb4a-957",
+        "sm-upload-2040526b-b38",
+        "sm-upload-3cb1fb29-72a",
+        "sm-upload-6ae335a4-f5e",
+        "sm-upload-7b633873-0cf",
+        "sm-upload-9cce0305-cb1",
+        "sm-upload-ab615a90-cf4",
+        "sm-upload-ba8d2668-76b",
+        "sm-upload-edb17e35-203",
+        "sm-upload-ef4db283-bb5",
+        "sm-upload-f51aee74-892",
+        "sm-upload-f9cc4c12-b05"
+      ],
+      "first_path": "你的灵魂长出一朵玫瑰（2025）/你的灵魂长出一支玫瑰（人声版）/06 为什么我们如此忌讳提起死亡.wav",
+      "status": "HOLD",
+      "reason": "Primary preflight found only 12/13 still pending and metadata snapshots changed; hold whole group. Version family stays isolated until display group is resolved."
+    },
+    {
+      "target_id": "al-fbe1862cee0b1dd21a35f12d6d7b6417",
+      "album_name": "兰音.2023.《兰•音》",
+      "parent_id": "se-453a3d4f4b864fad9043f6162cbabc5f",
+      "suffix": "wav",
+      "master_count": 9,
+      "master_ids": [
+        "sm-upload-285c6c9d-47c",
+        "sm-upload-3f73b9db-b0a",
+        "sm-upload-6b30c83f-9a5",
+        "sm-upload-88de1f26-bc3",
+        "sm-upload-96040156-305",
+        "sm-upload-9793c9dd-384",
+        "sm-upload-9eb54bbb-7e9",
+        "sm-upload-ed5fbc9e-9ba",
+        "sm-upload-ffd0859c-da4"
+      ],
+      "first_path": "兰音.2023.《兰•音》/09.《白龙》.2023.兰音.24bits.48khz.wav",
+      "status": "HOLD",
+      "reason": "Primary preflight found one unallowlisted non-pending member in the same storage group; hold whole group."
+    },
+    {
+      "target_id": "al-25b69cbce89848285480c14617a51aea",
+      "album_name": "再启动ЯEACTION",
+      "parent_id": "se-2b534c748ef24c1b9900e957a9ddefc7",
+      "suffix": "wav",
+      "master_count": 6,
+      "master_ids": [
+        "sm-upload-3fddc7da-0c2",
+        "sm-upload-53ae7cf1-c61",
+        "sm-upload-594a71a1-57a",
+        "sm-upload-d370d72e-ded",
+        "sm-upload-e205cff4-825",
+        "sm-upload-f690b462-523"
+      ],
+      "first_path": "再启动ЯEACTION/wav/04 生生世世.wav",
+      "status": "HOLD",
+      "reason": "Primary preflight found only 5/6 still pending and metadata snapshots changed; hold whole group."
+    },
+    {
+      "target_id": "al-817d0efff3fd439c4236e02c7557dfda",
+      "album_name": "墨路瑶光-墨清弦六周年同人专辑",
+      "parent_id": "se-fb90d59b0a564d9a9583d3766264c60e",
+      "suffix": "wav",
+      "master_count": 17,
+      "master_ids": [
+        "sm-upload-02f158e5-ae8",
+        "sm-upload-1d46e029-6fc",
+        "sm-upload-2f872a17-7a1",
+        "sm-upload-325ce2ca-f0a",
+        "sm-upload-398fa17d-cd4",
+        "sm-upload-445673f0-1c1",
+        "sm-upload-516cbc29-262",
+        "sm-upload-6da1f3d9-ac6",
+        "sm-upload-8f89ad62-5de",
+        "sm-upload-b1dca366-c26",
+        "sm-upload-c3406b98-670",
+        "sm-upload-caa92cff-728",
+        "sm-upload-d29c30ca-6ca",
+        "sm-upload-d4f6836c-cd2",
+        "sm-upload-d975ba4c-788",
+        "sm-upload-d999af37-fc8",
+        "sm-upload-f2b9bd5a-811"
+      ],
+      "first_path": "墨路瑶光-墨清弦六周年同人专辑/wav/15 酒途(Ins) (Mastered 01).wav",
+      "status": "HOLD",
+      "reason": "Primary preflight found only 16/17 still pending and metadata snapshots changed; hold whole group."
+    },
+    {
+      "target_id": "al-5645ac1042b9ef60e7c9494d3e4386da",
+      "album_name": "夜幻寻梦    夢ノ結唱",
+      "parent_id": "se-d3e9413ea1ec46c99ed6eb83539106fe",
+      "suffix": "wav",
+      "master_count": 20,
+      "master_ids": [
+        "sm-176c91274c2a487faabc753ce14f69b2",
+        "sm-29e37164b4294234ab8e58448838d849",
+        "sm-2e92ebff21944e10884ce8cd86473240",
+        "sm-97a84e6cfc8d4b919457dee7b9df3f34",
+        "sm-b8ab8ab7736344f5adc72ffacd505ed8",
+        "sm-upload-01af6d95-53e",
+        "sm-upload-0669a286-18b",
+        "sm-upload-0ca0e090-cde",
+        "sm-upload-23454893-53d",
+        "sm-upload-2fd5f69e-a16",
+        "sm-upload-4cb9c7b2-786",
+        "sm-upload-55099b5a-157",
+        "sm-upload-5d3135e7-3a8",
+        "sm-upload-745bb8b6-321",
+        "sm-upload-81f10327-de6",
+        "sm-upload-92d2f9ee-71d",
+        "sm-upload-96714c8b-2a6",
+        "sm-upload-a112c9b1-951",
+        "sm-upload-be0723da-3e0",
+        "sm-upload-d1e348db-02e"
+      ],
+      "first_path": "夜幻寻梦    夢ノ結唱/08 真夜中に飛び込む , 跃入午夜 feat. 关樱_Kan.wav",
+      "status": "HOLD",
+      "reason": "Prefix/alias collision with existing 夜幻寻梦_Midnight Revereies-α fragment albums (3+4+1 tracks). Hold for release-level identity/display-group review."
+    },
+    {
+      "target_id": "al-2b73883ab5cc395ad5ece467f799138f",
+      "album_name": "梦境电台",
+      "parent_id": "se-ba2797172cbf4a1cb2c84a23ba5cfea0",
+      "suffix": "wav",
+      "master_count": 24,
+      "master_ids": [
+        "sm-upload-03b69c03-003",
+        "sm-upload-121446d7-f15",
+        "sm-upload-128dd8ce-062",
+        "sm-upload-15afc5ca-b1d",
+        "sm-upload-18defdab-f0d",
+        "sm-upload-251a3585-d0d",
+        "sm-upload-28541b71-f2b",
+        "sm-upload-2c16a6cd-526",
+        "sm-upload-5284be59-eb2",
+        "sm-upload-5562c506-ffe",
+        "sm-upload-59e28203-0b5",
+        "sm-upload-5a9826f5-187",
+        "sm-upload-5fd7d32a-c04",
+        "sm-upload-68939874-b93",
+        "sm-upload-7dfe3a28-b16",
+        "sm-upload-7ea3702a-65e",
+        "sm-upload-8b6a3bfd-a9c",
+        "sm-upload-931192f6-47c",
+        "sm-upload-b0ad7a39-eb3",
+        "sm-upload-c92726e9-b33",
+        "sm-upload-d3975de0-202",
+        "sm-upload-dc76b0d6-236",
+        "sm-upload-efac8d66-9dd",
+        "sm-upload-f8e23319-861"
+      ],
+      "first_path": "梦境电台/wav/23幻想叙事者.wav",
+      "status": "HOLD",
+      "reason": "Primary preflight found four unallowlisted non-pending members; hold whole group."
+    },
+    {
+      "target_id": "al-571dcb547eb5f59f700f0f69ba58532d",
+      "album_name": "页间曲-星韵社",
+      "parent_id": "se-8ac10e81bb854929b61a9b8d27995f10",
+      "suffix": "wav",
+      "master_count": 10,
+      "master_ids": [
+        "sm-upload-0112a6d9-283",
+        "sm-upload-2c6e632f-4ae",
+        "sm-upload-6a381b8f-020",
+        "sm-upload-8ca7055e-888",
+        "sm-upload-a4de5316-99a",
+        "sm-upload-bba1a72e-f0c",
+        "sm-upload-cc1e80b9-244",
+        "sm-upload-d11b6d58-141",
+        "sm-upload-d642ecae-43c",
+        "sm-upload-fa2c02f7-a2d"
+      ],
+      "first_path": "页间曲-星韵社/wav/03 光降落的序章.wav",
+      "status": "HOLD",
+      "reason": "Prefix collision with multiple existing 页间曲 singleton rows. Hold for release-level identity/display-group review."
+    },
+    {
+      "target_id": "al-a105cd46a8b3549519c69623818ad005",
+      "album_name": "你的灵魂长出一支玫瑰（言和版）",
+      "parent_id": "se-48e529b761c342f69a4ccf7ee2ee38ba",
+      "suffix": "wav",
+      "master_count": 13,
+      "master_ids": [
+        "sm-upload-2ae5d29e-d99",
+        "sm-upload-310b290a-07e",
+        "sm-upload-433c6b9a-4a9",
+        "sm-upload-50f06025-592",
+        "sm-upload-596e2550-992",
+        "sm-upload-69ed7ba3-9e5",
+        "sm-upload-7c9ebd84-c0a",
+        "sm-upload-7e34aa0d-bdd",
+        "sm-upload-83a779ba-dc3",
+        "sm-upload-99ee03c4-341",
+        "sm-upload-cbb8756e-98d",
+        "sm-upload-cd027b86-380",
+        "sm-upload-f227f92c-ec5"
+      ],
+      "first_path": "你的灵魂长出一朵玫瑰（2025）/你的灵魂长出一支玫瑰（言和版）/12 上世纪残卷.wav",
+      "status": "HOLD",
+      "reason": "Same release family as the 人声版 variant; defer both until an explicit shared display-group mapping is resolved."
+    },
+    {
+      "target_id": "al-0f1854ada46937788798967b808440df",
+      "album_name": "依路相随（二刷）不羁阁",
+      "parent_id": "se-b1faa5c0aeed434ebee28d36404fa636",
+      "suffix": "wav",
+      "master_count": 11,
+      "master_ids": [
+        "sm-upload-1c2eee78-d33",
+        "sm-upload-1cdb440a-420",
+        "sm-upload-3c8ceb4e-5cd",
+        "sm-upload-59e87b88-3d8",
+        "sm-upload-5d6d3ae8-33d",
+        "sm-upload-66d6974e-cae",
+        "sm-upload-9a32bec2-cb8",
+        "sm-upload-b4694a49-568",
+        "sm-upload-c2f64d62-4a9",
+        "sm-upload-d3ed2c26-4f9",
+        "sm-upload-e90fd721-b40"
+      ],
+      "first_path": "依路相随（二刷）不羁阁/wav/10 谁会再去想.wav",
+      "status": "HOLD",
+      "reason": "Same-work version collision with pending 依路相随 CD (19 tracks); hold until an explicit shared display-group/version decision."
+    },
+    {
+      "target_id": "al-1875320cde18c929dd02336ae14efc26",
+      "album_name": "追光逐影",
+      "parent_id": "se-f47c00439bf64a98af2d971ed357d6ed",
+      "suffix": "wav",
+      "master_count": 1,
+      "master_ids": [
+        "sm-0816a8be86514a73acb4fb7b48ed25fd"
+      ],
+      "first_path": "追光逐影（wav）/01 追光逐影.wav",
+      "status": "HOLD",
+      "reason": "Storage tree has cover images, lyric, and CUE sidecars for this source folder. Current album_id-only SQL would not associate or preserve sidecar-to-album/track links; hold until an explicit sidecar association plan is prepared."
+    },
+    {
+      "target_id": "al-ec994c6b94d962d658907fda06c5b11f",
+      "album_name": "忘川风华录·数风流",
+      "parent_id": "se-79f8ebde2ce3400abef1a889ff909c94",
+      "suffix": "wav",
+      "master_count": 13,
+      "master_ids": [
+        "sm-upload-01c54a3e-9bf",
+        "sm-upload-0340b895-bbd",
+        "sm-upload-0ff4b613-b99",
+        "sm-upload-2242a668-75a",
+        "sm-upload-5748426b-d58",
+        "sm-upload-5db3c81e-8d1",
+        "sm-upload-73b12b7c-4f7",
+        "sm-upload-8d5f5fbb-12e",
+        "sm-upload-8e3be044-fa9",
+        "sm-upload-987ecddd-f40",
+        "sm-upload-e3482912-198",
+        "sm-upload-f72ad9ae-db3",
+        "sm-upload-fe2d6540-c12"
+      ],
+      "first_path": "忘川风华录·数风流/wav/11 燕双归.wav",
+      "status": "HOLD",
+      "reason": "Stripped-title primary D1 comparison matched 13 candidate titles in the same order to existing album 数风流; hold as a high-confidence same-release/edition collision. No deduplication or content removal proposed."
+    }
+  ],
+  "safe_candidate_master_count": 310,
+  "held_candidate_master_count": 601
+}

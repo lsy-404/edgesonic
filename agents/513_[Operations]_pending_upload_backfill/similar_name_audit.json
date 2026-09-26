@@ -1,0 +1,173 @@
+{
+  "method": "NFKC/casefold/alphanumeric; candidate and existing labels >=6 chars; flag Levenshtein <=2 or common prefix >=5 plus sequence ratio >=0.52. One closest hit per candidate group; primary album-name snapshot all_albums_fresh.json.",
+  "candidate_group_count": 111,
+  "existing_album_count": 1418,
+  "candidate_names_with_near_match": 15,
+  "matches": [
+    {
+      "name": "平行四界 REBIRTH",
+      "target_id": "al-42c27191a6a9ecae2f5d3d37c6aa660e",
+      "parent_id": "se-361263870dda45da819560ce9adae352",
+      "existing_name": "平行四界REBIRTH",
+      "existing_album_id": "al-7c8282c5d2",
+      "existing_song_count": 8,
+      "levenshtein": 0,
+      "common_prefix_chars": 8,
+      "similarity": 1.0
+    },
+    {
+      "name": "平行四界×轻文轻小说 EP Vol.1",
+      "target_id": "al-85221d9a4c9286752ee5213528e6373f",
+      "parent_id": "se-a5498b32a1df4717a2f4288ee21f3374",
+      "existing_name": "平行四界×轻文轻小说 EP",
+      "existing_album_id": "al-14498e175c",
+      "existing_song_count": 4,
+      "levenshtein": 4,
+      "common_prefix_chars": 8,
+      "similarity": 0.846
+    },
+    {
+      "name": "2-Dance Dance Dance",
+      "target_id": "al-11d0d547226d6fc27024a932c53873e2",
+      "parent_id": "se-c3a50b01b8414b6e8d62ffa26bdf371d",
+      "existing_name": "DanceDanceDance",
+      "existing_album_id": "al-bb02282054",
+      "existing_song_count": 5,
+      "levenshtein": 1,
+      "common_prefix_chars": 0,
+      "similarity": 0.968
+    },
+    {
+      "name": "妄想症PARANOIA",
+      "target_id": "al-06625f5a0e48ebeec2c5d2498bb257b3",
+      "parent_id": "se-acf12b666b454119b5855199505f0372",
+      "existing_name": "妄想症Paranoia",
+      "existing_album_id": "al-65b1454437",
+      "existing_song_count": 2,
+      "levenshtein": 0,
+      "common_prefix_chars": 8,
+      "similarity": 1.0
+    },
+    {
+      "name": "BACK WORDS",
+      "target_id": "al-75b28a419716ec812731f4889fb54d93",
+      "parent_id": "se-b8162ded9aee4765a072f7f4f9942e73",
+      "existing_name": "Backwords",
+      "existing_album_id": "al-c22f250317",
+      "existing_song_count": 4,
+      "levenshtein": 0,
+      "common_prefix_chars": 8,
+      "similarity": 1.0
+    },
+    {
+      "name": "失落的机械城Ⅱ：虚浮之都",
+      "target_id": "al-23496ad9d826f13be906acf707099343",
+      "parent_id": "se-2ba3767141eb4c669ba42f835bf7a7c2",
+      "existing_name": "失落的机械城2：虚浮之都",
+      "existing_album_id": "al-de31f60abc",
+      "existing_song_count": 1,
+      "levenshtein": 2,
+      "common_prefix_chars": 6,
+      "similarity": 0.87
+    },
+    {
+      "name": "1-Sing Sing Sing",
+      "target_id": "al-f383d5da703bf79d3cd0eb67f6c5f0bf",
+      "parent_id": "se-3c97803789a6434c84e8cb06f062c935",
+      "existing_name": "Sing Sing Sing",
+      "existing_album_id": "al-87dd5c037a",
+      "existing_song_count": 21,
+      "levenshtein": 1,
+      "common_prefix_chars": 0,
+      "similarity": 0.96
+    },
+    {
+      "name": "再见，碳酸海-纯白P",
+      "target_id": "al-92c90019fd62defce481a4deadf1f10b",
+      "parent_id": "se-a9ae53d00851418dade3f9e84d45a379",
+      "existing_name": "再见，碳酸海 Deluxe",
+      "existing_album_id": "al-3af6133826",
+      "existing_song_count": 25,
+      "levenshtein": 6,
+      "common_prefix_chars": 5,
+      "similarity": 0.526
+    },
+    {
+      "name": "生息Leave in breath",
+      "target_id": "al-a1a28300ffffd8a316a2cb41dcf37064",
+      "parent_id": "se-9013670e1ead47f0a181016b3068041f",
+      "existing_name": "生息Leave in Breath",
+      "existing_album_id": "al-d0895737d7",
+      "existing_song_count": 9,
+      "levenshtein": 0,
+      "common_prefix_chars": 8,
+      "similarity": 1.0
+    },
+    {
+      "name": "矩尺镜海·蚀刻于此媒介B",
+      "target_id": "al-314a6b5fb4f73db3e67012554d779bc1",
+      "parent_id": "se-cc9368c480864e68b672b159b2215a01",
+      "existing_name": "矩尺镜海·蚀刻于此媒介A",
+      "existing_album_id": "al-86f72c214f",
+      "existing_song_count": 2,
+      "levenshtein": 1,
+      "common_prefix_chars": 8,
+      "similarity": 0.909
+    },
+    {
+      "name": "妄想症PARANOIA",
+      "target_id": "al-c5af148540622d0ad3b177e2751b4d1e",
+      "parent_id": "se-acf12b666b454119b5855199505f0372",
+      "existing_name": "妄想症Paranoia",
+      "existing_album_id": "al-65b1454437",
+      "existing_song_count": 2,
+      "levenshtein": 0,
+      "common_prefix_chars": 8,
+      "similarity": 1.0
+    },
+    {
+      "name": "2-Summer Days",
+      "target_id": "al-7e1e4fa641bf2e5604f5be26d4f5855e",
+      "parent_id": "se-490ce26c57434b328ad9f3e67cfb4ef3",
+      "existing_name": "Summer Days",
+      "existing_album_id": "al-2b21b237dc",
+      "existing_song_count": 7,
+      "levenshtein": 1,
+      "common_prefix_chars": 0,
+      "similarity": 0.952
+    },
+    {
+      "name": "2024虚拟歌手夏浪派对——「创作」",
+      "target_id": "al-c2a03ed17e6cbc5f7ab5fd4aecb9e912",
+      "parent_id": "se-28e502ac48a94259a7a1d017bb1454af",
+      "existing_name": "2024虚拟歌手夏浪派对",
+      "existing_album_id": "al-438ee2844e",
+      "existing_song_count": 1,
+      "levenshtein": 2,
+      "common_prefix_chars": 8,
+      "similarity": 0.923
+    },
+    {
+      "name": "Freesia",
+      "target_id": "al-0650d44bf5d828e65f1a51f15143438f",
+      "parent_id": "se-de897d726d4246c7b00fe6563c30a422",
+      "existing_name": "Fressia",
+      "existing_album_id": "al-9544935a62",
+      "existing_song_count": 12,
+      "levenshtein": 1,
+      "common_prefix_chars": 0,
+      "similarity": 0.857
+    },
+    {
+      "name": "2025虚拟歌手夏浪派对——「回响」",
+      "target_id": "al-9e153f3fe253cadd66ab4c8beb32ed78",
+      "parent_id": "se-2a7ff4dbb5e7413193588bf6dafe09db",
+      "existing_name": "2025虚拟歌手夏浪派对",
+      "existing_album_id": "al-d5b2b412d8",
+      "existing_song_count": 14,
+      "levenshtein": 2,
+      "common_prefix_chars": 8,
+      "similarity": 0.923
+    }
+  ]
+}
