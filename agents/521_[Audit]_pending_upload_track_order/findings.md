@@ -8,7 +8,9 @@ The prior classification identifies 243 moved masters in 25 safe album groups. E
 
 The candidate accepts only names beginning with an optional `Track` prefix, leading zeroes, then a one or two digit index followed by whitespace, period, underscore, or hyphen. A target album is included only when every reviewed moved member matches that form and no index repeats. This reproduces the reviewed scope of 243 masters in 25 albums. The snapshot is stored in `artifacts/snapshot_candidate.json`.
 
-`apply_guarded.sql` is a single D1 transaction. Its update runs only when every expected master exists in its expected album and still has both `track` and `disc` null. A stale or moved row causes zero updates across the whole candidate. `rollback_guarded.sql` has the symmetric all-row guard and resets only the expected assigned values.
+`apply_guarded.sql` has no manual transaction statements. Its update runs only when every expected master remains in its expected album with null `track` and `disc`, and its exact instance, object, file entry, source, parent, path, and filename all match the reviewed snapshot. A rename, reparent, source/object change, stale metadata value, or moved row causes zero updates across the whole candidate. `rollback_guarded.sql` has the symmetric all-row guard and resets only the expected assigned values.
+
+Each included album has exactly one reviewed source parent. Every filename index is unique inside its album, so each target is a single-disc source set and has no reused index across discs. The complete parent and index evidence is in `artifacts/source_layout_summary.json`.
 
 ## Local rehearsal
 
@@ -20,4 +22,8 @@ The results are in `artifacts/local_rehearsal.json`.
 
 ## Fresh primary D1 preflight
 
-Six read-only D1 queries returned 243 rows from the primary. Every actual master ID and album ID matched the snapshot, and all 243 rows still had null `track` and `disc`. The primary receipt summary and exact returned rows are retained in `artifacts/primary_preflight_summary.json` and `artifacts/primary_preflight_rows.json`. No production mutation was issued.
+Twenty-five read-only D1 queries returned 243 rows from the primary. Every actual master ID and album ID matched the snapshot, every source-entry guard matched, and all 243 rows still had null `track` and `disc`. The primary receipt summary and exact returned rows are retained in `artifacts/primary_preflight_summary.json` and `artifacts/primary_preflight_rows.json`. No production mutation was issued.
+
+## Wrangler local file validation
+
+The candidate and rollback files both executed successfully through `wrangler d1 execute --local --file` against an isolated minimal local D1 schema. The SQL contains no manual `BEGIN` or `COMMIT` statement.

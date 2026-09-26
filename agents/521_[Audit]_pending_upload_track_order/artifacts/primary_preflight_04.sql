@@ -1,54 +1,17 @@
-WITH expected(master_id, album_id, filename_track) AS (VALUES
-  ('sm-upload-0243c28d-146', 'al-a3063d83f8e97bbb84445eef22c0a8f2', 10),
-  ('sm-c86a75e7bd6c409c80504a463e1ff433', 'al-b67665d31c26b1883a27db8a47859379', 1),
-  ('sm-1e2f1e4b7ae042fe9e1ffc8ff5768369', 'al-b67665d31c26b1883a27db8a47859379', 2),
-  ('sm-70c6f0dada0f40efbf94b99f514d791a', 'al-b67665d31c26b1883a27db8a47859379', 3),
-  ('sm-upload-1805dfeb-63c', 'al-b67665d31c26b1883a27db8a47859379', 4),
-  ('sm-upload-9baef4f8-44e', 'al-b67665d31c26b1883a27db8a47859379', 5),
-  ('sm-upload-387d305f-426', 'al-b67665d31c26b1883a27db8a47859379', 6),
-  ('sm-upload-5f9bc5da-1ad', 'al-b67665d31c26b1883a27db8a47859379', 7),
-  ('sm-upload-b61ffb2c-af6', 'al-b67665d31c26b1883a27db8a47859379', 8),
-  ('sm-upload-6899401d-dbe', 'al-b67665d31c26b1883a27db8a47859379', 9),
-  ('sm-upload-b721a47b-0fb', 'al-b67665d31c26b1883a27db8a47859379', 10),
-  ('sm-upload-37d48b57-ed8', 'al-b67665d31c26b1883a27db8a47859379', 11),
-  ('sm-upload-90b61b6f-15e', 'al-b67665d31c26b1883a27db8a47859379', 12),
-  ('sm-upload-811fea79-705', 'al-b67665d31c26b1883a27db8a47859379', 13),
-  ('sm-upload-f279b49d-8f9', 'al-b67665d31c26b1883a27db8a47859379', 14),
-  ('sm-upload-9483fe4b-134', 'al-b67665d31c26b1883a27db8a47859379', 15),
-  ('sm-upload-fdfb8b5a-f7f', 'al-b67665d31c26b1883a27db8a47859379', 16),
-  ('sm-upload-b6fe712d-3a5', 'al-ba482cba45e7e1408c59fa6fe9e5d1d1', 1),
-  ('sm-upload-bafd2d2b-bd0', 'al-ba482cba45e7e1408c59fa6fe9e5d1d1', 2),
-  ('sm-upload-b8855014-029', 'al-ba482cba45e7e1408c59fa6fe9e5d1d1', 3),
-  ('sm-upload-4f002225-23e', 'al-ba482cba45e7e1408c59fa6fe9e5d1d1', 4),
-  ('sm-upload-505a75f1-b7c', 'al-ba482cba45e7e1408c59fa6fe9e5d1d1', 5),
-  ('sm-upload-d8657b96-c3e', 'al-ba482cba45e7e1408c59fa6fe9e5d1d1', 6),
-  ('sm-upload-0b952309-f12', 'al-ba482cba45e7e1408c59fa6fe9e5d1d1', 7),
-  ('sm-upload-6a01492c-ebe', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 1),
-  ('sm-upload-74718096-633', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 2),
-  ('sm-upload-b831ca53-608', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 3),
-  ('sm-upload-67b27f56-b5b', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 4),
-  ('sm-upload-aa969a9a-7db', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 5),
-  ('sm-upload-26c13d22-002', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 6),
-  ('sm-upload-986e39a0-94d', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 7),
-  ('sm-upload-831d9eee-6f0', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 8),
-  ('sm-upload-64d8dc24-596', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 9),
-  ('sm-upload-eba9f299-c67', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 10),
-  ('sm-upload-bbb56a95-410', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 11),
-  ('sm-upload-e327ba41-cf6', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 12),
-  ('sm-upload-db5279a1-e00', 'al-cfe9a2e735c7900a5b0e96f5ddf53069', 13),
-  ('sm-upload-d3e438fe-c79', 'al-d1eb61467eb114e11bfea9d9690057c2', 1),
-  ('sm-upload-0e5df05d-8f8', 'al-d302ed534fe12110d275ff786cfb5fdf', 1),
-  ('sm-upload-f994d933-d13', 'al-d302ed534fe12110d275ff786cfb5fdf', 2),
-  ('sm-upload-229fabb8-45d', 'al-d302ed534fe12110d275ff786cfb5fdf', 3),
-  ('sm-upload-d0988a3b-ddc', 'al-d302ed534fe12110d275ff786cfb5fdf', 4),
-  ('sm-upload-cc9304d5-527', 'al-d302ed534fe12110d275ff786cfb5fdf', 5),
-  ('sm-upload-fd16b9a8-697', 'al-d302ed534fe12110d275ff786cfb5fdf', 6),
-  ('sm-upload-c44b0f7c-761', 'al-d302ed534fe12110d275ff786cfb5fdf', 7),
-  ('sm-upload-9a2b0423-b81', 'al-d302ed534fe12110d275ff786cfb5fdf', 8),
-  ('sm-upload-5ef32f7a-887', 'al-d302ed534fe12110d275ff786cfb5fdf', 9),
-  ('sm-upload-741e30e9-2a8', 'al-d302ed534fe12110d275ff786cfb5fdf', 10)
+WITH expected(master_id, target_album_id, filename_track, instance_id, entry_id, source_id, parent_id, path, display_name, storage_object_id) AS (VALUES
+  ('sm-upload-47be279d-a1f', 'al-3601f0337902ef9583048198e3640d3b', 3, 'si-upload-20818922-52c', 'se-8b135e37577f49599d35ccbbe6a0bf77', 'r2-local', 'se-946c53a8d4b24847816c4a5e138be87f', 'sakuya薯片~THE NOCTURNE/wav/03.大人的答案.wav', '03.大人的答案.wav', 'obj_73ea3b0636c09cb2'),
+  ('sm-upload-00474c5a-882', 'al-3601f0337902ef9583048198e3640d3b', 4, 'si-upload-e41069f6-1ae', 'se-cdc30ce9d32d457db9a92e6b03b27b50', 'r2-local', 'se-946c53a8d4b24847816c4a5e138be87f', 'sakuya薯片~THE NOCTURNE/wav/04.3 晚.wav', '04.3 晚.wav', 'obj_2cf8928d3505b029'),
+  ('sm-upload-5080d6c6-ec3', 'al-3601f0337902ef9583048198e3640d3b', 5, 'si-upload-b7045a9b-1bb', 'se-223090bd889d4a58949ef062e2647080', 'r2-local', 'se-946c53a8d4b24847816c4a5e138be87f', 'sakuya薯片~THE NOCTURNE/wav/05.LUMOS NIGHT.wav', '05.LUMOS NIGHT.wav', 'obj_fd7c401aa8af58f0'),
+  ('sm-upload-12d68563-b7d', 'al-3601f0337902ef9583048198e3640d3b', 6, 'si-upload-312e2a75-77b', 'se-8949c35ca0764276875dc12bedcd1d70', 'r2-local', 'se-946c53a8d4b24847816c4a5e138be87f', 'sakuya薯片~THE NOCTURNE/wav/06.「救救我」.wav', '06.「救救我」.wav', 'obj_45c2554fe1c13ee7'),
+  ('sm-upload-2e7224ec-39c', 'al-3601f0337902ef9583048198e3640d3b', 7, 'si-upload-f438e1f0-b23', 'se-1988d946387046cbb141bbb710e3a7e8', 'r2-local', 'se-946c53a8d4b24847816c4a5e138be87f', 'sakuya薯片~THE NOCTURNE/wav/07.全息投影的脈動.wav', '07.全息投影的脈動.wav', 'obj_5c9c4ce03e0b2874'),
+  ('sm-9259e6f5144348d3b9f1881d95c31d97', 'al-3601f0337902ef9583048198e3640d3b', 8, 'si-c10edb69eb76426cac7f12b91d5c315d', 'se-a46c193b9e3d421582e097946e250058', 'r2-local', 'se-946c53a8d4b24847816c4a5e138be87f', 'sakuya薯片~THE NOCTURNE/wav/08.A GHOST FROM KALEIDOS.wav', '08.A GHOST FROM KALEIDOS.wav', 'obj_6d7fa2f61e50bed1'),
+  ('sm-upload-2a26712c-984', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 1, 'si-upload-ae6419b5-133', 'se-bbfb9c4d05ef43df97aa3ae339861bc2', 'r2-local', 'se-4bc99f8cc76144189cde41684fd8af27', '众虫皆歌/歌曲本体/001 俯首望槐安(feat.宙暮,罗思贤,君凝华).wav', '001 俯首望槐安(feat.宙暮,罗思贤,君凝华).wav', 'obj_e8ec03ec27945551'),
+  ('sm-upload-8b54d965-cef', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 2, 'si-upload-16798392-e7a', 'se-4645bb14fb05442e9af2ac97196c8644', 'r2-local', 'se-4bc99f8cc76144189cde41684fd8af27', '众虫皆歌/歌曲本体/002 废弃物的空中舞会(feat.铃霜,铃诺,铃幽).wav', '002 废弃物的空中舞会(feat.铃霜,铃诺,铃幽).wav', 'obj_d93763f2bbc2cf4f'),
+  ('sm-upload-9d07ba09-a49', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 3, 'si-upload-8aeef399-0f1', 'se-f54fc98571ce4691a2c7cea1f4cab833', 'r2-local', 'se-4bc99f8cc76144189cde41684fd8af27', '众虫皆歌/歌曲本体/003 LYRA·Artist version(feat.廖澄奏).wav', '003 LYRA·Artist version(feat.廖澄奏).wav', 'obj_60b97aebb7ff0636'),
+  ('sm-upload-e94697d9-8e4', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 4, 'si-upload-363f152d-4d9', 'se-dd99063938d54e5a8de47248930f57ed', 'r2-local', 'se-4bc99f8cc76144189cde41684fd8af27', '众虫皆歌/歌曲本体/004 主板都市(feat.语飞）.wav', '004 主板都市(feat.语飞）.wav', 'obj_31eb60b98e5bec1a')
 )
-SELECT e.master_id, e.album_id AS expected_album_id, e.filename_track,
-       sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc
-FROM expected e LEFT JOIN song_masters sm ON sm.id=e.master_id
-ORDER BY e.album_id, e.filename_track, e.master_id;
+SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track IS NULL AND sm.disc IS NULL
+AND EXISTS (SELECT 1 FROM song_instances si JOIN storage_entries se ON se.instance_id=si.id AND se.kind='file'
+            WHERE si.id=e.instance_id AND si.master_id=sm.id AND si.source_id=e.source_id
+              AND si.storage_object_id=e.storage_object_id AND se.id=e.entry_id AND se.source_id=e.source_id
+              AND se.parent_id=e.parent_id AND se.path=e.path AND se.display_name=e.display_name) AS exact_source_match FROM expected e LEFT JOIN song_masters sm ON sm.id=e.master_id ORDER BY e.target_album_id, e.filename_track, e.master_id;

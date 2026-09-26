@@ -30,6 +30,7 @@ def main(artifact_dir: Path) -> None:
         or row["actual_album_id"] != row["expected_album_id"]
         or row["track"] is not None
         or row["disc"] is not None
+        or not row["exact_source_match"]
     ]
     summary = {
         "served_by_primary": True,
@@ -37,10 +38,11 @@ def main(artifact_dir: Path) -> None:
         "expected_albums": len({r["target_album_id"] for r in expected}),
         "received_rows": len(rows),
         "mismatches": len(mismatches),
+        "exact_source_matches": sum(bool(row["exact_source_match"]) for row in rows),
         "status": "GO" if not mismatches else "NO-GO",
     }
-    (artifact_dir / "primary_preflight_rows.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    (artifact_dir / "primary_preflight_summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    (artifact_dir / "primary_preflight_rows.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2).replace("#", "\\u0023") + "\n", encoding="utf-8", newline="\n")
+    (artifact_dir / "primary_preflight_summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

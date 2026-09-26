@@ -2,1216 +2,2917 @@
   {
     "master_id": "sm-upload-ce73a06c-13b",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-4522804d-3c7",
+    "entry_id": "se-ce7cc376644847c0b20d052a025b710c",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/01 写给社交恐惧症的一首歌.wav",
+    "display_name": "01 写给社交恐惧症的一首歌.wav",
+    "storage_object_id": "obj_9fe897c25ad887ac"
   },
   {
     "master_id": "sm-upload-abf7fe3c-d54",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-dc85a0ec-78e",
+    "entry_id": "se-f0fbd164b9d340a9b0e23981c6e07c26",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/02 手冷.wav",
+    "display_name": "02 手冷.wav",
+    "storage_object_id": "obj_f57d0a0f61318fcc"
   },
   {
     "master_id": "sm-upload-2207d12c-443",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-6755d477-c1c",
+    "entry_id": "se-4518f500877049398bac9ca1f4e12eee",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/03 就让你孤独的长大.wav",
+    "display_name": "03 就让你孤独的长大.wav",
+    "storage_object_id": "obj_5ebd6947ff0c1a55"
   },
   {
     "master_id": "sm-upload-3d0dfe07-125",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-0806b76b-441",
+    "entry_id": "se-803ab974ca0c4b66bfe10b23f4d43050",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/04 她是我修炼不好的爱情.wav",
+    "display_name": "04 她是我修炼不好的爱情.wav",
+    "storage_object_id": "obj_aa47411a7d5489fc"
   },
   {
     "master_id": "sm-upload-152098f7-f9e",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-402dcad3-d6a",
+    "entry_id": "se-f85bfda0c27345d88aec0a1dfb20e6b2",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/05 生命中不曾遇见的她.wav",
+    "display_name": "05 生命中不曾遇见的她.wav",
+    "storage_object_id": "obj_916d89f14d149400"
   },
   {
     "master_id": "sm-cdeaab57721d46afb6365cca2b0a146f",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-cff1dd7ee20849f69e20780a83556546",
+    "entry_id": "se-9033fb3eecd74dffa4f942c569ccf979",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/06 只是喜欢这个身体吗.wav",
+    "display_name": "06 只是喜欢这个身体吗.wav",
+    "storage_object_id": "obj_f71bb5647395f8cd"
   },
   {
     "master_id": "sm-22e86a0b11974fe4915430f2119da7c4",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-75b389e601c2449a92d8312f0ea77ddd",
+    "entry_id": "se-5c1e4af44a564d7f8a054066b9c2c6f3",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/07 萤火之语.wav",
+    "display_name": "07 萤火之语.wav",
+    "storage_object_id": "obj_cfddbae1a47ede0c"
   },
   {
     "master_id": "sm-4d0d004dd8d74ebaadc851d5efab5525",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-49a2ee423de443c489ed23648c7cbf90",
+    "entry_id": "se-291fe50f932f42d6a24a7fac52fd587e",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/08 一个人的零点.wav",
+    "display_name": "08 一个人的零点.wav",
+    "storage_object_id": "obj_db092e221f2f7be0"
   },
   {
     "master_id": "sm-be8ba6dfd67f4f9a91bdb33b44d41d3a",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-8d92cb80fed94a5da9c7dd1cf628612b",
+    "entry_id": "se-637883663688450d8b82cf083ddf1adc",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/09 孤独患者.wav",
+    "display_name": "09 孤独患者.wav",
+    "storage_object_id": "obj_862b8fd284235c25"
   },
   {
     "master_id": "sm-e23ea8bf9f4846d7bfbda205e7b09672",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-639adf60d5ce408c8d70309a59f1b988",
+    "entry_id": "se-bad93573486e454b98ebf97415b23b17",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/10 他.wav",
+    "display_name": "10 他.wav",
+    "storage_object_id": "obj_9695fd0b039a72cc"
   },
   {
     "master_id": "sm-f9ae632a2ba14540a099fbb663bd3750",
     "target_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "filename_track": 11
+    "filename_track": 11,
+    "instance_id": "si-f57f40f50f4642e791493fe0c07ef3cb",
+    "entry_id": "se-6d107383ce2a4bbf99829997ca247460",
+    "source_id": "r2-local",
+    "parent_id": "se-76d461ab64cb426083c9b6a102617296",
+    "path": "黑白/wav/11 我认识一个人.wav",
+    "display_name": "11 我认识一个人.wav",
+    "storage_object_id": "obj_ab8dd51924d060f4"
   },
   {
     "master_id": "sm-upload-a4e20343-e35",
     "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-69f2d160-b40",
+    "entry_id": "se-39a16ef38903426b93f03a2b39455957",
+    "source_id": "r2-local",
+    "parent_id": "se-f104690a5b024491962419b76618435d",
+    "path": "哈利波特·学院印象曲/wav/01 阿兹卡班印象曲.wav",
+    "display_name": "01 阿兹卡班印象曲.wav",
+    "storage_object_id": "obj_8cb76695b007eb9d"
   },
   {
     "master_id": "sm-upload-8dac0faa-885",
     "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-5f8fd3dc-264",
+    "entry_id": "se-284cb516be564071be0dd2693caabd07",
+    "source_id": "r2-local",
+    "parent_id": "se-f104690a5b024491962419b76618435d",
+    "path": "哈利波特·学院印象曲/wav/02 凤凰社印象曲.wav",
+    "display_name": "02 凤凰社印象曲.wav",
+    "storage_object_id": "obj_ca5405956c25f1ae"
   },
   {
     "master_id": "sm-upload-54a04d18-b6d",
     "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-58bdd9b3-35e",
+    "entry_id": "se-683d48866c174acf806008ea6960efad",
+    "source_id": "r2-local",
+    "parent_id": "se-f104690a5b024491962419b76618435d",
+    "path": "哈利波特·学院印象曲/wav/03 斯莱特林印象曲.wav",
+    "display_name": "03 斯莱特林印象曲.wav",
+    "storage_object_id": "obj_242e5faa38f193ca"
   },
   {
     "master_id": "sm-upload-1c1d6c3a-6ac",
     "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-d96b9f1b-29c",
+    "entry_id": "se-e0c13dc0a52b4369a97ee903c7fed831",
+    "source_id": "r2-local",
+    "parent_id": "se-f104690a5b024491962419b76618435d",
+    "path": "哈利波特·学院印象曲/wav/04 格兰芬多印象曲.wav",
+    "display_name": "04 格兰芬多印象曲.wav",
+    "storage_object_id": "obj_fdcfe954b4e558a2"
   },
   {
     "master_id": "sm-upload-85febee1-add",
     "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-16b75578-da9",
+    "entry_id": "se-c214ad9df5454432935da6a42e029550",
+    "source_id": "r2-local",
+    "parent_id": "se-f104690a5b024491962419b76618435d",
+    "path": "哈利波特·学院印象曲/wav/05 拉文克劳印象曲.wav",
+    "display_name": "05 拉文克劳印象曲.wav",
+    "storage_object_id": "obj_e48535c1e40f44e7"
   },
   {
     "master_id": "sm-upload-f35ebe3d-fb5",
     "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-b13d48b3-e1f",
+    "entry_id": "se-afd3e80f0ee24cdca638ceee134dea52",
+    "source_id": "r2-local",
+    "parent_id": "se-f104690a5b024491962419b76618435d",
+    "path": "哈利波特·学院印象曲/wav/06 赫奇帕奇印象曲.wav",
+    "display_name": "06 赫奇帕奇印象曲.wav",
+    "storage_object_id": "obj_703c347237b9b8ab"
   },
   {
     "master_id": "sm-upload-2cc2cded-f96",
     "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-71e89075-dfd",
+    "entry_id": "se-500a763fa83e4521bdebf608a729bc33",
+    "source_id": "r2-local",
+    "parent_id": "se-f104690a5b024491962419b76618435d",
+    "path": "哈利波特·学院印象曲/wav/07 斯莱特林印象曲·伴奏.wav",
+    "display_name": "07 斯莱特林印象曲·伴奏.wav",
+    "storage_object_id": "obj_fd58ad76bcd2f0a1"
   },
   {
     "master_id": "sm-upload-f8b47093-229",
     "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-16704d90-7d5",
+    "entry_id": "se-f73e90a18d424916986fb630e4c5dcbf",
+    "source_id": "r2-local",
+    "parent_id": "se-f104690a5b024491962419b76618435d",
+    "path": "哈利波特·学院印象曲/wav/08 格兰芬多印象曲·伴奏.wav",
+    "display_name": "08 格兰芬多印象曲·伴奏.wav",
+    "storage_object_id": "obj_88b8b54f0f15e947"
   },
   {
     "master_id": "sm-upload-2ed4a91f-50f",
     "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-76c5c719-ae3",
+    "entry_id": "se-0e130016f5c348b79bbcebddfbce6fc2",
+    "source_id": "r2-local",
+    "parent_id": "se-f104690a5b024491962419b76618435d",
+    "path": "哈利波特·学院印象曲/wav/09 拉文克劳印象曲·伴奏.wav",
+    "display_name": "09 拉文克劳印象曲·伴奏.wav",
+    "storage_object_id": "obj_8d4093f4b5c64586"
   },
   {
     "master_id": "sm-upload-8c8ff71c-39c",
     "target_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-80a0ac66-fc2",
+    "entry_id": "se-e87bc9aba69641a5bc5a65459f310078",
+    "source_id": "r2-local",
+    "parent_id": "se-f104690a5b024491962419b76618435d",
+    "path": "哈利波特·学院印象曲/wav/10 赫奇帕奇印象曲·伴奏.wav",
+    "display_name": "10 赫奇帕奇印象曲·伴奏.wav",
+    "storage_object_id": "obj_d3888497c5f61868"
   },
   {
     "master_id": "sm-upload-22d36802-2ad",
     "target_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-0609b1fd-69b",
+    "entry_id": "se-5cc7b18bb2a044389a1d792b485d48fe",
+    "source_id": "r2-local",
+    "parent_id": "se-32e5359531684b188a19b66cee7d9c20",
+    "path": "被那个夏天厌恶的我们/01 雨季，窗边,你.wav",
+    "display_name": "01 雨季，窗边,你.wav",
+    "storage_object_id": "obj_a46771e2d9640a9c"
   },
   {
     "master_id": "sm-upload-605d34a4-800",
     "target_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-c734cc53-fad",
+    "entry_id": "se-6fe27186279c4ba89248ab6d6cea9310",
+    "source_id": "r2-local",
+    "parent_id": "se-32e5359531684b188a19b66cee7d9c20",
+    "path": "被那个夏天厌恶的我们/02 离开与回到夏天的言语.wav",
+    "display_name": "02 离开与回到夏天的言语.wav",
+    "storage_object_id": "obj_e44259dce0a07698"
   },
   {
     "master_id": "sm-upload-079b5a30-681",
     "target_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-cab7875d-713",
+    "entry_id": "se-4a4844707be14c668d054c73c365f0c2",
+    "source_id": "r2-local",
+    "parent_id": "se-32e5359531684b188a19b66cee7d9c20",
+    "path": "被那个夏天厌恶的我们/03 浅浅话.wav",
+    "display_name": "03 浅浅话.wav",
+    "storage_object_id": "obj_ff0ca9ccb73e5c30"
   },
   {
     "master_id": "sm-upload-3e173d57-c25",
     "target_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-59e21b39-e7e",
+    "entry_id": "se-0c609fae9d0146ff93268480d389d3ca",
+    "source_id": "r2-local",
+    "parent_id": "se-32e5359531684b188a19b66cee7d9c20",
+    "path": "被那个夏天厌恶的我们/04 致那年夏天消失的你.wav",
+    "display_name": "04 致那年夏天消失的你.wav",
+    "storage_object_id": "obj_e65fa1bfab239546"
   },
   {
     "master_id": "sm-upload-cdea3d45-1a9",
     "target_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-5e0178bc-451",
+    "entry_id": "se-cde7df1b24c84221b0a3a6e39f59dc67",
+    "source_id": "r2-local",
+    "parent_id": "se-32e5359531684b188a19b66cee7d9c20",
+    "path": "被那个夏天厌恶的我们/05 夏日，海边，柠檬气泡水.wav",
+    "display_name": "05 夏日，海边，柠檬气泡水.wav",
+    "storage_object_id": "obj_e47db6f692669ab4"
   },
   {
     "master_id": "sm-upload-604ea1ac-255",
     "target_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-7d9d2458-7bb",
+    "entry_id": "se-483a8d4f270f441ba172b87211de5926",
+    "source_id": "r2-local",
+    "parent_id": "se-32e5359531684b188a19b66cee7d9c20",
+    "path": "被那个夏天厌恶的我们/06 纯白の悲歌.wav",
+    "display_name": "06 纯白の悲歌.wav",
+    "storage_object_id": "obj_e6d0b14ef66ec797"
   },
   {
     "master_id": "sm-upload-11bfd8b6-551",
     "target_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-98bdaaa9-175",
+    "entry_id": "se-ba831568a69547ffac953abe2d23e953",
+    "source_id": "r2-local",
+    "parent_id": "se-32e5359531684b188a19b66cee7d9c20",
+    "path": "被那个夏天厌恶的我们/07 あの夏に嫌おれにた僕ら.wav",
+    "display_name": "07 あの夏に嫌おれにた僕ら.wav",
+    "storage_object_id": "obj_d79626a5435c451b"
   },
   {
     "master_id": "sm-upload-3020e076-7c7",
     "target_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-47222c92-2a3",
+    "entry_id": "se-e8c146ce89e84ec18a8fb351f3eb2e64",
+    "source_id": "r2-local",
+    "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+    "path": "sakuya薯片~THE NOCTURNE/wav/01.霓虹燈 c.wav",
+    "display_name": "01.霓虹燈 c.wav",
+    "storage_object_id": "obj_44e32e86d521f879"
   },
   {
     "master_id": "sm-upload-4af9cee4-3d9",
     "target_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-34e9a3f9-d6c",
+    "entry_id": "se-e375650f772f456e91b3c5cfe49f9c4f",
+    "source_id": "r2-local",
+    "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+    "path": "sakuya薯片~THE NOCTURNE/wav/02.NIGHTWALK.wav",
+    "display_name": "02.NIGHTWALK.wav",
+    "storage_object_id": "obj_fbd452923cc0ce18"
   },
   {
     "master_id": "sm-upload-47be279d-a1f",
     "target_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-20818922-52c",
+    "entry_id": "se-8b135e37577f49599d35ccbbe6a0bf77",
+    "source_id": "r2-local",
+    "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+    "path": "sakuya薯片~THE NOCTURNE/wav/03.大人的答案.wav",
+    "display_name": "03.大人的答案.wav",
+    "storage_object_id": "obj_73ea3b0636c09cb2"
   },
   {
     "master_id": "sm-upload-00474c5a-882",
     "target_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-e41069f6-1ae",
+    "entry_id": "se-cdc30ce9d32d457db9a92e6b03b27b50",
+    "source_id": "r2-local",
+    "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+    "path": "sakuya薯片~THE NOCTURNE/wav/04.3 晚.wav",
+    "display_name": "04.3 晚.wav",
+    "storage_object_id": "obj_2cf8928d3505b029"
   },
   {
     "master_id": "sm-upload-5080d6c6-ec3",
     "target_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-b7045a9b-1bb",
+    "entry_id": "se-223090bd889d4a58949ef062e2647080",
+    "source_id": "r2-local",
+    "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+    "path": "sakuya薯片~THE NOCTURNE/wav/05.LUMOS NIGHT.wav",
+    "display_name": "05.LUMOS NIGHT.wav",
+    "storage_object_id": "obj_fd7c401aa8af58f0"
   },
   {
     "master_id": "sm-upload-12d68563-b7d",
     "target_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-312e2a75-77b",
+    "entry_id": "se-8949c35ca0764276875dc12bedcd1d70",
+    "source_id": "r2-local",
+    "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+    "path": "sakuya薯片~THE NOCTURNE/wav/06.「救救我」.wav",
+    "display_name": "06.「救救我」.wav",
+    "storage_object_id": "obj_45c2554fe1c13ee7"
   },
   {
     "master_id": "sm-upload-2e7224ec-39c",
     "target_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-f438e1f0-b23",
+    "entry_id": "se-1988d946387046cbb141bbb710e3a7e8",
+    "source_id": "r2-local",
+    "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+    "path": "sakuya薯片~THE NOCTURNE/wav/07.全息投影的脈動.wav",
+    "display_name": "07.全息投影的脈動.wav",
+    "storage_object_id": "obj_5c9c4ce03e0b2874"
   },
   {
     "master_id": "sm-9259e6f5144348d3b9f1881d95c31d97",
     "target_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-c10edb69eb76426cac7f12b91d5c315d",
+    "entry_id": "se-a46c193b9e3d421582e097946e250058",
+    "source_id": "r2-local",
+    "parent_id": "se-946c53a8d4b24847816c4a5e138be87f",
+    "path": "sakuya薯片~THE NOCTURNE/wav/08.A GHOST FROM KALEIDOS.wav",
+    "display_name": "08.A GHOST FROM KALEIDOS.wav",
+    "storage_object_id": "obj_6d7fa2f61e50bed1"
   },
   {
     "master_id": "sm-upload-2a26712c-984",
     "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-ae6419b5-133",
+    "entry_id": "se-bbfb9c4d05ef43df97aa3ae339861bc2",
+    "source_id": "r2-local",
+    "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+    "path": "众虫皆歌/歌曲本体/001 俯首望槐安(feat.宙暮,罗思贤,君凝华).wav",
+    "display_name": "001 俯首望槐安(feat.宙暮,罗思贤,君凝华).wav",
+    "storage_object_id": "obj_e8ec03ec27945551"
   },
   {
     "master_id": "sm-upload-8b54d965-cef",
     "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-16798392-e7a",
+    "entry_id": "se-4645bb14fb05442e9af2ac97196c8644",
+    "source_id": "r2-local",
+    "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+    "path": "众虫皆歌/歌曲本体/002 废弃物的空中舞会(feat.铃霜,铃诺,铃幽).wav",
+    "display_name": "002 废弃物的空中舞会(feat.铃霜,铃诺,铃幽).wav",
+    "storage_object_id": "obj_d93763f2bbc2cf4f"
   },
   {
     "master_id": "sm-upload-9d07ba09-a49",
     "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-8aeef399-0f1",
+    "entry_id": "se-f54fc98571ce4691a2c7cea1f4cab833",
+    "source_id": "r2-local",
+    "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+    "path": "众虫皆歌/歌曲本体/003 LYRA·Artist version(feat.廖澄奏).wav",
+    "display_name": "003 LYRA·Artist version(feat.廖澄奏).wav",
+    "storage_object_id": "obj_60b97aebb7ff0636"
   },
   {
     "master_id": "sm-upload-e94697d9-8e4",
     "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-363f152d-4d9",
+    "entry_id": "se-dd99063938d54e5a8de47248930f57ed",
+    "source_id": "r2-local",
+    "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+    "path": "众虫皆歌/歌曲本体/004 主板都市(feat.语飞）.wav",
+    "display_name": "004 主板都市(feat.语飞）.wav",
+    "storage_object_id": "obj_31eb60b98e5bec1a"
   },
   {
     "master_id": "sm-upload-95c704d9-7a3",
     "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-0940d6d4-c16",
+    "entry_id": "se-5755c104285348a9a4fd9ab87ad3b374",
+    "source_id": "r2-local",
+    "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+    "path": "众虫皆歌/歌曲本体/005 微光之影(feat.试作音Demo).wav",
+    "display_name": "005 微光之影(feat.试作音Demo).wav",
+    "storage_object_id": "obj_29a96f084015891b"
   },
   {
     "master_id": "sm-upload-cd65bb92-34f",
     "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-0621ff74-3b1",
+    "entry_id": "se-7c87e710c38f48b892536108374c53df",
+    "source_id": "r2-local",
+    "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+    "path": "众虫皆歌/歌曲本体/006 花爱如歌(feat.名取依白野).wav",
+    "display_name": "006 花爱如歌(feat.名取依白野).wav",
+    "storage_object_id": "obj_ebe8871a6b10c251"
   },
   {
     "master_id": "sm-upload-f748f953-ced",
     "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-aabe3ea5-d59",
+    "entry_id": "se-8dfe4ece289b469ea6afafefda0c42e5",
+    "source_id": "r2-local",
+    "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+    "path": "众虫皆歌/歌曲本体/007 境界、梦归长夏(feat.银星).wav",
+    "display_name": "007 境界、梦归长夏(feat.银星).wav",
+    "storage_object_id": "obj_14723b525b4f8d25"
   },
   {
     "master_id": "sm-upload-0f2e057c-5a1",
     "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-9de08754-46b",
+    "entry_id": "se-6ba88d84251e47948c99e1d6cf4b93f9",
+    "source_id": "r2-local",
+    "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+    "path": "众虫皆歌/歌曲本体/008 无拘的秘信(feat.Yari Riako,Karandox Lopez).wav",
+    "display_name": "008 无拘的秘信(feat.Yari Riako,Karandox Lopez).wav",
+    "storage_object_id": "obj_f6b8d483a3723d5c"
   },
   {
     "master_id": "sm-upload-3c2f0270-93c",
     "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-1775cd92-de2",
+    "entry_id": "se-a26be26e89424e2bba8600fb3f958d7a",
+    "source_id": "r2-local",
+    "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+    "path": "众虫皆歌/歌曲本体/009 尘埃河外系(feat.玖辰,星渺）.wav",
+    "display_name": "009 尘埃河外系(feat.玖辰,星渺）.wav",
+    "storage_object_id": "obj_11bf7b044b307b83"
   },
   {
     "master_id": "sm-upload-fa58b133-8bc",
     "target_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-a70f1936-8f3",
+    "entry_id": "se-03f66841b1e5436582af4d3316a788c5",
+    "source_id": "r2-local",
+    "parent_id": "se-4bc99f8cc76144189cde41684fd8af27",
+    "path": "众虫皆歌/歌曲本体/010 放任雨落·reWritten(feat.雨令,令雨).wav",
+    "display_name": "010 放任雨落·reWritten(feat.雨令,令雨).wav",
+    "storage_object_id": "obj_1cb55e6e153bf9b5"
   },
   {
     "master_id": "sm-upload-0d698ddd-586",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-462552bb-ef3",
+    "entry_id": "se-d1b3ebd3c6914279b005767238fc8a3c",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/01.ZIT.wav",
+    "display_name": "01.ZIT.wav",
+    "storage_object_id": "obj_9fb495d501267c11"
   },
   {
     "master_id": "sm-upload-3e4a3e0c-5e1",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-fbf43f19-e0e",
+    "entry_id": "se-c089af98578444d8980643804fde685c",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/02.不谐之音.wav",
+    "display_name": "02.不谐之音.wav",
+    "storage_object_id": "obj_9e8b2986bbcd0287"
   },
   {
     "master_id": "sm-upload-55fa915d-2e6",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-e0095cad-9e7",
+    "entry_id": "se-f3f268e0c0aa4a19a35fd9ee9699275d",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/03.兑上阙.wav",
+    "display_name": "03.兑上阙.wav",
+    "storage_object_id": "obj_116dbfb9d9e7221f"
   },
   {
     "master_id": "sm-upload-d38bae55-e32",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-95a91288-d19",
+    "entry_id": "se-a6c23eff27864237b78169db9bd73897",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/04.和你一起.wav",
+    "display_name": "04.和你一起.wav",
+    "storage_object_id": "obj_3bc3a89a8a810973"
   },
   {
     "master_id": "sm-upload-642c5555-32e",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-a10ddbfa-b2c",
+    "entry_id": "se-110f5eeafdac492ead3a12a256cbef22",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/05.流年烹茶.wav",
+    "display_name": "05.流年烹茶.wav",
+    "storage_object_id": "obj_6d6d8ffb82a0fc3f"
   },
   {
     "master_id": "sm-upload-be4c6092-980",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-06ecbf90-e25",
+    "entry_id": "se-16099b1529ae4709836f478b58c49dbd",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/06.流入疑雨的晴.wav",
+    "display_name": "06.流入疑雨的晴.wav",
+    "storage_object_id": "obj_b6179c2a55820e14"
   },
   {
     "master_id": "sm-upload-d4898d69-3e7",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-9fcd875b-521",
+    "entry_id": "se-28d1fba30d894123a1fcfc8bab25912c",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/07.渺小祈愿.wav",
+    "display_name": "07.渺小祈愿.wav",
+    "storage_object_id": "obj_76182786d0d472e5"
   },
   {
     "master_id": "sm-upload-68e21ac4-af0",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-3e5d8d5e-0a8",
+    "entry_id": "se-2b395e847b3e4c31906e96d6151b9aaf",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/08.时光.wav",
+    "display_name": "08.时光.wav",
+    "storage_object_id": "obj_9099e6575a6a60b2"
   },
   {
     "master_id": "sm-upload-962f69d3-a47",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-f78ba9df-2ad",
+    "entry_id": "se-a4b6cda886694f18b149ad9b4357fc79",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/09.世末创作者.wav",
+    "display_name": "09.世末创作者.wav",
+    "storage_object_id": "obj_5e5652961337a006"
   },
   {
     "master_id": "sm-upload-5189133a-af2",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-649d16eb-84e",
+    "entry_id": "se-03e209b388a7451ebe5f58a5ada9f5da",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/10.所以我戴上了耳机.wav",
+    "display_name": "10.所以我戴上了耳机.wav",
+    "storage_object_id": "obj_88318c2465ce715b"
   },
   {
     "master_id": "sm-upload-412884aa-3c6",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 11
+    "filename_track": 11,
+    "instance_id": "si-upload-948ea263-fdb",
+    "entry_id": "se-464f2a47964f46bdb1b7b9759a47a52b",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/11.微苦型日记.wav",
+    "display_name": "11.微苦型日记.wav",
+    "storage_object_id": "obj_187b3fe5e7cc9b29"
   },
   {
     "master_id": "sm-upload-d9e8676f-0f4",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 12
+    "filename_track": 12,
+    "instance_id": "si-upload-d5b94e0a-213",
+    "entry_id": "se-a40fa83884e843d69e9dcc917d916a6b",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/12.因你而存在的故事.wav",
+    "display_name": "12.因你而存在的故事.wav",
+    "storage_object_id": "obj_3e70ffdcfdb11556"
   },
   {
     "master_id": "sm-upload-e258a0c1-196",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 13
+    "filename_track": 13,
+    "instance_id": "si-upload-6edee9cf-06d",
+    "entry_id": "se-56b57f26e67443358bad463baf813b27",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/13.因你而铭记的旋律.wav",
+    "display_name": "13.因你而铭记的旋律.wav",
+    "storage_object_id": "obj_ef95f85ac026c01e"
   },
   {
     "master_id": "sm-upload-c823de32-b12",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 14
+    "filename_track": 14,
+    "instance_id": "si-upload-74807bfa-13d",
+    "entry_id": "se-ec0dc200857b4d7c88648eeda66c21f0",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/14.葬花泪.wav",
+    "display_name": "14.葬花泪.wav",
+    "storage_object_id": "obj_b91bcb3fe111be6b"
   },
   {
     "master_id": "sm-upload-34a4e79c-3ac",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 15
+    "filename_track": 15,
+    "instance_id": "si-upload-b26f7393-c77",
+    "entry_id": "se-48efed39dfca40edaa41b9a13fbeb01c",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/15.挚鸣致夏.wav",
+    "display_name": "15.挚鸣致夏.wav",
+    "storage_object_id": "obj_b461c8362363fd42"
   },
   {
     "master_id": "sm-upload-0796f5d3-fd3",
     "target_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "filename_track": 16
+    "filename_track": 16,
+    "instance_id": "si-upload-9356818c-dc5",
+    "entry_id": "se-1a1a79d989b8485c86090deafc0d2889",
+    "source_id": "r2-local",
+    "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd",
+    "path": "cop十周年纪念专辑/flac/16.不停歇的旅途(合唱ver.).wav",
+    "display_name": "16.不停歇的旅途(合唱ver.).wav",
+    "storage_object_id": "obj_555dc3d4b0197af0"
   },
   {
     "master_id": "sm-upload-f3f4157d-6ee",
     "target_album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-ad39141e-329",
+    "entry_id": "se-7eaf7be9cdf24b6aa47a50847e32ce21",
+    "source_id": "r2-local",
+    "parent_id": "se-4d81506c43c249f3b64dc32c47d15111",
+    "path": "春华秋拾/wav/01 双星系统.wav",
+    "display_name": "01 双星系统.wav",
+    "storage_object_id": "obj_cb8abfa22e0bd72b"
   },
   {
     "master_id": "sm-upload-46552f7f-fae",
     "target_album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-44fe3603-d9d",
+    "entry_id": "se-f61c589302604ee7abceaaa49c326274",
+    "source_id": "r2-local",
+    "parent_id": "se-4d81506c43c249f3b64dc32c47d15111",
+    "path": "春华秋拾/wav/02 笼中藤.wav",
+    "display_name": "02 笼中藤.wav",
+    "storage_object_id": "obj_b41f2e2f400a2848"
   },
   {
     "master_id": "sm-upload-56571117-ce0",
     "target_album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-755c90bd-08e",
+    "entry_id": "se-b6cec9df1fd4418f83ab3c8ea41417b7",
+    "source_id": "r2-local",
+    "parent_id": "se-4d81506c43c249f3b64dc32c47d15111",
+    "path": "春华秋拾/wav/03 梦醉酒醒.wav",
+    "display_name": "03 梦醉酒醒.wav",
+    "storage_object_id": "obj_f0f6f92ad590ad8b"
   },
   {
     "master_id": "sm-upload-a0ec2a9f-fe9",
     "target_album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-6abdc96b-ed7",
+    "entry_id": "se-ce4c5b4822b64d7680f4805de21bd379",
+    "source_id": "r2-local",
+    "parent_id": "se-4d81506c43c249f3b64dc32c47d15111",
+    "path": "春华秋拾/wav/04 问心.wav",
+    "display_name": "04 问心.wav",
+    "storage_object_id": "obj_944f0fa40ed327d4"
   },
   {
     "master_id": "sm-upload-553e0240-555",
     "target_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-80e89879-f47",
+    "entry_id": "se-f74d070ed5654775bcc1b0ee1703fd47",
+    "source_id": "r2-local",
+    "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+    "path": "逆进化ЯEVOLUTION/wav/01 花瓣向明日飘去.wav",
+    "display_name": "01 花瓣向明日飘去.wav",
+    "storage_object_id": "obj_c2f21ec16f428bcf"
   },
   {
     "master_id": "sm-upload-05511bcc-4d5",
     "target_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-11563a78-1ee",
+    "entry_id": "se-062f43d6ba0b44fba45754acce0728a9",
+    "source_id": "r2-local",
+    "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+    "path": "逆进化ЯEVOLUTION/wav/02 Reversed whiteness.wav",
+    "display_name": "02 Reversed whiteness.wav",
+    "storage_object_id": "obj_861f81415cdfab64"
   },
   {
     "master_id": "sm-upload-620c477b-70a",
     "target_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-860c330b-6e3",
+    "entry_id": "se-393d27835d7143eeb334932bc8afb623",
+    "source_id": "r2-local",
+    "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+    "path": "逆进化ЯEVOLUTION/wav/03 オン・ステーヅ.wav",
+    "display_name": "03 オン・ステーヅ.wav",
+    "storage_object_id": "obj_4fbb65dfe6853bc3"
   },
   {
     "master_id": "sm-upload-660bdf12-2ce",
     "target_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-93adef62-728",
+    "entry_id": "se-b0efb1686dcb490c90be506701331bdf",
+    "source_id": "r2-local",
+    "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+    "path": "逆进化ЯEVOLUTION/wav/04 Beyond The Sky.wav",
+    "display_name": "04 Beyond The Sky.wav",
+    "storage_object_id": "obj_39ca104746eb6547"
   },
   {
     "master_id": "sm-upload-70333488-8b5",
     "target_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-66f71cdf-01c",
+    "entry_id": "se-26bccc5ae484418f90f7275298376f43",
+    "source_id": "r2-local",
+    "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+    "path": "逆进化ЯEVOLUTION/wav/05 午前零时.wav",
+    "display_name": "05 午前零时.wav",
+    "storage_object_id": "obj_fbd149aefbd5cdb1"
   },
   {
     "master_id": "sm-upload-43d08570-b2e",
     "target_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-1d408ef9-0cf",
+    "entry_id": "se-1aa7b5e849384e02801be039e0d4cc91",
+    "source_id": "r2-local",
+    "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+    "path": "逆进化ЯEVOLUTION/wav/06 生而为人，我很抱歉.wav",
+    "display_name": "06 生而为人，我很抱歉.wav",
+    "storage_object_id": "obj_119b4600b52c0914"
   },
   {
     "master_id": "sm-upload-8e189cf4-bc2",
     "target_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-6059437e-fcf",
+    "entry_id": "se-95a0e6327b3c4238a5f772e8609d4147",
+    "source_id": "r2-local",
+    "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+    "path": "逆进化ЯEVOLUTION/wav/07 月兔の唄.wav",
+    "display_name": "07 月兔の唄.wav",
+    "storage_object_id": "obj_61d4efd9840cceb8"
   },
   {
     "master_id": "sm-upload-f4c839d7-939",
     "target_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-db7a2a4f-113",
+    "entry_id": "se-22a2649b95b44327aa7faff6d7483832",
+    "source_id": "r2-local",
+    "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+    "path": "逆进化ЯEVOLUTION/wav/08 ぐるぐる.wav",
+    "display_name": "08 ぐるぐる.wav",
+    "storage_object_id": "obj_e1681aa2856c54be"
   },
   {
     "master_id": "sm-upload-f1efcbe8-2fb",
     "target_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-cebb9fc0-37a",
+    "entry_id": "se-775c9d9c3cf040069b40178122c0b5d4",
+    "source_id": "r2-local",
+    "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+    "path": "逆进化ЯEVOLUTION/wav/09 十七号列车.wav",
+    "display_name": "09 十七号列车.wav",
+    "storage_object_id": "obj_1ec64a7096462a57"
   },
   {
     "master_id": "sm-upload-c659b405-246",
     "target_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-36a649eb-502",
+    "entry_id": "se-3a985a9a99df4817971a009f7c9d0387",
+    "source_id": "r2-local",
+    "parent_id": "se-3b2175de26cb4a34929412f3debd62e5",
+    "path": "逆进化ЯEVOLUTION/wav/10 未来·未来.wav",
+    "display_name": "10 未来·未来.wav",
+    "storage_object_id": "obj_35a1870e92ed2b52"
   },
   {
     "master_id": "sm-upload-914669ae-daf",
     "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-1b3443f5-47f",
+    "entry_id": "se-29aea1c2aad34da291861dfef30b7971",
+    "source_id": "r2-local",
+    "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+    "path": "AI绫/wav/01 Amplifier,扬声器.wav",
+    "display_name": "01 Amplifier,扬声器.wav",
+    "storage_object_id": "obj_a83ad4a5f1a4eeca"
   },
   {
     "master_id": "sm-upload-e38cb628-82f",
     "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-3de7d8f0-440",
+    "entry_id": "se-3c45987a44454714917648077cda75bd",
+    "source_id": "r2-local",
+    "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+    "path": "AI绫/wav/02 焰色空白格.wav",
+    "display_name": "02 焰色空白格.wav",
+    "storage_object_id": "obj_45ac0842b5b2c646"
   },
   {
     "master_id": "sm-upload-8027cffa-3f0",
     "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-147f5749-0ff",
+    "entry_id": "se-619488a951b94214a5f0146126a72a46",
+    "source_id": "r2-local",
+    "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+    "path": "AI绫/wav/03 ヒウマノイド美学,仿生人美学.wav",
+    "display_name": "03 ヒウマノイド美学,仿生人美学.wav",
+    "storage_object_id": "obj_9facc6394befe5bf"
   },
   {
     "master_id": "sm-upload-c5006572-e0e",
     "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-eb91978a-599",
+    "entry_id": "se-3e0deca85fd94b5a92ac775e6f0a9c10",
+    "source_id": "r2-local",
+    "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+    "path": "AI绫/wav/04 午夜EMO时刻.wav",
+    "display_name": "04 午夜EMO时刻.wav",
+    "storage_object_id": "obj_cd29cd903cdab963"
   },
   {
     "master_id": "sm-upload-04e4f884-8c1",
     "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-8460d308-a0e",
+    "entry_id": "se-5b89ed6cb3d943d685cd130e6ddd19cb",
+    "source_id": "r2-local",
+    "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+    "path": "AI绫/wav/05 \u00230412歌声人形 协议纪录.wav",
+    "display_name": "05 \u00230412歌声人形 协议纪录.wav",
+    "storage_object_id": "obj_d88c8b9fb381ea19"
   },
   {
     "master_id": "sm-upload-baaca575-1e5",
     "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-c12b879c-bbc",
+    "entry_id": "se-815e7ea2ea95491e8e8734105c9f3f27",
+    "source_id": "r2-local",
+    "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+    "path": "AI绫/wav/06 对症下药.wav",
+    "display_name": "06 对症下药.wav",
+    "storage_object_id": "obj_84aca424452f7379"
   },
   {
     "master_id": "sm-upload-e4b4a430-9bf",
     "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-9ad14421-480",
+    "entry_id": "se-ad1c284182854183a9cd4da4d1487968",
+    "source_id": "r2-local",
+    "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+    "path": "AI绫/wav/07 平静火.wav",
+    "display_name": "07 平静火.wav",
+    "storage_object_id": "obj_9f0a5e4c526db935"
   },
   {
     "master_id": "sm-upload-c80b56a6-9cb",
     "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-eeda407c-3e5",
+    "entry_id": "se-5dc6409a60b94781bff569dc67089b5b",
+    "source_id": "r2-local",
+    "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+    "path": "AI绫/wav/08 比绫星.wav",
+    "display_name": "08 比绫星.wav",
+    "storage_object_id": "obj_5839c65c17608e3d"
   },
   {
     "master_id": "sm-upload-15add848-cb6",
     "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-71d59cd3-2f7",
+    "entry_id": "se-edba55da76b8482a9369dccf6ed230dd",
+    "source_id": "r2-local",
+    "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+    "path": "AI绫/wav/09 天生偶像.wav",
+    "display_name": "09 天生偶像.wav",
+    "storage_object_id": "obj_598c371502c4b65c"
   },
   {
     "master_id": "sm-upload-c422ca21-bc0",
     "target_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-e0b268db-631",
+    "entry_id": "se-be50ae78ef614593b831ec93a5612444",
+    "source_id": "r2-local",
+    "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0",
+    "path": "AI绫/wav/10 专属巧克力味觉.wav",
+    "display_name": "10 专属巧克力味觉.wav",
+    "storage_object_id": "obj_97ca3ba82bbc8934"
   },
   {
     "master_id": "sm-upload-6175a166-606",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-f809bd53-032",
+    "entry_id": "se-bb399a0c74da4dd2bebbb77730736ca7",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/01 01 词穷（ Nekock · LK Remake ).wav",
+    "display_name": "01 01 词穷（ Nekock · LK Remake ).wav",
+    "storage_object_id": "obj_725875c5a6e7bff7"
   },
   {
     "master_id": "sm-upload-e424797b-1e7",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-9abe3644-bcb",
+    "entry_id": "se-919f0b6612e145e4896371a02e88c6d4",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/02 02 オブザーバー（ Nekock · LK Remake ).wav",
+    "display_name": "02 02 オブザーバー（ Nekock · LK Remake ).wav",
+    "storage_object_id": "obj_6f3c84f4eb572606"
   },
   {
     "master_id": "sm-upload-55d617d1-946",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-8e5242ea-f85",
+    "entry_id": "se-a4b4338f7a574e39942bd3814c8383e0",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/03 03 自我的存在证明（ Nekock · LK Remake ).wav",
+    "display_name": "03 03 自我的存在证明（ Nekock · LK Remake ).wav",
+    "storage_object_id": "obj_359e3fdc7d2115bc"
   },
   {
     "master_id": "sm-upload-1dd2c3ea-51a",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-0d7226f8-a2a",
+    "entry_id": "se-d4cff1270ee945c39b4d1335587e4401",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/04 04 旋梯（ Nekock · LK Remake ).wav",
+    "display_name": "04 04 旋梯（ Nekock · LK Remake ).wav",
+    "storage_object_id": "obj_924a14eca863d22a"
   },
   {
     "master_id": "sm-upload-52918a7d-d0d",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-3a4f9b20-26f",
+    "entry_id": "se-c18f37056dd74e728219084f65ffcebc",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/05 05 再、願い。.wav",
+    "display_name": "05 05 再、願い。.wav",
+    "storage_object_id": "obj_328688fc61c8c5f3"
   },
   {
     "master_id": "sm-upload-fac12da8-c8b",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-116f53d8-c86",
+    "entry_id": "se-4d97c4b55660495ea557008047859a2f",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/06 06 星满归途（純白 P Remix ).wav",
+    "display_name": "06 06 星满归途（純白 P Remix ).wav",
+    "storage_object_id": "obj_98062fffbd0b3805"
   },
   {
     "master_id": "sm-upload-ce7ca9dd-629",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-69ac89cf-b79",
+    "entry_id": "se-9e02a79b9c974f4daea7250d7ac30302",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/07 07 Ra in bar ( DOS Remix ).wav",
+    "display_name": "07 07 Ra in bar ( DOS Remix ).wav",
+    "storage_object_id": "obj_3ab58560b6375297"
   },
   {
     "master_id": "sm-upload-f5f11cb1-5e6",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-d38463e3-e55",
+    "entry_id": "se-e3f756f97de44c86a77218f7ae804ceb",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/08 08 Link Your World ( Mr . Guai Remix ).wav",
+    "display_name": "08 08 Link Your World ( Mr . Guai Remix ).wav",
+    "storage_object_id": "obj_7d55e94de2cbe525"
   },
   {
     "master_id": "sm-upload-45c17eb9-747",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-5defb922-999",
+    "entry_id": "se-033ab4c39ab94ea0a0b0c83415e795c7",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/09 09 オブザーバー( YQXP Remix ).wav",
+    "display_name": "09 09 オブザーバー( YQXP Remix ).wav",
+    "storage_object_id": "obj_a915515bba94ac77"
   },
   {
     "master_id": "sm-upload-ba3fca4b-62d",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-bc936700-276",
+    "entry_id": "se-107ece666b324498bfb047aeb2ff5ed7",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/10 10 Reversed Whiteness ( Necoaloo Remix.wav",
+    "display_name": "10 10 Reversed Whiteness ( Necoaloo Remix.wav",
+    "storage_object_id": "obj_763fca5ee8dabe5d"
   },
   {
     "master_id": "sm-upload-59b1f46e-a95",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 11
+    "filename_track": 11,
+    "instance_id": "si-upload-fcdb2627-6c2",
+    "entry_id": "se-e17fa35d69764a6fadeb39e62fbb0825",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/11 11 沙塔（ DBRT Remix ).wav",
+    "display_name": "11 11 沙塔（ DBRT Remix ).wav",
+    "storage_object_id": "obj_c04b2357e31d4dbf"
   },
   {
     "master_id": "sm-upload-7bdaf28e-f9e",
     "target_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "filename_track": 12
+    "filename_track": 12,
+    "instance_id": "si-upload-3b6cd237-235",
+    "entry_id": "se-c283eae63a224c49a7403516459f6862",
+    "source_id": "r2-local",
+    "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda",
+    "path": "旧未来ЯEMIXTION（wav）/wav/12 12 未来·未来（ ykykyukai Remix ).wav",
+    "display_name": "12 12 未来·未来（ ykykyukai Remix ).wav",
+    "storage_object_id": "obj_0f7c846b361a3276"
   },
   {
     "master_id": "sm-upload-03470670-934",
     "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-c84aa493-9a6",
+    "entry_id": "se-371a419ed7794375bcad9dfbee82ae1a",
+    "source_id": "r2-local",
+    "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+    "path": "幽灵摄影/wav/01 幽灵.wav",
+    "display_name": "01 幽灵.wav",
+    "storage_object_id": "obj_92fe47c5b5c4d133"
   },
   {
     "master_id": "sm-upload-748d72b1-fc1",
     "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-f6c13a68-3e9",
+    "entry_id": "se-4017eae1ca0b4741b8f76f1c22efd904",
+    "source_id": "r2-local",
+    "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+    "path": "幽灵摄影/wav/02 冬止め.wav",
+    "display_name": "02 冬止め.wav",
+    "storage_object_id": "obj_52121ca15e4da41e"
   },
   {
     "master_id": "sm-upload-d178378d-bc5",
     "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-41bde8c3-ff2",
+    "entry_id": "se-81b0abcb93244a7aacd938836e7fca2c",
+    "source_id": "r2-local",
+    "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+    "path": "幽灵摄影/wav/03 摇滚解体.wav",
+    "display_name": "03 摇滚解体.wav",
+    "storage_object_id": "obj_35f665ddcac27462"
   },
   {
     "master_id": "sm-upload-6d9de5af-539",
     "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-7dec99a5-61c",
+    "entry_id": "se-3a856250d5b047df96a664cf0221d8f2",
+    "source_id": "r2-local",
+    "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+    "path": "幽灵摄影/wav/04 假想敌.wav",
+    "display_name": "04 假想敌.wav",
+    "storage_object_id": "obj_635fdce630fd1a0a"
   },
   {
     "master_id": "sm-upload-374b472d-1d7",
     "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-1cdf03fb-6f3",
+    "entry_id": "se-c049515b569b4f3dabeb5678063d9fca",
+    "source_id": "r2-local",
+    "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+    "path": "幽灵摄影/wav/05 莉莉丝.wav",
+    "display_name": "05 莉莉丝.wav",
+    "storage_object_id": "obj_52a896c3e29e823c"
   },
   {
     "master_id": "sm-upload-690ad431-b59",
     "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-65ec8a27-89b",
+    "entry_id": "se-6ff1f699324447868911d4108af89f92",
+    "source_id": "r2-local",
+    "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+    "path": "幽灵摄影/wav/06 飞鸟.wav",
+    "display_name": "06 飞鸟.wav",
+    "storage_object_id": "obj_343a5728004e631c"
   },
   {
     "master_id": "sm-upload-a4759b23-456",
     "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-310f7bf4-ae3",
+    "entry_id": "se-5b58e5a7f1644a4aa111a6cca1555f8c",
+    "source_id": "r2-local",
+    "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+    "path": "幽灵摄影/wav/07 月光.wav",
+    "display_name": "07 月光.wav",
+    "storage_object_id": "obj_70131a723b49b0d2"
   },
   {
     "master_id": "sm-upload-9bf8a3dc-49c",
     "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-092819f4-78e",
+    "entry_id": "se-8c13065f082d43c49a54858fa4c90c50",
+    "source_id": "r2-local",
+    "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+    "path": "幽灵摄影/wav/08 壳.wav",
+    "display_name": "08 壳.wav",
+    "storage_object_id": "obj_53ff1466ec3cd6b7"
   },
   {
     "master_id": "sm-upload-5b301238-460",
     "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-3e91a481-03e",
+    "entry_id": "se-42306f8279764b7e90bec40366e30715",
+    "source_id": "r2-local",
+    "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+    "path": "幽灵摄影/wav/09 蛰.wav",
+    "display_name": "09 蛰.wav",
+    "storage_object_id": "obj_fd957cc89de54192"
   },
   {
     "master_id": "sm-upload-f55d9ac5-408",
     "target_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-20ee9895-a75",
+    "entry_id": "se-e882b2f2b14a4791b0c688adee4a4cc9",
+    "source_id": "r2-local",
+    "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736",
+    "path": "幽灵摄影/wav/10 漂流.wav",
+    "display_name": "10 漂流.wav",
+    "storage_object_id": "obj_9ac1b7d0d782eac1"
   },
   {
     "master_id": "sm-upload-481244dd-64a",
     "target_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-f869440b-889",
+    "entry_id": "se-df92e87a97694ee8b82bc5159afc2cdf",
+    "source_id": "r2-local",
+    "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+    "path": "忘川风华录·溯洄/wav/01 多情岸.wav",
+    "display_name": "01 多情岸.wav",
+    "storage_object_id": "obj_e06c51abddacf34d"
   },
   {
     "master_id": "sm-upload-ae0d532d-833",
     "target_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-d725ba94-e80",
+    "entry_id": "se-7571dfce8d1c400e9a1ae9a00ac9ca1c",
+    "source_id": "r2-local",
+    "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+    "path": "忘川风华录·溯洄/wav/02 洛阳怀.wav",
+    "display_name": "02 洛阳怀.wav",
+    "storage_object_id": "obj_c450ecd3681b7f94"
   },
   {
     "master_id": "sm-upload-5cb2b5d2-c80",
     "target_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-c0417b45-db7",
+    "entry_id": "se-5f551d43be364f2c844c8d14f0ff0b94",
+    "source_id": "r2-local",
+    "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+    "path": "忘川风华录·溯洄/wav/03 易水诀.wav",
+    "display_name": "03 易水诀.wav",
+    "storage_object_id": "obj_95e5e536c2ff6b14"
   },
   {
     "master_id": "sm-upload-ada463c4-049",
     "target_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-897981ca-f0c",
+    "entry_id": "se-92295b53d1b94a38b9676fae0b1ae6b8",
+    "source_id": "r2-local",
+    "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+    "path": "忘川风华录·溯洄/wav/04 山河令.wav",
+    "display_name": "04 山河令.wav",
+    "storage_object_id": "obj_a1bed56019cad6fa"
   },
   {
     "master_id": "sm-upload-b84182f5-1a9",
     "target_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-84002e1d-eac",
+    "entry_id": "se-b7796dedd7414b2a96b01b5190d460ea",
+    "source_id": "r2-local",
+    "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+    "path": "忘川风华录·溯洄/wav/05 簪花人间.wav",
+    "display_name": "05 簪花人间.wav",
+    "storage_object_id": "obj_9e17e6f5dbeae985"
   },
   {
     "master_id": "sm-upload-6204a4fa-7d4",
     "target_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-3837eff7-917",
+    "entry_id": "se-ebca9340b4ce413fba1c856fe07d56f7",
+    "source_id": "r2-local",
+    "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+    "path": "忘川风华录·溯洄/wav/06 栖凰.wav",
+    "display_name": "06 栖凰.wav",
+    "storage_object_id": "obj_3a06e73a21cc932f"
   },
   {
     "master_id": "sm-upload-2ee8f752-0ca",
     "target_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-30076b57-b24",
+    "entry_id": "se-a5646db8310c4cd089ee02594601fe94",
+    "source_id": "r2-local",
+    "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+    "path": "忘川风华录·溯洄/wav/07 心上秋.wav",
+    "display_name": "07 心上秋.wav",
+    "storage_object_id": "obj_ce7320f32e67978f"
   },
   {
     "master_id": "sm-upload-62e99b99-1d9",
     "target_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-55d22dfd-76b",
+    "entry_id": "se-276241ae024d45949d57f1ec54deee00",
+    "source_id": "r2-local",
+    "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+    "path": "忘川风华录·溯洄/wav/08 祖龙吟.wav",
+    "display_name": "08 祖龙吟.wav",
+    "storage_object_id": "obj_ef62dfed10c69cd4"
   },
   {
     "master_id": "sm-upload-a6899ade-703",
     "target_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-f7b2e715-bf3",
+    "entry_id": "se-6cecebdb2d0a4b1d9276400de2a6e0d1",
+    "source_id": "r2-local",
+    "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+    "path": "忘川风华录·溯洄/wav/09 如见青山.wav",
+    "display_name": "09 如见青山.wav",
+    "storage_object_id": "obj_0ab8d854f6b039af"
   },
   {
     "master_id": "sm-upload-0c73cb05-35e",
     "target_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-2c1e499a-f78",
+    "entry_id": "se-ce289f939b1e4730ae1b2fc90ec312a8",
+    "source_id": "r2-local",
+    "parent_id": "se-23cc78f069df4f78bdf88d8693f877af",
+    "path": "忘川风华录·溯洄/wav/10 竹林间.wav",
+    "display_name": "10 竹林间.wav",
+    "storage_object_id": "obj_73e8bead421ba09d"
   },
   {
     "master_id": "sm-upload-8b0078a9-701",
     "target_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-21b1a066-5a2",
+    "entry_id": "se-0602fdd912b34b43a591efe493d979e2",
+    "source_id": "r2-local",
+    "parent_id": "se-6fbe9b356f8040fe84f33e4c4662a998",
+    "path": "花と約束/wav/01 桜色の夢と、私と君.wav",
+    "display_name": "01 桜色の夢と、私と君.wav",
+    "storage_object_id": "obj_f6d33db52061aeae"
   },
   {
     "master_id": "sm-upload-6e85a152-b10",
     "target_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-677f4230-ab0",
+    "entry_id": "se-ebd9d19067a04db1a4af83ef521f84cd",
+    "source_id": "r2-local",
+    "parent_id": "se-6fbe9b356f8040fe84f33e4c4662a998",
+    "path": "花と約束/wav/02 睡蓮のマーメイドと、もう子供じゃない貴方.wav",
+    "display_name": "02 睡蓮のマーメイドと、もう子供じゃない貴方.wav",
+    "storage_object_id": "obj_53e134b8e96fc73e"
   },
   {
     "master_id": "sm-upload-a4b6dd5d-b13",
     "target_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-e52c320d-42f",
+    "entry_id": "se-14cb602ae25e4ccbb5286ee1ece72cb6",
+    "source_id": "r2-local",
+    "parent_id": "se-6fbe9b356f8040fe84f33e4c4662a998",
+    "path": "花と約束/wav/03 花火のように.wav",
+    "display_name": "03 花火のように.wav",
+    "storage_object_id": "obj_f924d178faec5841"
   },
   {
     "master_id": "sm-upload-21b7d621-482",
     "target_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-9ac27e78-dc5",
+    "entry_id": "se-ced4d445ff4740bd8a71acdbc5fdae75",
+    "source_id": "r2-local",
+    "parent_id": "se-6fbe9b356f8040fe84f33e4c4662a998",
+    "path": "花と約束/wav/04 0と1の世界で、あなたへ.wav",
+    "display_name": "04 0と1の世界で、あなたへ.wav",
+    "storage_object_id": "obj_eacd81ef446671bb"
   },
   {
     "master_id": "sm-upload-342fe6c2-97a",
     "target_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-a498ffa3-ef1",
+    "entry_id": "se-b96f8858edc04a6cae12a9ed4fd9cfce",
+    "source_id": "r2-local",
+    "parent_id": "se-6fbe9b356f8040fe84f33e4c4662a998",
+    "path": "花と約束/wav/05 黄昏のマリーゴールド.wav",
+    "display_name": "05 黄昏のマリーゴールド.wav",
+    "storage_object_id": "obj_6131a1012eac59c4"
   },
   {
     "master_id": "sm-upload-e18930ac-8e1",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-ce8ca182-b9a",
+    "entry_id": "se-f5aa2067cba6474cb1c08b1f4680a16b",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 01.白羊座.wav",
+    "display_name": "Track 01.白羊座.wav",
+    "storage_object_id": "obj_6020a639885e96c7"
   },
   {
     "master_id": "sm-upload-004b6062-e62",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-77f4402b-739",
+    "entry_id": "se-37d1bb69ce3b4c0493126df54d5a3be4",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 02.金牛座.wav",
+    "display_name": "Track 02.金牛座.wav",
+    "storage_object_id": "obj_c8a2d119c1e882ee"
   },
   {
     "master_id": "sm-upload-1e608bde-aeb",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-d68e0c68-981",
+    "entry_id": "se-41a0fed1a59f4c9680d507f8d7cc68ef",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 03.双子座.wav",
+    "display_name": "Track 03.双子座.wav",
+    "storage_object_id": "obj_49d4bc576873b4a3"
   },
   {
     "master_id": "sm-upload-9bfc667e-5ef",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-64ba94a3-5cd",
+    "entry_id": "se-cf1dc1d8fa38452da250daeb3078dae7",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 04.巨蟹座.wav",
+    "display_name": "Track 04.巨蟹座.wav",
+    "storage_object_id": "obj_4f5409fb06d71778"
   },
   {
     "master_id": "sm-upload-15e574ee-8ae",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-5d6e3de3-a88",
+    "entry_id": "se-378093536bed4c758e08730953fe90aa",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 05.狮子座.wav",
+    "display_name": "Track 05.狮子座.wav",
+    "storage_object_id": "obj_b5689f43527f86f9"
   },
   {
     "master_id": "sm-upload-43974d21-5b5",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-4030affb-22e",
+    "entry_id": "se-07425e501c1244ce933dc26177ac92ed",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 06.处女座.wav",
+    "display_name": "Track 06.处女座.wav",
+    "storage_object_id": "obj_296764c2b83e15d8"
   },
   {
     "master_id": "sm-upload-ed4828e7-cf9",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-079a6844-cd3",
+    "entry_id": "se-c262fb41f415494b88445c2a8fdd40d8",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 07.天秤座.wav",
+    "display_name": "Track 07.天秤座.wav",
+    "storage_object_id": "obj_070b7b5abe692be7"
   },
   {
     "master_id": "sm-upload-39152c54-b80",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-9eddcb8f-b22",
+    "entry_id": "se-723134e405234dc0a6d61217447c99ce",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 08.天蝎座.wav",
+    "display_name": "Track 08.天蝎座.wav",
+    "storage_object_id": "obj_bb624193807f5021"
   },
   {
     "master_id": "sm-upload-dbc1d60c-3c2",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-81ebcedd-693",
+    "entry_id": "se-3824160059de4268a26fcaaab7b3e5b6",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 09.射手座.wav",
+    "display_name": "Track 09.射手座.wav",
+    "storage_object_id": "obj_54c46cb779270c4a"
   },
   {
     "master_id": "sm-upload-43a886a9-559",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-fb50b03c-73e",
+    "entry_id": "se-8db577e6b2d14522943b77d3d3e234c1",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 10.摩羯座.wav",
+    "display_name": "Track 10.摩羯座.wav",
+    "storage_object_id": "obj_0b703870494474ff"
   },
   {
     "master_id": "sm-upload-bb441daa-4a0",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 11
+    "filename_track": 11,
+    "instance_id": "si-upload-a90783b0-564",
+    "entry_id": "se-da84db2de65941af94a6df8b57c93009",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 11.水瓶座.wav",
+    "display_name": "Track 11.水瓶座.wav",
+    "storage_object_id": "obj_ca39f53debfffbe8"
   },
   {
     "master_id": "sm-upload-0eebf238-f29",
     "target_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "filename_track": 12
+    "filename_track": 12,
+    "instance_id": "si-upload-f46ab1ee-7cf",
+    "entry_id": "se-d7bd763217ca45a9bec7199ba4c326f4",
+    "source_id": "r2-local",
+    "parent_id": "se-0635880aeec54279bd5e9ec05059ac68",
+    "path": "星座-扑克/wav/Track 12.双鱼座.wav",
+    "display_name": "Track 12.双鱼座.wav",
+    "storage_object_id": "obj_dc78ca3499ee4f55"
   },
   {
     "master_id": "sm-upload-e6ce4e4e-0b8",
     "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-64a0cb4c-61c",
+    "entry_id": "se-c30d4da4d9504015b89a2dcad126cb26",
+    "source_id": "r2-local",
+    "parent_id": "se-a0056771145d4523beec2130498ef23e",
+    "path": "回声漫过荒原/wav/01 千年雪.wav",
+    "display_name": "01 千年雪.wav",
+    "storage_object_id": "obj_0cc2762e6e0d343a"
   },
   {
     "master_id": "sm-upload-0bbfaed5-aa8",
     "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-92f0d91d-dd0",
+    "entry_id": "se-534a193ef4fe471a9b025dfcda6d1428",
+    "source_id": "r2-local",
+    "parent_id": "se-a0056771145d4523beec2130498ef23e",
+    "path": "回声漫过荒原/wav/02 烟霞行吟.wav",
+    "display_name": "02 烟霞行吟.wav",
+    "storage_object_id": "obj_51dc3886d974cdf5"
   },
   {
     "master_id": "sm-upload-2913df11-776",
     "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-175916a7-00d",
+    "entry_id": "se-3e8c7a200fb54e76b646538f427b9c28",
+    "source_id": "r2-local",
+    "parent_id": "se-a0056771145d4523beec2130498ef23e",
+    "path": "回声漫过荒原/wav/03 永恒人间.wav",
+    "display_name": "03 永恒人间.wav",
+    "storage_object_id": "obj_5443add4424cedae"
   },
   {
     "master_id": "sm-upload-4a6b97de-6d6",
     "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-183682fa-7ee",
+    "entry_id": "se-f57a577a70a34c04a70c8100c6e3baa2",
+    "source_id": "r2-local",
+    "parent_id": "se-a0056771145d4523beec2130498ef23e",
+    "path": "回声漫过荒原/wav/04 星空的孩子.wav",
+    "display_name": "04 星空的孩子.wav",
+    "storage_object_id": "obj_6cd8b21a1fd4cd71"
   },
   {
     "master_id": "sm-upload-67747466-85e",
     "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-4c4152e3-d13",
+    "entry_id": "se-981570ed1e854198b241e3b5c4bc404b",
+    "source_id": "r2-local",
+    "parent_id": "se-a0056771145d4523beec2130498ef23e",
+    "path": "回声漫过荒原/wav/05 日月灯.wav",
+    "display_name": "05 日月灯.wav",
+    "storage_object_id": "obj_2aced5bf5a35dcc0"
   },
   {
     "master_id": "sm-upload-5d55b9ac-edb",
     "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-f68d3f77-3dd",
+    "entry_id": "se-c27898ded7eb44969c6c04ce2f73759d",
+    "source_id": "r2-local",
+    "parent_id": "se-a0056771145d4523beec2130498ef23e",
+    "path": "回声漫过荒原/wav/06 最乐观者如是说.wav",
+    "display_name": "06 最乐观者如是说.wav",
+    "storage_object_id": "obj_01c17832059d9c1c"
   },
   {
     "master_id": "sm-cb51493104794550b49f7988b8d268e5",
     "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-40ffae3e94af44c48d9f35cf014599e6",
+    "entry_id": "se-bc38b8fd1c9140a387a56b1befd8bce5",
+    "source_id": "r2-local",
+    "parent_id": "se-a0056771145d4523beec2130498ef23e",
+    "path": "回声漫过荒原/wav/07 某年某月某日.wav",
+    "display_name": "07 某年某月某日.wav",
+    "storage_object_id": "obj_16b4aa8344145d83"
   },
   {
     "master_id": "sm-205b475a8daa49e7aac80f692e08ef85",
     "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-6345eccd3be64944b43e2b7432a245ea",
+    "entry_id": "se-99497ccaae084b11ac20ad21218e503d",
+    "source_id": "r2-local",
+    "parent_id": "se-a0056771145d4523beec2130498ef23e",
+    "path": "回声漫过荒原/wav/08 语言下空无一物.wav",
+    "display_name": "08 语言下空无一物.wav",
+    "storage_object_id": "obj_714acff878bd1525"
   },
   {
     "master_id": "sm-77217bc2bfde468a9df2c5898f54cfbf",
     "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-cf48f5d958724893abb8ce019a706c2b",
+    "entry_id": "se-7d809497e1f944249979ae7244b6362b",
+    "source_id": "r2-local",
+    "parent_id": "se-a0056771145d4523beec2130498ef23e",
+    "path": "回声漫过荒原/wav/09 万象非众生.wav",
+    "display_name": "09 万象非众生.wav",
+    "storage_object_id": "obj_067e6a83f492c59b"
   },
   {
     "master_id": "sm-upload-0243c28d-146",
     "target_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-9e19187f-df0",
+    "entry_id": "se-a070ad204b5e45b8b0533af2d548cef2",
+    "source_id": "r2-local",
+    "parent_id": "se-a0056771145d4523beec2130498ef23e",
+    "path": "回声漫过荒原/wav/10 Layosa.wav",
+    "display_name": "10 Layosa.wav",
+    "storage_object_id": "obj_2bd571ccbd3569a6"
   },
   {
     "master_id": "sm-c86a75e7bd6c409c80504a463e1ff433",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-c3f627e114e04cfd8c67c3092249e480",
+    "entry_id": "se-b6aebd405b344eeb8e94d5de2924e0f4",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/01 跨越数千昼夜.wav",
+    "display_name": "01 跨越数千昼夜.wav",
+    "storage_object_id": "obj_b087fa1cac73ebfa"
   },
   {
     "master_id": "sm-1e2f1e4b7ae042fe9e1ffc8ff5768369",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-917660c4738a40ebb54f709891051013",
+    "entry_id": "se-b453d514addb4a339284d326777df752",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/02 春日游.wav",
+    "display_name": "02 春日游.wav",
+    "storage_object_id": "obj_33d00c3c1c6d7c71"
   },
   {
     "master_id": "sm-70c6f0dada0f40efbf94b99f514d791a",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-a0a0c596d54c4369860787eda6bdc573",
+    "entry_id": "se-3c2d9cfb76d94a899f8a58b62a31b067",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/03 天星问.wav",
+    "display_name": "03 天星问.wav",
+    "storage_object_id": "obj_5c781beabb8276f5"
   },
   {
     "master_id": "sm-upload-1805dfeb-63c",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-54b03f59-c37",
+    "entry_id": "se-9e4bd8ba66c4427c85f8b8b4f0ec153f",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/04 四季共舞.wav",
+    "display_name": "04 四季共舞.wav",
+    "storage_object_id": "obj_7eb05ebeba65fdd6"
   },
   {
     "master_id": "sm-upload-9baef4f8-44e",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-1e5d3f6a-dca",
+    "entry_id": "se-1de32fb69c6f4a169315ca06fdc53c80",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/05 相思若循.wav",
+    "display_name": "05 相思若循.wav",
+    "storage_object_id": "obj_d64f8693ba65dcce"
   },
   {
     "master_id": "sm-upload-387d305f-426",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-87a90a25-d94",
+    "entry_id": "se-5804cb442abf4bc4a22279a21801231a",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/06 时间的彼端.wav",
+    "display_name": "06 时间的彼端.wav",
+    "storage_object_id": "obj_5747d1a976244562"
   },
   {
     "master_id": "sm-upload-5f9bc5da-1ad",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-8c958360-112",
+    "entry_id": "se-55e610bd1cf84013b8a914996ffb8e69",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/07 Colour Cast 色相偏移.wav",
+    "display_name": "07 Colour Cast 色相偏移.wav",
+    "storage_object_id": "obj_5582948d1d469e3c"
   },
   {
     "master_id": "sm-upload-b61ffb2c-af6",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-9f650c46-d5f",
+    "entry_id": "se-ffa8dcf8a451479f8cbc59ac97858813",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/08 乡愁.wav",
+    "display_name": "08 乡愁.wav",
+    "storage_object_id": "obj_4bf0f90cbace6f58"
   },
   {
     "master_id": "sm-upload-6899401d-dbe",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-8d70c063-22b",
+    "entry_id": "se-4d81c34501f14be5835f5aba9c8d9a41",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/09 与你重逢.wav",
+    "display_name": "09 与你重逢.wav",
+    "storage_object_id": "obj_a04b8a1e0ccfca19"
   },
   {
     "master_id": "sm-upload-b721a47b-0fb",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-5a9a1f39-5ad",
+    "entry_id": "se-1dc7afb5508143a0baf5e3d3a8e7b170",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/10 喜气开场-乙巳新春.wav",
+    "display_name": "10 喜气开场-乙巳新春.wav",
+    "storage_object_id": "obj_0447b3300c997592"
   },
   {
     "master_id": "sm-upload-37d48b57-ed8",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 11
+    "filename_track": 11,
+    "instance_id": "si-upload-f3c3fc23-1ef",
+    "entry_id": "se-7d31190df3f54125a8a04bba267fc888",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/11 热烈散场-干杯2025.wav",
+    "display_name": "11 热烈散场-干杯2025.wav",
+    "storage_object_id": "obj_9d46ee7368eddc03"
   },
   {
     "master_id": "sm-upload-90b61b6f-15e",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 12
+    "filename_track": 12,
+    "instance_id": "si-upload-9adb92d3-397",
+    "entry_id": "se-81204522a7464bfd88a06f2c4c3f8c24",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/12 2025拜年纪倒计时BGM-新岁钟鼓.wav",
+    "display_name": "12 2025拜年纪倒计时BGM-新岁钟鼓.wav",
+    "storage_object_id": "obj_31e36d31fe4cd5eb"
   },
   {
     "master_id": "sm-upload-811fea79-705",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 13
+    "filename_track": 13,
+    "instance_id": "si-upload-0aff2733-147",
+    "entry_id": "se-d0c39f0d13f64df29bd324b997c2bc08",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/13 节目报幕-环游之旅.wav",
+    "display_name": "13 节目报幕-环游之旅.wav",
+    "storage_object_id": "obj_a620fe96e3ba2a78"
   },
   {
     "master_id": "sm-upload-f279b49d-8f9",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 14
+    "filename_track": 14,
+    "instance_id": "si-upload-5f4e17de-265",
+    "entry_id": "se-21f729ed4698464982f11f7f711f66c7",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/14 节目报幕-山野回声.wav",
+    "display_name": "14 节目报幕-山野回声.wav",
+    "storage_object_id": "obj_7716537656406db8"
   },
   {
     "master_id": "sm-upload-9483fe4b-134",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 15
+    "filename_track": 15,
+    "instance_id": "si-upload-1634d1a9-688",
+    "entry_id": "se-9ead5c0ce8aa4e98940bfaf86636a31d",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/15 节目报幕-华彩古韵.wav",
+    "display_name": "15 节目报幕-华彩古韵.wav",
+    "storage_object_id": "obj_9ec7e17a320f06d6"
   },
   {
     "master_id": "sm-upload-fdfb8b5a-f7f",
     "target_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "filename_track": 16
+    "filename_track": 16,
+    "instance_id": "si-upload-f647514a-5ac",
+    "entry_id": "se-31841bc23a9b40c282ed01ab0e52a6ca",
+    "source_id": "r2-local",
+    "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed",
+    "path": "bilibili 乙巳蛇年拜年纪：跨越数千昼夜/16 节目报幕-茶歇交响.wav",
+    "display_name": "16 节目报幕-茶歇交响.wav",
+    "storage_object_id": "obj_691c4ed6546bf3dc"
   },
   {
     "master_id": "sm-upload-b6fe712d-3a5",
     "target_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-398d086c-c86",
+    "entry_id": "se-e1e8017275e94f84a7a85ed3f04b8338",
+    "source_id": "r2-local",
+    "parent_id": "se-83ff22b8a4ab423f9b13bea30a6da02a",
+    "path": "洛天依的构成/wav/01.Connect.wav",
+    "display_name": "01.Connect.wav",
+    "storage_object_id": "obj_636379356bce5abc"
   },
   {
     "master_id": "sm-upload-bafd2d2b-bd0",
     "target_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-2c97ea7a-199",
+    "entry_id": "se-f9ed1307f22d40a7abc53d85a309c447",
+    "source_id": "r2-local",
+    "parent_id": "se-83ff22b8a4ab423f9b13bea30a6da02a",
+    "path": "洛天依的构成/wav/02.Connect-NIGHT DRIVE REMIX.wav",
+    "display_name": "02.Connect-NIGHT DRIVE REMIX.wav",
+    "storage_object_id": "obj_27825638167392f7"
   },
   {
     "master_id": "sm-upload-b8855014-029",
     "target_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-cb4ca79d-19b",
+    "entry_id": "se-20500f9048944091958905a583c3f9a8",
+    "source_id": "r2-local",
+    "parent_id": "se-83ff22b8a4ab423f9b13bea30a6da02a",
+    "path": "洛天依的构成/wav/03.没有蓝莓也没有酒.wav",
+    "display_name": "03.没有蓝莓也没有酒.wav",
+    "storage_object_id": "obj_e5c83c96c1374193"
   },
   {
     "master_id": "sm-upload-4f002225-23e",
     "target_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-9715e89e-bf8",
+    "entry_id": "se-e372d661ce2f48519041ac95570a720e",
+    "source_id": "r2-local",
+    "parent_id": "se-83ff22b8a4ab423f9b13bea30a6da02a",
+    "path": "洛天依的构成/wav/04.光梦交响.wav",
+    "display_name": "04.光梦交响.wav",
+    "storage_object_id": "obj_b8078e0d34022c87"
   },
   {
     "master_id": "sm-upload-505a75f1-b7c",
     "target_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-7ccca78d-ad6",
+    "entry_id": "se-b7a0358e32cd42d59d534aa9c988f3ef",
+    "source_id": "r2-local",
+    "parent_id": "se-83ff22b8a4ab423f9b13bea30a6da02a",
+    "path": "洛天依的构成/wav/05.我被浸泡在每一颗水里.wav",
+    "display_name": "05.我被浸泡在每一颗水里.wav",
+    "storage_object_id": "obj_6bc218ce67f8605a"
   },
   {
     "master_id": "sm-upload-d8657b96-c3e",
     "target_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-bb952679-217",
+    "entry_id": "se-a4143b59a40a433f958e55296105ce8d",
+    "source_id": "r2-local",
+    "parent_id": "se-83ff22b8a4ab423f9b13bea30a6da02a",
+    "path": "洛天依的构成/wav/06.奇遇与你.wav",
+    "display_name": "06.奇遇与你.wav",
+    "storage_object_id": "obj_b563e2520abc3d18"
   },
   {
     "master_id": "sm-upload-0b952309-f12",
     "target_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-055a1745-fd8",
+    "entry_id": "se-521ddbb12389400694aa7f2b0305c13c",
+    "source_id": "r2-local",
+    "parent_id": "se-83ff22b8a4ab423f9b13bea30a6da02a",
+    "path": "洛天依的构成/wav/07.四千三百次的回答.wav",
+    "display_name": "07.四千三百次的回答.wav",
+    "storage_object_id": "obj_41165b811c5270b5"
   },
   {
     "master_id": "sm-upload-6a01492c-ebe",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-26d07396-4a9",
+    "entry_id": "se-5e7bc1c9dc894bb1827f898675e57833",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/01 依然和你在一起.wav",
+    "display_name": "01 依然和你在一起.wav",
+    "storage_object_id": "obj_7cd5d7656e1c7513"
   },
   {
     "master_id": "sm-upload-74718096-633",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-627f9c2b-768",
+    "entry_id": "se-a7c1f70054d74227a85c5a9fe0c01a4f",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/02 醉枕清风.wav",
+    "display_name": "02 醉枕清风.wav",
+    "storage_object_id": "obj_bb3c1a563d283338"
   },
   {
     "master_id": "sm-upload-b831ca53-608",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-f837437d-b65",
+    "entry_id": "se-a4fbbb6e8aee4af2b0300c9edc7b799c",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/03 春·忆.wav",
+    "display_name": "03 春·忆.wav",
+    "storage_object_id": "obj_cf6fbe076dfd0e3e"
   },
   {
     "master_id": "sm-upload-67b27f56-b5b",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-e5f333e2-0ac",
+    "entry_id": "se-01986af1001648c0afabbbf0d65c6d4a",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/04 十字街口.wav",
+    "display_name": "04 十字街口.wav",
+    "storage_object_id": "obj_d151a322ddf882b3"
   },
   {
     "master_id": "sm-upload-aa969a9a-7db",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-bb3c6321-af7",
+    "entry_id": "se-23862f7c972b412a9924e0b564946696",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/05 笑疏狂.wav",
+    "display_name": "05 笑疏狂.wav",
+    "storage_object_id": "obj_0048669ec0be60fd"
   },
   {
     "master_id": "sm-upload-26c13d22-002",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-abd00b09-09d",
+    "entry_id": "se-f32def663ef34d3b80bfd2ee9c6857ae",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/06 静默少女.wav",
+    "display_name": "06 静默少女.wav",
+    "storage_object_id": "obj_3ac57db4c6936d83"
   },
   {
     "master_id": "sm-upload-986e39a0-94d",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-ff9401b5-c8b",
+    "entry_id": "se-e2a45b047bcd462b9a06b368063687b7",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/07 自我认知障碍.wav",
+    "display_name": "07 自我认知障碍.wav",
+    "storage_object_id": "obj_e035bfc7c367e91c"
   },
   {
     "master_id": "sm-upload-831d9eee-6f0",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-d7308064-e58",
+    "entry_id": "se-4ef64a6d2e004d4c904597437bc270ff",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/08 月面旅人.wav",
+    "display_name": "08 月面旅人.wav",
+    "storage_object_id": "obj_dbc7f845e231c3e7"
   },
   {
     "master_id": "sm-upload-64d8dc24-596",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-d28ca736-cba",
+    "entry_id": "se-c8e613ab83ab46e28aa9b086172bbe51",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/09 生而为枭.wav",
+    "display_name": "09 生而为枭.wav",
+    "storage_object_id": "obj_68da9b4387a67b36"
   },
   {
     "master_id": "sm-upload-eba9f299-c67",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-660f4efd-432",
+    "entry_id": "se-0271477b178a443f800c86443048892a",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/10 冬已去,春未来。.wav",
+    "display_name": "10 冬已去,春未来。.wav",
+    "storage_object_id": "obj_753fd9d9a23cde64"
   },
   {
     "master_id": "sm-upload-bbb56a95-410",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 11
+    "filename_track": 11,
+    "instance_id": "si-upload-89e837b5-881",
+    "entry_id": "se-117159b02f7f423d8320c6ba2431d540",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/11 I.M.I.wav",
+    "display_name": "11 I.M.I.wav",
+    "storage_object_id": "obj_1a74a9ec82486c9b"
   },
   {
     "master_id": "sm-upload-e327ba41-cf6",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 12
+    "filename_track": 12,
+    "instance_id": "si-upload-9d7b055a-d45",
+    "entry_id": "se-033162de2ab84b75b6b3b72e17d743be",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/12 光的阴影.wav",
+    "display_name": "12 光的阴影.wav",
+    "storage_object_id": "obj_07a02077add13315"
   },
   {
     "master_id": "sm-upload-db5279a1-e00",
     "target_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "filename_track": 13
+    "filename_track": 13,
+    "instance_id": "si-upload-f314e265-cd8",
+    "entry_id": "se-df80dd8e5ca144788f52e39aecf5efbc",
+    "source_id": "r2-local",
+    "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61",
+    "path": "Still With U/13 决心.wav",
+    "display_name": "13 决心.wav",
+    "storage_object_id": "obj_c18840ff27164717"
   },
   {
     "master_id": "sm-upload-d3e438fe-c79",
     "target_album_id": "al-d1eb61467eb114e11bfea9d9690057c2",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-9b3a8f8b-6d7",
+    "entry_id": "se-d5ca35ed0e5a40409760dc42d74c7172",
+    "source_id": "r2-local",
+    "parent_id": "se-c7876d840373456ca0d7f774c5f39224",
+    "path": "衔风与愿/01 衔风与愿.wav",
+    "display_name": "01 衔风与愿.wav",
+    "storage_object_id": "obj_9551e3421ee8e30e"
   },
   {
     "master_id": "sm-upload-0e5df05d-8f8",
     "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-0a93298c-d72",
+    "entry_id": "se-6695149d329745788078deca4c4204bf",
+    "source_id": "r2-local",
+    "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+    "path": "兰音.2024.《形神合一》/01.《形神合一》.2024.兰音.24bits.48khz.wav",
+    "display_name": "01.《形神合一》.2024.兰音.24bits.48khz.wav",
+    "storage_object_id": "obj_3c4babbca0eebfc9"
   },
   {
     "master_id": "sm-upload-f994d933-d13",
     "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-9ef6c63e-2e1",
+    "entry_id": "se-5c8eaa7e0cf34801a41343352ac316d2",
+    "source_id": "r2-local",
+    "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+    "path": "兰音.2024.《形神合一》/02.《哑谜》.2024.兰音.24bits.48khz.wav",
+    "display_name": "02.《哑谜》.2024.兰音.24bits.48khz.wav",
+    "storage_object_id": "obj_f6a771072c6a2b0a"
   },
   {
     "master_id": "sm-upload-229fabb8-45d",
     "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-4c0bd373-679",
+    "entry_id": "se-07aab928564c475db53d7f3f5a11e1e8",
+    "source_id": "r2-local",
+    "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+    "path": "兰音.2024.《形神合一》/03.《比天高》.2024.兰音.24bits.48khz.wav",
+    "display_name": "03.《比天高》.2024.兰音.24bits.48khz.wav",
+    "storage_object_id": "obj_bb24c78cdf23f88d"
   },
   {
     "master_id": "sm-upload-d0988a3b-ddc",
     "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-b3eb2302-e59",
+    "entry_id": "se-8d01957b4463408492764a927ea1f77b",
+    "source_id": "r2-local",
+    "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+    "path": "兰音.2024.《形神合一》/04.《暮色浓妆》.2024.兰音.24bits.48khz.wav",
+    "display_name": "04.《暮色浓妆》.2024.兰音.24bits.48khz.wav",
+    "storage_object_id": "obj_81d38c9f01e289a1"
   },
   {
     "master_id": "sm-upload-cc9304d5-527",
     "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-cf460e17-b17",
+    "entry_id": "se-c62a72ea98c744cfb502999b0fa5c1b2",
+    "source_id": "r2-local",
+    "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+    "path": "兰音.2024.《形神合一》/05.《红烛泪》.2024.兰音.24bits.48khz.wav",
+    "display_name": "05.《红烛泪》.2024.兰音.24bits.48khz.wav",
+    "storage_object_id": "obj_b8a39e462ffc87e9"
   },
   {
     "master_id": "sm-upload-fd16b9a8-697",
     "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-bdddde3a-b69",
+    "entry_id": "se-f419fba7253f484cad02bb50b2f0f5b4",
+    "source_id": "r2-local",
+    "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+    "path": "兰音.2024.《形神合一》/06.《镜中的陌生人》.2024.兰音.24bits.48khz.wav",
+    "display_name": "06.《镜中的陌生人》.2024.兰音.24bits.48khz.wav",
+    "storage_object_id": "obj_213c0f965edbcc4d"
   },
   {
     "master_id": "sm-upload-c44b0f7c-761",
     "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-c85ee92c-efb",
+    "entry_id": "se-d382a69fa1fc43cead9b64f49d7f6c0b",
+    "source_id": "r2-local",
+    "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+    "path": "兰音.2024.《形神合一》/07.《全身而退》.2024.兰音.24bits.48khz.wav",
+    "display_name": "07.《全身而退》.2024.兰音.24bits.48khz.wav",
+    "storage_object_id": "obj_58597e3e1ae89dba"
   },
   {
     "master_id": "sm-upload-9a2b0423-b81",
     "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-2e6c5314-1d2",
+    "entry_id": "se-cd753cd7fc6844cba904130b534b0ee5",
+    "source_id": "r2-local",
+    "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+    "path": "兰音.2024.《形神合一》/08.《知夏》.2024.兰音.24bits.48khz.wav",
+    "display_name": "08.《知夏》.2024.兰音.24bits.48khz.wav",
+    "storage_object_id": "obj_30008623e310f63c"
   },
   {
     "master_id": "sm-upload-5ef32f7a-887",
     "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-8825a72e-96b",
+    "entry_id": "se-8097d2ad373a47978b70cedabe22340c",
+    "source_id": "r2-local",
+    "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+    "path": "兰音.2024.《形神合一》/09.《破碎时间》.2024.兰音.24bits.48khz.wav",
+    "display_name": "09.《破碎时间》.2024.兰音.24bits.48khz.wav",
+    "storage_object_id": "obj_b4ffba87a0a1cb85"
   },
   {
     "master_id": "sm-upload-741e30e9-2a8",
     "target_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-4012563d-0a8",
+    "entry_id": "se-cebc1ccc336548b0a8ff277fa1962988",
+    "source_id": "r2-local",
+    "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0",
+    "path": "兰音.2024.《形神合一》/10.《好梦歌》.2024.兰音.24bits.48khz.wav",
+    "display_name": "10.《好梦歌》.2024.兰音.24bits.48khz.wav",
+    "storage_object_id": "obj_1c49571bac20767c"
   },
   {
     "master_id": "sm-upload-23889318-5b0",
     "target_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-1d318f3b-577",
+    "entry_id": "se-7bdf61ee033745b09f94cb603a18e023",
+    "source_id": "r2-local",
+    "parent_id": "se-75979773002b4fed977cd3e51f85e28d",
+    "path": "人造树的幽灵/wav/01 开始 - Initiate.wav",
+    "display_name": "01 开始 - Initiate.wav",
+    "storage_object_id": "obj_467a823bd54129a6"
   },
   {
     "master_id": "sm-upload-a2d38eb8-164",
     "target_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-e5c4ba36-48c",
+    "entry_id": "se-8550c1ee8bf4460899db0ec12941cbcb",
+    "source_id": "r2-local",
+    "parent_id": "se-75979773002b4fed977cd3e51f85e28d",
+    "path": "人造树的幽灵/wav/02 徵羽摩柯 , 机器人的悲伤 - Robotic Sorrow.wav",
+    "display_name": "02 徵羽摩柯 , 机器人的悲伤 - Robotic Sorrow.wav",
+    "storage_object_id": "obj_9394cefee20a3a01"
   },
   {
     "master_id": "sm-upload-10cb9874-55d",
     "target_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-edfde998-d90",
+    "entry_id": "se-306b7848d1b3491a9014cad20e45b50c",
+    "source_id": "r2-local",
+    "parent_id": "se-75979773002b4fed977cd3e51f85e28d",
+    "path": "人造树的幽灵/wav/03 徵羽摩柯 , 弗兰肯斯坦 - Frankenstein.wav",
+    "display_name": "03 徵羽摩柯 , 弗兰肯斯坦 - Frankenstein.wav",
+    "storage_object_id": "obj_3fa66cadd99c906d"
   },
   {
     "master_id": "sm-upload-ecbc0416-dfd",
     "target_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-0803ad8c-e58",
+    "entry_id": "se-228f4ee0b6d8430ca8d7fb58ce81f8fa",
+    "source_id": "r2-local",
+    "parent_id": "se-75979773002b4fed977cd3e51f85e28d",
+    "path": "人造树的幽灵/wav/04 徵羽摩柯 , 共生之愿 - Symbiotic Wish.wav",
+    "display_name": "04 徵羽摩柯 , 共生之愿 - Symbiotic Wish.wav",
+    "storage_object_id": "obj_d05cd6cf96f5ff5e"
   },
   {
     "master_id": "sm-upload-c011a487-1d5",
     "target_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-762fbbe9-655",
+    "entry_id": "se-3ba58c20c51949498a05495362eb96fd",
+    "source_id": "r2-local",
+    "parent_id": "se-75979773002b4fed977cd3e51f85e28d",
+    "path": "人造树的幽灵/wav/05 人造树的幽灵 - Ghosts of Artificial Trees.wav",
+    "display_name": "05 人造树的幽灵 - Ghosts of Artificial Trees.wav",
+    "storage_object_id": "obj_1078624884c64792"
   },
   {
     "master_id": "sm-c92fa5ec76c8405d9c7cec39c7e97587",
     "target_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-c1b2134a14f94ac8b8de5d971c1d87b0",
+    "entry_id": "se-62a13b5ebafd4c71b67feb83e3d33759",
+    "source_id": "r2-local",
+    "parent_id": "se-75979773002b4fed977cd3e51f85e28d",
+    "path": "人造树的幽灵/wav/06 徵羽摩柯 , 人为的独立 - Artificial Independence.wav",
+    "display_name": "06 徵羽摩柯 , 人为的独立 - Artificial Independence.wav",
+    "storage_object_id": "obj_84568c5d92c2f832"
   },
   {
     "master_id": "sm-cc2b8a2847e94a7586e169984ce00b4d",
     "target_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-9458ee82089e496386b1a56f485f6512",
+    "entry_id": "se-e5014b527d9945d79f5497591a7068be",
+    "source_id": "r2-local",
+    "parent_id": "se-75979773002b4fed977cd3e51f85e28d",
+    "path": "人造树的幽灵/wav/07 徵羽摩柯 , 告别大地 - Say Goodbye to the Earth.wav",
+    "display_name": "07 徵羽摩柯 , 告别大地 - Say Goodbye to the Earth.wav",
+    "storage_object_id": "obj_949654206414b1ec"
   },
   {
     "master_id": "sm-1dd661f9659f4669ba92d344dbb67f38",
     "target_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-6758c6cff7684538b2e1e39554a4bbc7",
+    "entry_id": "se-11137d5088cf4b00905718b067d7b555",
+    "source_id": "r2-local",
+    "parent_id": "se-75979773002b4fed977cd3e51f85e28d",
+    "path": "人造树的幽灵/wav/08 世界末日 - Armgeddon.wav",
+    "display_name": "08 世界末日 - Armgeddon.wav",
+    "storage_object_id": "obj_8d275a7c2dfccd33"
   },
   {
     "master_id": "sm-upload-bc3bb5a0-94b",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-6147aa7a-1cc",
+    "entry_id": "se-d7623f8ff44a443695dc6d69f68e205b",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/01 Thinking.wav",
+    "display_name": "01 Thinking.wav",
+    "storage_object_id": "obj_a1e4042f00bb1c1c"
   },
   {
     "master_id": "sm-upload-f1c183f2-879",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-4c9b2dda-11f",
+    "entry_id": "se-72b9197434c6413284f2362e0696caca",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/02 昨日樱.wav",
+    "display_name": "02 昨日樱.wav",
+    "storage_object_id": "obj_ad894325a91fced8"
   },
   {
     "master_id": "sm-upload-cab08fa5-c3a",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-049c9779-ed7",
+    "entry_id": "se-60df2af99556470f8b5f0815f01145bd",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/03 摘花.wav",
+    "display_name": "03 摘花.wav",
+    "storage_object_id": "obj_2d7ff09d2c32f009"
   },
   {
     "master_id": "sm-upload-4438c1e4-e9b",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-8bf1663d-41d",
+    "entry_id": "se-c7c43d67d6e842edbcaf0d8531b7bf92",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/04 心碎犯.wav",
+    "display_name": "04 心碎犯.wav",
+    "storage_object_id": "obj_e4bd97b4d83ad1d8"
   },
   {
     "master_id": "sm-upload-64e68350-1e0",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-8cc9a948-6d1",
+    "entry_id": "se-ab94ca8f802e4aeab00a93db708185a8",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/05 失乐园.wav",
+    "display_name": "05 失乐园.wav",
+    "storage_object_id": "obj_ae7f61215975a44d"
   },
   {
     "master_id": "sm-upload-4663e1f2-1e1",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-86402346-807",
+    "entry_id": "se-54c2d8c068f34338978df3d34ae40e46",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/06 融雪.wav",
+    "display_name": "06 融雪.wav",
+    "storage_object_id": "obj_fce0a0571d927cb7"
   },
   {
     "master_id": "sm-upload-61fbaa65-987",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-5d137878-e68",
+    "entry_id": "se-9b465b5c919e4fe49d8aa1b26decc431",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/07 口口口-口口口，口口.wav",
+    "display_name": "07 口口口-口口口，口口.wav",
+    "storage_object_id": "obj_19f02b87fabc36c8"
   },
   {
     "master_id": "sm-upload-5ca7125b-fa4",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-0596e5f6-438",
+    "entry_id": "se-65dbb84aa6cb497698410326f617ac88",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/08 日暮晚风.wav",
+    "display_name": "08 日暮晚风.wav",
+    "storage_object_id": "obj_4503701ef1075569"
   },
   {
     "master_id": "sm-upload-a68ccf5a-864",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-e25bedf7-341",
+    "entry_id": "se-7a0934a693704c73b5c5581621be9e12",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/09 如果天边太遥远.wav",
+    "display_name": "09 如果天边太遥远.wav",
+    "storage_object_id": "obj_49087024e3001a1f"
   },
   {
     "master_id": "sm-upload-58a0f37c-7c7",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-8d1f9e53-aee",
+    "entry_id": "se-50d86569c3154640a14dec1493cf8428",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/10 黑猫出现在白天.wav",
+    "display_name": "10 黑猫出现在白天.wav",
+    "storage_object_id": "obj_b1ce97dc7d9bae0c"
   },
   {
     "master_id": "sm-upload-f2cf4e7c-18e",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 11
+    "filename_track": 11,
+    "instance_id": "si-upload-48f9d7f1-cea",
+    "entry_id": "se-a7fc51cc015a48f0b5634f4137bb169e",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/11 Countinuing.wav",
+    "display_name": "11 Countinuing.wav",
+    "storage_object_id": "obj_c30c0377027dcfaf"
   },
   {
     "master_id": "sm-upload-4a92f357-06e",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 12
+    "filename_track": 12,
+    "instance_id": "si-upload-a0f568e7-69d",
+    "entry_id": "se-4a366900f0224e029e9843fead116631",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/12 心碎犯-inst.wav",
+    "display_name": "12 心碎犯-inst.wav",
+    "storage_object_id": "obj_b6d1f7582e1ba660"
   },
   {
     "master_id": "sm-upload-42481750-586",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 13
+    "filename_track": 13,
+    "instance_id": "si-upload-327b0b29-a13",
+    "entry_id": "se-b0cd887dc8be44159fba28228e70ace8",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/13 如果天边太遥远-inst.wav",
+    "display_name": "13 如果天边太遥远-inst.wav",
+    "storage_object_id": "obj_c94237ba829ebfbb"
   },
   {
     "master_id": "sm-upload-093f74ab-8b9",
     "target_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "filename_track": 14
+    "filename_track": 14,
+    "instance_id": "si-upload-89491ab8-d26",
+    "entry_id": "se-5084108046f1466895f6107cb1782f69",
+    "source_id": "r2-local",
+    "parent_id": "se-e51a2f4530694d4782746a8695af7270",
+    "path": "黑猫出现在白天-七点半/wav/14 黑猫出现在白天-inst.wav",
+    "display_name": "14 黑猫出现在白天-inst.wav",
+    "storage_object_id": "obj_b6fc2facc77a1362"
   },
   {
     "master_id": "sm-upload-8f24fa72-b29",
     "target_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-ab48904b-960",
+    "entry_id": "se-428f1a630f4e49098fb1fad387691de0",
+    "source_id": "r2-local",
+    "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+    "path": "OTOME/wav/01 wasted land.wav",
+    "display_name": "01 wasted land.wav",
+    "storage_object_id": "obj_d18a76fad29d01f9"
   },
   {
     "master_id": "sm-upload-de754d56-ea4",
     "target_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-fd769862-790",
+    "entry_id": "se-e68178dc8c7d4547b3a043612d0a6fd2",
+    "source_id": "r2-local",
+    "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+    "path": "OTOME/wav/02 吴晴与钟诚.wav",
+    "display_name": "02 吴晴与钟诚.wav",
+    "storage_object_id": "obj_4fb27e9e65b89938"
   },
   {
     "master_id": "sm-upload-87176740-d8e",
     "target_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-e9f93c6f-e90",
+    "entry_id": "se-d9bbe7057594472aa2a7c91c8d1575a5",
+    "source_id": "r2-local",
+    "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+    "path": "OTOME/wav/03 树.wav",
+    "display_name": "03 树.wav",
+    "storage_object_id": "obj_1e217dfed916e5d0"
   },
   {
     "master_id": "sm-upload-be0b96c2-963",
     "target_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-943c6b16-aec",
+    "entry_id": "se-4de7d258e822418e85d1d55be58d5e82",
+    "source_id": "r2-local",
+    "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+    "path": "OTOME/wav/04 早安，午安，晚安.wav",
+    "display_name": "04 早安，午安，晚安.wav",
+    "storage_object_id": "obj_7a384e5b61c4712d"
   },
   {
     "master_id": "sm-upload-fcb9b5ca-27c",
     "target_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-1965f352-e71",
+    "entry_id": "se-36c333c361d24cde9349cb29a0394b1b",
+    "source_id": "r2-local",
+    "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+    "path": "OTOME/wav/05 借电波相拥.wav",
+    "display_name": "05 借电波相拥.wav",
+    "storage_object_id": "obj_207ee063f23aab83"
   },
   {
     "master_id": "sm-upload-702be9dc-d25",
     "target_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-ba555f8c-5bc",
+    "entry_id": "se-beed371ba5df44d78dc1b299ce4aa445",
+    "source_id": "r2-local",
+    "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+    "path": "OTOME/wav/06 Farewell Letter to WuQing.wav",
+    "display_name": "06 Farewell Letter to WuQing.wav",
+    "storage_object_id": "obj_153857a34adc19f6"
   },
   {
     "master_id": "sm-upload-b908a83a-97a",
     "target_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-528d6d58-92b",
+    "entry_id": "se-fca6b74ebd5d40ac8f966dc418d9c61c",
+    "source_id": "r2-local",
+    "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+    "path": "OTOME/wav/07 早安，午安，晚安·伴奏.wav",
+    "display_name": "07 早安，午安，晚安·伴奏.wav",
+    "storage_object_id": "obj_8c138271160946a1"
   },
   {
     "master_id": "sm-upload-57aa6388-1d3",
     "target_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-2455b7f8-847",
+    "entry_id": "se-c9eab02f19e74d46b600e8af45df7629",
+    "source_id": "r2-local",
+    "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+    "path": "OTOME/wav/08 树·伴奏.wav",
+    "display_name": "08 树·伴奏.wav",
+    "storage_object_id": "obj_8317e20b00d4898d"
   },
   {
     "master_id": "sm-upload-d0a56a7b-4f8",
     "target_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-be4ccd26-d2c",
+    "entry_id": "se-fe633ea4191f49b99b92c908d2a99501",
+    "source_id": "r2-local",
+    "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77",
+    "path": "OTOME/wav/09 吴晴与钟诚·伴奏.wav",
+    "display_name": "09 吴晴与钟诚·伴奏.wav",
+    "storage_object_id": "obj_7f92d0b815622c46"
   },
   {
     "master_id": "sm-04afa76593a947bab6e7aa9ab1fac848",
     "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-74c36c9c7e804e43ae5a837d1c5caea7",
+    "entry_id": "se-8c834d30753241c8942383847a40535b",
+    "source_id": "r2-local",
+    "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+    "path": "实力至上-奇怪雷子QGRay/wav/01 实力之上.wav",
+    "display_name": "01 实力之上.wav",
+    "storage_object_id": "obj_cda207550f94c1f3"
   },
   {
     "master_id": "sm-upload-5028ec56-8ea",
     "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-48b1b5ff-d79",
+    "entry_id": "se-cdfb069aee2d4944a725c7c110bbf578",
+    "source_id": "r2-local",
+    "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+    "path": "实力至上-奇怪雷子QGRay/wav/02 头脑混乱中.wav",
+    "display_name": "02 头脑混乱中.wav",
+    "storage_object_id": "obj_97a189f0478a91df"
   },
   {
     "master_id": "sm-upload-139421cf-b09",
     "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-e942d3e6-97c",
+    "entry_id": "se-4a0221089f6744638dbf1ab0ae00f5a8",
+    "source_id": "r2-local",
+    "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+    "path": "实力至上-奇怪雷子QGRay/wav/03 游戏少女.wav",
+    "display_name": "03 游戏少女.wav",
+    "storage_object_id": "obj_7f73234122fc02d7"
   },
   {
     "master_id": "sm-upload-0223d040-b1c",
     "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-a54aab1d-0e3",
+    "entry_id": "se-3974bff0f9b44d658980245da208859f",
+    "source_id": "r2-local",
+    "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+    "path": "实力至上-奇怪雷子QGRay/wav/04 恋爱废物就是我.wav",
+    "display_name": "04 恋爱废物就是我.wav",
+    "storage_object_id": "obj_b4bcda21423e3463"
   },
   {
     "master_id": "sm-upload-04789844-9c6",
     "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-9273aabb-424",
+    "entry_id": "se-02e9482da8244b8d8efb04ca8c2bba15",
+    "source_id": "r2-local",
+    "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+    "path": "实力至上-奇怪雷子QGRay/wav/05 失去理智.wav",
+    "display_name": "05 失去理智.wav",
+    "storage_object_id": "obj_5a0c3591fb0d709b"
   },
   {
     "master_id": "sm-upload-096c103b-c28",
     "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-2892fb8c-c4d",
+    "entry_id": "se-ebfd327cf94c43a2ad3a229ac86e9175",
+    "source_id": "r2-local",
+    "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+    "path": "实力至上-奇怪雷子QGRay/wav/06 健忘症.wav",
+    "display_name": "06 健忘症.wav",
+    "storage_object_id": "obj_fbe453d2fb16dfbe"
   },
   {
     "master_id": "sm-upload-3ccc4425-662",
     "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-51f026ca-fc2",
+    "entry_id": "se-81bebd66ff934c01a09629bf8058351f",
+    "source_id": "r2-local",
+    "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+    "path": "实力至上-奇怪雷子QGRay/wav/07 蔚蓝深海.wav",
+    "display_name": "07 蔚蓝深海.wav",
+    "storage_object_id": "obj_a997b15b43653f1f"
   },
   {
     "master_id": "sm-a04802ee79434c569c4a8037334fffe9",
     "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-4a797a6c791a4102b90c9da9209fc5f4",
+    "entry_id": "se-28e58c51157e4662b7affb14c67b254a",
+    "source_id": "r2-local",
+    "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+    "path": "实力至上-奇怪雷子QGRay/wav/08 小房间.wav",
+    "display_name": "08 小房间.wav",
+    "storage_object_id": "obj_32030d1307efc6e0"
   },
   {
     "master_id": "sm-aea8f18fd18a48d29d2a9b8e6c9cbfdc",
     "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-160db11115ef46b7905822ea5556d452",
+    "entry_id": "se-41c217e770eb404db76a56752bb4b28a",
+    "source_id": "r2-local",
+    "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+    "path": "实力至上-奇怪雷子QGRay/wav/09 我仅剩的灵魂.wav",
+    "display_name": "09 我仅剩的灵魂.wav",
+    "storage_object_id": "obj_d0e51179c64b0738"
   },
   {
     "master_id": "sm-upload-558f35c9-d77",
     "target_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-9b6b1e7f-fd0",
+    "entry_id": "se-70fa43c0f5044e8da186a96233174018",
+    "source_id": "r2-local",
+    "parent_id": "se-d8aa1e780c09470db7075f0130c65e36",
+    "path": "实力至上-奇怪雷子QGRay/wav/10 回忆与旅途.wav",
+    "display_name": "10 回忆与旅途.wav",
+    "storage_object_id": "obj_c48c7808b0502474"
   },
   {
     "master_id": "sm-upload-40ec654c-f08",
     "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "filename_track": 1
+    "filename_track": 1,
+    "instance_id": "si-upload-6ae02dbd-ece",
+    "entry_id": "se-dfb5ea2c509e4ff98a45d5d3ad9585a2",
+    "source_id": "r2-local",
+    "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+    "path": "SE＞EN(Sya)SEVEN/音频WAV/01-点滴.wav",
+    "display_name": "01-点滴.wav",
+    "storage_object_id": "obj_565716cb081f592b"
   },
   {
     "master_id": "sm-upload-5cd6f1b2-596",
     "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "filename_track": 2
+    "filename_track": 2,
+    "instance_id": "si-upload-c8a07497-399",
+    "entry_id": "se-261eff5e4c1545608a48d17be8ea5042",
+    "source_id": "r2-local",
+    "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+    "path": "SE＞EN(Sya)SEVEN/音频WAV/02-OVERLAP.wav",
+    "display_name": "02-OVERLAP.wav",
+    "storage_object_id": "obj_7ef05bab1b339861"
   },
   {
     "master_id": "sm-upload-d1382210-3d5",
     "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "filename_track": 3
+    "filename_track": 3,
+    "instance_id": "si-upload-e4782619-0d6",
+    "entry_id": "se-079fd5fb39bf48ba925f5567bd4797d3",
+    "source_id": "r2-local",
+    "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+    "path": "SE＞EN(Sya)SEVEN/音频WAV/03-烦恼不如跳舞.wav",
+    "display_name": "03-烦恼不如跳舞.wav",
+    "storage_object_id": "obj_c966ffb2f3ce1003"
   },
   {
     "master_id": "sm-upload-b4b6cc03-4a0",
     "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "filename_track": 4
+    "filename_track": 4,
+    "instance_id": "si-upload-7a544451-d27",
+    "entry_id": "se-72258340c3e14819ad471159f0f4b445",
+    "source_id": "r2-local",
+    "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+    "path": "SE＞EN(Sya)SEVEN/音频WAV/04-重生.wav",
+    "display_name": "04-重生.wav",
+    "storage_object_id": "obj_eda24484fe4a883b"
   },
   {
     "master_id": "sm-upload-8492670d-25f",
     "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "filename_track": 5
+    "filename_track": 5,
+    "instance_id": "si-upload-c4db495f-69e",
+    "entry_id": "se-6bd99534feb742849e0ebfa7e117fddf",
+    "source_id": "r2-local",
+    "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+    "path": "SE＞EN(Sya)SEVEN/音频WAV/05-积极消极.wav",
+    "display_name": "05-积极消极.wav",
+    "storage_object_id": "obj_ea160a8ace8e243d"
   },
   {
     "master_id": "sm-upload-afdf5f4f-429",
     "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "filename_track": 6
+    "filename_track": 6,
+    "instance_id": "si-upload-c1c91886-042",
+    "entry_id": "se-270d7a881f7644c8b573906dda4619e1",
+    "source_id": "r2-local",
+    "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+    "path": "SE＞EN(Sya)SEVEN/音频WAV/06-对号入座.wav",
+    "display_name": "06-对号入座.wav",
+    "storage_object_id": "obj_819b3ae7bdb4cd0a"
   },
   {
     "master_id": "sm-upload-2fa950da-a07",
     "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "filename_track": 7
+    "filename_track": 7,
+    "instance_id": "si-upload-41b06fbf-603",
+    "entry_id": "se-aaff15b21dd54ac2a21f625363d9faf4",
+    "source_id": "r2-local",
+    "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+    "path": "SE＞EN(Sya)SEVEN/音频WAV/07-最近啊.wav",
+    "display_name": "07-最近啊.wav",
+    "storage_object_id": "obj_71cfea199d0b719a"
   },
   {
     "master_id": "sm-upload-5d8c3e73-3b9",
     "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "filename_track": 8
+    "filename_track": 8,
+    "instance_id": "si-upload-57b3d3e3-9af",
+    "entry_id": "se-0ff797041064463b96f4c958aa030db8",
+    "source_id": "r2-local",
+    "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+    "path": "SE＞EN(Sya)SEVEN/音频WAV/08-不要在这种时候才想起我.wav",
+    "display_name": "08-不要在这种时候才想起我.wav",
+    "storage_object_id": "obj_451faeb13a9c0df5"
   },
   {
     "master_id": "sm-upload-0f2858ab-23e",
     "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "filename_track": 9
+    "filename_track": 9,
+    "instance_id": "si-upload-d500860f-6a1",
+    "entry_id": "se-b98689c16e15415ab37a4f7cb88acdba",
+    "source_id": "r2-local",
+    "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+    "path": "SE＞EN(Sya)SEVEN/音频WAV/09-我是如此地.wav",
+    "display_name": "09-我是如此地.wav",
+    "storage_object_id": "obj_f69c59bd4666ea24"
   },
   {
     "master_id": "sm-upload-5c324864-c88",
     "target_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "filename_track": 10
+    "filename_track": 10,
+    "instance_id": "si-upload-c7e84481-4ac",
+    "entry_id": "se-79e1116dba7846898e4f4221755a0ab9",
+    "source_id": "r2-local",
+    "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb",
+    "path": "SE＞EN(Sya)SEVEN/音频WAV/10-深夜电台.wav",
+    "display_name": "10-深夜电台.wav",
+    "storage_object_id": "obj_6a67bb57c292ef97"
   }
 ]

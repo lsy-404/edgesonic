@@ -1,0 +1,495 @@
+[
+  {
+    "album_id": "al-0f93c4e539eb79562fce224989b22aec",
+    "members": 11,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-76d461ab64cb426083c9b6a102617296"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ]
+  },
+  {
+    "album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
+    "members": 10,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-f104690a5b024491962419b76618435d"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  {
+    "album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
+    "members": 7,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-32e5359531684b188a19b66cee7d9c20"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
+  },
+  {
+    "album_id": "al-3601f0337902ef9583048198e3640d3b",
+    "members": 8,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-946c53a8d4b24847816c4a5e138be87f"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ]
+  },
+  {
+    "album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
+    "members": 10,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-4bc99f8cc76144189cde41684fd8af27"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  {
+    "album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
+    "members": 16,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-8207e3d583784b0f8e464dbb500f28bd"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ]
+  },
+  {
+    "album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
+    "members": 4,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-4d81506c43c249f3b64dc32c47d15111"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "album_id": "al-3e2385da217b494f06495b58255c609f",
+    "members": 10,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-3b2175de26cb4a34929412f3debd62e5"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  {
+    "album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
+    "members": 10,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-7f95161a90ea4b7abe1c53b782dd25f0"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  {
+    "album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
+    "members": 12,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-37aa23d328ca4fe29e0e172ff55c7eda"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ]
+  },
+  {
+    "album_id": "al-513e3da59502f103e5112f7b1408f656",
+    "members": 10,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-57805b5e75124655b9c7b3cbc7fd6736"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  {
+    "album_id": "al-71bf81052233fba89504b82c9349782e",
+    "members": 10,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-23cc78f069df4f78bdf88d8693f877af"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  {
+    "album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
+    "members": 5,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-6fbe9b356f8040fe84f33e4c4662a998"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  {
+    "album_id": "al-8722d4ca7293612ea92d2f283d159900",
+    "members": 12,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-0635880aeec54279bd5e9ec05059ac68"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ]
+  },
+  {
+    "album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
+    "members": 10,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-a0056771145d4523beec2130498ef23e"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  {
+    "album_id": "al-b67665d31c26b1883a27db8a47859379",
+    "members": 16,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-2996ad19f78549dda8ce48a870ee7fed"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ]
+  },
+  {
+    "album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
+    "members": 7,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-83ff22b8a4ab423f9b13bea30a6da02a"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ]
+  },
+  {
+    "album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
+    "members": 13,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-e7a9563f0ec24dddb31313655cc9bc61"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ]
+  },
+  {
+    "album_id": "al-d1eb61467eb114e11bfea9d9690057c2",
+    "members": 1,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-c7876d840373456ca0d7f774c5f39224"
+    },
+    "unique_filename_indices": [
+      1
+    ]
+  },
+  {
+    "album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
+    "members": 10,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-3b7750820b8e4534ad63afa79f7fb5f0"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  {
+    "album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
+    "members": 8,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-75979773002b4fed977cd3e51f85e28d"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ]
+  },
+  {
+    "album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
+    "members": 14,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-e51a2f4530694d4782746a8695af7270"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ]
+  },
+  {
+    "album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
+    "members": 9,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-8bbfaf3ffd3644fe930064c6567b6c77"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ]
+  },
+  {
+    "album_id": "al-f79d077d5e583272b3cc93b078334fe1",
+    "members": 10,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-d8aa1e780c09470db7075f0130c65e36"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  },
+  {
+    "album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
+    "members": 10,
+    "source_parent": {
+      "source_id": "r2-local",
+      "parent_id": "se-448dfe2a3340435dbe7442e2d0ee60bb"
+    },
+    "unique_filename_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  }
+]

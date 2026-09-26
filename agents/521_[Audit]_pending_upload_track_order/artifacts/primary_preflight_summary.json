@@ -4,5 +4,6 @@
   "expected_albums": 25,
   "received_rows": 243,
   "mismatches": 0,
+  "exact_source_matches": 243,
   "status": "GO"
 }

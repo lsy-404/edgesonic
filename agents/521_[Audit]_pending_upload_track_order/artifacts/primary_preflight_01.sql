@@ -1,54 +1,17 @@
-WITH expected(master_id, album_id, filename_track) AS (VALUES
-  ('sm-upload-ce73a06c-13b', 'al-0f93c4e539eb79562fce224989b22aec', 1),
-  ('sm-upload-abf7fe3c-d54', 'al-0f93c4e539eb79562fce224989b22aec', 2),
-  ('sm-upload-2207d12c-443', 'al-0f93c4e539eb79562fce224989b22aec', 3),
-  ('sm-upload-3d0dfe07-125', 'al-0f93c4e539eb79562fce224989b22aec', 4),
-  ('sm-upload-152098f7-f9e', 'al-0f93c4e539eb79562fce224989b22aec', 5),
-  ('sm-cdeaab57721d46afb6365cca2b0a146f', 'al-0f93c4e539eb79562fce224989b22aec', 6),
-  ('sm-22e86a0b11974fe4915430f2119da7c4', 'al-0f93c4e539eb79562fce224989b22aec', 7),
-  ('sm-4d0d004dd8d74ebaadc851d5efab5525', 'al-0f93c4e539eb79562fce224989b22aec', 8),
-  ('sm-be8ba6dfd67f4f9a91bdb33b44d41d3a', 'al-0f93c4e539eb79562fce224989b22aec', 9),
-  ('sm-e23ea8bf9f4846d7bfbda205e7b09672', 'al-0f93c4e539eb79562fce224989b22aec', 10),
-  ('sm-f9ae632a2ba14540a099fbb663bd3750', 'al-0f93c4e539eb79562fce224989b22aec', 11),
-  ('sm-upload-a4e20343-e35', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 1),
-  ('sm-upload-8dac0faa-885', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 2),
-  ('sm-upload-54a04d18-b6d', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 3),
-  ('sm-upload-1c1d6c3a-6ac', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 4),
-  ('sm-upload-85febee1-add', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 5),
-  ('sm-upload-f35ebe3d-fb5', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 6),
-  ('sm-upload-2cc2cded-f96', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 7),
-  ('sm-upload-f8b47093-229', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 8),
-  ('sm-upload-2ed4a91f-50f', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 9),
-  ('sm-upload-8c8ff71c-39c', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 10),
-  ('sm-upload-22d36802-2ad', 'al-1ec1e919cdf08d8aa1af5dc344608fa2', 1),
-  ('sm-upload-605d34a4-800', 'al-1ec1e919cdf08d8aa1af5dc344608fa2', 2),
-  ('sm-upload-079b5a30-681', 'al-1ec1e919cdf08d8aa1af5dc344608fa2', 3),
-  ('sm-upload-3e173d57-c25', 'al-1ec1e919cdf08d8aa1af5dc344608fa2', 4),
-  ('sm-upload-cdea3d45-1a9', 'al-1ec1e919cdf08d8aa1af5dc344608fa2', 5),
-  ('sm-upload-604ea1ac-255', 'al-1ec1e919cdf08d8aa1af5dc344608fa2', 6),
-  ('sm-upload-11bfd8b6-551', 'al-1ec1e919cdf08d8aa1af5dc344608fa2', 7),
-  ('sm-upload-3020e076-7c7', 'al-3601f0337902ef9583048198e3640d3b', 1),
-  ('sm-upload-4af9cee4-3d9', 'al-3601f0337902ef9583048198e3640d3b', 2),
-  ('sm-upload-47be279d-a1f', 'al-3601f0337902ef9583048198e3640d3b', 3),
-  ('sm-upload-00474c5a-882', 'al-3601f0337902ef9583048198e3640d3b', 4),
-  ('sm-upload-5080d6c6-ec3', 'al-3601f0337902ef9583048198e3640d3b', 5),
-  ('sm-upload-12d68563-b7d', 'al-3601f0337902ef9583048198e3640d3b', 6),
-  ('sm-upload-2e7224ec-39c', 'al-3601f0337902ef9583048198e3640d3b', 7),
-  ('sm-9259e6f5144348d3b9f1881d95c31d97', 'al-3601f0337902ef9583048198e3640d3b', 8),
-  ('sm-upload-2a26712c-984', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 1),
-  ('sm-upload-8b54d965-cef', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 2),
-  ('sm-upload-9d07ba09-a49', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 3),
-  ('sm-upload-e94697d9-8e4', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 4),
-  ('sm-upload-95c704d9-7a3', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 5),
-  ('sm-upload-cd65bb92-34f', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 6),
-  ('sm-upload-f748f953-ced', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 7),
-  ('sm-upload-0f2e057c-5a1', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 8),
-  ('sm-upload-3c2f0270-93c', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 9),
-  ('sm-upload-fa58b133-8bc', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 10),
-  ('sm-upload-0d698ddd-586', 'al-379190d71773f7eda5c8e71260f1e1a8', 1),
-  ('sm-upload-3e4a3e0c-5e1', 'al-379190d71773f7eda5c8e71260f1e1a8', 2)
+WITH expected(master_id, target_album_id, filename_track, instance_id, entry_id, source_id, parent_id, path, display_name, storage_object_id) AS (VALUES
+  ('sm-upload-ce73a06c-13b', 'al-0f93c4e539eb79562fce224989b22aec', 1, 'si-upload-4522804d-3c7', 'se-ce7cc376644847c0b20d052a025b710c', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/01 写给社交恐惧症的一首歌.wav', '01 写给社交恐惧症的一首歌.wav', 'obj_9fe897c25ad887ac'),
+  ('sm-upload-abf7fe3c-d54', 'al-0f93c4e539eb79562fce224989b22aec', 2, 'si-upload-dc85a0ec-78e', 'se-f0fbd164b9d340a9b0e23981c6e07c26', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/02 手冷.wav', '02 手冷.wav', 'obj_f57d0a0f61318fcc'),
+  ('sm-upload-2207d12c-443', 'al-0f93c4e539eb79562fce224989b22aec', 3, 'si-upload-6755d477-c1c', 'se-4518f500877049398bac9ca1f4e12eee', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/03 就让你孤独的长大.wav', '03 就让你孤独的长大.wav', 'obj_5ebd6947ff0c1a55'),
+  ('sm-upload-3d0dfe07-125', 'al-0f93c4e539eb79562fce224989b22aec', 4, 'si-upload-0806b76b-441', 'se-803ab974ca0c4b66bfe10b23f4d43050', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/04 她是我修炼不好的爱情.wav', '04 她是我修炼不好的爱情.wav', 'obj_aa47411a7d5489fc'),
+  ('sm-upload-152098f7-f9e', 'al-0f93c4e539eb79562fce224989b22aec', 5, 'si-upload-402dcad3-d6a', 'se-f85bfda0c27345d88aec0a1dfb20e6b2', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/05 生命中不曾遇见的她.wav', '05 生命中不曾遇见的她.wav', 'obj_916d89f14d149400'),
+  ('sm-cdeaab57721d46afb6365cca2b0a146f', 'al-0f93c4e539eb79562fce224989b22aec', 6, 'si-cff1dd7ee20849f69e20780a83556546', 'se-9033fb3eecd74dffa4f942c569ccf979', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/06 只是喜欢这个身体吗.wav', '06 只是喜欢这个身体吗.wav', 'obj_f71bb5647395f8cd'),
+  ('sm-22e86a0b11974fe4915430f2119da7c4', 'al-0f93c4e539eb79562fce224989b22aec', 7, 'si-75b389e601c2449a92d8312f0ea77ddd', 'se-5c1e4af44a564d7f8a054066b9c2c6f3', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/07 萤火之语.wav', '07 萤火之语.wav', 'obj_cfddbae1a47ede0c'),
+  ('sm-4d0d004dd8d74ebaadc851d5efab5525', 'al-0f93c4e539eb79562fce224989b22aec', 8, 'si-49a2ee423de443c489ed23648c7cbf90', 'se-291fe50f932f42d6a24a7fac52fd587e', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/08 一个人的零点.wav', '08 一个人的零点.wav', 'obj_db092e221f2f7be0'),
+  ('sm-be8ba6dfd67f4f9a91bdb33b44d41d3a', 'al-0f93c4e539eb79562fce224989b22aec', 9, 'si-8d92cb80fed94a5da9c7dd1cf628612b', 'se-637883663688450d8b82cf083ddf1adc', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/09 孤独患者.wav', '09 孤独患者.wav', 'obj_862b8fd284235c25'),
+  ('sm-e23ea8bf9f4846d7bfbda205e7b09672', 'al-0f93c4e539eb79562fce224989b22aec', 10, 'si-639adf60d5ce408c8d70309a59f1b988', 'se-bad93573486e454b98ebf97415b23b17', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/10 他.wav', '10 他.wav', 'obj_9695fd0b039a72cc')
 )
-SELECT e.master_id, e.album_id AS expected_album_id, e.filename_track,
-       sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc
-FROM expected e LEFT JOIN song_masters sm ON sm.id=e.master_id
-ORDER BY e.album_id, e.filename_track, e.master_id;
+SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track IS NULL AND sm.disc IS NULL
+AND EXISTS (SELECT 1 FROM song_instances si JOIN storage_entries se ON se.instance_id=si.id AND se.kind='file'
+            WHERE si.id=e.instance_id AND si.master_id=sm.id AND si.source_id=e.source_id
+              AND si.storage_object_id=e.storage_object_id AND se.id=e.entry_id AND se.source_id=e.source_id
+              AND se.parent_id=e.parent_id AND se.path=e.path AND se.display_name=e.display_name) AS exact_source_match FROM expected e LEFT JOIN song_masters sm ON sm.id=e.master_id ORDER BY e.target_album_id, e.filename_track, e.master_id;

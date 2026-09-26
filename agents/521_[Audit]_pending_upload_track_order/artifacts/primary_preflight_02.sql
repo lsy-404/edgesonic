@@ -1,54 +1,17 @@
-WITH expected(master_id, album_id, filename_track) AS (VALUES
-  ('sm-upload-55fa915d-2e6', 'al-379190d71773f7eda5c8e71260f1e1a8', 3),
-  ('sm-upload-d38bae55-e32', 'al-379190d71773f7eda5c8e71260f1e1a8', 4),
-  ('sm-upload-642c5555-32e', 'al-379190d71773f7eda5c8e71260f1e1a8', 5),
-  ('sm-upload-be4c6092-980', 'al-379190d71773f7eda5c8e71260f1e1a8', 6),
-  ('sm-upload-d4898d69-3e7', 'al-379190d71773f7eda5c8e71260f1e1a8', 7),
-  ('sm-upload-68e21ac4-af0', 'al-379190d71773f7eda5c8e71260f1e1a8', 8),
-  ('sm-upload-962f69d3-a47', 'al-379190d71773f7eda5c8e71260f1e1a8', 9),
-  ('sm-upload-5189133a-af2', 'al-379190d71773f7eda5c8e71260f1e1a8', 10),
-  ('sm-upload-412884aa-3c6', 'al-379190d71773f7eda5c8e71260f1e1a8', 11),
-  ('sm-upload-d9e8676f-0f4', 'al-379190d71773f7eda5c8e71260f1e1a8', 12),
-  ('sm-upload-e258a0c1-196', 'al-379190d71773f7eda5c8e71260f1e1a8', 13),
-  ('sm-upload-c823de32-b12', 'al-379190d71773f7eda5c8e71260f1e1a8', 14),
-  ('sm-upload-34a4e79c-3ac', 'al-379190d71773f7eda5c8e71260f1e1a8', 15),
-  ('sm-upload-0796f5d3-fd3', 'al-379190d71773f7eda5c8e71260f1e1a8', 16),
-  ('sm-upload-f3f4157d-6ee', 'al-3a2710cebd830ec6fee4ae8c4131044b', 1),
-  ('sm-upload-46552f7f-fae', 'al-3a2710cebd830ec6fee4ae8c4131044b', 2),
-  ('sm-upload-56571117-ce0', 'al-3a2710cebd830ec6fee4ae8c4131044b', 3),
-  ('sm-upload-a0ec2a9f-fe9', 'al-3a2710cebd830ec6fee4ae8c4131044b', 4),
-  ('sm-upload-553e0240-555', 'al-3e2385da217b494f06495b58255c609f', 1),
-  ('sm-upload-05511bcc-4d5', 'al-3e2385da217b494f06495b58255c609f', 2),
-  ('sm-upload-620c477b-70a', 'al-3e2385da217b494f06495b58255c609f', 3),
-  ('sm-upload-660bdf12-2ce', 'al-3e2385da217b494f06495b58255c609f', 4),
-  ('sm-upload-70333488-8b5', 'al-3e2385da217b494f06495b58255c609f', 5),
-  ('sm-upload-43d08570-b2e', 'al-3e2385da217b494f06495b58255c609f', 6),
-  ('sm-upload-8e189cf4-bc2', 'al-3e2385da217b494f06495b58255c609f', 7),
-  ('sm-upload-f4c839d7-939', 'al-3e2385da217b494f06495b58255c609f', 8),
-  ('sm-upload-f1efcbe8-2fb', 'al-3e2385da217b494f06495b58255c609f', 9),
-  ('sm-upload-c659b405-246', 'al-3e2385da217b494f06495b58255c609f', 10),
-  ('sm-upload-914669ae-daf', 'al-45137ca79f34f6134d6c13be85f2f0fb', 1),
-  ('sm-upload-e38cb628-82f', 'al-45137ca79f34f6134d6c13be85f2f0fb', 2),
-  ('sm-upload-8027cffa-3f0', 'al-45137ca79f34f6134d6c13be85f2f0fb', 3),
-  ('sm-upload-c5006572-e0e', 'al-45137ca79f34f6134d6c13be85f2f0fb', 4),
-  ('sm-upload-04e4f884-8c1', 'al-45137ca79f34f6134d6c13be85f2f0fb', 5),
-  ('sm-upload-baaca575-1e5', 'al-45137ca79f34f6134d6c13be85f2f0fb', 6),
-  ('sm-upload-e4b4a430-9bf', 'al-45137ca79f34f6134d6c13be85f2f0fb', 7),
-  ('sm-upload-c80b56a6-9cb', 'al-45137ca79f34f6134d6c13be85f2f0fb', 8),
-  ('sm-upload-15add848-cb6', 'al-45137ca79f34f6134d6c13be85f2f0fb', 9),
-  ('sm-upload-c422ca21-bc0', 'al-45137ca79f34f6134d6c13be85f2f0fb', 10),
-  ('sm-upload-6175a166-606', 'al-4c9a3a416c2c4378a9c451729fe5b934', 1),
-  ('sm-upload-e424797b-1e7', 'al-4c9a3a416c2c4378a9c451729fe5b934', 2),
-  ('sm-upload-55d617d1-946', 'al-4c9a3a416c2c4378a9c451729fe5b934', 3),
-  ('sm-upload-1dd2c3ea-51a', 'al-4c9a3a416c2c4378a9c451729fe5b934', 4),
-  ('sm-upload-52918a7d-d0d', 'al-4c9a3a416c2c4378a9c451729fe5b934', 5),
-  ('sm-upload-fac12da8-c8b', 'al-4c9a3a416c2c4378a9c451729fe5b934', 6),
-  ('sm-upload-ce7ca9dd-629', 'al-4c9a3a416c2c4378a9c451729fe5b934', 7),
-  ('sm-upload-f5f11cb1-5e6', 'al-4c9a3a416c2c4378a9c451729fe5b934', 8),
-  ('sm-upload-45c17eb9-747', 'al-4c9a3a416c2c4378a9c451729fe5b934', 9),
-  ('sm-upload-ba3fca4b-62d', 'al-4c9a3a416c2c4378a9c451729fe5b934', 10)
+WITH expected(master_id, target_album_id, filename_track, instance_id, entry_id, source_id, parent_id, path, display_name, storage_object_id) AS (VALUES
+  ('sm-f9ae632a2ba14540a099fbb663bd3750', 'al-0f93c4e539eb79562fce224989b22aec', 11, 'si-f57f40f50f4642e791493fe0c07ef3cb', 'se-6d107383ce2a4bbf99829997ca247460', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/11 我认识一个人.wav', '11 我认识一个人.wav', 'obj_ab8dd51924d060f4'),
+  ('sm-upload-a4e20343-e35', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 1, 'si-upload-69f2d160-b40', 'se-39a16ef38903426b93f03a2b39455957', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/01 阿兹卡班印象曲.wav', '01 阿兹卡班印象曲.wav', 'obj_8cb76695b007eb9d'),
+  ('sm-upload-8dac0faa-885', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 2, 'si-upload-5f8fd3dc-264', 'se-284cb516be564071be0dd2693caabd07', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/02 凤凰社印象曲.wav', '02 凤凰社印象曲.wav', 'obj_ca5405956c25f1ae'),
+  ('sm-upload-54a04d18-b6d', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 3, 'si-upload-58bdd9b3-35e', 'se-683d48866c174acf806008ea6960efad', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/03 斯莱特林印象曲.wav', '03 斯莱特林印象曲.wav', 'obj_242e5faa38f193ca'),
+  ('sm-upload-1c1d6c3a-6ac', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 4, 'si-upload-d96b9f1b-29c', 'se-e0c13dc0a52b4369a97ee903c7fed831', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/04 格兰芬多印象曲.wav', '04 格兰芬多印象曲.wav', 'obj_fdcfe954b4e558a2'),
+  ('sm-upload-85febee1-add', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 5, 'si-upload-16b75578-da9', 'se-c214ad9df5454432935da6a42e029550', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/05 拉文克劳印象曲.wav', '05 拉文克劳印象曲.wav', 'obj_e48535c1e40f44e7'),
+  ('sm-upload-f35ebe3d-fb5', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 6, 'si-upload-b13d48b3-e1f', 'se-afd3e80f0ee24cdca638ceee134dea52', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/06 赫奇帕奇印象曲.wav', '06 赫奇帕奇印象曲.wav', 'obj_703c347237b9b8ab'),
+  ('sm-upload-2cc2cded-f96', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 7, 'si-upload-71e89075-dfd', 'se-500a763fa83e4521bdebf608a729bc33', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/07 斯莱特林印象曲·伴奏.wav', '07 斯莱特林印象曲·伴奏.wav', 'obj_fd58ad76bcd2f0a1'),
+  ('sm-upload-f8b47093-229', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 8, 'si-upload-16704d90-7d5', 'se-f73e90a18d424916986fb630e4c5dcbf', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/08 格兰芬多印象曲·伴奏.wav', '08 格兰芬多印象曲·伴奏.wav', 'obj_88b8b54f0f15e947'),
+  ('sm-upload-2ed4a91f-50f', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 9, 'si-upload-76c5c719-ae3', 'se-0e130016f5c348b79bbcebddfbce6fc2', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/09 拉文克劳印象曲·伴奏.wav', '09 拉文克劳印象曲·伴奏.wav', 'obj_8d4093f4b5c64586')
 )
-SELECT e.master_id, e.album_id AS expected_album_id, e.filename_track,
-       sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc
-FROM expected e LEFT JOIN song_masters sm ON sm.id=e.master_id
-ORDER BY e.album_id, e.filename_track, e.master_id;
+SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track IS NULL AND sm.disc IS NULL
+AND EXISTS (SELECT 1 FROM song_instances si JOIN storage_entries se ON se.instance_id=si.id AND se.kind='file'
+            WHERE si.id=e.instance_id AND si.master_id=sm.id AND si.source_id=e.source_id
+              AND si.storage_object_id=e.storage_object_id AND se.id=e.entry_id AND se.source_id=e.source_id
+              AND se.parent_id=e.parent_id AND se.path=e.path AND se.display_name=e.display_name) AS exact_source_match FROM expected e LEFT JOIN song_masters sm ON sm.id=e.master_id ORDER BY e.target_album_id, e.filename_track, e.master_id;
