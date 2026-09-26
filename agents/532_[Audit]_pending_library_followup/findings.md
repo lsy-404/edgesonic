@@ -9,3 +9,5 @@ The final primary preflight found 13 masters, instances, and objects; every inst
 Both stale-path and forced late-invariant Wrangler rehearsals aborted with the hard failure sentinel. After each failure, the local fixture retained zero candidate albums and all 13 masters remained pending.
 
 The 13 人声/言和 track pairs have different WAV byte sizes. Twelve pairs also have different decoded whole-second durations; the remaining pair has sizes 66846236 and 66855644. This rules out a byte-identical WAV asset for every pair, but does not by itself prove an exact PCM comparison. The two vocal editions must remain separate until direct PCM hashes are captured; no retirement candidate is safe.
+
+Direct R2 read-only streaming verification decoded every one of the 26 WAV objects to canonical s32le PCM. All thirteen human/言和 track pairs have different SHA-256 PCM hashes. Both editions must be retained as distinct recordings; no tag merge or object retirement is authorized.
