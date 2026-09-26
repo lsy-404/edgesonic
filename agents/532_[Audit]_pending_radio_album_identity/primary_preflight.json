@@ -1,0 +1,39 @@
+{
+  "read_only": true,
+  "served_by_primary": true,
+  "rows_written": 0,
+  "changed_db": false,
+  "candidate_count": 6,
+  "candidate_tracks": [1, 2, 5, 6, 7, 8],
+  "target_album": {
+    "id": "al-86f72c214f",
+    "name": "矩尺镜海·蚀刻于此媒介A",
+    "song_count": 2,
+    "duration": 0,
+    "size": 70560088,
+    "actual_duration": 400,
+    "actual_size": 70560088
+  },
+  "pending_album": {
+    "id": "pending-uploads",
+    "song_count": 555,
+    "duration": 123211,
+    "size": 21466454141,
+    "actual_count": 555,
+    "actual_duration": 123211,
+    "actual_size": 21466454141
+  },
+  "predicted_after_candidate": {
+    "target_album": {
+      "song_count": 8,
+      "duration": 1540,
+      "size": 271656352,
+      "unique_tracks_1_through_8": 8
+    },
+    "pending_album": {
+      "song_count": 549,
+      "duration": 122071,
+      "size": 21265357877
+    }
+  }
+}
