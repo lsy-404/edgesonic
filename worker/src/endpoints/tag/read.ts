@@ -13,15 +13,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// unscanned song_instances and rebuilds artist/album linkage. Designed to be
-// driven in a loop from the web UI until remaining = 0.
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import { md5 } from "../../utils/md5";
 import { parseTags } from "../../utils/tags";
 import { fetchSlices, type SourceRow } from "../../utils/slices";
 import { recoverMetadataFromStoragePath } from "../../utils/storageMetadata";
-import { retainCompilationAlbum } from "../../utils/albumIdentity";
+import { markCompilationIfMixed, retainCompilationAlbum, sourceFolderAlbumId } from "../../utils/albumIdentity";
 import {
   artistInsertStatements,
   parseAlbumArtistCredit,
@@ -78,11 +76,7 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
         const parsed = parseTags(slices.head, slices.tail);
         const tags = parsed && recoverMetadataFromStoragePath(row.storage_uri, parsed);
         if (tags && (tags.title || tags.artist || tags.album)) {
-          // the pre-existing behaviour; album_artist_id is a SEPARATE column
-          // that was never populated by this endpoint even though the schema
-          // and the browser-pool path (relinkArtistAlbum) both use it. Only
-          // set it when the file actually declared TPE2/ALBUMARTIST — leaving
-          // it NULL for ordinary (non-compilation) rips, same as relinkArtistAlbum.
+          // Album artist is separate from track artist when the file provides it.
           const artistName = tags.artist || row.current_artist_name || "Unknown Artist";
           const artistCredits = parseArtistCredits(artistName);
           const albumArtist = parseAlbumArtistCredit(tags.albumArtist);
@@ -91,12 +85,15 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           const linkArtistName = albumArtist?.name || primaryArtist.name;
           const albumName = tags.album || row.current_album_name || "Unknown Album";
           const artistId = primaryArtist.id;
-          const albumId = row.current_album_id && retainCompilationAlbum(
+          const importAlbumId = row.current_album_id === "pending-uploads" && tags.album
+            ? await sourceFolderAlbumId(db, row.id, tags.album, row.suffix)
+            : null;
+          const albumId = importAlbumId ?? (row.current_album_id && retainCompilationAlbum(
             { name: row.current_album_name, compilation: row.current_album_compilation },
             albumName, tags.albumArtist, row.current_album_artist_name,
           )
             ? row.current_album_id
-            : "al-" + md5(linkArtistName + " " + albumName).substring(0, 10);
+            : "al-" + md5(linkArtistName + " " + albumName).substring(0, 10));
           const albumArtistId = albumArtist?.id ?? null;
           touchedAlbums.add(albumId);
 
@@ -122,6 +119,9 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
             ...songArtistStatements(db, row.master_id, artistCredits),
           ];
           await db.batch(stmts);
+          if (importAlbumId) {
+            await markCompilationIfMixed(db, albumId);
+          }
           scanned = 1;
           tagged++;
         }

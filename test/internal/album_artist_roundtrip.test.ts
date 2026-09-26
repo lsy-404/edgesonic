@@ -42,6 +42,7 @@ function buildDb(): DatabaseSync {
     CREATE TABLE song_masters (id TEXT PRIMARY KEY, album_id TEXT NOT NULL, artist_id TEXT NOT NULL, album_artist_id TEXT, title TEXT NOT NULL, sort_title TEXT, track INTEGER, disc INTEGER, duration INTEGER, genre TEXT, compilation INTEGER DEFAULT 0, participants TEXT, lyrics TEXT, lyrics_rich TEXT, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE song_artists (song_id TEXT, artist_id TEXT, position INTEGER DEFAULT 0, PRIMARY KEY(song_id, artist_id));
     CREATE TABLE song_instances (id TEXT PRIMARY KEY, master_id TEXT, source_id TEXT, source_type TEXT DEFAULT 'original', storage_uri TEXT, suffix TEXT, content_type TEXT, size INTEGER DEFAULT 0, bit_rate INTEGER DEFAULT 0, duration INTEGER, missing INTEGER DEFAULT 0, tag_scanned INTEGER DEFAULT 0, created_at INTEGER, updated_at INTEGER);
+    CREATE TABLE storage_entries (id TEXT PRIMARY KEY, source_id TEXT, parent_id TEXT, path TEXT, kind TEXT, instance_id TEXT);
     CREATE TABLE storage_sources (id TEXT PRIMARY KEY, base_url TEXT, username TEXT, password TEXT, root_path TEXT, enabled INTEGER DEFAULT 1);
     CREATE TABLE annotations (user_id TEXT, item_type TEXT, item_id TEXT, starred INTEGER DEFAULT 0, starred_at INTEGER, rating INTEGER, play_count INTEGER DEFAULT 0, play_date INTEGER, PRIMARY KEY(user_id, item_type, item_id));
     CREATE TABLE users (username TEXT PRIMARY KEY, master_password TEXT, level INTEGER, enabled INTEGER DEFAULT 1, created_at INTEGER, updated_at INTEGER);
@@ -211,6 +212,37 @@ async function main() {
   assert(readResult.status === 200 && readRow.tag_scanned === 1, `Read Tags processes an imported compilation track (${readResult.status}, ${JSON.stringify(readRow)}, ${await readResult.text()})`);
   assert(readRow.album_id === "al-old" && readRow.artist_name === "Guest Singer", `Read Tags preserves compilation grouping while updating track artist (${JSON.stringify(readRow)})`);
   readDb.close();
+
+  const importDb = buildDb();
+  importDb.exec(`
+    INSERT INTO albums(id,name,sort_name) VALUES ('pending-uploads','Pending Uploads','pending uploads');
+    INSERT INTO song_masters(id,album_id,artist_id,title) VALUES
+      ('import-a','pending-uploads','ar-track-a','First'),
+      ('import-b','pending-uploads','ar-track-b','Second'),
+      ('import-c','pending-uploads','ar-track-a','Other Folder'),
+      ('import-d','pending-uploads','ar-track-a','Other Codec');
+    INSERT INTO song_instances(id,master_id,source_id,storage_uri,suffix,size) VALUES
+      ('import-inst-a','import-a','r2-local','r2://objects/a.flac','flac',100),
+      ('import-inst-b','import-b','r2-local','r2://objects/b.flac','flac',100),
+      ('import-inst-c','import-c','r2-local','r2://objects/c.flac','flac',100),
+      ('import-inst-d','import-d','r2-local','r2://objects/d.wav','wav',100);
+    INSERT INTO storage_entries(id,source_id,parent_id,path,kind,instance_id) VALUES
+      ('entry-a','r2-local','release-folder','Compilation/01.flac','file','import-inst-a'),
+      ('entry-b','r2-local','release-folder','Compilation/02.flac','file','import-inst-b'),
+      ('entry-c','r2-local','other-folder','Other/01.flac','file','import-inst-c'),
+      ('entry-d','r2-local','release-folder','Compilation/01.wav','file','import-inst-d');
+  `);
+  await applyMetadataResult(d1(importDb), "import-inst-a", { title: "First", artist: "Singer A", albumArtist: "Producer A", album: "Compilation", track: 1 }, {});
+  await applyMetadataResult(d1(importDb), "import-inst-b", { title: "Second", artist: "Singer B", albumArtist: "Producer B", album: "Compilation", track: 2 }, {});
+  const imported = importDb.prepare("SELECT id,album_id,artist_id,album_artist_id FROM song_masters WHERE id IN ('import-a','import-b') ORDER BY id").all() as Array<{ id: string; album_id: string; artist_id: string; album_artist_id: string }>;
+  const importedAlbum = importDb.prepare("SELECT compilation,song_count FROM albums WHERE id = ?").get(imported[0].album_id) as { compilation: number; song_count: number };
+  assert(imported[0].album_id === imported[1].album_id && importedAlbum.song_count === 2, "same-folder imports form one album despite per-track album artists");
+  assert(importedAlbum.compilation === 1 && imported[0].album_artist_id !== imported[1].album_artist_id, "imported compilation retains the original track credits");
+  await applyMetadataResult(d1(importDb), "import-inst-c", { title: "Other Folder", artist: "Singer A", album: "Compilation", track: 1 }, {});
+  await applyMetadataResult(d1(importDb), "import-inst-d", { title: "Other Codec", artist: "Singer A", album: "Compilation", track: 1 }, {});
+  const separate = importDb.prepare("SELECT id,album_id FROM song_masters WHERE id IN ('import-c','import-d') ORDER BY id").all() as Array<{ id: string; album_id: string }>;
+  assert(separate.every((row) => row.album_id !== imported[0].album_id) && separate[0].album_id !== separate[1].album_id, "different folders and codecs retain separate album editions");
+  importDb.close();
   scannedDb.close();
   sqlite.close();
 

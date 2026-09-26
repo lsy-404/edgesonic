@@ -13,32 +13,8 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// ----------------------------------------------------------------------------
-// Three call sites funnel through here:
-//  1. POST /tag/submit — the legacy "Files browser parsed locally" path.
-//  2. POST /edgesonic/work/submit (success branch) — the worker-pool path
-//    that previously only marked work_queue rows 'completed' and forgot to
-//    cascade onto song_masters / song_instances (the bug this fixes).
-//  3. /edgesonic/work/backfillCompleted — replays old completed rows whose
-//    apply step was skipped before the fix landed.
-//
-// We pulled SubmittedMetadata + relinkArtistAlbum out of endpoints/tag/submit.ts
-// to here so that file (which imports this one for applyMetadataResult) doesn't
-// create an import cycle. tag/submit.ts re-exports both symbols for any caller
-// that historically pulled them from the old location.
-//
-// Design rules:
-//  * Never throw on partial data — the caller usually can't recover and the
-//   enclosing flow (work/submit, backfill) must keep going.
-//  * Inputs are scrubbed to ints/floats before SQL binds — taskExecutor sends
-//   year/track/disc as strings, the legacy /tag/submit cleanInput does the
-//   same coercion; we replicate that here so neither caller has to know.
-//  * tag_scanned ALWAYS flips to 1 after a successful UPDATE — that's the
-//   bug we're fixing. A row that produced no useful tags still counts as
-//   "seen" so a future scan does not re-queue the work forever.
-
 import { md5 } from "./md5";
-import { retainCompilationAlbum } from "./albumIdentity";
+import { markCompilationIfMixed, retainCompilationAlbum, sourceFolderAlbumId } from "./albumIdentity";
 import { deriveBitrate } from "./audioMetrics";
 import {
   artistInsertStatements,
@@ -48,11 +24,6 @@ import {
 } from "./artistCredits";
 import { recoverMetadataFromStoragePath } from "./storageMetadata";
 
-// ---------------------------------------------------------------------------
-// SubmittedMetadata — the /tag/submit wire shape, also reused as the merged form that
-// applyMetadataResult feeds to relinkArtistAlbum. Kept here so the helper has
-// no upward dependency on endpoints/*.
-// ---------------------------------------------------------------------------
 export interface SubmittedMetadata {
   title?: string;
   artist?: string;
@@ -72,10 +43,6 @@ export interface SubmittedMetadata {
   codec?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Loose input shapes used by applyMetadataResult so the work-pool caller can
-// splat whatever music-metadata gave them. We only consume known fields.
-// ---------------------------------------------------------------------------
 export interface MetaCommon {
   title?: unknown;
   artist?: unknown;
@@ -103,14 +70,6 @@ export interface ApplyResult {
   reason?: string;     // populated on `updated:false` to help admins debug backfill failures
 }
 
-// ---------------------------------------------------------------------------
-// applyMetadataResult — main entry point.
-// ----------------------------------------------------------------------------
-// Returns { updated:true, masterId } on success.
-// Returns { updated:false, reason } when the instance/master is missing or
-// when the payload had no usable tag/format fields at all (we still don't
-// throw — callers prefer a structured outcome over try/catch).
-// ---------------------------------------------------------------------------
 export async function applyMetadataResult(
   db: D1Database,
   instanceId: string,
@@ -121,23 +80,17 @@ export async function applyMetadataResult(
     return { updated: false, reason: "missing instanceId" };
   }
 
-  // Merge common + format into the SubmittedMetadata shape that relinkArtist
-  // Album already speaks. We re-coerce every scalar so a worker that emits
-  // year:"2024" (string) lands the same as a caller emitting year:2024.
+  // Normalize numeric tag values before binding them to SQLite.
   let tags = mergeToSubmitted(common ?? {}, format ?? {});
 
-  // Even if no useful field came through, we still want to flip tag_scanned.
-  // A row that was seen by the browser parser and produced nothing of value
-  // shouldn't be re-queued forever. We branch below so we don't run relink
-  // on an empty patch (relinkArtistAlbum would replace artist/album with
-  // "Unknown ..." sentinel values, which would be actively harmful).
+  // An empty scan must not replace artist or album with unknown sentinels.
   const hasLogical =
     !!(tags.title || tags.artist || tags.album || tags.albumArtist ||
        tags.genre || tags.year || tags.track || tags.disc);
 
   const inst = await db.prepare(
-    "SELECT id, master_id, size, storage_uri FROM song_instances WHERE id = ?",
-  ).bind(instanceId).first<{ id: string; master_id: string; size: number | null; storage_uri: string }>();
+    "SELECT id, master_id, size, storage_uri, suffix FROM song_instances WHERE id = ?",
+  ).bind(instanceId).first<{ id: string; master_id: string; size: number | null; storage_uri: string; suffix: string }>();
   if (!inst) return { updated: false, reason: "instance not found" };
   tags = recoverMetadataFromStoragePath(inst.storage_uri, tags);
 
@@ -149,27 +102,23 @@ export async function applyMetadataResult(
       id: string; album_id: string; artist_id: string; album_artist_id: string | null; title: string;
     }>();
     if (!master) return { updated: false, reason: "master not found" };
-    await relinkArtistAlbum(db, master, tags);
+    const importAlbumId = master.album_id === "pending-uploads" && tags.album
+      ? await sourceFolderAlbumId(db, instanceId, tags.album, inst.suffix)
+      : null;
+    await relinkArtistAlbum(db, master, tags, importAlbumId);
     masterId = master.id;
   } else {
     masterId = inst.master_id;
   }
 
-  // decides artist/album linkage; lyrics never should), so it needs its own
-  // write independent of hasLogical — a submission carrying ONLY lyrics (no
-  // title/artist/etc, e.g. a re-scan that only turned up an embedded LYRICS
-  // tag) must still land. COALESCE(NULLIF(lyrics,''), ?) only fills an EMPTY
-  // column: a user-authored edit or a NetEase/.lrc-sidecar fetch
-  // already in song_masters.lyrics is never clobbered by a lower-priority
-  // embedded tag on a later re-scan.
+  // Embedded lyrics fill empty values without replacing user or sidecar lyrics.
   if (tags.lyrics) {
     await db.prepare(
       "UPDATE song_masters SET lyrics = COALESCE(NULLIF(lyrics, ''), ?), updated_at = ? WHERE id = ?",
     ).bind(tags.lyrics, Math.floor(Date.now() / 1000), inst.master_id).run();
   }
 
-  // Subsonic getSong/getAlbum reads duration from song_masters, so a null
-  // there means the UI shows "0:00:02" (falls back to instance or just 0).
+  // Subsonic album views read duration from song_masters.
   const masterSets: string[] = [];
   const masterBinds: unknown[] = [];
   if (typeof tags.duration === "number" && tags.duration > 0) {
@@ -188,16 +137,10 @@ export async function applyMetadataResult(
       .bind(...masterBinds).run();
   }
 
-  // Update physical params on the instance row (only fields the payload had).
-  // tag_scanned is always set to 1 — this is the part the old /work/submit
-  // forgot, and the symptom observed (82 completed but only 1 row
-  // with tag_scanned=1).
+  // Mark parsed instances even when no physical parameter was available.
   const sets: string[] = [];
   const binds: unknown[] = [];
-  // Bitrate is measured from the stored file rather than taken from the
-  // parser: the browser pool parses head+tail slices, so a parser-reported
-  // rate reflects the slice, not the track (lossless files came out ~20x low).
-  // The reported value is only a fallback for rows we cannot measure.
+  // Slice-derived bitrate is unreliable, so prefer size divided by duration.
   const measuredBitrate = deriveBitrate(inst.size, tags.duration);
   const bitrate = measuredBitrate ?? (typeof tags.bitrate === "number" ? tags.bitrate : null);
   if (bitrate !== null)                    { sets.push("bit_rate = ?");    binds.push(bitrate); }
@@ -215,24 +158,15 @@ export async function applyMetadataResult(
   return { updated: true, masterId };
 }
 
-// ---------------------------------------------------------------------------
-// relinkArtistAlbum — pulled in from endpoints/tag/submit.ts so the
-// helper can call it directly:
-//  * md5(linkArtistName)[:10] -> artist id
-//  * md5(linkArtistName + " " + albumName)[:10] -> album id
-//  * INSERT OR IGNORE both, UPDATE song_masters with the new fk's
-//  * Refresh album song_count/size aggregates for old + new ids
-//  * Remove only rows that this relink may have made unused
-// ---------------------------------------------------------------------------
 export async function relinkArtistAlbum(
   db: D1Database,
   master: { id: string; album_id: string; artist_id: string; album_artist_id: string | null; title: string },
   tags: SubmittedMetadata,
+  importAlbumId: string | null = null,
 ): Promise<{ albumId: string; artistId: string }> {
   const now = Math.floor(Date.now() / 1000);
 
-  // Look up the current artist/album names so we can keep them when the patch
-  // omits the field (same fallback chain as tagedit.ts).
+  // Omitted tag fields keep their current artist and album names.
   const curArtist = await db.prepare("SELECT name FROM artists WHERE id = ?")
     .bind(master.artist_id).first<{ name: string }>();
   const curAlbum = await db.prepare("SELECT name, compilation FROM albums WHERE id = ?")
@@ -252,9 +186,9 @@ export async function relinkArtistAlbum(
   const albumName = tags.album || curAlbum?.name || "Unknown Album";
   const artistId = primaryArtist?.id || master.artist_id;
   const albumIdentityChanged = artistChanged || tags.albumArtist !== undefined || tags.album !== undefined;
-  const albumId = albumIdentityChanged && !retainCompilationAlbum(curAlbum, albumName, tags.albumArtist, currentAlbumArtist?.name)
+  const albumId = importAlbumId ?? (albumIdentityChanged && !retainCompilationAlbum(curAlbum, albumName, tags.albumArtist, currentAlbumArtist?.name)
     ? "al-" + md5(linkArtistName + " " + albumName).substring(0, 10)
-    : master.album_id;
+    : master.album_id);
   const oldAlbumId = master.album_id;
   const oldSongArtistIds = artistChanged
     ? (await db.prepare("SELECT artist_id FROM song_artists WHERE song_id = ?")
@@ -289,14 +223,17 @@ export async function relinkArtistAlbum(
     ...(artistChanged ? songArtistStatements(db, master.id, artistCredits) : []),
   ]);
 
-  // Backfill year / genre onto the freshly anchored album row (INSERT OR IGNORE
-  // above skipped them when the row already existed).
+  // Existing album rows can lack year or genre after INSERT OR IGNORE.
   if (tags.year || tags.genre) {
     await db.prepare("UPDATE albums SET year = COALESCE(?, year), genre = COALESCE(?, genre), updated_at = ? WHERE id = ?")
       .bind(tags.year ?? null, tags.genre ?? null, now, albumId).run();
   }
 
-  // Refresh aggregates for both the new and the vacated album, then sweep empties.
+  if (importAlbumId) {
+    await markCompilationIfMixed(db, albumId);
+  }
+
+  // Both album aggregates change when a track moves.
   for (const aid of new Set([albumId, oldAlbumId])) {
     await db.prepare(
       `UPDATE albums SET
@@ -326,12 +263,6 @@ export async function relinkArtistAlbum(
   return { albumId, artistId };
 }
 
-// ---------------------------------------------------------------------------
-// mergeToSubmitted — coerces a loose common+format pair into the strict
-// SubmittedMetadata shape relinkArtistAlbum + the legacy /tag/submit logic
-// already accept. Same coercion rules as the /tag/submit cleanInput so the two paths
-// produce byte-identical UPDATEs.
-// ---------------------------------------------------------------------------
 function mergeToSubmitted(c: MetaCommon, f: MetaFormat): SubmittedMetadata {
   const out: SubmittedMetadata = {};
   const t = trimStr(c.title);        if (t) out.title       = t;
