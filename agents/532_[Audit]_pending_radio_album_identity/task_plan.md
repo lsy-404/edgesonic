@@ -5,4 +5,4 @@
 - [x] Classify Dream Radio as hold and select the six pending A-edition rows that complete its already-established 8-track release.
 - [x] Record the exact primary row literals in the guarded SQL and refresh the SELECT-only preflight.
 - [x] Rehearse success, stale-physical-key rejection, and late-failure rollback with isolated local Wrangler D1.
-- [ ] Record final hashes and commit only this task directory and its `/test` artifacts.
+- [x] Record final hashes and commit only this task directory and its `/test` artifacts.

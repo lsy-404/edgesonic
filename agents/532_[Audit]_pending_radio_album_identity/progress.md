@@ -8,3 +8,6 @@
 - Ran `test/pending_radio_a/run.ps1` using Wrangler local D1. Success, stale physical-key rejection, and forced final-step rollback all passed.
 - Expanded the late-failure check to compare canonical before/after fingerprints for albums, pending/target masters, linked instances/entries/objects, and queue state. Added an independent multi-statement Wrangler local rollback probe; its marker is absent after the later CHECK failure.
 - The repository operator also confirmed rollback through the remote Wrangler D1 file execution path. No production writes were issued by this audit.
+- Refreshed the candidate guard and local fixture after the next production archive changed pending to 555 / 123211 / 21466454141. Repeated all three Wrangler local scenes successfully and refreshed the SELECT-only primary snapshot.
+- Final SQL SHA256: `170BA8DFABDFF4D60679E8B5A245BEE9F816400041030CF3BDEA20CBF94EB7C2`.
+- Latest task commit after rebasing to `origin/main`: `67a6b76` on `codex/pending-radio-audit`.
