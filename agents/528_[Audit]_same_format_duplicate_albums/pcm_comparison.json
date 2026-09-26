@@ -1,0 +1,4946 @@
+[
+  {
+    "group": "lost",
+    "alignment": 1,
+    "left": {
+      "album_id": "al-6e9d098041",
+      "name": "Lost in Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": null,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 475739602,
+      "album_cover": "covers/al-6e9d098041",
+      "master_id": "sm-0d6c427d2f834c77a0aaa3bfd5461ba4",
+      "title": "8102",
+      "track": 1,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-5ec5a94a23974845b88bc599c1721be3",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 280,
+      "instance_size": 59859538,
+      "storage_object_id": "obj_02f24ac167b70cf3",
+      "physical_key": "objects/obj_02f24ac167b70cf3.flac",
+      "etag": null,
+      "entry_id": "se-c45205a1aca749d1968aaa25f7d02784",
+      "path": "复刻天依丢了/Lost in Tianyi/8102.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-da4b6cd40d",
+      "name": "Lost In Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": 2018,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 282650189,
+      "album_cover": "covers/al-da4b6cd40d",
+      "master_id": "sm-upload-e6b6f031-c60",
+      "title": "8102",
+      "track": 1,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-57abc4de-fe1",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 280,
+      "instance_size": 35715634,
+      "storage_object_id": "obj_1924150bb4f87c89",
+      "physical_key": "objects/obj_1924150bb4f87c89.flac",
+      "etag": null,
+      "entry_id": "se-22873d67aaa0489493a9e04691e31987",
+      "path": "Lost In Tianyi/flac/洛天依 - 8102.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "58fa2b41ddb6977cb3dcc90fecefc113cda5346bf8c59f0096c383990c94a2e1",
+    "right_pcm_sha256": "02eb7212d68138e83441489446f0d82351211e4bf6a0a68fe0cff61a415ef247",
+    "left_pcm_bytes": 98784000,
+    "right_pcm_bytes": 98784000,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "8102",
+          "COMPOSER": "Cop",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost in Tianyi",
+          "track": "1"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TRACKTOTAL": "09",
+          "TITLE": "8102",
+          "COMPOSER": "COP",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost In Tianyi",
+          "GENRE": "Miscellaneous",
+          "album_artist": "洛天依",
+          "DATE": "2018",
+          "track": "1"
+        }
+      }
+    }
+  },
+  {
+    "group": "lost",
+    "alignment": 2,
+    "left": {
+      "album_id": "al-6e9d098041",
+      "name": "Lost in Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": null,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 475739602,
+      "album_cover": "covers/al-6e9d098041",
+      "master_id": "sm-upload-ff726b4b-342",
+      "title": "啦哒哒",
+      "track": 2,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-950c9a62-11c",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 227,
+      "instance_size": 48089295,
+      "storage_object_id": "obj_dcf22c2b1666ef94",
+      "physical_key": "objects/obj_dcf22c2b1666ef94.flac",
+      "etag": "eeb10a70a5cc5d4dfad12b5bb786ee8b",
+      "entry_id": "se-38929139dfa24db7bc6a025ebfa5fea7",
+      "path": "复刻天依丢了/Lost in Tianyi/啦哒哒.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-da4b6cd40d",
+      "name": "Lost In Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": 2018,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 282650189,
+      "album_cover": "covers/al-da4b6cd40d",
+      "master_id": "sm-upload-d3b2dba8-a30",
+      "title": "啦哒哒",
+      "track": 2,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-a46af362-07d",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 227,
+      "instance_size": 28575130,
+      "storage_object_id": "obj_836dcf187a8fec9c",
+      "physical_key": "objects/obj_836dcf187a8fec9c.flac",
+      "etag": null,
+      "entry_id": "se-e692a0c91ad34ee197419b0aec76eb49",
+      "path": "Lost In Tianyi/flac/洛天依 - 啦哒哒.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "524e575e18d6b58b95bb6136d570e879bc0cad3934b17b52cfabf60d114d174f",
+    "right_pcm_sha256": "8ba0615f6f4a72b6a98d358561a2ce5a1ff7e8b30c8528decc1bf269e0765849",
+    "left_pcm_bytes": 80080896,
+    "right_pcm_bytes": 80080896,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "啦哒哒",
+          "COMPOSER": "阿良良木健",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost in Tianyi",
+          "track": "2"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TRACKTOTAL": "09",
+          "TITLE": "啦哒哒",
+          "COMPOSER": "阿良良木健",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost In Tianyi",
+          "GENRE": "Miscellaneous",
+          "album_artist": "洛天依",
+          "DATE": "2018",
+          "track": "2"
+        }
+      }
+    }
+  },
+  {
+    "group": "lost",
+    "alignment": 3,
+    "left": {
+      "album_id": "al-6e9d098041",
+      "name": "Lost in Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": null,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 475739602,
+      "album_cover": "covers/al-6e9d098041",
+      "master_id": "sm-fddf54b36276432591a040398e4dfc19",
+      "title": "最大化+",
+      "track": 3,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-8deb158d0c134e5d87aa9eb5f976e346",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 208,
+      "instance_size": 42726434,
+      "storage_object_id": "obj_0d7635fba2e68090",
+      "physical_key": "objects/obj_0d7635fba2e68090.flac",
+      "etag": null,
+      "entry_id": "se-b45d3bc2f83e4d788f735023c4a9292a",
+      "path": "复刻天依丢了/Lost in Tianyi/最大化+.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-da4b6cd40d",
+      "name": "Lost In Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": 2018,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 282650189,
+      "album_cover": "covers/al-da4b6cd40d",
+      "master_id": "sm-upload-36dfdca0-5b8",
+      "title": "最大化+",
+      "track": 3,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-470b7364-8e2",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 208,
+      "instance_size": 25218864,
+      "storage_object_id": "obj_947da14a7e6874cb",
+      "physical_key": "objects/obj_947da14a7e6874cb.flac",
+      "etag": null,
+      "entry_id": "se-cc501bd8387f4d969d7b099a3dc1a41a",
+      "path": "Lost In Tianyi/flac/洛天依 - 最大化 .flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "7bca57797c883716e441d7d99f4d9391dd244184402c6779e4b79e7239cf2ce4",
+    "right_pcm_sha256": "cb149af7470de8e6678b8b05e476273e9ff9ae7412cbe9888872ef818269e374",
+    "left_pcm_bytes": 73382400,
+    "right_pcm_bytes": 73382400,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "最大化+",
+          "COMPOSER": "人形兎",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost in Tianyi",
+          "track": "3"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TRACKTOTAL": "09",
+          "TITLE": "最大化+",
+          "COMPOSER": "人形兎",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost In Tianyi",
+          "GENRE": "Miscellaneous",
+          "album_artist": "洛天依",
+          "DATE": "2018",
+          "track": "3"
+        }
+      }
+    }
+  },
+  {
+    "group": "lost",
+    "alignment": 4,
+    "left": {
+      "album_id": "al-6e9d098041",
+      "name": "Lost in Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": null,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 475739602,
+      "album_cover": "covers/al-6e9d098041",
+      "master_id": "sm-77c2e19f8b694391ae8059571165b030",
+      "title": "风兮风兮",
+      "track": 4,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-6adbe35ccabc41e58ab93e8264efdb36",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 216,
+      "instance_size": 42374724,
+      "storage_object_id": "obj_19d50ffaaa6fa4b4",
+      "physical_key": "objects/obj_19d50ffaaa6fa4b4.flac",
+      "etag": null,
+      "entry_id": "se-d9aafd0ccd77483698aac96b521d1e64",
+      "path": "复刻天依丢了/Lost in Tianyi/风兮风兮.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-da4b6cd40d",
+      "name": "Lost In Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": 2018,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 282650189,
+      "album_cover": "covers/al-da4b6cd40d",
+      "master_id": "sm-upload-507e83c8-c27",
+      "title": "风兮风兮",
+      "track": 4,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-7b6d1ded-fc0",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 216,
+      "instance_size": 23936427,
+      "storage_object_id": "obj_c1eccb555cc2f099",
+      "physical_key": "objects/obj_c1eccb555cc2f099.flac",
+      "etag": null,
+      "entry_id": "se-56bb5fd58dea4620844473b0cd9b0bc4",
+      "path": "Lost In Tianyi/flac/洛天依 - 风兮风兮.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "72cd61ca82adc7adeb76638f603e6a02807ce012047f0c7575b1bca15317f384",
+    "right_pcm_sha256": "62efb08eec0d10c5c544952036fbe70d01d9c3adadc094df378d8ce3751dfbd3",
+    "left_pcm_bytes": 76200096,
+    "right_pcm_bytes": 76200096,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "风兮风兮",
+          "COMPOSER": "ilem",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost in Tianyi",
+          "track": "4"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TRACKTOTAL": "09",
+          "TITLE": "风兮风兮",
+          "COMPOSER": "ilem",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost In Tianyi",
+          "GENRE": "Miscellaneous",
+          "album_artist": "洛天依",
+          "DATE": "2018",
+          "track": "4"
+        }
+      }
+    }
+  },
+  {
+    "group": "lost",
+    "alignment": 5,
+    "left": {
+      "album_id": "al-6e9d098041",
+      "name": "Lost in Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": null,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 475739602,
+      "album_cover": "covers/al-6e9d098041",
+      "master_id": "sm-upload-a39f9f26-64d",
+      "title": "斯芬克斯的谜底",
+      "track": 5,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-8637e69d-a33",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 325,
+      "instance_size": 69669336,
+      "storage_object_id": "obj_bf7feb3e38e4e156",
+      "physical_key": "objects/obj_bf7feb3e38e4e156.flac",
+      "etag": "72dbf52afa1f813df96efc6ca94c65b2",
+      "entry_id": "se-9b4b3a3d53154b08a1c73c83499a9f7b",
+      "path": "复刻天依丢了/Lost in Tianyi/斯芬克斯的谜底.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-da4b6cd40d",
+      "name": "Lost In Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": 2018,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 282650189,
+      "album_cover": "covers/al-da4b6cd40d",
+      "master_id": "sm-upload-0165256b-9fc",
+      "title": "斯芬克斯的谜底",
+      "track": 5,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-40a4c1ca-c2a",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 325,
+      "instance_size": 41633384,
+      "storage_object_id": "obj_9fbdf76a4a29b5fb",
+      "physical_key": "objects/obj_9fbdf76a4a29b5fb.flac",
+      "etag": null,
+      "entry_id": "se-5fd027f248994402891702ef945c5a4e",
+      "path": "Lost In Tianyi/flac/洛天依 - 斯芬克斯的谜底.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "e5b0e499394c372d9830372962b68fa17a3d8594491ec1c5d26d6b547b2f83b3",
+    "right_pcm_sha256": "fb464d40bce80084fd0901b4709d3c8f25d5b92fe730a5e9d3c0dffd515085cd",
+    "left_pcm_bytes": 114660000,
+    "right_pcm_bytes": 114660000,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "斯芬克斯的谜底",
+          "COMPOSER": "Li Zong",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost in Tianyi",
+          "track": "5"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TRACKTOTAL": "09",
+          "TITLE": "斯芬克斯的谜底",
+          "COMPOSER": "Li Zong",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost In Tianyi",
+          "GENRE": "Miscellaneous",
+          "album_artist": "洛天依",
+          "DATE": "2018",
+          "track": "5"
+        }
+      }
+    }
+  },
+  {
+    "group": "lost",
+    "alignment": 6,
+    "left": {
+      "album_id": "al-6e9d098041",
+      "name": "Lost in Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": null,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 475739602,
+      "album_cover": "covers/al-6e9d098041",
+      "master_id": "sm-8ed0912ab68d4b828a10575d0bf41200",
+      "title": "笔记本上的幻想世界",
+      "track": 6,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-3342a6cebb7b4616808ef250df2ea043",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 212,
+      "instance_size": 45950664,
+      "storage_object_id": "obj_53a6a8283afafaea",
+      "physical_key": "objects/obj_53a6a8283afafaea.flac",
+      "etag": null,
+      "entry_id": "se-bb00efebbd1f48ed8034ff8e36d6631f",
+      "path": "复刻天依丢了/Lost in Tianyi/笔记本上的幻想世界.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-da4b6cd40d",
+      "name": "Lost In Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": 2018,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 282650189,
+      "album_cover": "covers/al-da4b6cd40d",
+      "master_id": "sm-upload-f7290c61-dfc",
+      "title": "笔记本上的幻想世界",
+      "track": 6,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-0d91ee2c-920",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 212,
+      "instance_size": 27922425,
+      "storage_object_id": "obj_8938dd6b526a7b73",
+      "physical_key": "objects/obj_8938dd6b526a7b73.flac",
+      "etag": null,
+      "entry_id": "se-699ba3eb0d1144eea76b36e344593b49",
+      "path": "Lost In Tianyi/flac/洛天依 - 笔记本上的幻想世界.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "f357bba01ae20c2f31b5c940e29f3d3826486720f7befefcac29a482965fad8a",
+    "right_pcm_sha256": "e0a64fa07a9cdb0a90b7eca4c9984e6d863d31f207aac8af5dc6768734c9ddc0",
+    "left_pcm_bytes": 74793600,
+    "right_pcm_bytes": 74793600,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "笔记本上的幻想世界",
+          "COMPOSER": "Poker",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost in Tianyi",
+          "track": "6"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TRACKTOTAL": "09",
+          "TITLE": "笔记本上的幻想世界",
+          "COMPOSER": "PoKeR",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost In Tianyi",
+          "GENRE": "Miscellaneous",
+          "album_artist": "洛天依",
+          "DATE": "2018",
+          "track": "6"
+        }
+      }
+    }
+  },
+  {
+    "group": "lost",
+    "alignment": 7,
+    "left": {
+      "album_id": "al-6e9d098041",
+      "name": "Lost in Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": null,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 475739602,
+      "album_cover": "covers/al-6e9d098041",
+      "master_id": "sm-upload-22636450-d10",
+      "title": "斯人",
+      "track": 7,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-d5e6438c-688",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 278,
+      "instance_size": 56944382,
+      "storage_object_id": "obj_c42cdead4c43bb9d",
+      "physical_key": "objects/obj_c42cdead4c43bb9d.flac",
+      "etag": "9691db574ea549b0a0325009a7bcc4cb",
+      "entry_id": "se-9a9819bc59e1448fa21af3af8c7ea4dc",
+      "path": "复刻天依丢了/Lost in Tianyi/斯人.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-da4b6cd40d",
+      "name": "Lost In Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": 2018,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 282650189,
+      "album_cover": "covers/al-da4b6cd40d",
+      "master_id": "sm-upload-36bbd46f-62e",
+      "title": "斯人",
+      "track": 7,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-2e1184ab-e04",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 278,
+      "instance_size": 33007963,
+      "storage_object_id": "obj_4fd3e476cc94b484",
+      "physical_key": "objects/obj_4fd3e476cc94b484.flac",
+      "etag": null,
+      "entry_id": "se-4537bdf94096457b85911708878c5896",
+      "path": "Lost In Tianyi/flac/洛天依 - 斯人.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "fc16c037a565a0573454ef9fbd0eceec6763955dfa3586a0422ad31205da3211",
+    "right_pcm_sha256": "08a5fff23df5963f94b0bb4ccb71fdb2ec64c8a4f3c1d43e87bdf74d383b62de",
+    "left_pcm_bytes": 98200704,
+    "right_pcm_bytes": 98200704,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "斯人",
+          "COMPOSER": "The Kind",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost in Tianyi",
+          "track": "7"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TRACKTOTAL": "09",
+          "TITLE": "斯人",
+          "COMPOSER": "Kide",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost In Tianyi",
+          "GENRE": "Miscellaneous",
+          "album_artist": "洛天依",
+          "DATE": "2018",
+          "track": "7"
+        }
+      }
+    }
+  },
+  {
+    "group": "lost",
+    "alignment": 8,
+    "left": {
+      "album_id": "al-6e9d098041",
+      "name": "Lost in Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": null,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 475739602,
+      "album_cover": "covers/al-6e9d098041",
+      "master_id": "sm-d7d628760f6b4b408c3ff15057c65079",
+      "title": "嘘つきは恋のはじまり",
+      "track": 8,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-27d82834c36040cc921251db24d7ba38",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 257,
+      "instance_size": 54752095,
+      "storage_object_id": "obj_1e50cda81c0add3c",
+      "physical_key": "objects/obj_1e50cda81c0add3c.flac",
+      "etag": null,
+      "entry_id": "se-b34bd6e1a0a64b0ea1b069c4c13716e7",
+      "path": "复刻天依丢了/Lost in Tianyi/嘘つきは恋のはじまり.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-da4b6cd40d",
+      "name": "Lost In Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": 2018,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 282650189,
+      "album_cover": "covers/al-da4b6cd40d",
+      "master_id": "sm-upload-8894de2d-9c1",
+      "title": "嘘つきは恋のはじまり",
+      "track": 8,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-4608780c-7d6",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 257,
+      "instance_size": 32556242,
+      "storage_object_id": "obj_847a73cbd0cde5e3",
+      "physical_key": "objects/obj_847a73cbd0cde5e3.flac",
+      "etag": null,
+      "entry_id": "se-ddd048c3a598432993f920cdea73dee2",
+      "path": "Lost In Tianyi/flac/洛天依 - 嘘つきは恋のはじまり.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "6527d9f596c38ad240abf758ab4dbdfa95a0a8be3db9f94b2ac6f4cd6cb213f0",
+    "right_pcm_sha256": "53342786016ff7491eebc66ce6f725c488dc7503e8019ba3043c6526bb38391d",
+    "left_pcm_bytes": 90669600,
+    "right_pcm_bytes": 90669600,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "嘘つきは恋のはじまり",
+          "COMPOSER": "40mP",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost in Tianyi",
+          "track": "8"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TRACKTOTAL": "09",
+          "TITLE": "嘘つきは恋のはじまり",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost In Tianyi",
+          "GENRE": "Miscellaneous",
+          "album_artist": "洛天依",
+          "COMPOSER": "40mp",
+          "DATE": "2018",
+          "track": "8"
+        }
+      }
+    }
+  },
+  {
+    "group": "lost",
+    "alignment": 9,
+    "left": {
+      "album_id": "al-6e9d098041",
+      "name": "Lost in Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": null,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 475739602,
+      "album_cover": "covers/al-6e9d098041",
+      "master_id": "sm-upload-33c13194-88c",
+      "title": "Monologue",
+      "track": 9,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-7ced355b-3e7",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 247,
+      "instance_size": 55373134,
+      "storage_object_id": "obj_67f6eb1bde2f371f",
+      "physical_key": "objects/obj_67f6eb1bde2f371f.flac",
+      "etag": "667ed5816ca4489436fafdaa847eaee2",
+      "entry_id": "se-bd95df570a094de1beea9f1581871c81",
+      "path": "复刻天依丢了/Lost in Tianyi/Monologue.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-da4b6cd40d",
+      "name": "Lost In Tianyi",
+      "sort_name": "lost in tianyi",
+      "year": 2018,
+      "song_count": 9,
+      "duration": 0,
+      "album_size": 282650189,
+      "album_cover": "covers/al-da4b6cd40d",
+      "master_id": "sm-upload-e3c90722-106",
+      "title": "Monologue",
+      "track": 9,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-76d250d9-432",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 247,
+      "instance_size": 34084120,
+      "storage_object_id": "obj_d101365efa84141a",
+      "physical_key": "objects/obj_d101365efa84141a.flac",
+      "etag": null,
+      "entry_id": "se-e7cc71362f904cde82da678ede0c750e",
+      "path": "Lost In Tianyi/flac/洛天依 - Monologue.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "b29c8f0092dbec0969dc40574f58cc0d579f4c1868f4f93001c7c8c749e27163",
+    "right_pcm_sha256": "a647e1f462110fa242ce895e38b42d7c5430549a34e91fc1727395cf46f9c760",
+    "left_pcm_bytes": 87136896,
+    "right_pcm_bytes": 87136896,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "Monologue",
+          "COMPOSER": "动点P",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost in Tianyi",
+          "track": "9"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TRACKTOTAL": "09",
+          "TITLE": "Monologue",
+          "COMPOSER": "味素，G.K，夏铜子",
+          "ARTIST": "洛天依",
+          "ALBUM": "Lost In Tianyi",
+          "GENRE": "Miscellaneous",
+          "album_artist": "洛天依",
+          "DATE": "2018",
+          "track": "9"
+        }
+      }
+    }
+  },
+  {
+    "group": "summer",
+    "alignment": 1,
+    "left": {
+      "album_id": "al-00997a7da1",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": null,
+      "song_count": 8,
+      "duration": 1885,
+      "album_size": 217425187,
+      "album_cover": null,
+      "master_id": "sm-855d833280",
+      "title": "华满神都苑",
+      "track": 1,
+      "disc": null,
+      "artist_id": "ar-2d09b2a3d2",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-mirror-1ea927a4ae3f4630",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 219,
+      "instance_size": 23416265,
+      "storage_object_id": "obj_4cb7469952963032",
+      "physical_key": "objects/obj_4cb7469952963032.flac",
+      "etag": "603f57e9e0627b0f18bfe3c7e0a98c4e",
+      "entry_id": "se-0bbf3024853946b58b5d0eec75a84b56",
+      "path": "华哉有夏·贰/01 华满神都苑.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-2dd78c6e22",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": 2021,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 220173793,
+      "album_cover": null,
+      "master_id": "sm-upload-12e97a2b-f52",
+      "title": "华满神都苑",
+      "track": 1,
+      "disc": 1,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-c9b7857a27",
+      "master_cover": null,
+      "instance_id": "si-upload-d342f0b9-768",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 219,
+      "instance_size": 23767773,
+      "storage_object_id": "obj_22a0e05300adf2b7",
+      "physical_key": "objects/obj_22a0e05300adf2b7.flac",
+      "etag": null,
+      "entry_id": "se-1051525be4b941d6a925faa8d31079e0",
+      "path": "华哉有夏 ·贰/flac/01 华满神都苑.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "2e235eaacca5b1ddc117735847b78155a96ec96ebe7a130f386961f1576fe372",
+    "right_pcm_sha256": "3b7fa1ef66279311f73104d898c5be38859673dc4bd1801641b32a0677a7d098",
+    "left_pcm_bytes": 77140896,
+    "right_pcm_bytes": 77140896,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16",
+          "side_data_list": [
+            {}
+          ]
+        }
+      ],
+      "format": {
+        "tags": {
+          "REPLAYGAIN_TRACK_GAIN": "-6.19 dB",
+          "REPLAYGAIN_TRACK_PEAK": "0.964325"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "华哉有夏·贰",
+          "album_artist": "洛天依/乐正绫/言和/乐正龙牙",
+          "ARTIST": "洛天依",
+          "COMPOSER": "COP",
+          "DATE": "2021/2/11",
+          "disc": "1",
+          "GENRE": "VOCALOID",
+          "TITLE": "华满神都苑",
+          "DISCTOTAL": "1",
+          "TRACKTOTAL": "8",
+          "track": "1",
+          "WM/MCDI": "8+96+40A5+7BE6+C69C+103BE+15211+196C4+1E55C+22902"
+        }
+      }
+    }
+  },
+  {
+    "group": "summer",
+    "alignment": 2,
+    "left": {
+      "album_id": "al-00997a7da1",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": null,
+      "song_count": 8,
+      "duration": 1885,
+      "album_size": 217425187,
+      "album_cover": null,
+      "master_id": "sm-9c6b75d837",
+      "title": "十面埋伏",
+      "track": 2,
+      "disc": null,
+      "artist_id": "ar-2d09b2a3d2",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-mirror-9d2106b50f114580",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 202,
+      "instance_size": 25565901,
+      "storage_object_id": "obj_7c0cf9f9203cf0e5",
+      "physical_key": "objects/obj_7c0cf9f9203cf0e5.flac",
+      "etag": "83715e84e227f989a20fb47cd631cfb6",
+      "entry_id": "se-467789835da4497aba3ec62192e0b832",
+      "path": "华哉有夏·贰/02 十面埋伏.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-2dd78c6e22",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": 2021,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 220173793,
+      "album_cover": null,
+      "master_id": "sm-upload-d8afea26-a60",
+      "title": "十面埋伏",
+      "track": 2,
+      "disc": 1,
+      "artist_id": "ar-b86d3071fc",
+      "album_artist_id": "ar-c9b7857a27",
+      "master_cover": null,
+      "instance_id": "si-upload-0e3c162d-a3d",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 202,
+      "instance_size": 25891202,
+      "storage_object_id": "obj_92ff3ce24f96a4de",
+      "physical_key": "objects/obj_92ff3ce24f96a4de.flac",
+      "etag": null,
+      "entry_id": "se-25ebf654603e47d2887f961308201110",
+      "path": "华哉有夏 ·贰/flac/02 十面埋伏.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "37faad555b60e5bf5de2d8e1bfb4862b2ac3651f343999399d650dbe92f92ee6",
+    "right_pcm_sha256": "c2f89c16c5f6a3941b8c08c60b14d16be6cb84da7f10230327e4a9a81f7aa5b2",
+    "left_pcm_bytes": 71354976,
+    "right_pcm_bytes": 71354976,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16",
+          "side_data_list": [
+            {}
+          ]
+        }
+      ],
+      "format": {
+        "tags": {
+          "REPLAYGAIN_TRACK_GAIN": "-6.87 dB",
+          "REPLAYGAIN_TRACK_PEAK": "0.966064"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "华哉有夏·贰",
+          "album_artist": "洛天依/乐正绫/言和/乐正龙牙",
+          "ARTIST": "乐正绫",
+          "COMPOSER": "乌龟Sui",
+          "DATE": "2021/2/11",
+          "disc": "1",
+          "GENRE": "VOCALOID",
+          "TITLE": "十面埋伏",
+          "DISCTOTAL": "1",
+          "TRACKTOTAL": "8",
+          "track": "2",
+          "WM/MCDI": "8+96+40A5+7BE6+C69C+103BE+15211+196C4+1E55C+22902"
+        }
+      }
+    }
+  },
+  {
+    "group": "summer",
+    "alignment": 3,
+    "left": {
+      "album_id": "al-00997a7da1",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": null,
+      "song_count": 8,
+      "duration": 1885,
+      "album_size": 217425187,
+      "album_cover": null,
+      "master_id": "sm-a3d9417543",
+      "title": "倾杯问",
+      "track": 3,
+      "disc": null,
+      "artist_id": "ar-2d09b2a3d2",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-mirror-0b5fd3ad897f4ef8",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 255,
+      "instance_size": 25457373,
+      "storage_object_id": "obj_69ed07e06405ba20",
+      "physical_key": "objects/obj_69ed07e06405ba20.flac",
+      "etag": "8af477bec311d023abd184832d6b5a06",
+      "entry_id": "se-4d8dd595850749368c7fef0fe2b82e99",
+      "path": "华哉有夏·贰/03 倾杯问.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-2dd78c6e22",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": 2021,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 220173793,
+      "album_cover": null,
+      "master_id": "sm-upload-6266e978-524",
+      "title": "倾杯问",
+      "track": 3,
+      "disc": 1,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-c9b7857a27",
+      "master_cover": null,
+      "instance_id": "si-upload-26e11000-301",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 255,
+      "instance_size": 25862098,
+      "storage_object_id": "obj_1006d4a039166b0f",
+      "physical_key": "objects/obj_1006d4a039166b0f.flac",
+      "etag": null,
+      "entry_id": "se-a42dbdce2b2248418a370c6394af802d",
+      "path": "华哉有夏 ·贰/flac/03 倾杯问.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "0c1c908d66a1dad302d52d5e17670fc07ef19ab9314aa6f1a9a818c48fcf37a0",
+    "right_pcm_sha256": "53237dfe0222ed76e19a8b22dd3b9285e7ece50e0c04456748c6bc34ae09f990",
+    "left_pcm_bytes": 89968704,
+    "right_pcm_bytes": 89968704,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16",
+          "side_data_list": [
+            {}
+          ]
+        }
+      ],
+      "format": {
+        "tags": {
+          "REPLAYGAIN_TRACK_GAIN": "-6.69 dB",
+          "REPLAYGAIN_TRACK_PEAK": "0.966064"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "华哉有夏·贰",
+          "album_artist": "洛天依/乐正绫/言和/乐正龙牙",
+          "ARTIST": "洛天依",
+          "COMPOSER": "纯白",
+          "DATE": "2021/2/11",
+          "disc": "1",
+          "GENRE": "VOCALOID",
+          "TITLE": "倾杯问",
+          "DISCTOTAL": "1",
+          "TRACKTOTAL": "8",
+          "track": "3",
+          "WM/MCDI": "8+96+40A5+7BE6+C69C+103BE+15211+196C4+1E55C+22902"
+        }
+      }
+    }
+  },
+  {
+    "group": "summer",
+    "alignment": 4,
+    "left": {
+      "album_id": "al-00997a7da1",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": null,
+      "song_count": 8,
+      "duration": 1885,
+      "album_size": 217425187,
+      "album_cover": null,
+      "master_id": "sm-3c8b5fe7ec",
+      "title": "阴阳杀",
+      "track": 4,
+      "disc": null,
+      "artist_id": "ar-2d09b2a3d2",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-mirror-b4f76cf76175450d",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 209,
+      "instance_size": 25717714,
+      "storage_object_id": "obj_a32192da0a20a65a",
+      "physical_key": "objects/obj_a32192da0a20a65a.flac",
+      "etag": "d4de0dca116d8a809917ae3e18c949a5",
+      "entry_id": "se-2b2b4ac46b3b4f8887f450b6fd416c54",
+      "path": "华哉有夏·贰/04 阴阳杀.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-2dd78c6e22",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": 2021,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 220173793,
+      "album_cover": null,
+      "master_id": "sm-upload-bbc2df6f-fec",
+      "title": "阴阳杀",
+      "track": 4,
+      "disc": 1,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-c9b7857a27",
+      "master_cover": null,
+      "instance_id": "si-upload-7eba8dd3-8dc",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 209,
+      "instance_size": 26041763,
+      "storage_object_id": "obj_35b6731b10f90e2b",
+      "physical_key": "objects/obj_35b6731b10f90e2b.flac",
+      "etag": null,
+      "entry_id": "se-0ace5baaa7984041901c2b14ad52e30f",
+      "path": "华哉有夏 ·贰/flac/04 阴阳杀.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "0baf42ac9f1779af1ab561e90171a256a033e707dd50f3d4569dee419239a094",
+    "right_pcm_sha256": "baa687d8605a522efbe979b286847362c92ffa1b80fa45dd5402ce4c80609000",
+    "left_pcm_bytes": 73617600,
+    "right_pcm_bytes": 73617600,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16",
+          "side_data_list": [
+            {}
+          ]
+        }
+      ],
+      "format": {
+        "tags": {
+          "REPLAYGAIN_TRACK_GAIN": "-6.06 dB",
+          "REPLAYGAIN_TRACK_PEAK": "0.966034"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "华哉有夏·贰",
+          "album_artist": "洛天依/乐正绫/言和/乐正龙牙",
+          "ARTIST": "洛天依/言和",
+          "COMPOSER": "砖厂浪人",
+          "DATE": "2021/2/11",
+          "disc": "1",
+          "GENRE": "VOCALOID",
+          "TITLE": "阴阳杀",
+          "DISCTOTAL": "1",
+          "TRACKTOTAL": "8",
+          "track": "4",
+          "WM/MCDI": "8+96+40A5+7BE6+C69C+103BE+15211+196C4+1E55C+22902"
+        }
+      }
+    }
+  },
+  {
+    "group": "summer",
+    "alignment": 5,
+    "left": {
+      "album_id": "al-00997a7da1",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": null,
+      "song_count": 8,
+      "duration": 1885,
+      "album_size": 217425187,
+      "album_cover": null,
+      "master_id": "sm-9b1c8d4bb5",
+      "title": "见字如晤",
+      "track": 5,
+      "disc": null,
+      "artist_id": "ar-2d09b2a3d2",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-mirror-b780ad5324884854",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 267,
+      "instance_size": 31987962,
+      "storage_object_id": "obj_3f253bbd7deef5a4",
+      "physical_key": "objects/obj_3f253bbd7deef5a4.flac",
+      "etag": "1cc9f5767931a1a12143ede5f7b27e24",
+      "entry_id": "se-d678e1a8059842419c5c1dcd1525ad69",
+      "path": "华哉有夏·贰/05 见字如晤.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-2dd78c6e22",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": 2021,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 220173793,
+      "album_cover": null,
+      "master_id": "sm-upload-c55fcc98-2a1",
+      "title": "见字如晤",
+      "track": 5,
+      "disc": 1,
+      "artist_id": "ar-1f17a709a0",
+      "album_artist_id": "ar-c9b7857a27",
+      "master_cover": null,
+      "instance_id": "si-upload-9ede236f-897",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 267,
+      "instance_size": 32317449,
+      "storage_object_id": "obj_2f5f524452ab45b7",
+      "physical_key": "objects/obj_2f5f524452ab45b7.flac",
+      "etag": null,
+      "entry_id": "se-2418fb1559cf4d1292d86e9d1d21fa7a",
+      "path": "华哉有夏 ·贰/flac/05 见字如晤.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "750bb63f6235217af2497cd2ad4c314bdbdc00b0a8b80679b5348e2b526599a1",
+    "right_pcm_sha256": "0f4504d5a6e2bb931da12405ca83be56f62827b9e885be8818878ba1c88e0aab",
+    "left_pcm_bytes": 94319904,
+    "right_pcm_bytes": 94319904,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16",
+          "side_data_list": [
+            {}
+          ]
+        }
+      ],
+      "format": {
+        "tags": {
+          "REPLAYGAIN_TRACK_GAIN": "-6.36 dB",
+          "REPLAYGAIN_TRACK_PEAK": "0.966064"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "华哉有夏·贰",
+          "album_artist": "洛天依/乐正绫/言和/乐正龙牙",
+          "ARTIST": "言和",
+          "COMPOSER": "papaw泡泡",
+          "DATE": "2021/2/11",
+          "disc": "1",
+          "GENRE": "VOCALOID",
+          "TITLE": "见字如晤",
+          "DISCTOTAL": "1",
+          "TRACKTOTAL": "8",
+          "track": "5",
+          "WM/MCDI": "8+96+40A5+7BE6+C69C+103BE+15211+196C4+1E55C+22902"
+        }
+      }
+    }
+  },
+  {
+    "group": "summer",
+    "alignment": 6,
+    "left": {
+      "album_id": "al-00997a7da1",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": null,
+      "song_count": 8,
+      "duration": 1885,
+      "album_size": 217425187,
+      "album_cover": null,
+      "master_id": "sm-06fd33241a",
+      "title": "江雪寒",
+      "track": 6,
+      "disc": null,
+      "artist_id": "ar-2d09b2a3d2",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-mirror-4c67bdee89284102",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 234,
+      "instance_size": 24861130,
+      "storage_object_id": "obj_f097a5148be1eadc",
+      "physical_key": "objects/obj_f097a5148be1eadc.flac",
+      "etag": "b3fa51444bf12b39561b87f35cb4786d",
+      "entry_id": "se-f1577bf2b8ec44cf87a7109a486ecdf2",
+      "path": "华哉有夏·贰/06 江雪寒.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-2dd78c6e22",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": 2021,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 220173793,
+      "album_cover": null,
+      "master_id": "sm-upload-8495ea23-c85",
+      "title": "江雪寒",
+      "track": 6,
+      "disc": 1,
+      "artist_id": "ar-c7f6680a80",
+      "album_artist_id": "ar-c9b7857a27",
+      "master_cover": null,
+      "instance_id": "si-upload-1aa4f41f-1c8",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 234,
+      "instance_size": 25212387,
+      "storage_object_id": "obj_73a43c45d7dec0d7",
+      "physical_key": "objects/obj_73a43c45d7dec0d7.flac",
+      "etag": null,
+      "entry_id": "se-9e4ea0081ff24a9aa1dd8ec4da8d7ac3",
+      "path": "华哉有夏 ·贰/flac/06 江雪寒.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "89c26a4300e4298b156361fbae7813a4b8c954b212165ce8433e06c471fdea4a",
+    "right_pcm_sha256": "0fee1f7e07de5687b2a3f1c7778b9b644d86fc140ebff31268d6c3d36b49491e",
+    "left_pcm_bytes": 82729248,
+    "right_pcm_bytes": 82729248,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16",
+          "side_data_list": [
+            {}
+          ]
+        }
+      ],
+      "format": {
+        "tags": {
+          "REPLAYGAIN_TRACK_GAIN": "-7.64 dB",
+          "REPLAYGAIN_TRACK_PEAK": "0.962646"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "华哉有夏·贰",
+          "album_artist": "洛天依/乐正绫/言和/乐正龙牙",
+          "ARTIST": "乐正龙牙",
+          "COMPOSER": "乌龟Sui",
+          "DATE": "2021/2/11",
+          "disc": "1",
+          "GENRE": "VOCALOID",
+          "TITLE": "江雪寒",
+          "DISCTOTAL": "1",
+          "TRACKTOTAL": "8",
+          "track": "6",
+          "WM/MCDI": "8+96+40A5+7BE6+C69C+103BE+15211+196C4+1E55C+22902"
+        }
+      }
+    }
+  },
+  {
+    "group": "summer",
+    "alignment": 7,
+    "left": {
+      "album_id": "al-00997a7da1",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": null,
+      "song_count": 8,
+      "duration": 1885,
+      "album_size": 217425187,
+      "album_cover": null,
+      "master_id": "sm-923bb5590f",
+      "title": "东风歌",
+      "track": 7,
+      "disc": null,
+      "artist_id": "ar-2d09b2a3d2",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-mirror-39cb820bbd744d97",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 268,
+      "instance_size": 34185738,
+      "storage_object_id": "obj_742b22cc0ff87d6c",
+      "physical_key": "objects/obj_742b22cc0ff87d6c.flac",
+      "etag": "7dd300b90def3279c65984a24461c0c8",
+      "entry_id": "se-93d8576724e040c4beb1371c4db3d923",
+      "path": "华哉有夏·贰/07 东风歌.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-2dd78c6e22",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": 2021,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 220173793,
+      "album_cover": null,
+      "master_id": "sm-upload-66bfc360-b75",
+      "title": "东风歌",
+      "track": 7,
+      "disc": 1,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-c9b7857a27",
+      "master_cover": null,
+      "instance_id": "si-upload-163032eb-531",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 268,
+      "instance_size": 34505219,
+      "storage_object_id": "obj_835ef73fa99503f2",
+      "physical_key": "objects/obj_835ef73fa99503f2.flac",
+      "etag": null,
+      "entry_id": "se-7dd902e1f2634193bf647362cf6f77cc",
+      "path": "华哉有夏 ·贰/flac/07 东风歌.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "57d4eafdebec72991d2a61d4e3c75d994399e1e298dfcf45d02a8ba9e83edf9c",
+    "right_pcm_sha256": "107ef7bb7b9134a3d48ef951c41749e4200ead199d340eea370245c2f769a040",
+    "left_pcm_bytes": 94644480,
+    "right_pcm_bytes": 94644480,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16",
+          "side_data_list": [
+            {}
+          ]
+        }
+      ],
+      "format": {
+        "tags": {
+          "REPLAYGAIN_TRACK_GAIN": "-6.23 dB",
+          "REPLAYGAIN_TRACK_PEAK": "0.903931"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "华哉有夏·贰",
+          "album_artist": "洛天依/乐正绫/言和/乐正龙牙",
+          "ARTIST": "洛天依",
+          "COMPOSER": "格利特、CS",
+          "DATE": "2021/2/11",
+          "disc": "1",
+          "GENRE": "VOCALOID",
+          "TITLE": "东风歌",
+          "DISCTOTAL": "1",
+          "TRACKTOTAL": "8",
+          "track": "7",
+          "WM/MCDI": "8+96+40A5+7BE6+C69C+103BE+15211+196C4+1E55C+22902"
+        }
+      }
+    }
+  },
+  {
+    "group": "summer",
+    "alignment": 8,
+    "left": {
+      "album_id": "al-00997a7da1",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": null,
+      "song_count": 8,
+      "duration": 1885,
+      "album_size": 217425187,
+      "album_cover": null,
+      "master_id": "sm-2e32fc19be",
+      "title": "梦华叹",
+      "track": 8,
+      "disc": null,
+      "artist_id": "ar-2d09b2a3d2",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-mirror-caa55d81909d4266",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 231,
+      "instance_size": 26233104,
+      "storage_object_id": "obj_38da978d87545b07",
+      "physical_key": "objects/obj_38da978d87545b07.flac",
+      "etag": "317b9fa3ab129db51acc0b313055ca87",
+      "entry_id": "se-d2be8b8143504bd88374e3dfdcff7fa6",
+      "path": "华哉有夏·贰/08 梦华叹.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-2dd78c6e22",
+      "name": "华哉有夏·贰",
+      "sort_name": "华哉有夏·贰",
+      "year": 2021,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 220173793,
+      "album_cover": null,
+      "master_id": "sm-upload-1a1ad730-dfe",
+      "title": "梦华叹",
+      "track": 8,
+      "disc": 1,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-c9b7857a27",
+      "master_cover": null,
+      "instance_id": "si-upload-f9df0948-1ea",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 231,
+      "instance_size": 26575902,
+      "storage_object_id": "obj_81c82df57336b308",
+      "physical_key": "objects/obj_81c82df57336b308.flac",
+      "etag": null,
+      "entry_id": "se-6b58542eae40448b99d1cd59ca3292b3",
+      "path": "华哉有夏 ·贰/flac/08 梦华叹.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "023582775fe79965c43e975aa854f94521d0df0ac6cca82ae5a6aa0b8ece40d0",
+    "right_pcm_sha256": "df943a2ec949a1b3f15ad33b622f8b8da00fab6d674501f3153e23671d39dcc3",
+    "left_pcm_bytes": 81463872,
+    "right_pcm_bytes": 81459168,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16",
+          "side_data_list": [
+            {}
+          ]
+        }
+      ],
+      "format": {
+        "tags": {
+          "REPLAYGAIN_TRACK_GAIN": "-6.50 dB",
+          "REPLAYGAIN_TRACK_PEAK": "0.964325"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "华哉有夏·贰",
+          "album_artist": "洛天依/乐正绫/言和/乐正龙牙",
+          "ARTIST": "洛天依",
+          "COMPOSER": "Litterzy",
+          "DATE": "2021/2/11",
+          "disc": "1",
+          "GENRE": "VOCALOID",
+          "TITLE": "梦华叹",
+          "DISCTOTAL": "1",
+          "TRACKTOTAL": "8",
+          "track": "8",
+          "WM/MCDI": "8+96+40A5+7BE6+C69C+103BE+15211+196C4+1E55C+22902"
+        }
+      }
+    }
+  },
+  {
+    "group": "luo",
+    "alignment": 1,
+    "left": {
+      "album_id": "al-2ea8eb469a",
+      "name": "洛 LUO",
+      "sort_name": "洛 luo",
+      "year": null,
+      "song_count": 5,
+      "duration": 0,
+      "album_size": 365294974,
+      "album_cover": "covers/al-2ea8eb469a",
+      "master_id": "sm-upload-84917d64-d35",
+      "title": "登陆宇宙",
+      "track": 1,
+      "disc": null,
+      "artist_id": "ar-277c7b9935",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-18d8497a-5bc",
+      "suffix": "flac",
+      "sample_rate": 96000,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 201,
+      "instance_size": 81463774,
+      "storage_object_id": "obj_c9777fa4b9db35a3",
+      "physical_key": "objects/obj_c9777fa4b9db35a3.flac",
+      "etag": "9f25d80b21f3cf1c7ba0059f9303ac42",
+      "entry_id": "se-f13dcd530c0b434484084c0bcea4212f",
+      "path": "洛 LUO/洛天依Official - 登陆宇宙.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-9180eaf495",
+      "name": "洛 LUO",
+      "sort_name": "洛 luo",
+      "year": 2023,
+      "song_count": 5,
+      "duration": 0,
+      "album_size": 122832856,
+      "album_cover": null,
+      "master_id": "sm-upload-160b7a1c-94f",
+      "title": "登陆宇宙",
+      "track": 1,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-8f6ec419-891",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 201,
+      "instance_size": 27723747,
+      "storage_object_id": "obj_58387399bcaa6233",
+      "physical_key": "objects/obj_58387399bcaa6233.flac",
+      "etag": "473b464ceabfa539f0681d020b22d98d",
+      "entry_id": "se-4ec0a9aecb8a431c8a48b3ab930d4b9d",
+      "path": "洛 LUO/flac/洛天依 - 登陆宇宙.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "bc1f004362edec4ce168d231e76036bddba4b45ca3b1933331c4e1b398c40c46",
+    "right_pcm_sha256": "dbf50645727419597f127c1b622ca72d63d395229a7ec14bfe05ced3905626e7",
+    "left_pcm_bytes": 154227200,
+    "right_pcm_bytes": 70848120,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "96000",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "洛 LUO",
+          "ARTIST": "洛天依Official",
+          "comment": "163 key(Don't modify):cEgtqHxwpdRKcBCRPBlPktlHhmrTcizixpMvRszN1/s/wY2Q7bNMgHtdbjRWMo+N5Fh62qF41enMTw3ftxyuQ/Z7CUr+nlHiwsuSsmVqxtfLnGd5gzz7dXrU8omaaAUp6yhsG9cM2jVNRrx3ZcrrRs4Vma710c/dwtFJBtYOqWEryxzfetkDpqnlQ4GIbqrU63vSuK13Xflp6i7gf/q/5853jSDvac8MUcz3GfdTFDv8AxG2gucDVVoXft7FpVZQ9sIFmP4CT5rjhqOssq3AfTu2PrlLJUnuD2Q1ckC8VJF40R04hm32+C8Bg23xC+24x6u7KUs7wWA/iq7x0MuPtl1J8xsxMw2pWAUKE2vkTMDvlna0L9h0I8ZbzoYvcU96oTjAoVoP2zAT4vSBto7JSNbkvZEJyTORO3npV898SQ1HTjaLr4W+lxW9WMLJKDRcXszrSmbUbRv4F/rMhy4XQc5gpv0dmRlkQ4u21wWbX8//uoaH9yMlqXfiHtVteK4H0/1lCzb7mK9Dpx7uEpIrFA==",
+          "ENCODER": "Lavf58.45.100",
+          "TITLE": "登陆宇宙",
+          "track": "1"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "track": "1",
+          "TITLE": "登陆宇宙",
+          "ARTIST": "洛天依",
+          "album_artist": "洛天依",
+          "ALBUM": "洛 LUO",
+          "DATE": "2023",
+          "GENRE": "Miscellaneous",
+          "COMPOSER": "Max Lee"
+        }
+      }
+    }
+  },
+  {
+    "group": "luo",
+    "alignment": 2,
+    "left": {
+      "album_id": "al-2ea8eb469a",
+      "name": "洛 LUO",
+      "sort_name": "洛 luo",
+      "year": null,
+      "song_count": 5,
+      "duration": 0,
+      "album_size": 365294974,
+      "album_cover": "covers/al-2ea8eb469a",
+      "master_id": "sm-upload-571b21b2-991",
+      "title": "蝶变",
+      "track": 2,
+      "disc": null,
+      "artist_id": "ar-277c7b9935",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-0b4fb128-ae1",
+      "suffix": "flac",
+      "sample_rate": 96000,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 182,
+      "instance_size": 69217516,
+      "storage_object_id": "obj_b399a98cdc7e7c33",
+      "physical_key": "objects/obj_b399a98cdc7e7c33.flac",
+      "etag": "163cf8b78242e7c7102e6c97ced37981",
+      "entry_id": "se-bcb81e50903640feba77005fecd18b2d",
+      "path": "洛 LUO/洛天依Official - 蝶变.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-9180eaf495",
+      "name": "洛 LUO",
+      "sort_name": "洛 luo",
+      "year": 2023,
+      "song_count": 5,
+      "duration": 0,
+      "album_size": 122832856,
+      "album_cover": null,
+      "master_id": "sm-upload-8b788f47-576",
+      "title": "蝶变",
+      "track": 2,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-113ea5d7-945",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 182,
+      "instance_size": 23290677,
+      "storage_object_id": "obj_ca2e65977ec7efe3",
+      "physical_key": "objects/obj_ca2e65977ec7efe3.flac",
+      "etag": "c532e3d9a466c4de4374025d08e8942e",
+      "entry_id": "se-4c4052ce42374703a9833dd6bf0f7955",
+      "path": "洛 LUO/flac/洛天依 - 蝶变.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "71bd0f50ff97cfaffb7e0c976726423d3a1748ffff03e55b99d394680884d753",
+    "right_pcm_sha256": "fc9cadbc3cec0498805575a585e3eb927d1c80b160a364b25d42f7313d8d4c59",
+    "left_pcm_bytes": 139956384,
+    "right_pcm_bytes": 64292464,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "96000",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "洛 LUO",
+          "ARTIST": "洛天依Official",
+          "comment": "163 key(Don't modify):cEgtqHxwpdRKcBCRPBlPktlHhmrTcizixpMvRszN1/sSzVLLhZomWqT8xsrX83kfd6R5bhyhBbn+CAtr3/ShNF/ib7vTEq+qXp6TTR6hM6nzTs3J5P5r6OpWgIJhaJ5OpgjFBIxYCk+qWWaW1oexbzf40+msfo1gt1rCeCbSf31LmuHV6TpfOhRd3ARUpq6p151zRm1FiblHwk0XpJ8MaHOjjRCi4xiRaqFiE4InKM4oOzfF7tuMx4fUKeZndxDJEvxtt2kHJomnjRbOABUArGmg4c5A9a3KM5riJ1hqgrpalW1YNu/6KDAkg3EOJ4CxZbJ+ETMHsTOGp77TxOY2T2ZSKc/+NzIKwNz13g58NHXbEOSZhg0hiACU0WsXAl6bxOrbkx7XNUuF7fy8D7eg0PfXs41uq/gd5iBF1TN4+9aYbe27WovLXG4uNtZItggCOl+wh2uD43Qc1DhHIvTaS73UqiOrP2ELBv2UQAH8vo3pjBwyc9avaOrd10VsncqCLTuB7kj/EzcJ0bNAyUwH6A==",
+          "ENCODER": "Lavf58.45.100",
+          "TITLE": "蝶变",
+          "track": "2"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "track": "2",
+          "TITLE": "蝶变",
+          "ARTIST": "洛天依",
+          "album_artist": "洛天依",
+          "ALBUM": "洛 LUO",
+          "DATE": "2023",
+          "GENRE": "Miscellaneous",
+          "COMPOSER": "Richelle Alleyne、X Li、Paul Kratter、Hunter Bennett Ney、LAAMP Music"
+        }
+      }
+    }
+  },
+  {
+    "group": "luo",
+    "alignment": 3,
+    "left": {
+      "album_id": "al-2ea8eb469a",
+      "name": "洛 LUO",
+      "sort_name": "洛 luo",
+      "year": null,
+      "song_count": 5,
+      "duration": 0,
+      "album_size": 365294974,
+      "album_cover": "covers/al-2ea8eb469a",
+      "master_id": "sm-upload-dc005533-ce7",
+      "title": "山妖",
+      "track": 3,
+      "disc": null,
+      "artist_id": "ar-277c7b9935",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-bb2e654b-30c",
+      "suffix": "flac",
+      "sample_rate": 96000,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 170,
+      "instance_size": 63266807,
+      "storage_object_id": "obj_84c5d13057fabedc",
+      "physical_key": "objects/obj_84c5d13057fabedc.flac",
+      "etag": "7c45812ebb290c461c5d3d4614dd09bd",
+      "entry_id": "se-b78f14fce0194f10b5222d72659ec886",
+      "path": "洛 LUO/洛天依Official - 山妖.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-9180eaf495",
+      "name": "洛 LUO",
+      "sort_name": "洛 luo",
+      "year": 2023,
+      "song_count": 5,
+      "duration": 0,
+      "album_size": 122832856,
+      "album_cover": null,
+      "master_id": "sm-upload-d71c407c-f1d",
+      "title": "山妖",
+      "track": 3,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-c2525453-61f",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 170,
+      "instance_size": 20908450,
+      "storage_object_id": "obj_bccc4830c7bc72cc",
+      "physical_key": "objects/obj_bccc4830c7bc72cc.flac",
+      "etag": "e2132612b6d7c412097f149226fa38f5",
+      "entry_id": "se-80cc6001131d4c7b95a0ef4b4e1c32aa",
+      "path": "洛 LUO/flac/洛天依 - 山妖.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "b49f0611a9113c4cdd59e5661efd4b697aa784c1d9055a9b36636fc1eb1adfdc",
+    "right_pcm_sha256": "ad417841422c3f301494df47be6277ceea7bb9714bde1f52cf09fd4c34801ac7",
+    "left_pcm_bytes": 130324288,
+    "right_pcm_bytes": 59867720,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "96000",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "洛 LUO",
+          "ARTIST": "洛天依Official",
+          "comment": "163 key(Don't modify):cEgtqHxwpdRKcBCRPBlPktlHhmrTcizixpMvRszN1/umpRJAvdreZ59I1qa4Dqt9/OuB370F6oZGXSgARu+TYF/ib7vTEq+qXp6TTR6hM6nzTs3J5P5r6OpWgIJhaJ5OpgjFBIxYCk+qWWaW1oexbzf40+msfo1gt1rCeCbSf31LmuHV6TpfOhRd3ARUpq6p151zRm1FiblHwk0XpJ8MaHOjjRCi4xiRaqFiE4InKM4oOzfF7tuMx4fUKeZndxDJEvxtt2kHJomnjRbOABUArGmg4c5A9a3KM5riJ1hqgrpalW1YNu/6KDAkg3EOJ4CxZbJ+ETMHsTOGp77TxOY2T2ZSKc/+NzIKwNz13g58NHWzmPD3STbx5FEdE/1SsGhOay2DOL7dlzbBZ3jVAvyFC2kbhfcLkuH7kFcRF46a9P/jAIiUFRdgZHu1d0NSZNwODniEkU01QkP98Yqk39QNloJ07/e4VjbCfZ/xwRBjpRXUK7oHVt6FICLvqZ1CRKwc",
+          "ENCODER": "Lavf58.45.100",
+          "TITLE": "山妖",
+          "track": "3"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "track": "3",
+          "TITLE": "山妖",
+          "ARTIST": "洛天依",
+          "album_artist": "洛天依",
+          "ALBUM": "洛 LUO",
+          "DATE": "2023",
+          "GENRE": "Miscellaneous",
+          "COMPOSER": "王樾安"
+        }
+      }
+    }
+  },
+  {
+    "group": "luo",
+    "alignment": 4,
+    "left": {
+      "album_id": "al-2ea8eb469a",
+      "name": "洛 LUO",
+      "sort_name": "洛 luo",
+      "year": null,
+      "song_count": 5,
+      "duration": 0,
+      "album_size": 365294974,
+      "album_cover": "covers/al-2ea8eb469a",
+      "master_id": "sm-upload-8996c20d-496",
+      "title": "粉色夕阳",
+      "track": 4,
+      "disc": null,
+      "artist_id": "ar-277c7b9935",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-a35f08fb-b28",
+      "suffix": "flac",
+      "sample_rate": 96000,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 178,
+      "instance_size": 72037227,
+      "storage_object_id": "obj_601ebb56d36cf0b7",
+      "physical_key": "objects/obj_601ebb56d36cf0b7.flac",
+      "etag": "7f88439c81c8ef7f2ccf87baea9bb335",
+      "entry_id": "se-34dea9cad2b84444a08c0690ef6d4fbb",
+      "path": "洛 LUO/洛天依Official - 粉色夕阳.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-9180eaf495",
+      "name": "洛 LUO",
+      "sort_name": "洛 luo",
+      "year": 2023,
+      "song_count": 5,
+      "duration": 0,
+      "album_size": 122832856,
+      "album_cover": null,
+      "master_id": "sm-upload-0bfd7e5f-125",
+      "title": "粉色夕阳",
+      "track": 4,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-7cbc10c9-350",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 178,
+      "instance_size": 24461067,
+      "storage_object_id": "obj_d74bcdf15b92d4e7",
+      "physical_key": "objects/obj_d74bcdf15b92d4e7.flac",
+      "etag": "d9aac996170bb7ecabbc34949e2068b4",
+      "entry_id": "se-2162489600b0417c976f26412f88e007",
+      "path": "洛 LUO/flac/洛天依 - 粉色夕阳.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "1b0d02ae91682275ba0a4c58d8a19ecd4a178b60dd3ba9a4be01970df28a6840",
+    "right_pcm_sha256": "edbee6067519d487e0788fd6bddbef38bde26c76a7dcb91fb5f0fea9af760018",
+    "left_pcm_bytes": 136558256,
+    "right_pcm_bytes": 62731448,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "96000",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "洛 LUO",
+          "ARTIST": "洛天依Official",
+          "comment": "163 key(Don't modify):cEgtqHxwpdRKcBCRPBlPktlHhmrTcizixpMvRszN1/sD7suy5cmg1+HLvCu7T6R5MXVVdyHAkAftlGYIbhcyWrjhfAmORHrn5d4nQqLPqY3LnGd5gzz7dXrU8omaaAUp6yhsG9cM2jVNRrx3ZcrrRs4Vma710c/dwtFJBtYOqWEryxzfetkDpqnlQ4GIbqrU63vSuK13Xflp6i7gf/q/5853jSDvac8MUcz3GfdTFDv8AxG2gucDVVoXft7FpVZQ9sIFmP4CT5rjhqOssq3AfTu2PrlLJUnuD2Q1ckC8VJF40R04hm32+C8Bg23xC+24x6u7KUs7wWA/iq7x0MuPtl1J8xsxMw2pWAUKE2vkTMAZEwgIIiRxB56E4fPIdSySj206FL5Km7A82J/HwT2YHAOd+AHHVNmXQW8Zibmyf39A5ICNYKfvhHbkubSu5ZWm8ZhcYNAUIWuNJEjiXDyiUHq496Uu0dN/lsM9HFlfGgBtneppPuY6Gu6Xny5ZzrUZEgOxWdC+1SCE2rdmqcJ+TA==",
+          "ENCODER": "Lavf58.45.100",
+          "TITLE": "粉色夕阳",
+          "track": "4"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "track": "4",
+          "TITLE": "粉色夕阳",
+          "ARTIST": "洛天依",
+          "album_artist": "洛天依",
+          "ALBUM": "洛 LUO",
+          "DATE": "2023",
+          "GENRE": "Miscellaneous",
+          "COMPOSER": "Shogo Hataya"
+        }
+      }
+    }
+  },
+  {
+    "group": "luo",
+    "alignment": 5,
+    "left": {
+      "album_id": "al-2ea8eb469a",
+      "name": "洛 LUO",
+      "sort_name": "洛 luo",
+      "year": null,
+      "song_count": 5,
+      "duration": 0,
+      "album_size": 365294974,
+      "album_cover": "covers/al-2ea8eb469a",
+      "master_id": "sm-upload-8be423b9-b45",
+      "title": "记不完的名字",
+      "track": 5,
+      "disc": null,
+      "artist_id": "ar-277c7b9935",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-0a7450c9-6ef",
+      "suffix": "flac",
+      "sample_rate": 96000,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 199,
+      "instance_size": 79309650,
+      "storage_object_id": "obj_aae3834c730b7232",
+      "physical_key": "objects/obj_aae3834c730b7232.flac",
+      "etag": "84819a5a58917374851297aa11d31bbf",
+      "entry_id": "se-c43eae86e9fb47159a1a63ded5898bd4",
+      "path": "洛 LUO/洛天依Official - 记不完的名字.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-9180eaf495",
+      "name": "洛 LUO",
+      "sort_name": "洛 luo",
+      "year": 2023,
+      "song_count": 5,
+      "duration": 0,
+      "album_size": 122832856,
+      "album_cover": null,
+      "master_id": "sm-upload-757a759e-5f9",
+      "title": "记不完的名字",
+      "track": 5,
+      "disc": null,
+      "artist_id": "ar-2b4aeae2d9",
+      "album_artist_id": "ar-2b4aeae2d9",
+      "master_cover": null,
+      "instance_id": "si-upload-f2eb8cef-d8d",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 199,
+      "instance_size": 26448915,
+      "storage_object_id": "obj_e5fe1272d4d67162",
+      "physical_key": "objects/obj_e5fe1272d4d67162.flac",
+      "etag": "c41accd187ded0a2a8159aa4a0b87fa7",
+      "entry_id": "se-6e6e34a05774470ba0e692e0c140cd4d",
+      "path": "洛 LUO/flac/洛天依 - 记不完的名字.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "22733e7119439308c614438c5126208e81555df7da40622c35978d22553c8a44",
+    "right_pcm_sha256": "92bb95ec90690fbd135a7ac06987e2c0af4e7c156c72785469fb3fab4b70a765",
+    "left_pcm_bytes": 152877168,
+    "right_pcm_bytes": 70227952,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "96000",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ALBUM": "洛 LUO",
+          "ARTIST": "洛天依Official",
+          "comment": "163 key(Don't modify):cEgtqHxwpdRKcBCRPBlPktlHhmrTcizixpMvRszN1/sm5VCRN37rQCfc3OfFoKL7RPeRhOMeGcm/HzI/U5tzDA0rJcd7yPIKcIvZJ5vjfBF/YiZDEm8FRvZKkP76L0TqHw047/l2d3GeVqKIcn1G6JJCEkwNlOk5fj+IdWLg2G7ndtVysDwvmJPDTNE1bjZsd2DoHCPoUK+gTqfaCTA4lxvIuDxyTqVIn9BCFB3JlUzpCbk3++MSzjLfK5H55lZmIIwjZZtLU6vBdG7IlDjfWcKsrog1ha5toJ3VOWsI7ZNJ778aCEXqo69Xib5SaPIgNsK+ClQr/TSfYYjdtU9tX94zYhRXCepYZ1vBghrka64MAzs2679XAYpjPs/8WEd4i3NrAYv12x3F0q/4BaKc8687UcY+tDiUbJLbq1bv3vNAByextySV8aCR9cPwSZXBrxoFxkt5xTUQBOU0/Ik/iEIb8vh9twDGaTAMgvZlmmT3mlS/6AipRR/Fx490HPJZ/xFBlJlkwH80OJ4WNBGvsQ==",
+          "ENCODER": "Lavf58.45.100",
+          "TITLE": "记不完的名字",
+          "track": "5"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "track": "5",
+          "TITLE": "记不完的名字",
+          "ARTIST": "洛天依",
+          "album_artist": "洛天依",
+          "ALBUM": "洛 LUO",
+          "DATE": "2023",
+          "GENRE": "Miscellaneous",
+          "COMPOSER": "Takaaki Utsumi"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "10001",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-ccefe138-9eb",
+      "title": "10001",
+      "track": 8,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-cd887e2f-cfb",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 212,
+      "instance_size": 46510754,
+      "storage_object_id": "obj_d5e09528a86a1c6e",
+      "physical_key": "objects/obj_d5e09528a86a1c6e.flac",
+      "etag": "9eda920ffa96326c558811866f06fdaf",
+      "entry_id": "se-c92ab2a769f34ebd8e79c01406da19df",
+      "path": "无事发生/10001.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-cedd9e97-583",
+      "title": "10001 伴奏",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-841b39e1-13f",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 212,
+      "instance_size": 44897275,
+      "storage_object_id": "obj_e538885599cc03b4",
+      "physical_key": "objects/obj_e538885599cc03b4.flac",
+      "etag": "b37d1b0d106ef0d6a9d42b4486683881",
+      "entry_id": "se-0047a412c2a44220a805af6dcf1d75b8",
+      "path": "三无Marblue 无事发生/三无MarBlue - 10001 伴奏.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "7dd4ff245f6c4c0c5b1e95b0d1c1dee6405f1d691434a4fb4ac526364e02ab1d",
+    "right_pcm_sha256": "8646a584773d934707d7bde25d366b148cf0db246ad4759ca934d3e9203170ec",
+    "left_pcm_bytes": 74925312,
+    "right_pcm_bytes": 74925312,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "10001",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "8",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "10001 伴奏",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:00.000] 作词 : 蒸鱼\n[00:01.000] 作曲 : 蒸鱼/Yida\n[00:02.000] 编曲 : 三无MarBlue\n[00:05.566]就像天才和傻子、魔鬼和天使\n[00:13.278]笑与泪也是须臾毫厘的事\n[00:20.177]与三天后的英仙座流星起誓\n[00:26.652]等来落空的“如期而至”\n[00:30.662]如在嗜甜如命时的戒糖指示\n[00:34.064]在无法夜视时 黑暗中行驶\n[00:40.991]来不及悲伤 来不及细想 只是不愿再听往事回响\n[00:47.985]来不及躲避的 不过是人群天光\n[00:55.163]一万次悲伤 一万次忍想 却一万次重蹈当时模样\n[01:02.326]一万零一次地 给自己戴上镣铐\n[01:09.849]\n[01:11.614]10001\n[01:13.421]作词：蒸鱼\n[01:15.167]作曲：蒸鱼/Yida\n[01:16.933]编曲：Yida\n[01:18.665]\n[01:23.913]就像蛊惑和赞颂、呓语和写诗\n[01:31.193]你我并存是不可思议的事\n[01:38.426]停留于悲伤之地 便只是呼吸\n[01:44.834]踩在薄冰 却绝口不提\n[01:48.793]淤泥深处的回忆 该怎么忘记\n[01:52.284]无声无息 无处可匿\n[01:59.305]来不及悲伤 来不及细想 只是不愿再听往事回响\n[02:06.286]来不及躲避的 不过是人群天光\n[02:13.422]一万次悲伤 一万次忍想 却一万次重蹈当时模样\n[02:20.505]一万零一次地 给自己戴上镣铐\n[02:56.286]来不及悲伤 来不及细想 只是不愿再听往事回响\n[03:03.131]来不及躲避的 不过是人群天光\n[03:10.247]一万次悲伤 一万次忍想 却一万次重蹈当时模样\n[03:17.371]一万零一次地\n[03:20.993]一万零一次地\n[03:24.611]一万零一次地\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "他守恒",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-d263a2f1-c53",
+      "title": "他守恒",
+      "track": 2,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-ec8406b9-985",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 223,
+      "instance_size": 48710763,
+      "storage_object_id": "obj_4f0df02ffb7dfb63",
+      "physical_key": "objects/obj_4f0df02ffb7dfb63.flac",
+      "etag": "f650871f5c207fab3b44a6b1d8979820",
+      "entry_id": "se-8d8f561e77e6443da5a531c2fbe12024",
+      "path": "无事发生/他守恒.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-1847ea2a-902",
+      "title": "他守恒",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-23eed6e7-971",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 223,
+      "instance_size": 30549308,
+      "storage_object_id": "obj_e357ff228daf812a",
+      "physical_key": "objects/obj_e357ff228daf812a.flac",
+      "etag": "1cf0161bb2b9268ef5a2201155017136",
+      "entry_id": "se-d47ba9f3851f426cb9e04f884c59f914",
+      "path": "三无Marblue 无事发生/三无MarBlue - 他守恒.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "ca413a7f1ff5e11df9b20d8c6a9363664f2fe47a909cc32874e54e259af073a7",
+    "right_pcm_sha256": "82c93442b64d19e07a7e5c5e964ac217b11ae2c984493d7d1241f7f89449dbe6",
+    "left_pcm_bytes": 78765640,
+    "right_pcm_bytes": 78765640,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "他守恒",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "2",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "他守恒",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:00.000] 作词 : 小驴\n[00:03.188]《他守恒》\n[00:05.941]作词：小驴\n[00:08.943]作曲：塔库\n[00:11.931]编曲：安念Lanny\n[00:14.939]演唱：三无Marblue\n[00:17.936]\n[00:26.934]你梦到坐在宇宙胸腔 星如风穿堂\n[00:33.198]四周冰冷如极地冻港 只眼泪滚烫\n[00:38.453]宇宙撤退所有狰狞声响 只他声音回荡\n[00:44.442]你看他消散 如星尘一样 却有什么亲吻你脸庞\n[00:50.690]怎么 他会 铺开成一团温柔的光\n[00:56.433]抓空 却又 落在 你肩膀\n[01:01.943]\n[01:02.184]他没有消失只是远航 在太空里永恒地飘荡\n[01:07.948]变成云包裹飞船气囊 拽着月光 从宇宙赶来 落在你手掌\n[01:14.688]抬头看 成千上万美丽生物是他\n[01:22.134]别怕 当你的树倒下 太空就开一朵花\n[01:28.145]\n[01:38.886]你开始对亿万颗星辰 都念念不忘\n[01:45.132]又或者哪次人类影像 是回信一张\n[01:50.388]爱是永恒生命此消彼长 纵然天隔两方\n[01:56.396]但我们体内 所有的能量 会循着爱的引力重装\n[02:02.648]没有 消亡 他会和你再次遇上\n[02:08.394]河床 花房 霞光 雨或浪\n[02:13.897]\n[02:14.143]他没有消失只是远航 在太空里永恒地飘荡\n[02:20.135]变成云包裹飞船气囊 拽着月光 从宇宙赶来 落在你手掌\n[02:26.890]抬头看 成千上万美丽星尘是他\n[02:34.080]别怕 当你的树倒下 太空就开一朵花\n[02:39.075]\n[02:50.586]他是在新生并未消亡 在你的目之所及寻访\n[02:56.082]伏在每颗星星的脊梁 透过气层 当你抬头时 遥远地相望\n[03:02.831]你知道 无人会像守卫永远能驻扎\n[03:10.223]别怕 当你的树倒下 太空就开一朵花\n[03:14.474]\n[03:14.973]你知道 人不会消陨爱不会坍塌\n[03:22.161]别怕 现在张开手看着 你正在触碰他\n[03:28.417]\n[03:31.181]和声：雾敛\n[03:34.421]混音：子弥/三无Marblue\n[03:37.165]母带：无机草莓\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "其实我不会潜水",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-8f6b0664-a29",
+      "title": "其实我不会潜水",
+      "track": 7,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-cef0cb25-b40",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 195,
+      "instance_size": 43121309,
+      "storage_object_id": "obj_ade851157264a4f6",
+      "physical_key": "objects/obj_ade851157264a4f6.flac",
+      "etag": "1a5c1e97865fd59abbe86f9b6c81fba0",
+      "entry_id": "se-e0e462f016d44179bf5260d12417133b",
+      "path": "无事发生/其实我不会潜水.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-de682ab7-3d9",
+      "title": "其实我不会潜水",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-905b5d8b-dc0",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 195,
+      "instance_size": 42406694,
+      "storage_object_id": "obj_ab8d67d72fdf1e2b",
+      "physical_key": "objects/obj_ab8d67d72fdf1e2b.flac",
+      "etag": "f3a9d131482ae73469f8cf3641ff09bb",
+      "entry_id": "se-984f667f957045b09a55852cce12aac7",
+      "path": "三无Marblue 无事发生/三无MarBlue - 其实我不会潜水.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "b3e7d605f8b67dd29349b17509016cf3cbeef6c905ed44aaf30dee3026a763bb",
+    "right_pcm_sha256": "5e7ffdfe62bc11dddafc67fdc00450b29a1d0f78d7ed861271f6a48bf7d0e8d7",
+    "left_pcm_bytes": 68743224,
+    "right_pcm_bytes": 68743224,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "其实我不会潜水",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "7",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "其实我不会潜水",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:00.000] 编曲 : 1AN孙毅然\n[00:05.062]《其实我不会潜水》\n[00:09.530]作词/作曲：KBShinya\n[00:14.186]编曲：1AN孙毅然\n[00:24.066]蓝色夏威夷 是什么滋味\n[00:27.618]疲乏于灯红酒绿的奔波 有点累\n[00:32.344]试过一次两公里的兜风 昏昏欲睡\n[00:37.165]发呆一杯咖啡 一场余晖 不知所谓\n[00:41.838]想 海滩限定的派对\n[00:44.104]还有 烟火散去的气味\n[00:46.434]夏日特饮一杯 夜幕之内 一场赴会\n[00:51.176]直到 天空中晨光熹微\n[00:53.442]数着 初夏透明的蝉蜕\n[00:55.812]走过盛夏时分 季节末尾 气泡破碎\n[01:00.659]在这些 梦之外 有什么借口可以替代\n[01:05.540]想潜入 深的海 却又害怕缠绕的海带\n[01:09.994]懦弱的 我的坏 那么多逃避的自白\n[01:15.096]但我不会潜水在所有人意料外\n[01:21.477]\n[01:38.763]咖啡马丁尼 是什么滋味\n[01:43.126]不停歇的工作阻断了萌芽 的暧昧\n[01:47.677]约过一起看电影的那位 也不想追\n[01:52.503]预设一次试水 一场烂醉 没有结尾\n[01:57.340]想 海滩限定的派对\n[01:59.385]还有 烟火散去的气味\n[02:01.779]夏日特饮一杯 夜幕之内 一场赴会\n[02:06.486]直到 天空中晨光熹微\n[02:08.808]数着 初夏透明的蝉蜕\n[02:11.164]直至盛夏时分 季节末尾 气泡破碎\n[02:18.223]季风从南吹至北\n[02:23.004]捎来海风咸味\n[02:25.943]夏天暌违已久后 终于回归\n[02:30.549]滴答滴答滴滴答 想要记忆溯回\n[02:35.013]在这些 梦之外 有什么借口可以替代\n[02:39.395]想潜入 深的海 却又害怕缠绕的海带\n[02:44.148]懦弱的 我的坏 那么多逃避的自白\n[02:49.147]但我不会潜水在所有人意料外\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "夏末与童年",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-f4d5723d-049",
+      "title": "夏末与童年",
+      "track": 10,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-fbe91ce9-39c",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 247,
+      "instance_size": 51709566,
+      "storage_object_id": "obj_19ba309968b63e86",
+      "physical_key": "objects/obj_19ba309968b63e86.flac",
+      "etag": "5aa314cdd464b27cfb0e218baf10b5d4",
+      "entry_id": "se-8876d5ab8b0a482d83dfa95b333c76d8",
+      "path": "无事发生/夏末与童年.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-b7386917-77c",
+      "title": "夏末与童年",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-efdbdc21-7c2",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 247,
+      "instance_size": 50924304,
+      "storage_object_id": "obj_af673c13a140c6d3",
+      "physical_key": "objects/obj_af673c13a140c6d3.flac",
+      "etag": "2219755b32e1c8af9f3e1af747dd1372",
+      "entry_id": "se-08186f80696f4ff69f0519c0e43ce52d",
+      "path": "三无Marblue 无事发生/三无MarBlue - 夏末与童年.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "8c28fdd6792ff74a51f7dcad5713652a5bd4ea437ed256e71ccacf8ce7116969",
+    "right_pcm_sha256": "9200022a9e8be3af67c8059879e96e8aafde095e9320a49852594e43d47feb18",
+    "left_pcm_bytes": 87202880,
+    "right_pcm_bytes": 87202880,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "夏末与童年",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "10",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ENCODER": "Lavf57.83.100",
+          "TITLE": "夏末与童年",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:01.928]蝉鸣不间断的夏天 晒烫开裂的路面\n[00:08.177]浇灌就会长大不任性的麦田\n[00:15.856]我们约在水电站边的板栗树下相见\n[00:21.865]一起去看暑假会到来的少年\n[00:27.612]\n[00:28.622]吹凉凉的风 无人的山野\n[00:32.618]遗失的风筝 找不回又寻不见\n[00:36.118]无法想象 它会流浪多远\n[00:41.118]\n[00:42.824]肆意挥霍的童年 偷藏在麦堆中拍下的旧照片\n[00:49.570]虚焦的脸 记忆里的情节\n[00:56.824]归家的一点小磕绊\n[00:59.587]赌气分道扬镳 又汇合在 岔路上的下雨天\n[01:06.067]转动着伞沿 想靠近你身边\n[01:11.823]说那一个少年 说我们的明天\n[01:18.828]说未到达的地点 一直到永远\n[01:27.761]\n[01:28.515]制作人：三无、moonik蛛蛛\n[01:29.507]作词：泠鸢yousa\n[01:30.259]作曲/编曲：moonik蛛蛛\n[01:31.009]演唱：三无Marblue\n[01:32.015]鼓: Danyal Ince\n[01:32.762]贝斯: Rafael Freitas\n[01:33.755]民俗小提琴: Bobby Bowlin\n[01:34.514]原声吉他: Jack Haigh\n[01:35.264]母带：无机草莓\n[01:36.269]混音：Rob Murray\n[01:37.010]\n[01:37.507]\n[01:39.763]远看起伏的地平线 收割殆尽的麦田\n[01:46.016]一望无际覆盖整个小小世界\n[01:51.759]\n[01:52.508]点灼人的篝火 延续这个季节\n[01:56.522]随意拨弄着它移不开双眼\n[02:00.259]错过送行那远走的少年\n[02:06.966]\n[02:08.903]蝴蝶飞往河对面 那是我们未开拓的未知地点\n[02:15.137]踟蹰不前 看它逐渐飞远\n[02:22.400]无法实现的小心愿\n[02:25.143]随着电缆线一段一段 延伸 向下一个终点\n[02:31.648]张开手心书写 写我们的纪念\n[02:37.645]写我们的不解 写彼此的赠言\n[02:44.410]持续了整个夏天 漫长的告别\n[02:51.643]\n[02:52.912]\n[03:18.786]肆意挥霍的童年 偷藏在麦堆中拍下的旧照片\n[03:25.531]虚焦的脸 记忆里的情节\n[03:32.790]归家的一点小磕绊\n[03:35.528]赌气分道扬镳 又汇合在 岔路上的下雨天\n[03:41.789]转动着伞沿 想靠近你身边\n[03:48.031]说那一个少年 说我们的明天\n[03:54.782]说未到达的地点 一直到永远\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "娘酒",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-20c84320-d9b",
+      "title": "娘酒",
+      "track": 11,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-b412d0af-8af",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 192,
+      "instance_size": 35282331,
+      "storage_object_id": "obj_a50c0f6c26d16a0d",
+      "physical_key": "objects/obj_a50c0f6c26d16a0d.flac",
+      "etag": "8f4e7800557f8dd702177c03abe7326a",
+      "entry_id": "se-94be703e837c4600b4193565706fcddc",
+      "path": "无事发生/娘酒.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-a4a209c5-83b",
+      "title": "娘酒",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-de0a0082-f55",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 192,
+      "instance_size": 21155494,
+      "storage_object_id": "obj_59e38ab343aaa51e",
+      "physical_key": "objects/obj_59e38ab343aaa51e.flac",
+      "etag": "5355d271d417b1c685e8494b80a6201b",
+      "entry_id": "se-1cf11f2de315410482c7a1d6fe5a7394",
+      "path": "三无Marblue 无事发生/三无MarBlue - 娘酒.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "5c42f8f3af709551f048d720642fbecd1cb98dd7028cbacae9b9c4e9de67336a",
+    "right_pcm_sha256": "e291df66cb3e8a807314f521a251889a3f8d5d8ec17e9c7d76dcda5c217051c2",
+    "left_pcm_bytes": 67681896,
+    "right_pcm_bytes": 67681896,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "娘酒",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "11",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "娘酒",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:03.234]车窗外 桂香飘过\n[00:06.670]恍惚间 回忆闪烁\n[00:09.768]怀念起瓮里娘酒 和远方阿婆\n[00:15.885]连不尽的坳坡 穿不完的院落\n[00:22.096]还有扒开了草丛 捉那清早闹腾的蝈蝈\n[00:28.509]邻家小鬼好耍 荷叶当了盔甲\n[00:31.599]拾那棍棒 呼呼咋咋\n[00:34.817]孙悟空 红孩儿 李哪吒 全是他\n[00:38.261]就缺白龙马\n[00:41.072]谁在招式比划 儿郎早已长大\n[00:44.194]安静太久 难免想家\n[00:47.829]偶尔也 做个梦 到天涯\n[00:50.251]才知最难忘是 白墙青瓦\n[00:56.799]\n[00:58.365]娘酒\n[01:00.059]作词：白奇\n[01:01.605]作曲：陈亦洺\n[01:03.180]编曲：李大白\n[01:04.790]演唱：三无Marblue\n[01:07.411]\n[01:09.911]习惯这 城市冷漠\n[01:12.934]倔强又 些许迷惑\n[01:16.103]有太多心底的话 想与人说说\n[01:22.126]噗噗响的灶火 喷喷香的茶果\n[01:28.386]还有放上土地公 才矮我半头的八仙桌\n[01:34.779]前头锣敲鼓打 后头吹着唢呐\n[01:37.942]男女老少 笑笑哈哈\n[01:41.064]迎财神 放炮仗 将晦气 都吓趴\n[01:44.583]芝麻要开花\n[01:47.409]晃眼春秋冬夏 姑娘早已长大\n[01:50.539]只剩乡愁 从未变化\n[01:54.021]寂寞了 也假装 很潇洒\n[01:56.513]却要咬口糍粑 满是牵挂\n[02:03.704]好想回到小时候 快乐得没烦忧\n[02:09.850]光脚丫靠着稻草人 数漫天星斗\n[02:16.147]日子总是慢慢地 慢慢地溜走\n[02:21.827]最初的美好也未变得陈旧\n[02:31.708]车窗外 桂香飘过\n[02:35.134]恍惚间 回忆闪烁\n[02:38.303]怀念起瓮里娘酒 和远方阿婆\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "歌乐天",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-ed01f948-fe0",
+      "title": "歌乐天",
+      "track": 1,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-d1435294-d81",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 294,
+      "instance_size": 64824306,
+      "storage_object_id": "obj_2b7613f53bdb3816",
+      "physical_key": "objects/obj_2b7613f53bdb3816.flac",
+      "etag": "3cc2fe4a2f98abf2fce54606b06c3e40",
+      "entry_id": "se-3118148c420f48128389451eebaa04f1",
+      "path": "无事发生/歌乐天.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-e2add4a5-e88",
+      "title": "歌乐天 伴奏",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-eaf443ff-ef2",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 295,
+      "instance_size": 61519989,
+      "storage_object_id": "obj_a739cddb8041c208",
+      "physical_key": "objects/obj_a739cddb8041c208.flac",
+      "etag": "94247b6935c6b212592aa45a435a3360",
+      "entry_id": "se-d80b90dd8fb64b7b874b3508cd42b43f",
+      "path": "三无Marblue 无事发生/三无MarBlue - 歌乐天 伴奏.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "14eb4f26c7e06a1c59bbd802181c7a55969a5dbe16dd12bd4916a23d8a9d8d98",
+    "right_pcm_sha256": "72bfdefd5e52f6dfe1de67ebb790b18c3518c2b7043d5866b51cb7c6d0b4c541",
+    "left_pcm_bytes": 103770712,
+    "right_pcm_bytes": 104035600,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "歌乐天",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "1",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ENCODER": "Lavf57.83.100",
+          "TITLE": "歌乐天 伴奏",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:00.000] 作词 : 黑金雨\n[00:00.957] 作曲 : 彦Jans\n[00:01.914]《歌乐天》\n[00:06.167]作词：黑金雨\n[00:10.416]作曲/编曲：彦Jans\n[00:15.117]演唱：三无Marblue\n[00:18.862]\n[00:19.361]किन्नरिय मम तण्हा\n[00:23.866]Kinnariya mama taṇhā\n[00:28.359]देवकञ्ञा\n[00:33.323]devakaññā\n[00:37.317]……\n[00:55.070]\n[00:57.321]荒漠中静寂的熔浆是爱慕的覆辙\n[01:02.081]等待谁重蹈这休眠的灼热\n[01:06.319]解析无果 程序勘不破\n[01:11.066]病毒运行般的魂不守舍\n[01:15.317]群星照耀着足尖上天魔\n[01:18.573]废土中重演炽白的氢核\n[01:22.078]明知那是虚无的光焰\n[01:26.337]像诗句中露水会坠落\n[01:30.317]也扑火\n[01:32.813]\n[01:35.063]不懂誓约的人工星座\n[01:39.814]太空玫瑰把芬芳消磨\n[01:44.579]我却像复古的飞蛾\n[01:48.069]妥协于焦渴 宿命的执着\n[01:52.817]\n[01:53.316]किन्नरिय मम तण्हा\n[01:55.313]（Kinnariya mama taṇhā）\n[01:57.322]已经来不及逃脱 舞步的迷惑\n[02:01.815]किन्नरिय मम तण्हा\n[02:04.066]（Kinnariya mama taṇhā）\n[02:06.319]虔诚地为你献上 魂魄或者我\n[02:13.271]\n[02:15.017]देवकञ्ञा\n[02:15.278]devakaññā\n[02:17.267]泡影也扑火\n[02:19.521]देवकञ्ञा\n[02:19.771]devakaññā\n[02:21.529]成灰也扑火\n[02:24.028]देवकञ्ञा\n[02:24.276]devakaññā\n[02:26.025]刹那也扑火\n[02:29.224]\n[02:32.983]言辞是多余的 递质被挥霍\n[02:37.477]荡漾眼波在神经肆意涂抹\n[02:41.970]裙角风沙把灵与肉都猎获\n[02:44.970]（形同虚设）\n[02:46.227]因你而生的记忆体的空壳\n[02:49.479]（过载森罗）\n[02:50.722]\n[02:52.728]不懂誓约的人工星座\n[02:57.223]太空玫瑰把芬芳消磨\n[03:01.719]我却像复古的飞蛾\n[03:05.471]妥协于焦渴 宿命的执着\n[03:09.983]\n[03:10.724]किन्नरिय मम तण्हा\n[03:12.982]（Kinnariya mama taṇhā）\n[03:15.222]已经来不及逃脱 舞步的迷惑\n[03:19.721]किन्नरिय मम तण्हा\n[03:21.730]（Kinnariya mama taṇhā）\n[03:23.987]虔诚地为你献上 魂魄或者我\n[03:29.724]\n[03:30.721]\n[03:31.720]\n[03:32.724]啊 就在这已干涸的湖泊\n[03:39.725]胭脂又成河\n[03:44.221]我乞求能沾染过你唇色\n[03:47.975]\n[03:50.933]理智陷落无法容错\n[03:53.171]（Error 无法容错）\n[03:55.180]一级命令中止观测\n[03:57.182]（Error中止观测）\n[03:58.680]\n[03:59.179]我却像冥顽的复古的飞蛾\n[04:03.185]妥协于焦渴 宿命的执着\n[04:07.172]\n[04:10.935]किन्नरिय मम तण्हा\n[04:12.930]（Kinnariya mama taṇhā）\n[04:15.173]已经来不及逃脱 舞步的迷惑\n[04:19.682]किन्नरिय मम तण्हा\n[04:21.680]（Kinnariya mama taṇhā）\n[04:23.932]虔诚地为你献上 魂魄或者我\n[04:47.826]\n[04:49.567]देवकञ्ञा\n[04:50.334]（devakaññā）\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "海风不懂",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-d232d2ff-ce9",
+      "title": "海风不懂",
+      "track": 6,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-d6f29174-e9a",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 189,
+      "instance_size": 40645852,
+      "storage_object_id": "obj_aeb24d222dd85d40",
+      "physical_key": "objects/obj_aeb24d222dd85d40.flac",
+      "etag": "d0ad66660c1412af2b1f965a558216d3",
+      "entry_id": "se-07a66b6bf7694ff3b9641af7922070fe",
+      "path": "无事发生/海风不懂.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-dbb7d8a7-fa6",
+      "title": "海风不懂 伴奏",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-9900f2a5-853",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 192,
+      "instance_size": 21908999,
+      "storage_object_id": "obj_ddbc7c1461caebc8",
+      "physical_key": "objects/obj_ddbc7c1461caebc8.flac",
+      "etag": "9d91a2498e254fa1a044ab3e49288709",
+      "entry_id": "se-efb0968727454a2eb8e3ae0adfd33a42",
+      "path": "三无Marblue 无事发生/三无MarBlue - 海风不懂 伴奏.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "d344a6901077f3301421eac0f1b1dd34f5a35b7342ea6ebc9eadfe4522770f79",
+    "right_pcm_sha256": "ad4aa57aad308cbe6925781fdd307910ea176c24e1fde381e8af936813f2fab8",
+    "left_pcm_bytes": 66549744,
+    "right_pcm_bytes": 67689888,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "海风不懂",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "6",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "海风不懂 伴奏",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:00.000] 作词 : 袖蓝\n[00:00.538] 作曲 : 芹菜猪肉大馄饨\n[00:01.076] 编曲 : 三无MarBlue\n[00:01.616]海风不懂\n[00:03.321]作词：袖蓝\n[00:07.022]作曲/编曲：大馄饨\n[00:13.509]是夕阳坠落 落入晚霞指缝\n[00:16.896]是晚霞闪躲 躲进暮色静默\n[00:20.678]海鸟穿梭在云朵 吵醒橘黄灯火\n[00:24.181]怎么吵不醒我 懒懒的还不想动\n[00:28.147]什么时候 转一圈 再一圈 墙上的时钟\n[00:31.441]今天也 一样没有什么不同\n[00:34.672]呆坐在窗边又开始 陷入孤单黑洞\n[00:38.021]哪里可以配送 再订购一个美梦\n[00:42.232]而此刻 的海风 温柔地拥抱着我\n[00:48.629]或许是恰好路过\n[00:51.805]只是海风却从来都不会懂\n[00:54.918]怎么悲伤 来得没理由\n[00:57.700]像洪水猛兽 无情吞噬着我\n[01:01.495]偏装作从容 扯出生硬笑容\n[01:05.223]眼泪却噙在眼中 模糊了视线的沉重\n[01:09.298]习惯了当一个观众\n[01:12.651]欣赏着他们的 欢乐的吵闹的喜悦的感动\n[01:16.101]始终是我 喝下酸涩划过喉咙的刺痛\n[01:19.394]独自沉溺其中 幸福的都好似梦\n[01:23.422]总有人 花几年只种一颗红豆\n[01:26.717]总有人 用一生换一次相逢\n[01:30.246]总是等结果 结果总落空\n[01:33.269]总是执着 执着却总成空\n[01:37.390]此刻的海风 温柔亲吻我\n[01:43.949]她不会停留 也不会懂 不会懂\n[01:50.033]怎么想念都 来得没理由\n[01:53.064]像潮水汹涌 无情把我浸透\n[01:56.600]偏装作从容 潇洒地挥挥手\n[02:00.315]眼泪却噙在眼中 模糊了视线的沉重\n[02:17.361]曾经是你是你是你 是你推我向前走\n[02:24.064]可现在 回过头 只剩我在原地驻守\n[02:31.026]怎么想念都 来得没理由\n[02:34.522]像潮水汹涌 无情把我浸透\n[02:38.207]偏装作从容 扯出生硬笑容\n[02:41.882]眼泪却噙在眼中 模糊了视线…\n[02:46.787]偏装作从容 潇洒地挥挥手\n[02:55.433]此刻吹来的海风 还是那么的温柔\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "瓦特城事件簿",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-4e517971-287",
+      "title": "瓦特城事件簿",
+      "track": 3,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-40d926f0-cbd",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 222,
+      "instance_size": 47889023,
+      "storage_object_id": "obj_8a600326693763b9",
+      "physical_key": "objects/obj_8a600326693763b9.flac",
+      "etag": "eceace2f89399d1ba61e938225bbdaa5",
+      "entry_id": "se-7b2d1c6a07bb41fba35202518e426909",
+      "path": "无事发生/瓦特城事件簿.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-ed879f7d-e22",
+      "title": "瓦特城事件簿",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-64092d64-a15",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 222,
+      "instance_size": 47100989,
+      "storage_object_id": "obj_fe3e41e7f4ada77e",
+      "physical_key": "objects/obj_fe3e41e7f4ada77e.flac",
+      "etag": "71100966d61dea72829c57b1f047c252",
+      "entry_id": "se-ebd5e547bb7744aeb952da8015f1ab84",
+      "path": "三无Marblue 无事发生/三无MarBlue - 瓦特城事件簿.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "b32a81a4c31947e38c179f3ab3b91c3352d784b9a64a675d6e4a70e6e0955b6c",
+    "right_pcm_sha256": "b98c6f6b51e5f03d23f4a2aad389c3ba00653fcb32c771eae77bd8a5762d052a",
+    "left_pcm_bytes": 78419104,
+    "right_pcm_bytes": 78419104,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "瓦特城事件簿",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "3",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "瓦特城事件簿",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:02.117]瓦特城事件簿\n[00:05.022]作词：白奇\n[00:08.545]作曲/编曲：PoKeR_扑克\n[00:14.268]瓦特城 九时九分 预设音乐 如期载存\n[00:17.707]他歪脑 手放脖子 瘫坐沙发 似有落枕\n[00:21.026]将灯光 调至恰好 然后搜索 社区新闻\n[00:24.276]关键词 先前锁定 没有结果 记录销痕\n[00:27.665]我分析 若干数字 变化趋势 得出结论\n[00:31.061]用那种 特别语调 反复诵读 格外安稳\n[00:34.404]可是他 昏昏欲沉 不置可否 态度冰冷\n[00:37.754]连还款日的提醒通知都 都懒得查看确认 懒得确认\n[00:47.789]是谁把咖啡乱倒 弄脏桌角\n[00:51.090]我唤起自动清扫 选择最效率轨道\n[00:54.341]那平日就不亲近 我的黑猫\n[00:57.704]尾巴也一晃一摇 玻璃窗拼命挠\n[01:01.087]今晚的室外温度 降幅不少\n[01:04.398]哪寄来圣诞礼物 不打招呼就送到\n[01:07.691]邻近的街巷传来 赞美歌谣\n[01:10.950]仿佛每个人都该幸福 没烦恼\n[01:13.722]天真到无可救药\n[01:17.132]\n[01:31.102]【时间线拨前】\n[01:55.920]瓦特城 零时零分 是谁赴约 轻轻敲门\n[01:59.374]很熟练 密码解锁 楼下闪过 红蓝警灯\n[02:02.738]她手套 打开礼盒 毛领外衣 遮挡转身\n[02:06.045]出门又 怕有遗漏 弯腰俯下 换去高跟\n[02:09.235]我观察 指定目标 光电脉冲 有条不紊\n[02:12.692]保单号 幺二零三 核实反馈 契合身份\n[02:16.020]房间内 哪双瞳孔 稍稍亮起 从没分寸\n[02:19.312]竟跳下缠住那女人气味 咪咪叫讨要温存 讨要温存\n[02:29.456]是谁在精心选挑 争分夺秒\n[02:32.622]期待有惊喜引爆 不自觉嘴角一笑\n[02:35.950]人类往往自以为 午夜美妙\n[02:39.353]甚至都不屑珍惜 我的殷勤讨好\n[02:42.658]我忠实守护的这 不大不小\n[02:45.912]全部性能都满足 百分百的可靠\n[02:49.305]要求标记存下的 缠绵拥抱\n[02:52.645]当然并非是谁在刻意 的炫耀\n[02:55.327]更多不过是技巧\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "石头歌",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-be6ec639-de6",
+      "title": "石头歌",
+      "track": 5,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-dec84fe8-499",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 201,
+      "instance_size": 41513121,
+      "storage_object_id": "obj_860a26003f21c151",
+      "physical_key": "objects/obj_860a26003f21c151.flac",
+      "etag": "3cd48ae8db6e9d8512556913af552e9b",
+      "entry_id": "se-65c74b8f8ee94184b1a661fa4a01ab55",
+      "path": "无事发生/石头歌.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-94a0ec06-e14",
+      "title": "石头歌",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-613b0dd0-eb7",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 200,
+      "instance_size": 25288895,
+      "storage_object_id": "obj_cfc1c7352734f158",
+      "physical_key": "objects/obj_cfc1c7352734f158.flac",
+      "etag": "e173d518a74a47ed0b8097f89338dc40",
+      "entry_id": "se-4ad0cf27911c4db0aeb7a92856f674f4",
+      "path": "三无Marblue 无事发生/三无MarBlue - 石头歌.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "a278d11b53407d8e259e1f8a6aaac10ce0011e9d42d37adf90628fe77dca2fb2",
+    "right_pcm_sha256": "385e8258f83081d164ccecd1e05becac92bb3ab69f17249c3c9563d4580ba2af",
+    "left_pcm_bytes": 70782168,
+    "right_pcm_bytes": 70562808,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "石头歌",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "5",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "石头歌",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:00.000] 作词 : ilem\n[00:01.000] 作曲 : ilem\n[00:02.000] 编曲 : ilem\n[00:09.684]\n[00:10.438]当时世界睁开双眼万类苏生\n[00:15.187]照耀一切只有我无动于衷\n[00:19.932]我听过我不歌颂我一动不动\n[00:25.195]因为我是石头\n[00:27.946]\n[00:29.451]当时太阳照耀木叶吹起山火\n[00:34.192]大暴雨洗刷脚印汇聚泥河\n[00:38.937]后来灰雪覆盖行踪又降下新冬\n[00:43.945]只有石头一动不动\n[00:47.436]\n[00:47.938]我见过太阳升太阳落\n[00:51.189]朋友们唱着歌 手挽手过山坡\n[00:55.939]有些带着伤痕回来\n[00:58.185]太阳落月亮升 旧血肉化成风\n[01:02.943]只有石头一动不动\n[01:06.691]\n[01:12.634]\n[01:27.128]当时太阳光芒破碎散成星空\n[01:31.877]大暴雨漱落银河降下火种\n[01:36.822]火种带来生命锻造镰刀和因果\n[01:41.567]在石头上轻轻地磨\n[01:45.088]\n[01:46.315]当时收获的夜晚点起篝火\n[01:51.081]他的故事隐去面孔成为传说\n[01:55.075]诗人坐在石头上把传说写成新的歌\n[02:00.584]都和上次并无不同\n[02:04.067]\n[02:04.581]再一次太阳升太阳落\n[02:07.817]她对他说吻我 他说比永久更久\n[02:12.324]有人带着伤痕回来\n[02:14.830]太阳落月亮升 旧血肉化成风\n[02:19.825]只有石头一动不动\n[02:23.829]再一次\n[02:25.075]再一次\n[02:26.327]再再一次太阳升太阳落\n[02:29.323]木叶吹起山火 暴雨洗刷泥河\n[02:34.323]只有风带着伤痕回来\n[02:36.581]太阳落月亮升 旧石头化成风\n[02:41.336]只有永久一动不动\n[02:46.557](啦啦啦啦啦啦）木叶吹起山火 暴雨洗刷泥河\n[02:52.120]只有风带着伤痕回来唉\n[03:01.000]只有永久一动不动（只有石头一动不动）\n[03:10.000]因为我是石头\n[03:12.501] 和声 : 三无\n[03:15.002] 人声编辑 : 三无\n[03:17.503] 混音 : 子弥\n[03:20.004] 母带 : 无机草莓\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "谶",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-03e3fa2f-da8",
+      "title": "谶",
+      "track": 4,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-948270bb-11b",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 200,
+      "instance_size": 43636574,
+      "storage_object_id": "obj_cd907ad67966956c",
+      "physical_key": "objects/obj_cd907ad67966956c.flac",
+      "etag": "42145e0b00b858eb2174b9d917fdf341",
+      "entry_id": "se-5829e4b9e4264aa4b62276a70da1bd15",
+      "path": "无事发生/谶.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-b1ca1463-1f2",
+      "title": "谶",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-a15bbded-890",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 200,
+      "instance_size": 43010838,
+      "storage_object_id": "obj_fddffcd272cfcf9d",
+      "physical_key": "objects/obj_fddffcd272cfcf9d.flac",
+      "etag": "ab02b18a04a25b06ac08923f791c1900",
+      "entry_id": "se-15befc0163f04b9c8da8850976745155",
+      "path": "三无Marblue 无事发生/三无MarBlue - 谶.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "293713514ec169077c1eb2e853b498d197d0030f00ac8205bb012242b6b00c93",
+    "right_pcm_sha256": "d89cd711d3c6d6fbb0e881d55776394a2cd888c9d81aa63824b428b593e62c83",
+    "left_pcm_bytes": 70400800,
+    "right_pcm_bytes": 70400800,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "谶",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "4",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "谶",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:04.599]谶\n[00:10.654]作词/作曲/编曲：JUSF周存\n[00:27.319]远行的旅人 欢迎来到 失落的遗迹\n[00:33.898]残缺的石壁 可曾记录 辉煌的事迹\n[00:39.651]我挑选的皇帝 铁蹄踏过 梦境中的冬季\n[00:46.088]用绝对的规则 搭建了躯体\n[00:53.504]你面对终末的恐惧 是我已警示的境遇\n[01:06.544]当思想安于被占据 我们注定在此相遇\n[01:32.603]任时间穿越 翻过数页 来到我面前\n[01:39.487]孤立在此处 空中楼阁 运转着不灭\n[01:45.130]我挑选的世界 一如昨夜 融化了文明的雪\n[01:51.428]唯一的承载者 迎接了塌陷\n[01:59.136]你面对终末的恐惧 是我已警示的境遇\n[02:11.779]当思想安于被占据 我们注定在此相遇\n[02:27.503]你面对终末的恐惧 构筑了永恒的定律\n[02:40.316]你尽可违背这神谕 却不可不信我谶语\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "nothing",
+    "alignment": "阿比拿铁",
+    "left": {
+      "album_id": "al-4c6df4d0bc",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": 2021,
+      "song_count": 11,
+      "duration": 0,
+      "album_size": 503288405,
+      "album_cover": "covers/al-4c6df4d0bc",
+      "master_id": "sm-upload-977cc6b7-225",
+      "title": "阿比拿铁",
+      "track": 9,
+      "disc": null,
+      "artist_id": "ar-7ab0690853",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-4f69c5b6-83a",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 190,
+      "instance_size": 39444806,
+      "storage_object_id": "obj_c63a26ec298e7ea2",
+      "physical_key": "objects/obj_c63a26ec298e7ea2.flac",
+      "etag": "cc934655fb381c42211f0fd447272cba",
+      "entry_id": "se-44624fe1b97c4cf98b723a59dc2588e3",
+      "path": "无事发生/阿比拿铁.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-8a0bee80b4",
+      "name": "无事发生",
+      "sort_name": "无事发生",
+      "year": null,
+      "song_count": 22,
+      "duration": 0,
+      "album_size": 853431137,
+      "album_cover": "covers/al-8a0bee80b4",
+      "master_id": "sm-upload-cabafdb9-a34",
+      "title": "阿比拿铁",
+      "track": null,
+      "disc": null,
+      "artist_id": "ar-5ee22cae7e",
+      "album_artist_id": null,
+      "master_cover": null,
+      "instance_id": "si-upload-9be2cb4c-f66",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 190,
+      "instance_size": 38612419,
+      "storage_object_id": "obj_95fe5489100ca36d",
+      "physical_key": "objects/obj_95fe5489100ca36d.flac",
+      "etag": "ac1c0a258bc3d32d79939a36ee607c8e",
+      "entry_id": "se-430d228f31a94e2d99701759a78e6014",
+      "path": "三无Marblue 无事发生/三无MarBlue - 阿比拿铁.flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "10e4ebebbe9154d6187904beaffc0bffb5108c744df63ad506e0c151cf9a488c",
+    "right_pcm_sha256": "501ac6e57a07243f7ad97bd5178d491fa8954b6b2744be6f08866994ea5c6ebe",
+    "left_pcm_bytes": 66957928,
+    "right_pcm_bytes": 66957928,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        }
+      ],
+      "format": {
+        "tags": {
+          "title": "阿比拿铁",
+          "date": "2021-09-19",
+          "comments": "@dizzylab \ndizzylab.net",
+          "track": "9",
+          "album": "无事发生",
+          "artist": "三无Marblue",
+          "encoder": "Lavf58.45.100"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "24"
+        },
+        {
+          "codec_name": "mjpeg",
+          "bits_per_raw_sample": "8"
+        }
+      ],
+      "format": {
+        "tags": {
+          "TITLE": "阿比拿铁",
+          "ARTIST": "三无MarBlue",
+          "ALBUM": "无事发生 ",
+          "LYRICS": "[00:00.000] 作词 : 三无MarBlue/Hanser\n[00:00.708] 作曲 : 三无MarBlue/KBShinya\n[00:01.416] 编曲 : Crazy Bucket 陈楒潼\n[00:02.125]阿比拿铁\n[00:03.775]作词：Hanser\n[00:05.412]作曲：KBShinya\n[00:06.805]编曲：Crazy Bucket\n[00:15.253]熟悉的房间 消磨了期待 依然\n[00:18.582]记得谁说过 有个东西叫大海\n[00:21.735]它们每天不停 翻滚打闹\n[00:24.936]我只在乎 那个人 哪天才来\n[00:28.049]\n[00:28.470]某天 ta走进这间小屋\n[00:31.334]脚步 到我面前就忽然停住\n[00:34.823]对上双目沉默 ta冷酷像特务\n[00:37.523]『“你好我叫马尔不录”』\n[00:38.359]好像是要通往马尔代夫！\n[00:40.874]\n[00:41.543]想要去尝一尝 吹在脸上咸咸味道\n[00:44.798]退潮后再跑到 沙滩上轻轻踩一脚\n[00:48.112]忽然触须向前 尾巴不自觉地上翘\n[00:51.350]只有树叶隔着纱窗摇\n[00:54.627]想要去看一看 海中落日有多灿烂\n[00:57.883]鱼虾们会不会 被浪花渐渐拍上岸\n[01:01.256]听见熟悉呼喊 低头还是这片地板\n[01:04.476]今早的罐头还剩一半\n[01:34.331]脚步踩得不深 浪花叠叠层层\n[01:37.292]被冲刷后一点不剩 就像无事发生\n[01:40.538]新鲜的地盘 只满意面朝大海\n[01:43.921]咖啡躲不过 还有个原住民在\n[01:47.186]单品和奶泡 般配得意外\n[01:50.318]只是每次拉花 都志在失败\n[01:53.704]不过 短短几日的相处\n[01:56.890]不能 深交至少也求个和睦\n[02:00.233]仅仅是经常在 屋里来回散步\n[02:03.618]不至于吓得像 挨了欺负\n[02:06.893]想要去尝一尝 吹在脸上咸咸味道\n[02:10.247]退潮后再找到 礁石边垒一座沙雕\n[02:13.568]忽然触须飘摇 不如策划一场逃跑\n[02:16.815]通向海边的路 自己找\n[02:19.974]想要去看一看 海中落日有多灿烂\n[02:23.340]鱼虾们会不会 被浪花一步拍上岸\n[02:26.669]Ta的叫声轻软 ta回应粘腻的呼喊\n[02:30.035]之后再也就 与我无关\n"
+        }
+      }
+    }
+  },
+  {
+    "group": "dream",
+    "alignment": 1,
+    "left": {
+      "album_id": "al-0bf1d619c1",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 246529211,
+      "album_cover": null,
+      "master_id": "sm-upload-1ed37245-00a",
+      "title": "夢見の森",
+      "track": 1,
+      "disc": 1,
+      "artist_id": "ar-90fee6b1d2",
+      "album_artist_id": "ar-90fee6b1d2",
+      "master_cover": null,
+      "instance_id": "si-upload-cb262fc9-559",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 242,
+      "instance_size": 24032036,
+      "storage_object_id": "obj_ebd73ba322df7d3d",
+      "physical_key": "objects/obj_ebd73ba322df7d3d.flac",
+      "etag": "84f5a6f19b833343d5512afccf02cdde",
+      "entry_id": "se-4e7de2a6314f447ea52ae98dde646880",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc A/01 夢見の森.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-58fb8df24d",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 248580466,
+      "album_cover": null,
+      "master_id": "sm-upload-0dfde22b-37b",
+      "title": "夢見の森 (米库喵 Ver.)",
+      "track": 1,
+      "disc": 1,
+      "artist_id": "ar-3426be1b82",
+      "album_artist_id": "ar-3426be1b82",
+      "master_cover": null,
+      "instance_id": "si-upload-63af77e3-9c2",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 242,
+      "instance_size": 23690963,
+      "storage_object_id": "obj_5eb0f086b3f2d093",
+      "physical_key": "objects/obj_5eb0f086b3f2d093.flac",
+      "etag": "aee6710e37640278dd1595930a07fe67",
+      "entry_id": "se-373aa6f429fb49b89108831226f16654",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc B/01 夢見の森 (米库喵 Ver.).flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "65f17352ed848e616f6d93580c6e5575c2afca04844dcbac60a74291a7632751",
+    "right_pcm_sha256": "68e00fa42cdcbf62ece09a17866bf5670a8e50629bc5190a33680ddf97b0b817",
+    "left_pcm_bytes": 85363488,
+    "right_pcm_bytes": 85363488,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "初音ミク",
+          "TITLE": "夢見の森",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "01",
+          "COMPOSER": "米库喵",
+          "album_artist": "初音ミク",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "米库喵",
+          "TITLE": "夢見の森 (米库喵 Ver.)",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "01",
+          "COMPOSER": "米库喵",
+          "album_artist": "米库喵",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    }
+  },
+  {
+    "group": "dream",
+    "alignment": 2,
+    "left": {
+      "album_id": "al-0bf1d619c1",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 246529211,
+      "album_cover": null,
+      "master_id": "sm-upload-3d2543a7-e64",
+      "title": "風のセレナーデ",
+      "track": 2,
+      "disc": 1,
+      "artist_id": "ar-90fee6b1d2",
+      "album_artist_id": "ar-90fee6b1d2",
+      "master_cover": null,
+      "instance_id": "si-upload-12810b49-7ba",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 274,
+      "instance_size": 32241900,
+      "storage_object_id": "obj_5e889e12c3ec83d3",
+      "physical_key": "objects/obj_5e889e12c3ec83d3.flac",
+      "etag": "54ebfb543dc26b8ba7c1f0f74bdcfb37",
+      "entry_id": "se-9ca9e1dd8a924ae2a6e05b7a4f901f86",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc A/02 風のセレナーデ.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-58fb8df24d",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 248580466,
+      "album_cover": null,
+      "master_id": "sm-upload-c625a62a-993",
+      "title": "風のセレナーデ (米库喵 Ver.)",
+      "track": 2,
+      "disc": 1,
+      "artist_id": "ar-3426be1b82",
+      "album_artist_id": "ar-3426be1b82",
+      "master_cover": null,
+      "instance_id": "si-upload-b1fb507e-04d",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 274,
+      "instance_size": 32413007,
+      "storage_object_id": "obj_3a441dfc2af055cf",
+      "physical_key": "objects/obj_3a441dfc2af055cf.flac",
+      "etag": "810ef7e550b6aaff6bb196211d372638",
+      "entry_id": "se-a8e6a47121304b219e8b374daa5021e4",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc B/02 風のセレナーデ (米库喵 Ver.).flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "28e2d1df19402879244572cf201f57a9e922da721abe4d930b736495c7e50c3a",
+    "right_pcm_sha256": "aabeb35aa1de0664d1db15e0eb05bec748a51533b55d9456224d803bd8724f2f",
+    "left_pcm_bytes": 96695424,
+    "right_pcm_bytes": 96695424,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "初音ミク",
+          "TITLE": "風のセレナーデ",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "02",
+          "COMPOSER": "米库喵",
+          "album_artist": "初音ミク",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "米库喵",
+          "TITLE": "風のセレナーデ (米库喵 Ver.)",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "02",
+          "COMPOSER": "米库喵",
+          "album_artist": "米库喵",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    }
+  },
+  {
+    "group": "dream",
+    "alignment": 3,
+    "left": {
+      "album_id": "al-0bf1d619c1",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 246529211,
+      "album_cover": null,
+      "master_id": "sm-upload-2df4cdd6-7dc",
+      "title": "To Helena",
+      "track": 3,
+      "disc": 1,
+      "artist_id": "ar-90fee6b1d2",
+      "album_artist_id": "ar-90fee6b1d2",
+      "master_cover": null,
+      "instance_id": "si-upload-8273c666-f12",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 282,
+      "instance_size": 29338113,
+      "storage_object_id": "obj_98b4e76f3b74f852",
+      "physical_key": "objects/obj_98b4e76f3b74f852.flac",
+      "etag": "cd21d78e5307f3e95861ee535c47a648",
+      "entry_id": "se-a62b787fee6b4658b3f34716dbc421a7",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc A/03 To Helena.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-58fb8df24d",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 248580466,
+      "album_cover": null,
+      "master_id": "sm-upload-67b4e553-144",
+      "title": "To Helena (米库喵 Ver.)",
+      "track": 3,
+      "disc": 1,
+      "artist_id": "ar-3426be1b82",
+      "album_artist_id": "ar-3426be1b82",
+      "master_cover": null,
+      "instance_id": "si-upload-898e6cde-129",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 282,
+      "instance_size": 29663302,
+      "storage_object_id": "obj_dad20d7e33406ee0",
+      "physical_key": "objects/obj_dad20d7e33406ee0.flac",
+      "etag": "d4e175e581e02e70f874f1dd0a64c658",
+      "entry_id": "se-5c76fbf4b99d4758a73dc1f4fa881182",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc B/03 To Helena (米库喵 Ver.).flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "4881b943cae68cb684ee0c02ab81ebb6c2e2796ead72c5623b747f8246c6ea3d",
+    "right_pcm_sha256": "14d7d4c1b5d24ac722c753c06063517356d710da2c4b819f067ad30631a9b57e",
+    "left_pcm_bytes": 99621312,
+    "right_pcm_bytes": 99621312,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "初音ミク",
+          "TITLE": "To Helena",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "03",
+          "COMPOSER": "米库喵",
+          "album_artist": "初音ミク",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "米库喵",
+          "TITLE": "To Helena (米库喵 Ver.)",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "03",
+          "COMPOSER": "米库喵",
+          "album_artist": "米库喵",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    }
+  },
+  {
+    "group": "dream",
+    "alignment": 4,
+    "left": {
+      "album_id": "al-0bf1d619c1",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 246529211,
+      "album_cover": null,
+      "master_id": "sm-upload-cf71714d-d36",
+      "title": "こんにちは、さようなら",
+      "track": 4,
+      "disc": 1,
+      "artist_id": "ar-90fee6b1d2",
+      "album_artist_id": "ar-90fee6b1d2",
+      "master_cover": null,
+      "instance_id": "si-upload-f2e2c352-5a5",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 336,
+      "instance_size": 36928570,
+      "storage_object_id": "obj_ff055da5c69c0db1",
+      "physical_key": "objects/obj_ff055da5c69c0db1.flac",
+      "etag": "60bdc2855991ef363c6dd96632be89da",
+      "entry_id": "se-6be3e1abbf2b449eac9ba9d158e07784",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc A/04 こんにちは、さようなら.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-58fb8df24d",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 248580466,
+      "album_cover": null,
+      "master_id": "sm-upload-7300e60f-de1",
+      "title": "こんにちは、さようなら (米库喵 Ver.)",
+      "track": 4,
+      "disc": 1,
+      "artist_id": "ar-3426be1b82",
+      "album_artist_id": "ar-3426be1b82",
+      "master_cover": null,
+      "instance_id": "si-upload-fcad227b-aa9",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 336,
+      "instance_size": 37820251,
+      "storage_object_id": "obj_9612a4ddfab4c639",
+      "physical_key": "objects/obj_9612a4ddfab4c639.flac",
+      "etag": "567532b1824527691bce800e8d024cf2",
+      "entry_id": "se-3fbf87ebfe8745589e9cb6dd53e43167",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc B/04 こんにちは、さようなら (米库喵 Ver.).flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "03340bdf59800bfaa41c0f1d5663a4ff26e8006c8c0e98cf722a22f216a73dc7",
+    "right_pcm_sha256": "aeba23c858ebcc3faf6b9c09227aa66172232ce9111aa34140246260f22deb59",
+    "left_pcm_bytes": 118663104,
+    "right_pcm_bytes": 118663104,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "初音ミク",
+          "TITLE": "こんにちは、さようなら",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "04",
+          "COMPOSER": "米库喵",
+          "album_artist": "初音ミク",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "米库喵",
+          "TITLE": "こんにちは、さようなら (米库喵 Ver.)",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "04",
+          "COMPOSER": "米库喵",
+          "album_artist": "米库喵",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    }
+  },
+  {
+    "group": "dream",
+    "alignment": 5,
+    "left": {
+      "album_id": "al-0bf1d619c1",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 246529211,
+      "album_cover": null,
+      "master_id": "sm-upload-ef9e4010-802",
+      "title": "恋姬物语",
+      "track": 5,
+      "disc": 1,
+      "artist_id": "ar-90fee6b1d2",
+      "album_artist_id": "ar-90fee6b1d2",
+      "master_cover": null,
+      "instance_id": "si-upload-e9cb8982-09c",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 245,
+      "instance_size": 28342152,
+      "storage_object_id": "obj_6019e86240e4bca3",
+      "physical_key": "objects/obj_6019e86240e4bca3.flac",
+      "etag": "1d448852194976f5714929d780720723",
+      "entry_id": "se-974edb7e3b9f4720bc212324da323091",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc A/05 恋姬物语.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-58fb8df24d",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 248580466,
+      "album_cover": null,
+      "master_id": "sm-upload-bc675c0b-218",
+      "title": "恋姬物语 (米库喵 Ver.)",
+      "track": 5,
+      "disc": 1,
+      "artist_id": "ar-3426be1b82",
+      "album_artist_id": "ar-3426be1b82",
+      "master_cover": null,
+      "instance_id": "si-upload-3234b8e6-02f",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 245,
+      "instance_size": 28616131,
+      "storage_object_id": "obj_7c4e134c68e91551",
+      "physical_key": "objects/obj_7c4e134c68e91551.flac",
+      "etag": "645affc9cacf045fb338588a8e213728",
+      "entry_id": "se-58407aa50be54ef58d71d3d9196af533",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc B/05 恋姬物语 (米库喵 Ver.).flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "95f5fca6f4bbf4259665fbc0abfa0d97c45d1ad47c1a3762064ed91de6a7da58",
+    "right_pcm_sha256": "fb61769231248a810ee607576f6d3932a960c2430b851751b4903b89fb7ea71d",
+    "left_pcm_bytes": 86610048,
+    "right_pcm_bytes": 86610048,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "初音ミク",
+          "TITLE": "恋姬物语",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "05",
+          "COMPOSER": "米库喵",
+          "album_artist": "初音ミク",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "米库喵",
+          "TITLE": "恋姬物语 (米库喵 Ver.)",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "05",
+          "COMPOSER": "米库喵",
+          "album_artist": "米库喵",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    }
+  },
+  {
+    "group": "dream",
+    "alignment": 6,
+    "left": {
+      "album_id": "al-0bf1d619c1",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 246529211,
+      "album_cover": null,
+      "master_id": "sm-upload-f6d96394-fca",
+      "title": "Just In Time",
+      "track": 6,
+      "disc": 1,
+      "artist_id": "ar-90fee6b1d2",
+      "album_artist_id": "ar-90fee6b1d2",
+      "master_cover": null,
+      "instance_id": "si-upload-c68d6c7e-7fa",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 274,
+      "instance_size": 36059578,
+      "storage_object_id": "obj_d475b1e7edbee6f9",
+      "physical_key": "objects/obj_d475b1e7edbee6f9.flac",
+      "etag": "a9c0864192f3ae34b5c3efe015613ba2",
+      "entry_id": "se-d00e360277b140ccb0f7e052d6b4f81f",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc A/06 Just In Time.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-58fb8df24d",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 248580466,
+      "album_cover": null,
+      "master_id": "sm-upload-2504e63f-35c",
+      "title": "Just In Time (米库喵 Ver.)",
+      "track": 6,
+      "disc": 1,
+      "artist_id": "ar-3426be1b82",
+      "album_artist_id": "ar-3426be1b82",
+      "master_cover": null,
+      "instance_id": "si-upload-9a59bbd7-8bc",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 274,
+      "instance_size": 36168329,
+      "storage_object_id": "obj_16e18c15a5904e73",
+      "physical_key": "objects/obj_16e18c15a5904e73.flac",
+      "etag": "2945c89aeba90d08853f13e5e1deee2f",
+      "entry_id": "se-eeda4cac2cb941ec82d979711092e111",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc B/06 Just In Time (米库喵 Ver.).flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "920204719006b7b280b10c66a1a8f14e7f0dd73001d7485d354ac5b0a7e011f2",
+    "right_pcm_sha256": "394e7ccbb3ae01c12646db3b0284c3d9d022f0c5a29db463d8e70cd0995d9699",
+    "left_pcm_bytes": 96577824,
+    "right_pcm_bytes": 96577824,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "初音ミク",
+          "TITLE": "Just In Time",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "06",
+          "COMPOSER": "米库喵",
+          "album_artist": "初音ミク",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "米库喵",
+          "TITLE": "Just In Time (米库喵 Ver.)",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "06",
+          "COMPOSER": "米库喵",
+          "album_artist": "米库喵",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    }
+  },
+  {
+    "group": "dream",
+    "alignment": 7,
+    "left": {
+      "album_id": "al-0bf1d619c1",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 246529211,
+      "album_cover": null,
+      "master_id": "sm-upload-5ad8500f-9a3",
+      "title": "PΛNDORΛ",
+      "track": 7,
+      "disc": 1,
+      "artist_id": "ar-90fee6b1d2",
+      "album_artist_id": "ar-90fee6b1d2",
+      "master_cover": null,
+      "instance_id": "si-upload-06936d8b-a99",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 281,
+      "instance_size": 28204859,
+      "storage_object_id": "obj_66aae20007f157d5",
+      "physical_key": "objects/obj_66aae20007f157d5.flac",
+      "etag": "e1102f113c310eed495f38bcd5572094",
+      "entry_id": "se-e8afb59444084d84a109804017fb0408",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc A/07 PΛNDORΛ.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-58fb8df24d",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 248580466,
+      "album_cover": null,
+      "master_id": "sm-upload-d367588b-613",
+      "title": "PΛNDORΛ (米库喵 Ver.)",
+      "track": 7,
+      "disc": 1,
+      "artist_id": "ar-3426be1b82",
+      "album_artist_id": "ar-3426be1b82",
+      "master_cover": null,
+      "instance_id": "si-upload-749c3047-d41",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 281,
+      "instance_size": 28489764,
+      "storage_object_id": "obj_38b49f9778610eb5",
+      "physical_key": "objects/obj_38b49f9778610eb5.flac",
+      "etag": "01b6b336d04ef6c99edbcf1124446c98",
+      "entry_id": "se-75f7e0127bcf4f0d8d4b5ae27dba5194",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc B/07 PΛNDORΛ (米库喵 Ver.).flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "1d923dce1611eaf91d2d6eb55b81f4a18db17f2aaca062a9450e2e66084d0956",
+    "right_pcm_sha256": "631801d2dd6f7b2cbf4d9edf9a18e16457e80e6964dbc5ee9279ed799972c0ee",
+    "left_pcm_bytes": 99033312,
+    "right_pcm_bytes": 99033312,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "初音ミク",
+          "TITLE": "PΛNDORΛ",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "07",
+          "COMPOSER": "米库喵",
+          "album_artist": "初音ミク",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "米库喵",
+          "TITLE": "PΛNDORΛ (米库喵 Ver.)",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "07",
+          "COMPOSER": "米库喵",
+          "album_artist": "米库喵",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    }
+  },
+  {
+    "group": "dream",
+    "alignment": 8,
+    "left": {
+      "album_id": "al-0bf1d619c1",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 246529211,
+      "album_cover": null,
+      "master_id": "sm-upload-a9c044b2-520",
+      "title": "君がいて",
+      "track": 8,
+      "disc": 1,
+      "artist_id": "ar-90fee6b1d2",
+      "album_artist_id": "ar-90fee6b1d2",
+      "master_cover": null,
+      "instance_id": "si-upload-dda9a03b-374",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 269,
+      "instance_size": 31382003,
+      "storage_object_id": "obj_404aa8dbd338f275",
+      "physical_key": "objects/obj_404aa8dbd338f275.flac",
+      "etag": "bfab10c762d8021b67372836c763f320",
+      "entry_id": "se-236f9bddfd654ccfa173745bc1b4e16a",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc A/08 君がいて.flac",
+      "companion_of": null
+    },
+    "right": {
+      "album_id": "al-58fb8df24d",
+      "name": "夢境之森",
+      "sort_name": "夢境之森",
+      "year": 2016,
+      "song_count": 8,
+      "duration": 0,
+      "album_size": 248580466,
+      "album_cover": null,
+      "master_id": "sm-upload-18f46e8e-0e8",
+      "title": "君がいて (米库喵 Ver.)",
+      "track": 8,
+      "disc": 1,
+      "artist_id": "ar-3426be1b82",
+      "album_artist_id": "ar-3426be1b82",
+      "master_cover": null,
+      "instance_id": "si-upload-861f04b9-22f",
+      "suffix": "flac",
+      "sample_rate": 44100,
+      "bit_depth": null,
+      "channels": 2,
+      "instance_duration": 269,
+      "instance_size": 31718719,
+      "storage_object_id": "obj_dd9a8f6e79e855a7",
+      "physical_key": "objects/obj_dd9a8f6e79e855a7.flac",
+      "etag": "20965486044045ac3974e611dbc7a01c",
+      "entry_id": "se-855e4ab4eae14146978619fb6ca7b065",
+      "path": "[夢境之森][FLAC+CUE+LOG+PNG]/Disc B/08 君がいて (米库喵 Ver.).flac",
+      "companion_of": null
+    },
+    "left_pcm_sha256": "64f020ee6b27b07eb652e81cab0c3117cf7c6e6a3e5987f78d7e26b475d602b2",
+    "right_pcm_sha256": "27ad42cc5b8afd0f5c47dcc021b320d204ed66ea174e491ad04310cace8c9bc8",
+    "left_pcm_bytes": 94987872,
+    "right_pcm_bytes": 94987872,
+    "pcm_equal": false,
+    "left_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "初音ミク",
+          "TITLE": "君がいて",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "08",
+          "COMPOSER": "米库喵",
+          "album_artist": "初音ミク",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    },
+    "right_probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "flac",
+          "sample_rate": "44100",
+          "channels": 2,
+          "bits_per_raw_sample": "16"
+        }
+      ],
+      "format": {
+        "tags": {
+          "ARTIST": "米库喵",
+          "TITLE": "君がいて (米库喵 Ver.)",
+          "ALBUM": "夢境之森",
+          "DATE": "2016",
+          "track": "08",
+          "COMPOSER": "米库喵",
+          "album_artist": "米库喵",
+          "disc": "1",
+          "TOTALDISCS": "1",
+          "TOTALTRACKS": "8"
+        }
+      }
+    }
+  }
+]
