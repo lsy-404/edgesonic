@@ -11,17 +11,23 @@ const group: AlbumDisplayGroupSummary = {
 };
 
 describe("album display card projection", () => {
-  it("waits for the stable member anchor and emits one group card across pages", () => {
-    const nonAnchorPage = [{ id: "edition-middle" }, { id: "ordinary" }];
-    assert.deepEqual(foldAlbumDisplayCards(nonAnchorPage, [group]).map((item) => item.key), ["album:ordinary"]);
+  it("shows the group at the first fetched member and suppresses later members", () => {
+    const firstPage = [{ id: "edition-middle" }, { id: "ordinary" }];
+    const firstPageCards = foldAlbumDisplayCards(firstPage, [group]);
+    assert.deepEqual(firstPageCards.map((item) => item.key), ["group:group-a", "album:ordinary"]);
+    const firstRepresentative = firstPageCards.find((item) => item.kind === "group");
 
-    const anchorPage = [{ id: "edition-anchor" }];
-    const laterPage = [{ id: "edition-last" }];
-    const allFetched = [...nonAnchorPage, ...anchorPage, ...laterPage];
+    const allFetched = [...firstPage, { id: "edition-anchor" }, { id: "edition-last" }];
     const cards = foldAlbumDisplayCards(allFetched, [group]);
     assert.equal(cards.filter((item) => item.kind === "group").length, 1);
     const groupCard = cards.find((item) => item.kind === "group");
-    assert.equal(groupCard?.kind === "group" ? groupCard.representative.id : "", "edition-anchor");
+    assert.equal(groupCard?.kind === "group" ? groupCard.representative.id : "", "edition-middle");
+    assert.equal(firstRepresentative?.kind === "group" ? firstRepresentative.representative.id : "", "edition-middle");
     assert.deepEqual(cards.filter((item) => item.kind === "album").map((item) => item.album.id), ["ordinary"]);
+  });
+
+  it("preserves ungrouped albums", () => {
+    const cards = foldAlbumDisplayCards([{ id: "ordinary-a" }, { id: "ordinary-b" }], [group]);
+    assert.deepEqual(cards.map((item) => item.key), ["album:ordinary-a", "album:ordinary-b"]);
   });
 });

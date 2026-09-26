@@ -24,7 +24,7 @@ export function foldAlbumDisplayCards<T extends { id: string }>(
     const group = groupByAlbumId.get(album.id);
     if (!group) {
       cards.push({ kind: "album", key: `album:${album.id}`, album });
-    } else if (group.memberAlbumIds[0] === album.id && !seenGroups.has(group.id)) {
+    } else if (!seenGroups.has(group.id)) {
       seenGroups.add(group.id);
       cards.push({ kind: "group", key: `group:${group.id}`, group, representative: album });
     }
