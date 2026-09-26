@@ -555,6 +555,9 @@ const lyricsQuery = ref(!props.embedded && typeof route.query.lyrics === "string
 const extendedSearchOpen = ref(!!lyricsQuery.value);
 const searching = ref(false);
 const searchResults = ref<{ artists: Artist[]; albums: Album[]; songs: Track[] } | null>(null);
+const searchAlbumDisplayCards = computed<AlbumDisplayCard<Album>[]>(() =>
+  foldAlbumDisplayCards(searchResults.value?.albums ?? [], displayGroups.value)
+);
 const searchError = ref("");
 const isSearchActive = computed(() => !!searchQuery.value.trim() || !!lyricsQuery.value.trim());
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -585,7 +588,10 @@ async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
   currentArtist.value = null;
   currentAlbum.value = null;
   try {
-    const xml = await authFetch("search3", buildLibrarySearchParams(query, lyricQuery, sortMode.value), controller.signal);
+    const [xml] = await Promise.all([
+      authFetch("search3", buildLibrarySearchParams(query, lyricQuery, sortMode.value), controller.signal),
+      ensureAlbumDisplayGroups(),
+    ]);
     if (request !== searchRequest) return;
     const protocolError = searchProtocolError(xml);
     if (protocolError) {
@@ -1899,32 +1905,34 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           </div>
         </div>
 
-        <div v-if="searchResults.albums.length" class="search-section">
+        <div v-if="searchAlbumDisplayCards.length" class="search-section">
           <div class="search-section-title">{{ t("library.tabAlbums") }}</div>
           <div class="album-grid">
             <div
-              v-for="al in searchResults.albums"
-              :key="al.id"
+              v-for="item in searchAlbumDisplayCards"
+              :key="item.key"
               class="card hoverable album-card"
-              @click="openAlbum(al)"
+              @click="item.kind === 'group' ? openDisplayGroup(item.group) : openAlbum(item.album)"
             >
               <div class="album-cover">
-                <BudgetedImage v-if="al.coverArt" :src="coverArtUrl(al.coverArt, 256)" :alt="al.name" @error="al.coverArt = ''" />
+                <BudgetedImage v-if="item.kind === 'album' ? item.album.coverArt : item.representative.coverArt" :src="coverArtUrl(item.kind === 'album' ? item.album.coverArt : item.representative.coverArt, 256)" :alt="item.kind === 'album' ? item.album.name : item.group.name" @error="item.kind === 'album' ? item.album.coverArt = '' : item.representative.coverArt = ''" />
                 <span v-else class="album-cover-placeholder"><Icon name="note" /></span>
               </div>
               <div class="album-body">
-                <div class="album-name">{{ al.name }}</div>
-                <div class="mono-label">{{ al.artist || "—" }}<template v-if="al.songCount"> · {{ t("library.trackCount", { n: al.songCount }) }}</template></div>
+                <div class="album-name">{{ item.kind === 'album' ? item.album.name : item.group.name }}</div>
+                <div class="mono-label" v-if="item.kind === 'album'">{{ item.album.artist || "—" }}<template v-if="item.album.songCount"> · {{ t("library.trackCount", { n: item.album.songCount }) }}</template></div>
+                <div class="mono-label" v-else>{{ t("library.albumEditionCount", { n: item.group.memberCount }) }}</div>
               </div>
               <StarButton
+                v-if="item.kind === 'album'"
                 class="card-like-btn"
-                :id="al.id"
+                :id="item.album.id"
                 kind="album"
-                :starred="al.starred"
-                @update:starred="onStarChanged('album', al, $event)"
+                :starred="item.album.starred"
+                @update:starred="onStarChanged('album', item.album, $event)"
                 @error="onStarError"
               />
-              <button class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', al.id, al.name)"><Icon name="up" /></button>
+              <button v-if="item.kind === 'album'" class="card-share-btn" :title="t('library.share')" @click.stop="openShare('album', item.album.id, item.album.name)"><Icon name="up" /></button>
               <div class="corner corner-tr"></div>
               <div class="corner corner-bl"></div>
             </div>
