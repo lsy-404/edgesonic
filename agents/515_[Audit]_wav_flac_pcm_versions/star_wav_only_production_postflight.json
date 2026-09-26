@@ -1,0 +1,44 @@
+{
+  "candidate_sha256": "e9b81b45f0c331d4fd5d547f78007cb4087ca01ce692be25a2932058aab96ec9",
+  "production_execution": {
+    "executor": "parent",
+    "wrangler_exit_code": 0,
+    "rows_written": 114
+  },
+  "independent_primary_postflight": {
+    "query_file": "star_wav_only_postflight.sql",
+    "results": {
+      "album_exact": 1,
+      "album_masters": 14,
+      "wav_instances": 7,
+      "flac_instances": 0,
+      "mp3_instances": 7,
+      "candidate_objects": 7,
+      "old_wav_objects_retained": 7,
+      "old_flac_objects_retained": 7,
+      "flac_entries_remaining": 0,
+      "wav_entries_repointed": 7,
+      "mp3_entries": 7,
+      "restored_flac_artist_relations": 5,
+      "completed_history": 21,
+      "active_jobs": 0,
+      "album_annotations": 0,
+      "flac_annotations": 0,
+      "flac_bookmarks": 0,
+      "flac_playlists": 0,
+      "flac_shares": 0,
+      "staged_object_guards": [1, 1, 1, 1, 1, 1, 1]
+    },
+    "meta": {
+      "served_by_primary": true,
+      "changed_db": false,
+      "rows_written": 0,
+      "rows_read": 21642,
+      "size_after": 366039040,
+      "total_attempts": 1
+    }
+  },
+  "audit_agent_production_writes": 0,
+  "old_r2_objects_deleted": false,
+  "performed_at_utc": "2026-09-26"
+}

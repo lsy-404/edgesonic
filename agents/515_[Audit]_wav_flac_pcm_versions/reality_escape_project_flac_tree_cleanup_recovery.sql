@@ -1,0 +1,10 @@
+-- Recovery only. Reinsert these source-tree entries only after checking that each expected id/path is still absent.
+INSERT INTO storage_entries(id,source_id,parent_id,path,display_name,kind,object_id,instance_id,companion_of,created_at,updated_at) VALUES
+  ('se-93d282bed0ef437d946745205373a49f','r2-local','se-45ab36e1985c46688853454f23fa0d5b','现实逃避 Project[flac]/flac/01.渺小的Producer.flac','01.渺小的Producer.flac','file','obj_0718612234f6a736',NULL,NULL,1789349499,1789443974),
+  ('se-a3d57e22ee164ede87a934eeaa80ce8b','r2-local','se-45ab36e1985c46688853454f23fa0d5b','现实逃避 Project[flac]/flac/02.抄袭Paranoia.flac','02.抄袭Paranoia.flac','file','obj_25ef5ea9099fbab6',NULL,NULL,1789351241,1789443974),
+  ('se-ddaee8e0624a498f94132881d4a43850','r2-local','se-45ab36e1985c46688853454f23fa0d5b','现实逃避 Project[flac]/flac/03.偶像Priority.flac','03.偶像Priority.flac','file','obj_d6c7eec474ae5f18',NULL,NULL,1789349352,1789443974),
+  ('se-14242e168fbb4118873dfb526a35edfc','r2-local','se-45ab36e1985c46688853454f23fa0d5b','现实逃避 Project[flac]/flac/04.虚拟Paradise.flac','04.虚拟Paradise.flac','file','obj_e968d58a57ed0d4a',NULL,NULL,1789350760,1789443974),
+  ('se-e6467290f5734f5496791a95a2d4dd4a','r2-local','se-45ab36e1985c46688853454f23fa0d5b','现实逃避 Project[flac]/flac/05.暧昧Philosopher.flac','05.暧昧Philosopher.flac','file','obj_67ef883ef5348e7e',NULL,NULL,1789349882,1789443974),
+  ('se-61ad923ce7914197ad7a1a34aff920e7','r2-local','se-45ab36e1985c46688853454f23fa0d5b','现实逃避 Project[flac]/flac/06.告别Performance.flac','06.告别Performance.flac','file','obj_b575d1145ee34e20',NULL,NULL,1789348018,1789443974),
+  ('se-b19e0c5023cf45d4b30cb0adfa818a2e','r2-local','se-45ab36e1985c46688853454f23fa0d5b','现实逃避 Project[flac]/flac/07.所以我选择被人讨厌.flac','07.所以我选择被人讨厌.flac','file','obj_23872c1fb03925b3',NULL,NULL,1789349944,1789443974),
+  ('se-871d1af68e1c41d68116c88c07838894','r2-local','se-45ab36e1985c46688853454f23fa0d5b','现实逃避 Project[flac]/flac/08.Political不正确.flac','08.Political不正确.flac','file','obj_7d24a124759db7f0',NULL,NULL,1789347517,1789443974);

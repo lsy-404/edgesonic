@@ -1,0 +1,97 @@
+{
+  "source": "fresh exact source-tree snapshot, cross-checked against the star pre-state rows",
+  "entries": [
+    {
+      "instance_id": "si-upload-350b3de7-cfe",
+      "master_id": "sm-upload-0c497bb9-16d",
+      "suffix": "flac",
+      "object_id": "obj_80a40f39b9fdda5f",
+      "entry_id": "se-34a966182dd842c7911f2b2173ba3126",
+      "parent_id": "se-569d8aab7015492e9501580f7b89620b",
+      "path": "星/flac/洛天依 - From 天依.flac",
+      "display_name": "洛天依 - From 天依.flac",
+      "source_id": "r2-local",
+      "kind": "file",
+      "companion_of": null
+    },
+    {
+      "instance_id": "si-upload-9c0fcd2a-844",
+      "master_id": "sm-upload-2c8c3e7d-5ad",
+      "suffix": "flac",
+      "object_id": "obj_892be295111685bb",
+      "entry_id": "se-c37c205a4df34687bac452db69e29ef2",
+      "parent_id": "se-569d8aab7015492e9501580f7b89620b",
+      "path": "星/flac/洛天依 - Burn.flac",
+      "display_name": "洛天依 - Burn.flac",
+      "source_id": "r2-local",
+      "kind": "file",
+      "companion_of": null
+    },
+    {
+      "instance_id": "si-upload-23277ca4-2d5",
+      "master_id": "sm-upload-39e3fce9-61d",
+      "suffix": "flac",
+      "object_id": "obj_996595dd86c61a3b",
+      "entry_id": "se-db423483655b4b8780582004303b2e0c",
+      "parent_id": "se-569d8aab7015492e9501580f7b89620b",
+      "path": "星/flac/洛天依 - 停止时间的女孩.flac",
+      "display_name": "洛天依 - 停止时间的女孩.flac",
+      "source_id": "r2-local",
+      "kind": "file",
+      "companion_of": null
+    },
+    {
+      "instance_id": "si-upload-df578e1f-dca",
+      "master_id": "sm-upload-47db43fd-ed0",
+      "suffix": "flac",
+      "object_id": "obj_8fe973cbd008301e",
+      "entry_id": "se-fd4468ba9c2e4e88b4dfaf7fd140ce81",
+      "parent_id": "se-569d8aab7015492e9501580f7b89620b",
+      "path": "星/flac/洛天依 - Why.flac",
+      "display_name": "洛天依 - Why.flac",
+      "source_id": "r2-local",
+      "kind": "file",
+      "companion_of": null
+    },
+    {
+      "instance_id": "si-upload-707afeaa-760",
+      "master_id": "sm-upload-9419bb78-ae5",
+      "suffix": "flac",
+      "object_id": "obj_4d4c15f7a75dd413",
+      "entry_id": "se-7dce3bb368984abd8921d546c5f9d640",
+      "parent_id": "se-569d8aab7015492e9501580f7b89620b",
+      "path": "星/flac/洛天依 - Paparoach.flac",
+      "display_name": "洛天依 - Paparoach.flac",
+      "source_id": "r2-local",
+      "kind": "file",
+      "companion_of": null
+    },
+    {
+      "instance_id": "si-upload-8ab4460b-b59",
+      "master_id": "sm-upload-e005f35f-21b",
+      "suffix": "flac",
+      "object_id": "obj_aeadd8d3fcf5cc05",
+      "entry_id": "se-48f4fecbd419431d9b5c0e18691fcbf7",
+      "parent_id": "se-569d8aab7015492e9501580f7b89620b",
+      "path": "星/flac/洛天依 - Be My Boy.flac",
+      "display_name": "洛天依 - Be My Boy.flac",
+      "source_id": "r2-local",
+      "kind": "file",
+      "companion_of": null
+    },
+    {
+      "instance_id": "si-upload-d5eecbc4-cb0",
+      "master_id": "sm-upload-fb11705b-d05",
+      "suffix": "flac",
+      "object_id": "obj_6e7e9167758bb0a9",
+      "entry_id": "se-e430a0c86d874ae8aba78b004ba8e444",
+      "parent_id": "se-569d8aab7015492e9501580f7b89620b",
+      "path": "星/flac/洛天依 - 星.flac",
+      "display_name": "洛天依 - 星.flac",
+      "source_id": "r2-local",
+      "kind": "file",
+      "companion_of": null
+    }
+  ],
+  "storage_objects_retained": true
+}

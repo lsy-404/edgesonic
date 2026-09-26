@@ -1,0 +1,77 @@
+{
+  "candidate_sha256": "e770614ddd2e329c77cc09b287d876f7eacb1f047f393de1726643be234af5ca",
+  "r2_list_objects_after_upload": [
+    {
+      "track": 1,
+      "key": "objects/obj_4b5013bbc90dcb7d.wav",
+      "etag": "4a81c429a431f036075ef6a546c66a94",
+      "size": 38269594,
+      "contentType": "audio/wav",
+      "lastModified": "2026-09-26T10:55:31.255Z",
+      "etag_matches": true,
+      "size_matches": true
+    },
+    {
+      "track": 2,
+      "key": "objects/obj_6c8c776a3c83d606.wav",
+      "etag": "a6e561ba902c8058eddeb101bdaeef2c",
+      "size": 52468036,
+      "contentType": "audio/wav",
+      "lastModified": "2026-09-26T10:57:18.250Z",
+      "etag_matches": true,
+      "size_matches": true
+    },
+    {
+      "track": 3,
+      "key": "objects/obj_99c8ade0ef6146c3.wav",
+      "etag": "e7c7aecd0e8cace321cae15c293239ac",
+      "size": 48706578,
+      "contentType": "audio/wav",
+      "lastModified": "2026-09-26T10:57:27.021Z",
+      "etag_matches": true,
+      "size_matches": true
+    },
+    {
+      "track": 4,
+      "key": "objects/obj_ccabb13e4ac0ea00.wav",
+      "etag": "9e5a01e659b014b896ded839531fe9eb",
+      "size": 45748154,
+      "contentType": "audio/wav",
+      "lastModified": "2026-09-26T10:57:35.745Z",
+      "etag_matches": true,
+      "size_matches": true
+    },
+    {
+      "track": 5,
+      "key": "objects/obj_6a8b7641a9451c7c.wav",
+      "etag": "31368255887b11626b9ccc3a5f24b310",
+      "size": 45154650,
+      "contentType": "audio/wav",
+      "lastModified": "2026-09-26T10:57:44.397Z",
+      "etag_matches": true,
+      "size_matches": true
+    },
+    {
+      "track": 6,
+      "key": "objects/obj_e3acbfdc775ee420.wav",
+      "etag": "a8e3deac51374f79bd5c1d966d754351",
+      "size": 42363990,
+      "contentType": "audio/wav",
+      "lastModified": "2026-09-26T10:57:51.912Z",
+      "etag_matches": true,
+      "size_matches": true
+    },
+    {
+      "track": 7,
+      "key": "objects/obj_ccfc3de8e869e030.wav",
+      "etag": "d0d5feb617ae9469719a775577aea2da",
+      "size": 44771544,
+      "contentType": "audio/wav",
+      "lastModified": "2026-09-26T10:58:00.450Z",
+      "etag_matches": true,
+      "size_matches": true
+    }
+  ],
+  "all_verified": true,
+  "production_r2_deletions": 0
+}
