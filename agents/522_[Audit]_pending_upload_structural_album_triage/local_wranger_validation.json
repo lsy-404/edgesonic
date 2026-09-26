@@ -1,0 +1,29 @@
+{
+  "database": "isolated local D1 fixtures under test/internal/pending_upload_structural_album_triage",
+  "schema_setup": "success",
+  "apply_guarded_sql": "success",
+  "postflight": {
+    "disc_1_tracks": 12,
+    "disc_2_tracks": 10,
+    "year": 2014,
+    "song_count": 22,
+    "duration": 4213,
+    "calculated_duration": 4213,
+    "size": 22253,
+    "calculated_size": 22253
+  },
+  "stale_path_snapshot": {
+    "apply": "rejected by work_queue status CHECK",
+    "target_album_rows": 0,
+    "target_master_rows": 0,
+    "unchanged_pending_rows": 22
+  },
+  "late_rollback": {
+    "restored_candidates": 22,
+    "preserved_external_master": 1,
+    "preserved_album": 1,
+    "preserved_group_ref": 1,
+    "preserved_annotation": 1
+  },
+  "manual_transaction_statements": false
+}

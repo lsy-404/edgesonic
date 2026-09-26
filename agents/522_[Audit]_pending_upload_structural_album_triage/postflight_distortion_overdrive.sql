@@ -1,0 +1,2 @@
+SELECT sm.disc,COUNT(*) AS tracks,MIN(sm.track) AS first_track,MAX(sm.track) AS last_track FROM song_masters sm WHERE sm.album_id='al-17e41d5b4f' GROUP BY sm.disc ORDER BY sm.disc;
+SELECT a.id,a.name,a.year,a.song_count,a.duration,a.size,(SELECT COALESCE(SUM(sm.duration),0) FROM song_masters sm WHERE sm.album_id=a.id) AS calculated_duration,(SELECT COALESCE(SUM(si.size),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=a.id) AS calculated_size FROM albums a WHERE a.id='al-17e41d5b4f';
