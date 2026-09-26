@@ -6,3 +6,5 @@
 - [x] Seed a disposable local SQLite fixture from the candidate map and rehearse successful apply plus early/late rollback.
 - [x] Record exact counts, excluded reasons, candidate digest, risks, and GO/NO-GO recommendation.
 - [x] After the parent-run production operation, independently verify every batch plus global candidate/exclusion counts on the primary and save compact receipts.
+- [x] Retrieve the two held WAV/FLAC cohorts from production R2 and classify each matched pair using full decoded PCM hashes and embedded tags.
+- [x] Prepare and rehearse a guarded D1-only version-group candidate for the two PCM-distinct WAV cohorts; refresh its production-primary preflight without applying it.
