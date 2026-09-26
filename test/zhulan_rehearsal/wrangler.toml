@@ -1,0 +1,6 @@
+name = "zhulan-rehearsal"
+compatibility_date = "2025-05-24"
+[[d1_databases]]
+binding = "DB"
+database_name = "zhulan-rehearsal"
+database_id = "89c01e12-17c4-4fa0-9872-039014a152ad"

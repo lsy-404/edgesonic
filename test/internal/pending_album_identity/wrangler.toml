@@ -1,0 +1,8 @@
+name = "pending-album-identity-rehearsal"
+main = "worker.js"
+compatibility_date = "2025-05-24"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pending-album-identity-rehearsal"
+database_id = "local"
