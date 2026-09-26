@@ -2,8 +2,8 @@
 
 - [x] Select the Find-Zero multi-disc cohort and define a D1-only boundary.
 - [x] Capture fresh primary state for masters, instances, storage objects, source tree, album references, and track/disc assignments.
-- [x] Determine whether the two physical discs map to a single existing album without collapsing distinct editions.
-- [x] Generate guarded apply and rollback SQL, plus local apply, stale-state rejection, and late-rollback rehearsals.
-- [x] Run the production preflight as read-only and await parent review before any production write.
-- [x] Decode and compare all fourteen CD1 WAV and FLAC pairs from production R2.
-- [x] Retain the separate WAV and FLAC editions because PCM differs for every matched track.
+- [x] Decode and compare all fourteen CD1 WAV and FLAC pairs; retain both editions because all matched PCM differs.
+- [x] Generate CTE-based fail-fast apply and rollback statements with exact source identity snapshots and no explicit transaction syntax.
+- [x] Rebuild fixtures and pass actual Wrangler local D1 apply, rollback, stale-scope refusal, and late-reference rollback refusal.
+- [x] Rerun the read-only primary preflight; all 25 exact rows match and no production writes occurred.
+- [x] Review and commit this repair on the existing task branch.
