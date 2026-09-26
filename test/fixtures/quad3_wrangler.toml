@@ -1,0 +1,7 @@
+name = "edgesonic-q3-rehearsal"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "edgesonic-q3-rehearsal"
+database_id = "00000000-0000-0000-0000-000000000000"
