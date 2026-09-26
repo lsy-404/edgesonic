@@ -1,11 +1,15 @@
-CREATE TABLE albums(id TEXT PRIMARY KEY,name TEXT,sort_name TEXT,song_count INTEGER,duration INTEGER,size INTEGER,compilation INTEGER,created_at INTEGER,updated_at INTEGER);
+CREATE TABLE albums(id TEXT PRIMARY KEY,name TEXT,sort_name TEXT,song_count INTEGER,duration INTEGER,size INTEGER,compilation INTEGER,cover_r2_key TEXT,created_at INTEGER,updated_at INTEGER);
 CREATE TABLE song_masters(id TEXT PRIMARY KEY,album_id TEXT,title TEXT,track INTEGER,disc INTEGER,duration INTEGER,updated_at INTEGER);
 CREATE TABLE song_instances(id TEXT PRIMARY KEY,master_id TEXT,storage_object_id TEXT,source_type TEXT,storage_uri TEXT,suffix TEXT,content_type TEXT,duration INTEGER,size INTEGER,missing INTEGER,tag_scanned INTEGER);
 CREATE TABLE storage_objects(id TEXT PRIMARY KEY,physical_key TEXT,suffix TEXT,content_type TEXT,size INTEGER);
-CREATE TABLE storage_entries(id TEXT PRIMARY KEY,source_id TEXT,parent_id TEXT,path TEXT,display_name TEXT,kind TEXT,object_id TEXT,instance_id TEXT);
+CREATE TABLE storage_entries(id TEXT PRIMARY KEY,source_id TEXT,parent_id TEXT,path TEXT,display_name TEXT,kind TEXT,object_id TEXT,instance_id TEXT,companion_of TEXT);
 CREATE TABLE album_display_groups(id TEXT PRIMARY KEY,display_name TEXT,sort_name TEXT,created_at INTEGER,updated_at INTEGER);
 CREATE TABLE album_display_group_members(group_id TEXT,album_id TEXT,sort_order INTEGER,PRIMARY KEY(group_id,album_id));
-INSERT INTO albums VALUES('pending-uploads','Pending Uploads',NULL,522,116545,20262441225,0,0,0);
+INSERT INTO albums VALUES('pending-uploads','Pending Uploads',NULL,522,116545,20262441225,0,NULL,0,0);
+INSERT INTO storage_objects VALUES('obj_1b4a15b85d0840f4','objects/obj_1b4a15b85d0840f4.jpg','jpg','image/jpeg',128995);
+INSERT INTO storage_objects VALUES('obj_24ba4f5063af5b0e','objects/obj_24ba4f5063af5b0e.jpg','jpg','image/jpeg',307373);
+INSERT INTO storage_entries VALUES('se-17ef6ea6262649c5b211c104a8d668b2','r2-local','se-1815d8c3bd39495dbf37a95919091828','枫烬-夜屠灵/cover.jpg','cover.jpg','file','obj_1b4a15b85d0840f4',NULL,NULL);
+INSERT INTO storage_entries VALUES('se-6f009a44e46c4d3880a03c8b7257e00b','r2-local','se-76148813357b4680be26168cc48d0131','枫烬-夜屠灵/歌词/cover.jpg','cover.jpg','file','obj_24ba4f5063af5b0e',NULL,NULL);
 WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<502) INSERT INTO song_masters(id,album_id,title,duration) SELECT 'fill-m-'||x,'pending-uploads','filler',CASE WHEN x=1 THEN 611 ELSE 222 END FROM n;
 WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<502) INSERT INTO song_instances(id,master_id,source_type,storage_uri,suffix,duration,size,missing,tag_scanned) SELECT 'fill-i-'||x,'fill-m-'||x,'original','r2://filler/'||x,'wav',CASE WHEN x=1 THEN 611 ELSE 222 END,39035953+CASE WHEN x<=281 THEN 1 ELSE 0 END,0,1 FROM n;
 INSERT INTO song_masters(id,album_id,title,track,disc,duration) VALUES('sm-upload-c94e08dc-ac5','pending-uploads','01 枫声 定稿',NULL,NULL,216);

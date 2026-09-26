@@ -31,6 +31,14 @@ Seed 'success'
 $r = Invoke-D1 'success' $apply $null
 if ($r.Exit -ne 0) { throw ('success apply failed: '+$r.Text) }
 $successFingerprint = Fingerprint 'success'
+Seed 'sidecar-stale'
+$r = Invoke-D1 'sidecar-stale' $null "UPDATE storage_objects SET physical_key='objects/changed-cover.jpg' WHERE id='obj_1b4a15b85d0840f4';"
+if ($r.Exit -ne 0) { throw $r.Text }
+$sidecarBefore = Fingerprint 'sidecar-stale'
+$r = Invoke-D1 'sidecar-stale' $apply $null
+if ($r.Exit -eq 0) { throw 'changed cover sidecar unexpectedly passed the identity guard' }
+$sidecarAfter = Fingerprint 'sidecar-stale'
+if ($sidecarBefore -ne $sidecarAfter) { throw 'stale cover sidecar scenario changed database state' }
 Seed 'stale'
 $r = Invoke-D1 'stale' $null "UPDATE storage_entries SET path='changed' WHERE id='se-e6a9e86da26846f68eaec39aa6475167';"
 if ($r.Exit -ne 0) { throw $r.Text }
@@ -55,4 +63,4 @@ $r = Invoke-D1 'late' $latePath $null
 if ($r.Exit -eq 0) { throw 'late failure SQL unexpectedly succeeded' }
 $lateAfter = Fingerprint 'late'
 if ($lateBefore -ne $lateAfter) { throw 'late failure left partial database writes' }
-[pscustomobject]@{result='PASS';successFingerprint=$successFingerprint;staleRollback=($staleBefore -eq $staleAfter);concurrentRollback=($concurrentBefore -eq $concurrentAfter);lateRollback=($lateBefore -eq $lateAfter)} | ConvertTo-Json -Compress
+[pscustomobject]@{result='PASS';successFingerprint=$successFingerprint;sidecarStaleRollback=($sidecarBefore -eq $sidecarAfter);staleRollback=($staleBefore -eq $staleAfter);concurrentRollback=($concurrentBefore -eq $concurrentAfter);lateRollback=($lateBefore -eq $lateAfter)} | ConvertTo-Json -Compress

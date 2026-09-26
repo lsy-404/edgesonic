@@ -1,12 +1,8 @@
 {
-  "wrangler": "4.79.0",
-  "status": "PASS",
-  "successFingerprint": "728AE1E41754BA690719256BDB2B2928DC717B6908B2F01AA9EC603ABE4B335B",
-  "staleScenario": "candidate rejected after storage_entries.path mutation; full related-table fingerprint unchanged",
-  "concurrentScenario": "candidate rejected after song_masters.title mutation; full related-table fingerprint unchanged",
-  "lateFailureScenario": "candidate writes followed by forced SQLite integer overflow; full related-table fingerprint unchanged",
-  "pendingBaseline": {"count": 522, "duration": 116545, "size": 20262441225},
-  "pendingAfter": {"count": 502, "duration": 111833, "size": 19596048687},
-  "wavAlbum": {"count": 10, "duration": 2356, "size": 572036956},
-  "mp3Album": {"count": 10, "duration": 2356, "size": 94355582}
+  "result": "PASS",
+  "successFingerprint": "9EAD6483EA2527C33683BA4BD8E130F0B7ECFEA94C67581D7964F59AEDFD5942",
+  "sidecarStaleRollback": true,
+  "staleRollback": true,
+  "concurrentRollback": true,
+  "lateRollback": true
 }

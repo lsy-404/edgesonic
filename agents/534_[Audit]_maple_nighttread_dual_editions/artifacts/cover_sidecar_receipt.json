@@ -1,0 +1,94 @@
+{
+  "date": "2026-09-26",
+  "production_access": "SELECT-only; no D1 or R2 writes/deletes performed",
+  "d1_sidecars": [
+    {
+      "entry_id": "se-17ef6ea6262649c5b211c104a8d668b2",
+      "parent_id": "se-1815d8c3bd39495dbf37a95919091828",
+      "path": "枫烬-夜屠灵/cover.jpg",
+      "object_id": "obj_1b4a15b85d0840f4",
+      "instance_id": null,
+      "companion_of": null,
+      "physical_key": "objects/obj_1b4a15b85d0840f4.jpg",
+      "content_type": "image/jpeg",
+      "size": 128995
+    },
+    {
+      "entry_id": "se-6f009a44e46c4d3880a03c8b7257e00b",
+      "parent_id": "se-76148813357b4680be26168cc48d0131",
+      "path": "枫烬-夜屠灵/歌词/cover.jpg",
+      "object_id": "obj_24ba4f5063af5b0e",
+      "instance_id": null,
+      "companion_of": null,
+      "physical_key": "objects/obj_24ba4f5063af5b0e.jpg",
+      "content_type": "image/jpeg",
+      "size": 307373
+    }
+  ],
+  "r2_image_comparison": [
+    {
+      "path": "枫烬-夜屠灵/cover.jpg",
+      "sha256": "887A4E95410C92BAC1098442241D0265AB907D1EAD51C78A27E0C48DD8B37796",
+      "dimensions": "1728x1080"
+    },
+    {
+      "path": "枫烬-夜屠灵/歌词/cover.jpg",
+      "sha256": "9DF202CF5FB16E57F55DFE7678DA128EA5831E7B7193D5FF27B2ED09BCC93E62",
+      "dimensions": "1080x1080"
+    }
+  ],
+  "r2_target_keys": [
+    "covers/al-maple-nighttread-wav",
+    "covers/al-maple-nighttread-mp3"
+  ],
+  "r2_targets_absent_at_last_list_check": true,
+  "primary_preflight": {
+    "source_rows": 20,
+    "exact_source_matches": 20,
+    "result": "five standalone SELECT commands each returned expected=4/exact=4/unique=4",
+    "sidecar_exact_matches": 2,
+    "pending_cache_actual": [
+      522,
+      116545,
+      20262441225
+    ],
+    "album_conflicts": 0,
+    "display_group_conflicts": 0,
+    "cover_target_objects": 0,
+    "served_by_primary": true,
+    "rows_written": 0,
+    "changed_db": false
+  },
+  "file_mode_note": "A SELECT-only Wrangler --file invocation aggregated rows_written=0 but reported changed_db=true and changes=1. Independent SELECT --command checks were used for the final primary receipt; each reported changed_db=false, changes=0, rows_written=0.",
+  "decision": "The shared-parent root cover is used for both editions, copied to distinct canonical per-album keys before D1 apply. The nested lyrics cover is not assigned to either edition.",
+  "write_prerequisite": "Outside this audit, first recheck both canonical keys. If absent, copy the root cover bytes independently to each key without changing or deleting either source sidecar. If a target exists with different bytes, stop for review. D1 apply is not ready until both target objects exist with the source SHA-256.",
+  "candidate_sha256": "2CEF2C10F6460EAEBC06545ABFFFEA517AEEB9DFA5B94AAC53FF1DBFC1272E88",
+  "expected_postflight": {
+    "pending": [
+      502,
+      111833,
+      19596048687
+    ],
+    "wav_album": [
+      10,
+      2356,
+      572036956,
+      "covers/al-maple-nighttread-wav"
+    ],
+    "mp3_album": [
+      10,
+      2356,
+      94355582,
+      "covers/al-maple-nighttread-mp3"
+    ],
+    "group_members": 2
+  },
+  "local_rehearsal": {
+    "result": "PASS",
+    "sidecar_stale_rollback": true,
+    "path_stale_rollback": true,
+    "concurrent_identity_rollback": true,
+    "late_failure_rollback": true,
+    "success_fingerprint": "9EAD6483EA2527C33683BA4BD8E130F0B7ECFEA94C67581D7964F59AEDFD5942"
+  }
+}
