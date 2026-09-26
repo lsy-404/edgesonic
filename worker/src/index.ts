@@ -24,6 +24,7 @@ import { apiRateLimitMiddleware } from "./middleware/rate_limit";
 import { refreshAllChannels } from "./utils/podcastSync";
 import { maybeRunScheduledScan } from "./utils/scheduledScan";
 import { reclaimStaleWork } from "./utils/workReclaim";
+import { recoverPendingUploadMetadata } from "./utils/uploadMetadataRecovery";
 import { maybeRunMetadataRecheck } from "./utils/metadataRecheck";
 import { maybeRunLrcBackfill } from "./utils/lrcBackfill";
 import { maybeRunArtistScrapeBackfill } from "./utils/artistScrapeBackfill";
@@ -173,6 +174,11 @@ export default {
     ctx.waitUntil(
       maybeRunScheduledScan(env, ctx).catch((e) => {
         console.error("scheduled maybeRunScheduledScan failed:", e);
+      }),
+    );
+    ctx.waitUntil(
+      recoverPendingUploadMetadata(env).catch((e) => {
+        console.error("scheduled recoverPendingUploadMetadata failed:", e);
       }),
     );
     // that went offline mid-task doesn't lock the row forever.

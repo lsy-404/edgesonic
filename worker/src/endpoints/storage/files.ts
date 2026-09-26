@@ -15,6 +15,7 @@
 
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
+import { hasPermission } from "../../utils/permissions";
 import { getSourceCredentials } from "../../adapters/index";
 import { createR2Adapter } from "../../adapters/r2";
 import { createWebDAVAdapter } from "../../adapters/webdav";
@@ -47,13 +48,9 @@ filesRoutes.use("*", async (c, next) => {
 // POST /rest/files/upload?name=file.mp3&source=r2|webdav&path=Album&conflict=error|overwrite|rename
 //
 // Upload uses the requested root-relative logical path on R2 (no more _uploads/
-// placeholder album). We create a song_instance row with tag_scanned=0 and
-// dispatch a metadata task so the browser worker pool parses the file's tags
-// and relinks it to the right master/album/artist via applyMetadataResult.
-// Until the metadata task completes the file is invisible in the library
-// (no song_masters row) — the user can see it in the Files tree browser.
-import { dispatchWork } from "../edgesonic/work";
-import { getFeatureString } from "../../utils/features";
+// placeholder album). We create a placeholder song instance. Browser uploads
+// parse locally and submit with a short-lived capability; API uploads and
+// failed direct parses use the durable worker queue.
 import { isDemoMode, demoMaxUploadBytes, r2MaxStorageBytes, demoR2TotalBytes, allowAllFileTypes, isAudioSuffix, isCompanionSuffix } from "../../utils/demoMode";
 import { getProfile } from "../../transcode/profiles";
 import { preBakeProfile } from "../../transcode/preBake";
@@ -66,6 +63,8 @@ import {
   stableR2Uri,
 } from "../../utils/storageResolver";
 import { createStableObjectId, createStableObjectKey, splitEntryPath } from "../../utils/storageObjects";
+import { issueUploadMetadataCapability, verifyUploadMetadataCapability } from "../../utils/uploadMetadataCapability";
+import { acquireUploadPathLease, enqueueUploadMetadata, markUploadMetadataPending, releaseUploadMetadataLease, type UploadMetadataLease } from "../../utils/uploadMetadataQueue";
 
 filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   const env = c.env as Env;
@@ -129,6 +128,11 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     : await resolveUploadTarget(env, source, requestedPath, c.req.query("conflict"));
   if ("error" in target) return c.json(target.error.body, target.error.status);
   const r2Key = target.key;
+  const uploader = c.get("user");
+  const canEditTags = isAudio && await hasPermission(env, uploader, "edit_tags");
+  if (isAudio && target.policy === "overwrite" && target.existed && !canEditTags) {
+    return c.json({ ok: false, error: "Editing tags on an existing upload requires edit_tags permission" }, 403);
+  }
 
   // Cumulative R2 storage guard. An overwrite replaces its old bytes, so its
   // projection subtracts the object being replaced instead of charging both.
@@ -150,9 +154,90 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     }
   }
 
+  const sourceId = source === "webdav"
+    ? (await db.prepare("SELECT id FROM storage_sources WHERE type = 'webdav' AND enabled = 1 LIMIT 1").first<{ id: string }>())?.id || "webdav"
+    : "r2-local";
+  const storageUri = source === "webdav" ? `webdav://${sourceId}/${r2Key}` : stableR2Uri((target as R2UploadTarget).objectId, suffix);
+  const previousEntry = source === "r2" ? (target as R2UploadTarget).previousEntry : null;
+  const existingAudio = isAudio
+    ? previousEntry?.instance_id
+      ? await db.prepare("SELECT id, master_id, storage_uri FROM song_instances WHERE id = ? AND source_type = 'original' LIMIT 1")
+        .bind(previousEntry.instance_id).first<{ id: string; master_id: string; storage_uri: string }>()
+      : await db.prepare("SELECT id, master_id, storage_uri FROM song_instances WHERE storage_uri = ? AND source_type = 'original' LIMIT 1")
+        .bind(storageUri).first<{ id: string; master_id: string; storage_uri: string }>()
+    : null;
+  const webdavCreds = source === "webdav" ? await getSourceCredentials(db, "webdav", env) : null;
+  if (source === "webdav" && !webdavCreds) return c.json({ ok: false, error: "No WebDAV source configured" }, 400);
+  const uploadNonce = isAudio ? crypto.randomUUID() : undefined;
+  let pendingMarkerWritten = false;
+  let uploadLease: UploadMetadataLease | null = null;
+  let orphanPathLease: UploadMetadataLease | null = null;
+  const releaseUploadLock = async (completed: boolean): Promise<boolean> => {
+    const lease = uploadLease || orphanPathLease;
+    if (!lease) return true;
+    const released = await releaseUploadMetadataLease(db, lease, completed);
+    uploadLease = null;
+    orphanPathLease = null;
+    return released;
+  };
+  if (existingAudio && uploadNonce) {
+    try {
+      uploadLease = await markUploadMetadataPending(db, existingAudio.id, storageUri, uploadNonce);
+      if (!uploadLease) return c.json({ ok: false, error: "Audio metadata is being applied or another overwrite is active" }, 409);
+      pendingMarkerWritten = true;
+      const reset = await db.prepare(
+        "UPDATE song_instances SET tag_scanned = 0, missing = 0, updated_at = ? WHERE id = ? AND storage_uri = ? AND source_type = 'original'",
+      ).bind(now, existingAudio.id, existingAudio.storage_uri).run();
+      if (reset.meta?.changes !== 1) {
+        await releaseUploadLock(false);
+        return c.json({ ok: false, error: "Audio instance changed during overwrite preparation" }, 409);
+      }
+    } catch (error) {
+      if (uploadLease) await releaseUploadLock(false);
+      console.error(`[upload] could not establish upload generation for ${existingAudio.id}:`, error);
+      return c.json({ ok: false, error: "Could not safely prepare audio overwrite" }, 503);
+    }
+  }
+  if (!existingAudio && isAudio && target.existed && uploadNonce) {
+    const markerId = `wm-upload-path-${createStableObjectId(`${source}:${sourceId}:${requestedPath}`)}`;
+    try {
+      orphanPathLease = await acquireUploadPathLease(db, markerId, storageUri, uploadNonce);
+      if (!orphanPathLease) return c.json({ ok: false, error: "Another overwrite is active for this path" }, 409);
+      if (source === "r2") {
+        const latestEntry = await findR2EntryByPath(db, (target as R2UploadTarget).logicalPath);
+        const previousEntry = (target as R2UploadTarget).previousEntry;
+        if (!previousEntry || !latestEntry || latestEntry.id !== previousEntry.id ||
+            latestEntry.object_id !== previousEntry.object_id ||
+            latestEntry.physical_key !== previousEntry.physical_key ||
+            latestEntry.instance_id !== previousEntry.instance_id) {
+          await releaseUploadLock(false);
+          return c.json({ ok: false, error: "Audio path changed during overwrite preparation" }, 409);
+        }
+        if (latestEntry?.instance_id) {
+          const linked = await db.prepare("SELECT id FROM song_instances WHERE id = ? AND source_type = 'original'")
+            .bind(latestEntry.instance_id).first<{ id: string }>();
+          if (linked) {
+            await releaseUploadLock(false);
+            return c.json({ ok: false, error: "Audio instance changed during overwrite preparation" }, 409);
+          }
+        }
+      } else {
+        const registered = await db.prepare("SELECT id FROM song_instances WHERE storage_uri = ? AND source_type = 'original'")
+          .bind(storageUri).first<{ id: string }>();
+        if (registered) {
+          await releaseUploadLock(false);
+          return c.json({ ok: false, error: "Audio instance changed during overwrite preparation" }, 409);
+        }
+      }
+    } catch (error) {
+      if (orphanPathLease) await releaseUploadLock(false);
+      console.error(`[upload] could not establish path overwrite lock for ${requestedPath}:`, error);
+      return c.json({ ok: false, error: "Could not safely prepare audio overwrite" }, 503);
+    }
+  }
+
   if (source === "webdav") {
-    const creds = await getSourceCredentials(db, "webdav", env);
-    if (!creds) return c.json({ ok: false, error: "No WebDAV source configured" }, 400);
+    const creds = webdavCreds!;
     const fullUrl = `${creds.baseUrl.replace(/\/$/, "")}/${r2Key.split("/").map(encodeURIComponent).join("/")}`;
     let overflowed = false;
     let resp: Response;
@@ -169,18 +254,30 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     } catch (error) {
       if (overflowed || error instanceof PayloadTooLargeError) {
         try { await fetch(fullUrl, { method: "DELETE", headers: { Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}` } }); } catch { /* remote cleanup best effort */ }
+        if (uploadLease || orphanPathLease) await releaseUploadLock(false);
         return c.json({ ok: false, error: "Payload too large" }, 413);
       }
+      if (uploadLease || orphanPathLease) await releaseUploadLock(false);
       throw error;
     }
     if (overflowed) {
       try { await fetch(fullUrl, { method: "DELETE", headers: { Authorization: `Basic ${btoa(`${creds.username}:${creds.password}`)}` } }); } catch { /* remote cleanup best effort */ }
+      if (uploadLease || orphanPathLease) await releaseUploadLock(false);
       return c.json({ ok: false, error: "Payload too large" }, 413);
     }
-    if (resp.status === 412) return c.json(uploadConflict(source, r2Key), 409);
-    if (!resp.ok) return c.json({ ok: false, error: `WebDAV upload failed: ${resp.status}` }, 500);
+    if (resp.status === 412) {
+      if (uploadLease || orphanPathLease) await releaseUploadLock(false);
+      return c.json(uploadConflict(source, r2Key), 409);
+    }
+    if (!resp.ok) {
+      if (uploadLease || orphanPathLease) await releaseUploadLock(false);
+      return c.json({ ok: false, error: `WebDAV upload failed: ${resp.status}` }, 500);
+    }
     const verified = await verifyWebDavUpload(fullUrl, creds, cap);
-    if (!verified.ok) return c.json({ ok: false, error: verified.error }, verified.status);
+    if (!verified.ok) {
+      if (uploadLease || orphanPathLease) await releaseUploadLock(false);
+      return c.json({ ok: false, error: verified.error }, verified.status);
+    }
   } else {
     let overflowed = false;
     let written;
@@ -193,15 +290,22 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
       });
     } catch (error) {
       if (overflowed || error instanceof PayloadTooLargeError) {
+        if (uploadLease || orphanPathLease) await releaseUploadLock(false);
         return c.json({ ok: false, error: "Payload too large" }, 413);
       }
       if (isContentLengthMismatch(error)) {
+        if (uploadLease || orphanPathLease) await releaseUploadLock(false);
         return c.json({ ok: false, error: "Content-Length does not match request body" }, 400);
       }
+      if (uploadLease || orphanPathLease) await releaseUploadLock(false);
       throw error;
     }
-    if (written === null) return c.json(uploadConflict(source, r2Key), 409);
+    if (written === null) {
+      if (uploadLease || orphanPathLease) await releaseUploadLock(false);
+      return c.json(uploadConflict(source, r2Key), 409);
+    }
     if (overflowed || (written?.size ?? 0) > cap) {
+      if (uploadLease || orphanPathLease) await releaseUploadLock(false);
       return c.json({ ok: false, error: "Payload too large" }, 413);
     }
   }
@@ -228,26 +332,11 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
     return c.json(uploadSuccess({ key: r2Key, source, target }));
   }
 
-  // DB record: create a song_instance pointing at the uploaded file. We need
-  // a master_id FK, so create a placeholder master that applyMetadataResult
-  // will relink (delete + recreate under the right album/artist) once the
-  // metadata worker parses the file. tag_scanned=0 so the work queue picks
-  // it up and applyMetadataResult runs on submit.
-  const sourceId = source === "webdav"
-    ? (await db.prepare("SELECT id FROM storage_sources WHERE type = 'webdav' AND enabled = 1 LIMIT 1").first<{ id: string }>())?.id || "webdav"
-    : "r2-local";
-  const storageUri = source === "webdav" ? `webdav://${sourceId}/${r2Key}` : stableR2Uri((target as R2UploadTarget).objectId, suffix);
+  // A placeholder master satisfies song_instances' foreign key until metadata is parsed.
   const title = name.replace(/\.[^.]+$/, "");
 
   try {
-    const previousEntry = source === "r2" ? (target as R2UploadTarget).previousEntry : null;
-    const existing = previousEntry?.instance_id
-      ? await db.prepare(
-        "SELECT id, master_id FROM song_instances WHERE id = ? AND source_type = 'original' LIMIT 1",
-      ).bind(previousEntry.instance_id).first<{ id: string; master_id: string }>()
-      : await db.prepare(
-        "SELECT id, master_id FROM song_instances WHERE storage_uri = ? AND source_type = 'original' LIMIT 1",
-      ).bind(storageUri).first<{ id: string; master_id: string }>();
+    const existing = existingAudio;
     if (existing) {
       if (source === "r2") {
         await prepareR2ObjectUpsert(db, target as R2UploadTarget, r2Key, suffix, contentType, sizeHeader || 0, now).run();
@@ -270,7 +359,11 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
           await env.MUSIC_BUCKET.delete((target as R2UploadTarget).previousKey!);
         }
       }
-      return finishAudioUpload(c, env, r2Key, storageUri, existing.id, source, target);
+      if (uploadLease || orphanPathLease) {
+        const released = await releaseUploadLock(!uploadLease);
+        if (!released) return c.json({ ok: false, error: "Upload generation changed during overwrite" }, 409);
+      }
+      return finishAudioUpload(c, env, r2Key, storageUri, existing.id, source, target, false, canEditTags, uploadNonce, pendingMarkerWritten);
     }
 
     const instanceId = `si-upload-${crypto.randomUUID().substring(0, 12)}`;
@@ -301,9 +394,28 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
       });
       await cleanupStorageObject(db, (target as R2UploadTarget).previousEntry?.object_id || null);
     }
-    return finishAudioUpload(c, env, r2Key, storageUri, instanceId, source, target);
+    if (uploadLease || orphanPathLease) {
+      const released = await releaseUploadLock(!uploadLease);
+      if (!released) return c.json({ ok: false, error: "Upload generation changed during overwrite" }, 409);
+    }
+    return finishAudioUpload(c, env, r2Key, storageUri, instanceId, source, target, true, canEditTags, uploadNonce, pendingMarkerWritten);
   } catch (e) {
-    if (source !== "webdav") await env.MUSIC_BUCKET.delete(r2Key);
+    if (source === "r2") {
+      const objectId = (target as R2UploadTarget).objectId;
+      try {
+        const refs = await db.prepare(
+          `SELECT (SELECT COUNT(*) FROM song_instances WHERE storage_object_id = ?) AS instance_refs,
+                  (SELECT COUNT(*) FROM storage_entries WHERE object_id = ?) AS entry_refs`,
+        ).bind(objectId, objectId).first<{ instance_refs: number; entry_refs: number }>();
+        if (refs && refs.instance_refs === 0 && refs.entry_refs === 0) {
+          await env.MUSIC_BUCKET.delete(r2Key);
+          await cleanupStorageObject(db, objectId);
+        }
+      } catch (cleanupError) {
+        console.error(`[upload] could not clean up unreferenced candidate ${r2Key}:`, cleanupError);
+      }
+    }
+    if (uploadLease || orphanPathLease) await releaseUploadLock(false);
     return c.json({ ok: false, error: `DB insert failed: ${e instanceof Error ? e.message : String(e)}` }, 500);
   }
 });
@@ -341,6 +453,52 @@ filesRoutes.post("/files/upload-conflicts", permissionMiddleware("upload"), asyn
   }
 });
 
+filesRoutes.post("/files/upload-metadata-fallback", permissionMiddleware("upload"), async (c) => {
+  const env = c.env as Env;
+  const body = await c.req.json<{ instanceId?: string; token?: string; coverRetry?: boolean }>().catch(() => null);
+  if (!body?.instanceId || !body.token) return c.json({ ok: false, error: "Missing upload metadata capability" }, 400);
+  const user = c.get("user");
+  const instance = await env.DB.prepare(
+    `SELECT si.id, si.master_id, si.storage_uri, si.suffix, si.size, si.tag_scanned, si.missing,
+            a.cover_r2_key
+       FROM song_instances si
+       JOIN song_masters sm ON sm.id = si.master_id
+       JOIN albums a ON a.id = sm.album_id
+      WHERE si.id = ? AND si.source_type = 'original'`,
+  ).bind(body.instanceId).first<{
+    id: string; master_id: string; storage_uri: string; suffix: string; size: number; tag_scanned: number; missing: number; cover_r2_key: string | null;
+  }>();
+  if (!instance || instance.missing !== 0) return c.json({ ok: false, error: "Uploaded instance not found" }, 404);
+  const pendingMarker = await env.DB.prepare(
+    "SELECT payload FROM work_queue WHERE id = ? AND task_type = 'manual_upload_pending' AND status = 'canceled'",
+  ).bind(`wm-upload-pending-${instance.id}`).first<{ payload: string }>();
+  let uploadNonce = "";
+  try {
+    const markerPayload = JSON.parse(pendingMarker?.payload || "null") as { storageUri?: unknown; uploadNonce?: unknown } | null;
+    if (markerPayload?.storageUri === instance.storage_uri && typeof markerPayload.uploadNonce === "string") {
+      uploadNonce = markerPayload.uploadNonce;
+    }
+  } catch { /* invalid marker fails capability validation */ }
+  if (!uploadNonce || !(await verifyUploadMetadataCapability(env, user.username, body.instanceId, instance.storage_uri, uploadNonce, body.token))) {
+    return c.json({ ok: false, error: "Invalid or expired upload metadata capability" }, 403);
+  }
+  const coverRetry = body.coverRetry === true;
+  if (instance.tag_scanned !== 0 && !(coverRetry && !instance.cover_r2_key)) {
+    return c.json({ ok: true, queued: false, alreadyScanned: true });
+  }
+
+  try {
+    const task = await enqueueUploadMetadata(env.DB, env, { ...instance, uploadNonce });
+    if (task.status === "stale_claimed") {
+      return c.json({ ok: false, error: "A metadata worker is still processing a previous upload; retry after it finishes" }, 409);
+    }
+    return c.json({ ok: true, queued: task.status === "queued", claimed: task.status === "claimed", taskId: task.taskId });
+  } catch (error) {
+    console.error(`[upload] fallback metadata dispatch failed for ${instance.id}:`, error);
+    return c.json({ ok: false, error: "Could not queue metadata fallback" }, 503);
+  }
+});
+
 async function finishAudioUpload(
   c: import("hono").Context,
   env: Env,
@@ -349,34 +507,48 @@ async function finishAudioUpload(
   instanceId: string,
   source: string,
   target: UploadTarget,
+  createdInstance: boolean,
+  canEditTags: boolean,
+  uploadNonce?: string,
+  markerAlreadyWritten = false,
 ): Promise<Response> {
   const db = env.DB;
   const suffix = r2Key.split(".").pop() || "bin";
   const sizeHeader = parseInt(c.req.header("Content-Length") || "0", 10);
 
-  // Dispatch a metadata task so the browser worker pool parses the
-  // uploaded file's tags and relinks the master to the right album/artist.
-  // Best-effort: if the pool is disabled or dispatch fails, the file still
-  // lives in R2 + D1; a manual scan will pick it up later.
-  try {
-    const poolEnabled = await getFeatureString(env, "worker_pool_enabled", "1");
-    if (poolEnabled === "1") {
-      await dispatchWork(db, {
-        taskType: "metadata",
-        payload: {
-          instanceId,
-          sourceUri: storageUri,
-          suffix,
-          size: sizeHeader || 0,
-          origin: "upload",
-        },
-        requiredCaps: ["music-metadata"],
-        priority: 3, // higher than scan-dispatched tasks (5) so uploads parse fast
-        dedupKey: instanceId,
-      }, env);
+  const uploader = c.get("user");
+  const directMetadata = c.req.query("metadata") === "direct";
+  const mayApplyMetadata = createdInstance || canEditTags;
+  let metadataToken = directMetadata && mayApplyMetadata
+    ? uploadNonce ? await issueUploadMetadataCapability(env, uploader.username, instanceId, storageUri, uploadNonce) : null
+    : null;
+  let pendingMarkerWritten = markerAlreadyWritten;
+  if (metadataToken && !pendingMarkerWritten && uploadNonce) {
+    try {
+      const lease = await markUploadMetadataPending(db, instanceId, storageUri, uploadNonce);
+      pendingMarkerWritten = !!lease && await releaseUploadMetadataLease(db, lease, false);
+      if (!pendingMarkerWritten) metadataToken = null;
+    } catch (error) {
+      console.error(`[upload] pending metadata marker failed for ${instanceId}:`, error);
+      metadataToken = null;
     }
-  } catch (e) {
-    console.error(`[upload] dispatchWork failed for ${instanceId}:`, e);
+  }
+  const shouldQueueMetadata = mayApplyMetadata && (!directMetadata || !metadataToken || !pendingMarkerWritten);
+  let metadataStatus: "direct" | "queued" | "queue_failed" | "protected" = "direct";
+
+  if (!mayApplyMetadata) {
+    metadataStatus = "protected";
+  } else if (shouldQueueMetadata) {
+    metadataStatus = "queued";
+    try {
+      await enqueueUploadMetadata(db, env, {
+        id: instanceId, storage_uri: storageUri, suffix, size: sizeHeader || 0,
+        ...(pendingMarkerWritten && uploadNonce ? { uploadNonce } : {}),
+      });
+    } catch (e) {
+      metadataStatus = "queue_failed";
+      console.error(`[upload] dispatchWork failed for ${instanceId}:`, e);
+    }
   }
 
   // Optional pre-transcode: the upload UI's expandable "pre-transcode
@@ -396,7 +568,7 @@ async function finishAudioUpload(
     }
   }
 
-  return c.json(uploadSuccess({ key: r2Key, id: instanceId, storageUri, source, target }));
+  return c.json(uploadSuccess({ key: r2Key, id: instanceId, storageUri, source, target, metadataToken: metadataToken || undefined, metadataStatus }));
 }
 
 function isContentLengthMismatch(error: unknown): boolean {
@@ -540,13 +712,15 @@ function uploadConflict(source: string, requestedKey: string): Record<string, un
   };
 }
 
-function uploadSuccess(input: { key: string; id?: string; storageUri?: string; source: string; target: UploadTarget }): Record<string, unknown> {
+function uploadSuccess(input: { key: string; id?: string; storageUri?: string; source: string; target: UploadTarget; metadataToken?: string; metadataStatus?: string }): Record<string, unknown> {
   const finalPath = "logicalPath" in input.target ? input.target.logicalPath : input.key;
   return {
     ok: true,
     key: input.key,
     id: input.id,
     storageUri: input.storageUri,
+    metadataToken: input.metadataToken,
+    metadataStatus: input.metadataStatus,
     conflict: {
       policy: input.target.policy,
       requestedKey: input.target.requestedKey,

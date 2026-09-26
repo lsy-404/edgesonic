@@ -34,6 +34,7 @@ import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { workRoutes } from "../../worker/src/endpoints/edgesonic/work";
 import { applyMetadataResult } from "../../worker/src/utils/metadataApply";
+import { markUploadMetadataPending } from "../../worker/src/utils/uploadMetadataQueue";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -44,7 +45,7 @@ function assert(cond: unknown, msg: string) {
 // ---------------------------------------------------------------------------
 // D1Database shim backed by node:sqlite — same shape as submit_metadata.test.ts.
 // ---------------------------------------------------------------------------
-function makeD1(sqlite: DatabaseSync): any {
+function makeD1(sqlite: DatabaseSync, beforeRun?: (query: string) => Promise<void>): any {
   function prepare(query: string) {
     const stmt = sqlite.prepare(query);
     let boundArgs: any[] = [];
@@ -59,6 +60,7 @@ function makeD1(sqlite: DatabaseSync): any {
         return { results: rows, success: true, meta: {} };
       },
       async run(): Promise<{ success: true; meta: { changes: number } }> {
+        await beforeRun?.(query);
         const info = stmt.run(...boundArgs);
         return { success: true, meta: { changes: Number(info.changes ?? 0) } };
       },
@@ -137,6 +139,7 @@ function buildDb() {
     CREATE TABLE song_instances (
       id TEXT PRIMARY KEY,
       master_id TEXT NOT NULL,
+      source_type TEXT DEFAULT 'original',
       source_id TEXT,
       storage_uri TEXT NOT NULL,
       suffix TEXT,
@@ -195,7 +198,7 @@ function seedCompleted(sqlite: DatabaseSync, id: string, payload: unknown, resul
 // at "/edgesonic" and pre-seeding c.var.user; permissionMiddleware is only on
 // dispatch/poll which we don't exercise here.
 // ---------------------------------------------------------------------------
-function makeApp(sqlite: DatabaseSync, user: { username: string; level: number }) {
+function makeApp(sqlite: DatabaseSync, user: { username: string; level: number }, beforeRun?: (query: string) => Promise<void>) {
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.use("*", async (c, next) => {
     c.set("user", { ...user, enabled: 1, password: "x" });
@@ -205,7 +208,7 @@ function makeApp(sqlite: DatabaseSync, user: { username: string; level: number }
   app.route("/edgesonic", workRoutes);
   const covers: Array<{ key: string; bytes: Uint8Array }> = [];
   const env = {
-    DB: makeD1(sqlite),
+    DB: makeD1(sqlite, beforeRun),
     MUSIC_BUCKET: {
       async put(key: string, bytes: Uint8Array) {
         covers.push({ key, bytes });
@@ -297,6 +300,90 @@ console.log("work/submit (metadata, success) → tag_scanned=1 + relink + physic
   assert(typeof wq.result_json === "string" && wq.result_json.includes("Cosmic Drift"), "result_json stored");
 }
 
+console.log("work/submit rejects a claimed result from an overwritten upload generation:");
+{
+  const sqlite = buildDb();
+  const currentUri = "webdav://dav/song.m4a";
+  const currentNonce = "generation-after-overwrite";
+  sqlite.prepare("UPDATE song_instances SET storage_uri = ? WHERE id = 'inst-1'").run(currentUri);
+  seedClaimed(sqlite, "wt-metadata-inst-1", "metadata", {
+    instanceId: "inst-1", sourceUri: currentUri, suffix: "m4a", size: 5000000,
+    origin: "upload", uploadNonce: "generation-before-overwrite",
+  });
+  sqlite.prepare("UPDATE song_instances SET tag_scanned = 0 WHERE id = 'inst-1'").run();
+  sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status, created_at) VALUES (?, 'manual_upload_pending', ?, 'canceled', ?)")
+    .run("wm-upload-pending-inst-1", JSON.stringify({ instanceId: "inst-1", storageUri: currentUri, uploadNonce: currentNonce }), 1);
+  const { post } = makeApp(sqlite, { username: "alice", level: 2 });
+  const response = await post("/edgesonic/work/submit", {
+    id: "wt-metadata-inst-1",
+    result: { instanceId: "inst-1", tags: { title: "Stale Generation" } },
+  });
+  const body = await response.json() as any;
+  const master = sqlite.prepare("SELECT title FROM song_masters WHERE id = 'sg-1'").get() as any;
+  const instance = sqlite.prepare("SELECT tag_scanned FROM song_instances WHERE id = 'inst-1'").get() as any;
+  assert(response.status === 200 && body.applied?.ok === false, "old claimed metadata result completes without being applied");
+  assert(master.title === "Song One" && instance.tag_scanned === 0, "stale tags cannot modify the new upload or mark it scanned");
+  assert((sqlite.prepare("SELECT status FROM work_queue WHERE id = 'wm-upload-pending-inst-1'").get() as any)?.status === "canceled", "current generation marker remains pending for recovery");
+}
+
+console.log("work/submit accepts and consumes the matching upload generation:");
+{
+  const sqlite = buildDb();
+  const uri = "webdav://dav/song.m4a";
+  const nonce = "current-generation";
+  sqlite.prepare("UPDATE song_instances SET storage_uri = ? WHERE id = 'inst-1'").run(uri);
+  sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status, created_at) VALUES (?, 'manual_upload_pending', ?, 'canceled', ?)")
+    .run("wm-upload-pending-inst-1", JSON.stringify({ instanceId: "inst-1", storageUri: uri, uploadNonce: nonce }), 1);
+  seedClaimed(sqlite, "wt-metadata-inst-1", "metadata", {
+    instanceId: "inst-1", sourceUri: uri, suffix: "m4a", size: 5000000, origin: "upload", uploadNonce: nonce,
+  });
+  const { post } = makeApp(sqlite, { username: "alice", level: 2 });
+  const response = await post("/edgesonic/work/submit", {
+    id: "wt-metadata-inst-1", result: { instanceId: "inst-1", tags: { title: "Current Generation" } },
+  });
+  const body = await response.json() as any;
+  const master = sqlite.prepare("SELECT title FROM song_masters WHERE id = 'sg-1'").get() as any;
+  assert(response.status === 200 && body.applied?.ok === true && master.title === "Current Generation", "matching source URI and nonce can apply metadata");
+  assert((sqlite.prepare("SELECT status FROM work_queue WHERE id = 'wm-upload-pending-inst-1'").get() as any)?.status === "completed", "successful matching task finalizes its generation marker");
+}
+
+console.log("work/submit lease fences overwrite until metadata and cover writes finish:");
+{
+  const sqlite = buildDb();
+  const uri = "webdav://dav/leased.m4a";
+  const nonce = "lease-generation";
+  sqlite.prepare("UPDATE song_instances SET storage_uri = ? WHERE id = 'inst-1'").run(uri);
+  sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status, created_at) VALUES (?, 'manual_upload_pending', ?, 'canceled', ?)")
+    .run("wm-upload-pending-inst-1", JSON.stringify({ instanceId: "inst-1", storageUri: uri, uploadNonce: nonce }), 1);
+  seedClaimed(sqlite, "wt-metadata-inst-1", "metadata", {
+    instanceId: "inst-1", sourceUri: uri, suffix: "m4a", size: 5000000, origin: "upload", uploadNonce: nonce,
+  });
+  let signalEntered!: () => void;
+  let resume!: () => void;
+  const entered = new Promise<void>((resolve) => { signalEntered = resolve; });
+  const gate = new Promise<void>((resolve) => { resume = resolve; });
+  let paused = false;
+  const { post } = makeApp(sqlite, { username: "alice", level: 2 }, async (query) => {
+    if (!paused && query.includes("UPDATE song_masters SET")) {
+      paused = true;
+      signalEntered();
+      await gate;
+    }
+  });
+  const submission = post("/edgesonic/work/submit", {
+    id: "wt-metadata-inst-1", result: { instanceId: "inst-1", tags: { title: "Leased Tags" } },
+  });
+  await entered;
+  const db = makeD1(sqlite);
+  const blocked = await markUploadMetadataPending(db, "inst-1", "webdav://dav/next.m4a", "next-generation");
+  assert(!blocked, "overwrite generation cannot replace a live metadata lease");
+  resume();
+  const response = await submission;
+  const current = sqlite.prepare("SELECT status, payload FROM work_queue WHERE id = 'wm-upload-pending-inst-1'").get() as any;
+  assert(response.status === 200 && current.status === "completed", "metadata finishes and releases its exact lease");
+  assert(await markUploadMetadataPending(db, "inst-1", "webdav://dav/next.m4a", "next-generation"), "overwrite can establish the next generation after old apply finishes");
+}
+
 console.log("work/submit (uploaded instance already parsed) preserves browser tags and adds cover:");
 {
   const sqlite = buildDb();
@@ -319,8 +406,8 @@ console.log("work/submit (uploaded instance already parsed) preserves browser ta
   const instance = sqlite.prepare("SELECT duration, tag_scanned FROM song_instances WHERE id = 'inst-1'").get() as any;
   assert(instance.duration === 180 && instance.tag_scanned === 1, "browser physical metadata remains authoritative");
   const album = sqlite.prepare("SELECT cover_r2_key FROM albums WHERE id = 'al-old'").get() as any;
-  assert(album.cover_r2_key === "covers/al-old", "embedded cover links to the current album");
-  assert(covers.length === 1 && covers[0].key === "covers/al-old" && covers[0].bytes.length === 3, "embedded cover is written once");
+  assert(album.cover_r2_key === covers[0]?.key && album.cover_r2_key.startsWith("covers/al-old/"), "embedded cover links to the current album");
+  assert(covers.length === 1 && covers[0].bytes.length === 3, "embedded cover is written once");
 }
 
 console.log("work/submit (recheck on scanned instance) still refreshes metadata:");

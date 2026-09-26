@@ -201,6 +201,10 @@ async function main() {
     seedRow(sqlite, { id: "w-a", attempts: 1, heartbeatAgo: 120 });
     seedRow(sqlite, { id: "w-b", attempts: 2, heartbeatAgo: 90 });
     seedRow(sqlite, { id: "w-c", attempts: 0, heartbeatAgo: 75 });
+    const oldHeartbeat = (sqlite.prepare("SELECT unixepoch() AS now").get() as { now: number }).now - 120;
+    sqlite.prepare(`INSERT INTO work_queue (id, task_type, payload, status, claimed_at, heartbeat_at, created_at)
+      VALUES ('wm-upload-pending-live', 'manual_upload_pending', '{}', 'claimed', ?, ?, 0)`)
+      .run(oldHeartbeat, oldHeartbeat);
     const { post } = makeApp(sqlite, { username: "admin", level: 3 });
     const r = await post("/edgesonic/maintenance/reclaimStaleWork", {});
     assert(r.status === 200, `200 (got ${r.status})`);
@@ -216,8 +220,9 @@ async function main() {
     const rows = sqlite.prepare(
       "SELECT id, status, attempts, claimed_by, claimed_at, heartbeat_at FROM work_queue ORDER BY id",
     ).all() as Array<{ id: string; status: string; attempts: number; claimed_by: string | null; claimed_at: number | null; heartbeat_at: number | null }>;
-    assert(rows.every((r) => r.status === "queued"), "all rows requeued");
-    assert(rows.every((r) => r.claimed_by === null && r.claimed_at === null && r.heartbeat_at === null),
+    assert(rows.filter((r) => r.id !== "wm-upload-pending-live").every((r) => r.status === "queued"), "ordinary stale rows requeued");
+    assert(rows.find((r) => r.id === "wm-upload-pending-live")?.status === "claimed", "manual reclaim excludes upload metadata leases");
+    assert(rows.filter((r) => r.id !== "wm-upload-pending-live").every((r) => r.claimed_by === null && r.claimed_at === null && r.heartbeat_at === null),
       "claimed_by/claimed_at/heartbeat_at all cleared");
     const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
     assert(byId["w-a"].attempts === 1, `w-a attempts preserved (got ${byId["w-a"].attempts})`);

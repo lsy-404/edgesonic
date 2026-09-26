@@ -33,11 +33,15 @@
 
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
+import type { User } from "../../types/entities";
 import {
   applyMetadataResult,
   relinkArtistAlbum,
   type SubmittedMetadata,
 } from "../../utils/metadataApply";
+import { writeEmbeddedCover, type EmbeddedCover } from "../../utils/embeddedCover";
+import { verifyUploadMetadataCapability } from "../../utils/uploadMetadataCapability";
+import { acquireUploadMetadataLease, releaseUploadMetadataLease } from "../../utils/uploadMetadataQueue";
 
 // Re-export so any caller historically pulling SubmittedMetadata / relinkArtistAlbum
 // from "endpoints/tag/submit" keeps working — only the source of truth moved.
@@ -111,6 +115,81 @@ metadataRoutes.post("/submit", permissionMiddleware("edit_tags"), async (c) => {
   });
 });
 
+metadataRoutes.post("/submit-upload", permissionMiddleware("upload"), async (c) => {
+  const env = c.env as Env;
+  const body = await c.req.json<{
+    instanceId?: string;
+    token?: string;
+    tags?: SubmittedMetadata;
+    cover?: EmbeddedCover;
+  }>().catch(() => null);
+  if (!body?.instanceId || !body.token || !body.tags || typeof body.tags !== "object") {
+    return c.json({ ok: false, error: "Missing upload metadata capability or tags" }, 400);
+  }
+
+  const user = c.get("user") as User;
+  const instance = await env.DB.prepare(
+    "SELECT tag_scanned, missing, storage_uri FROM song_instances WHERE id = ? AND source_type = 'original'",
+  ).bind(body.instanceId).first<{ tag_scanned: number; missing: number; storage_uri: string }>();
+  if (!instance || instance.missing !== 0) return c.json({ ok: false, error: "Uploaded instance not found" }, 404);
+  const pendingMarker = await env.DB.prepare(
+    "SELECT payload FROM work_queue WHERE id = ? AND task_type = 'manual_upload_pending'",
+  ).bind(`wm-upload-pending-${body.instanceId}`).first<{ payload: string }>();
+  let uploadNonce = "";
+  try {
+    const markerPayload = JSON.parse(pendingMarker?.payload || "null") as { storageUri?: unknown; uploadNonce?: unknown } | null;
+    if (markerPayload?.storageUri === instance.storage_uri && typeof markerPayload.uploadNonce === "string") {
+      uploadNonce = markerPayload.uploadNonce;
+    }
+  } catch { /* invalid marker fails capability validation */ }
+  if (!uploadNonce || !(await verifyUploadMetadataCapability(env, user.username, body.instanceId, instance.storage_uri, uploadNonce, body.token))) {
+    return c.json({ ok: false, error: "Invalid or expired upload metadata capability" }, 403);
+  }
+  if (instance.tag_scanned !== 0) return c.json({ ok: false, error: "Upload metadata capability already used" }, 409);
+
+  const tags = cleanInput(body.tags);
+  if (!hasAnyLogical(tags)) return c.json({ ok: false, error: "No usable tag fields" }, 400);
+
+  const lease = await acquireUploadMetadataLease(env.DB, body.instanceId, instance.storage_uri, uploadNonce);
+  if (!lease) return c.json({ ok: false, error: "Upload metadata generation is being changed or applied" }, 409);
+  let applied;
+  try {
+    applied = await applyMetadataResult(env.DB, body.instanceId, tags, tags);
+  } catch (error) {
+    await releaseUploadMetadataLease(env.DB, lease, false);
+    throw error;
+  }
+  if (!applied.updated || !applied.masterId) {
+    await releaseUploadMetadataLease(env.DB, lease, false);
+    return c.json({ ok: false, error: applied.reason || "Metadata apply failed" }, 400);
+  }
+  let coverSaved = false;
+  let coverStatus: "saved" | "preserved" | "failed" | "invalid" | "none" = "none";
+  if (body.cover && typeof body.cover.data === "string") {
+    try {
+      coverStatus = await writeEmbeddedCover(
+        env.DB,
+        env.MUSIC_BUCKET,
+        applied.masterId,
+        body.cover,
+        { markerId: `wm-upload-pending-${body.instanceId}`, payload: lease.payload },
+      );
+      coverSaved = coverStatus === "saved";
+    } catch (error) {
+      console.error(`[tag/submit-upload] embedded cover write failed for ${body.instanceId}:`, error);
+      coverStatus = "failed";
+    }
+  }
+
+  await releaseUploadMetadataLease(env.DB, lease, coverStatus !== "failed");
+
+  const ids = await env.DB.prepare(
+    "SELECT artist_id, album_id FROM song_masters WHERE id = ?",
+  ).bind(applied.masterId).first<{ artist_id: string; album_id: string }>();
+
+  return c.json({ ok: true, masterId: applied.masterId, albumId: ids?.album_id, artistId: ids?.artist_id, coverSaved, coverStatus });
+});
+
 // ============================================================================
 // Input scrubbing — same shape as tagedit.cleanInput, plus this endpoint's own fields.
 // Kept inline because /submit's 400 "No usable tag fields" guard depends on it
@@ -135,6 +214,7 @@ function cleanInput(t: SubmittedMetadata): SubmittedMetadata {
   if (Number.isFinite(t.duration)   && (t.duration   as number) > 0) out.duration   = t.duration;
   if (Number.isFinite(t.bitrate)    && (t.bitrate    as number) > 0) out.bitrate    = t.bitrate;
   if (Number.isFinite(t.sampleRate) && (t.sampleRate as number) > 0) out.sampleRate = t.sampleRate;
+  if (Number.isFinite(t.bitDepth)   && (t.bitDepth   as number) > 0) out.bitDepth   = t.bitDepth;
   if (Number.isFinite(t.channels)   && (t.channels   as number) > 0) out.channels   = t.channels;
 
   // never overwrites an existing value); container/codec stay diagnostic-only.

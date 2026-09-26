@@ -258,7 +258,7 @@ function makeEnv() {
         // reclaim staleness scan
         if (trimmed.startsWith("SELECT id, attempts, max_attempts FROM work_queue WHERE status = 'claimed'")) {
           const cutoff = binds[0] as number;
-          const stale = rows.filter((r) => r.status === "claimed" && r.heartbeat_at !== null && r.heartbeat_at < cutoff);
+          const stale = rows.filter((r) => r.task_type !== "manual_upload_pending" && r.status === "claimed" && r.heartbeat_at !== null && r.heartbeat_at < cutoff);
           return { results: stale.map((r) => ({ id: r.id, attempts: r.attempts, max_attempts: r.max_attempts })) } as { results: T[] };
         }
         throw new Error(`unmocked all sql: ${trimmed}`);
@@ -458,6 +458,11 @@ async function run() {
     const id2 = await dispatchWork(ctx.db as unknown as D1Database, {
       taskType: "metadata", payload: {}, maxAttempts: 1,
     }, TEST_ENV);
+    ctx.rows.push({
+      id: "wm-upload-pending-live", task_type: "manual_upload_pending", payload: "{}", required_caps: null,
+      priority: 5, status: "claimed", claimed_by: null, claimed_at: 1000, heartbeat_at: 1000,
+      result_json: null, error_message: null, attempts: 0, max_attempts: 3, created_at: 0, expires_at: null,
+    });
     // claim both at t=1000 with heartbeat=1000
     ctx.setNow(1000);
     await (ctx.db.prepare("UPDATE work_queue SET status = 'claimed', claimed_by = ?, claimed_at = unixepoch(), heartbeat_at = unixepoch(), attempts = attempts + 1 WHERE id = ? AND status = 'queued' RETURNING id, task_type, payload, required_caps, priority, attempts, max_attempts, claimed_at, heartbeat_at") as any).bind("ghost", id1).first();
@@ -476,6 +481,7 @@ async function run() {
       assert(report.scanned === 2, "both stale claims detected");
       assert(report.reQueued === 1, "one re-queued");
       assert(report.failed === 1, "one failed (max attempts reached)");
+      assert(ctx.rows.find((r) => r.id === "wm-upload-pending-live")?.status === "claimed", "generic stale-work reclaim never steals upload metadata leases");
       const a = ctx.rows.find((r) => r.id === id1)!;
       const b = ctx.rows.find((r) => r.id === id2)!;
       assert(a.status === "queued", "max=3 attempts=1 → re-queue");

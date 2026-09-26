@@ -46,7 +46,8 @@ export async function reclaimStaleWork(env: Env): Promise<ReclaimReport> {
   const stale = (await env.DB.prepare(
     `SELECT id, attempts, max_attempts
      FROM work_queue
-     WHERE status = 'claimed' AND heartbeat_at IS NOT NULL AND heartbeat_at < ?`,
+     WHERE status = 'claimed' AND task_type != 'manual_upload_pending'
+       AND heartbeat_at IS NOT NULL AND heartbeat_at < ?`,
   ).bind(cutoff).all<{ id: string; attempts: number; max_attempts: number }>()).results;
 
   const report: ReclaimReport = { scanned: stale.length, reQueued: 0, failed: 0 };
