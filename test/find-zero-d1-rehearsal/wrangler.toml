@@ -1,0 +1,8 @@
+name = "find-zero-d1-rehearsal"
+main = "fixture.js"
+compatibility_date = "2025-05-24"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "find-zero-local-fixture"
+database_id = "00000000-0000-0000-0000-000000005230"
