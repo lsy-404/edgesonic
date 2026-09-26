@@ -39,6 +39,19 @@ The candidate SQL changes only `song_masters.album_id` and recomputes `albums.so
 
 The final GO applies only to guarded album-ID assignment for these 310 masters. Track/disc metadata and sidecar association are separate follow-up operations.
 
+## Production execution and independent postflight
+
+The parent executed all 33 guarded files. The first invocation of batch 001 stopped at the obsolete temporary-table guard and made no change; the parent then executed the regenerated DML-guard manifest above. Batch 001 retry and batches 002–033 completed with exit code 0. No raw CLI logs are committed; the parent retained them under its local temporary log directory.
+
+At 2026-09-26 10:41 UTC, this task independently queried production primary D1 using only SELECT statements, with `rows_written=0`, and confirmed:
+
+- 310 expected candidates; 310 moved to their target IDs; 0 still pending.
+- 33 target album rows; all 33 have expected `song_count` and calculated size.
+- 752 excluded snapshot masters found; all 752 remain in `pending-uploads`.
+- Every individual batch postflight passed. Compact per-batch receipts are in `batches_safe/postflight_receipts_<manifest prefix>/`; summary is `postflight_execution_receipt.json`.
+
+This confirms catalog association only. The stored title values and null track/disc fields were preserved exactly. No sidecar/lyric/R2 data was rewritten.
+
 ## Approved safe groups
 
 | Album folder label | Masters |

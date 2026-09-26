@@ -1,0 +1,32 @@
+{
+  "batch_id": "batch_001_3d159900_wav_12",
+  "status": "PASS",
+  "recorded_at_utc": "2026-09-26T10:40:34.8085449Z",
+  "manifest_sha256": "1fafd3214b643a4ef27529adae3c524aca21a8aaba42b16a5f443e5f07a99c66",
+  "postflight_sql_sha256": "3fd40093e21b6c688c7f1d88c7197eee79489527fd755cc45c6bbdf2b3786741",
+  "result": {
+    "batch_id": "batch_001_3d159900_wav_12",
+    "candidate_masters_in_target": 12,
+    "candidate_masters_still_pending": 0,
+    "target_album_rows": 1,
+    "stored_song_count": 12,
+    "calculated_size": 499820192
+  },
+  "meta": {
+    "served_by": "v3-prod",
+    "served_by_region": "WNAM",
+    "served_by_colo": "DFW",
+    "served_by_primary": true,
+    "timings": {
+      "sql_duration_ms": 1.9324
+    },
+    "duration": 1.9324,
+    "changes": 0,
+    "last_row_id": 1682,
+    "changed_db": false,
+    "size_after": 365240320,
+    "rows_read": 804,
+    "rows_written": 0,
+    "total_attempts": 1
+  }
+}

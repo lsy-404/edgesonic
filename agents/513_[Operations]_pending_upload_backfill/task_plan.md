@@ -5,3 +5,4 @@
 - [x] Build the bounded candidate map and SQL preflight/apply/rollback artifacts without executing any production mutation.
 - [x] Seed a disposable local SQLite fixture from the candidate map and rehearse successful apply plus early/late rollback.
 - [x] Record exact counts, excluded reasons, candidate digest, risks, and GO/NO-GO recommendation.
+- [x] After the parent-run production operation, independently verify every batch plus global candidate/exclusion counts on the primary and save compact receipts.

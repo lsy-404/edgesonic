@@ -1,0 +1,454 @@
+{
+  "status": "PASS",
+  "recorded_at_utc": "2026-09-26T10:41:36.1390456Z",
+  "manifest_sha256": "1fafd3214b643a4ef27529adae3c524aca21a8aaba42b16a5f443e5f07a99c66",
+  "groups": 33,
+  "masters": 310,
+  "batches": [
+    {
+      "batch_id": "batch_001_3d159900_wav_12",
+      "status": "PASS",
+      "masters": 12,
+      "result": {
+        "batch_id": "batch_001_3d159900_wav_12",
+        "candidate_masters_in_target": 12,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 12,
+        "calculated_size": 499820192
+      }
+    },
+    {
+      "batch_id": "batch_002_9349782e_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_002_9349782e_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 415975160
+      }
+    },
+    {
+      "batch_id": "batch_003_47859379_wav_16",
+      "status": "PASS",
+      "masters": 16,
+      "result": {
+        "batch_id": "batch_003_47859379_wav_16",
+        "candidate_masters_in_target": 16,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 16,
+        "calculated_size": 491112416
+      }
+    },
+    {
+      "batch_id": "batch_004_f5fb4151_wav_05",
+      "status": "PASS",
+      "masters": 5,
+      "result": {
+        "batch_id": "batch_004_f5fb4151_wav_05",
+        "candidate_masters_in_target": 5,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 5,
+        "calculated_size": 246582538
+      }
+    },
+    {
+      "batch_id": "batch_005_44608fa2_wav_07",
+      "status": "PASS",
+      "masters": 7,
+      "result": {
+        "batch_id": "batch_005_44608fa2_wav_07",
+        "candidate_masters_in_target": 7,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 7,
+        "calculated_size": 308620340
+      }
+    },
+    {
+      "batch_id": "batch_006_9fe5b934_wav_12",
+      "status": "PASS",
+      "masters": 12,
+      "result": {
+        "batch_id": "batch_006_9fe5b934_wav_12",
+        "candidate_masters_in_target": 12,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 12,
+        "calculated_size": 464098596
+      }
+    },
+    {
+      "batch_id": "batch_007_255c609f_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_007_255c609f_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 460376576
+      }
+    },
+    {
+      "batch_id": "batch_008_6cfb5fdf_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_008_6cfb5fdf_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 536481612
+      }
+    },
+    {
+      "batch_id": "batch_009_cf66a64d_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_009_cf66a64d_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 428868834
+      }
+    },
+    {
+      "batch_id": "batch_010_aa30d1e1_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_010_aa30d1e1_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 354704714
+      }
+    },
+    {
+      "batch_id": "batch_011_4131044b_wav_04",
+      "status": "PASS",
+      "masters": 4,
+      "result": {
+        "batch_id": "batch_011_4131044b_wav_04",
+        "candidate_masters_in_target": 4,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 4,
+        "calculated_size": 180370352
+      }
+    },
+    {
+      "batch_id": "batch_012_1408f656_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_012_1408f656_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 439227032
+      }
+    },
+    {
+      "batch_id": "batch_013_0fb87970_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_013_0fb87970_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 575504994
+      }
+    },
+    {
+      "batch_id": "batch_014_3cc00b92_wav_05",
+      "status": "PASS",
+      "masters": 5,
+      "result": {
+        "batch_id": "batch_014_3cc00b92_wav_05",
+        "candidate_masters_in_target": 5,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 5,
+        "calculated_size": 277740844
+      }
+    },
+    {
+      "batch_id": "batch_015_4854213f_flac_05",
+      "status": "PASS",
+      "masters": 5,
+      "result": {
+        "batch_id": "batch_015_4854213f_flac_05",
+        "candidate_masters_in_target": 5,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 5,
+        "calculated_size": 95344562
+      }
+    },
+    {
+      "batch_id": "batch_016_bc83cf23_wav_08",
+      "status": "PASS",
+      "masters": 8,
+      "result": {
+        "batch_id": "batch_016_bc83cf23_wav_08",
+        "candidate_masters_in_target": 8,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 8,
+        "calculated_size": 349775680
+      }
+    },
+    {
+      "batch_id": "batch_017_cd16c784_wav_08",
+      "status": "PASS",
+      "masters": 8,
+      "result": {
+        "batch_id": "batch_017_cd16c784_wav_08",
+        "candidate_masters_in_target": 8,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 8,
+        "calculated_size": 277632624
+      }
+    },
+    {
+      "batch_id": "batch_018_89b22aec_wav_11",
+      "status": "PASS",
+      "masters": 11,
+      "result": {
+        "batch_id": "batch_018_89b22aec_wav_11",
+        "candidate_masters_in_target": 11,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 11,
+        "calculated_size": 468871684
+      }
+    },
+    {
+      "batch_id": "batch_019_85f2f0fb_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_019_85f2f0fb_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 373262840
+      }
+    },
+    {
+      "batch_id": "batch_020_60f1e1a8_wav_16",
+      "status": "PASS",
+      "masters": 16,
+      "result": {
+        "batch_id": "batch_020_60f1e1a8_wav_16",
+        "candidate_masters_in_target": 16,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 16,
+        "calculated_size": 806952790
+      }
+    },
+    {
+      "batch_id": "batch_021_558e2e31_wav_07",
+      "status": "PASS",
+      "masters": 7,
+      "result": {
+        "batch_id": "batch_021_558e2e31_wav_07",
+        "candidate_masters_in_target": 7,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 7,
+        "calculated_size": 251257976
+      }
+    },
+    {
+      "batch_id": "batch_022_e9e5d1d1_wav_07",
+      "status": "PASS",
+      "masters": 7,
+      "result": {
+        "batch_id": "batch_022_e9e5d1d1_wav_07",
+        "candidate_masters_in_target": 7,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 7,
+        "calculated_size": 270666116
+      }
+    },
+    {
+      "batch_id": "batch_023_ab49c3aa_wav_12",
+      "status": "PASS",
+      "masters": 12,
+      "result": {
+        "batch_id": "batch_023_ab49c3aa_wav_12",
+        "candidate_masters_in_target": 12,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 12,
+        "calculated_size": 446550300
+      }
+    },
+    {
+      "batch_id": "batch_024_5b59c9ae_wav_09",
+      "status": "PASS",
+      "masters": 9,
+      "result": {
+        "batch_id": "batch_024_5b59c9ae_wav_09",
+        "candidate_masters_in_target": 9,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 9,
+        "calculated_size": 414020604
+      }
+    },
+    {
+      "batch_id": "batch_025_e3640d3b_wav_08",
+      "status": "PASS",
+      "masters": 8,
+      "result": {
+        "batch_id": "batch_025_e3640d3b_wav_08",
+        "candidate_masters_in_target": 8,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 8,
+        "calculated_size": 313324384
+      }
+    },
+    {
+      "batch_id": "batch_026_22c0a8f2_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_026_22c0a8f2_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 431107928
+      }
+    },
+    {
+      "batch_id": "batch_027_28afc804_wav_11",
+      "status": "PASS",
+      "masters": 11,
+      "result": {
+        "batch_id": "batch_027_28afc804_wav_11",
+        "candidate_masters_in_target": 11,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 11,
+        "calculated_size": 518256712
+      }
+    },
+    {
+      "batch_id": "batch_028_690057c2_wav_01",
+      "status": "PASS",
+      "masters": 1,
+      "result": {
+        "batch_id": "batch_028_690057c2_wav_01",
+        "candidate_masters_in_target": 1,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 1,
+        "calculated_size": 42463052
+      }
+    },
+    {
+      "batch_id": "batch_029_78334fe1_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_029_78334fe1_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 376318088
+      }
+    },
+    {
+      "batch_id": "batch_030_2c4cb6bc_wav_14",
+      "status": "PASS",
+      "masters": 14,
+      "result": {
+        "batch_id": "batch_030_2c4cb6bc_wav_14",
+        "candidate_masters_in_target": 14,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 14,
+        "calculated_size": 529889752
+      }
+    },
+    {
+      "batch_id": "batch_031_ddf53069_wav_13",
+      "status": "PASS",
+      "masters": 13,
+      "result": {
+        "batch_id": "batch_031_ddf53069_wav_13",
+        "candidate_masters_in_target": 13,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 13,
+        "calculated_size": 501858572
+      }
+    },
+    {
+      "batch_id": "batch_032_60e8f228_wav_10",
+      "status": "PASS",
+      "masters": 10,
+      "result": {
+        "batch_id": "batch_032_60e8f228_wav_10",
+        "candidate_masters_in_target": 10,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 10,
+        "calculated_size": 368408312
+      }
+    },
+    {
+      "batch_id": "batch_033_7493b190_wav_09",
+      "status": "PASS",
+      "masters": 9,
+      "result": {
+        "batch_id": "batch_033_7493b190_wav_09",
+        "candidate_masters_in_target": 9,
+        "candidate_masters_still_pending": 0,
+        "target_album_rows": 1,
+        "stored_song_count": 9,
+        "calculated_size": 400336176
+      }
+    }
+  ],
+  "global_candidate_postflight": {
+    "expected_candidate_masters": 310,
+    "candidate_masters_moved": 310,
+    "candidate_masters_still_pending": 0,
+    "target_album_rows": 33,
+    "targets_at_expected_size": 33,
+    "live_pending_master_count": 752
+  },
+  "excluded_snapshot_postflight": {
+    "expected_excluded_snapshot_rows": 752,
+    "excluded_snapshot_rows_found": 752,
+    "excluded_snapshot_rows_still_pending": 752,
+    "chunks": 10
+  },
+  "primary_calls": 44,
+  "rows_written": 0
+}
