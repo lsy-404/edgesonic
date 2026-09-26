@@ -24,3 +24,10 @@ Local Wrangler 4.79.0 rehearsals against isolated D1 fixtures: success completed
 The production primary preflight executed the saved three-query SELECT-only SQL file. Wrangler reported primary service, 223 rows read, and 0 rows written. Separate primary reads confirmed pending `581/129701/22611646437` and exactly 26 candidate tracks split 13/13. No production write was issued. A separate controlled remote D1 batch probe by the parent agent also confirmed that a forced late integer overflow rolls back both inserted markers; this is recorded separately from the local rehearsal.
 
 All thirteen human/言和 track pairs remain distinct by canonical PCM SHA-256. Both editions remain separate albums in one display group; no audio rows or R2 objects are changed by the candidate.
+
+
+## Production execution receipt
+
+The guarded candidate was executed against production primary after the preflight. Wrangler completed with exit code 0 across 12 queries and reported 69 rows written. Independent primary postflight found the 人声 edition at 13 tracks / 3230 seconds / 569829020 bytes and the 言和 edition at 13 / 3260 / 575363276; both have disc 1, tracks 1–13, and 13 complete object/entry pairs. The display group has exactly two members. Pending is 555 / 123211 / 21466454141, and all caches match actual aggregates.
+
+Executed candidate: `artifacts/apply_double_edition_guarded.sql`; SHA-256 `51281442F24DB6908D8B9325D6A49A0ADB3FFC339308EDA4AAFA72EF4902A3E8`.

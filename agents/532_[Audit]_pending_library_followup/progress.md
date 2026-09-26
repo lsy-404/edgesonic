@@ -14,3 +14,7 @@
 - Local Wrangler late trigger: final integrity sentinel fails; batch rollback verified with the same untouched-state query.
 - Production primary SELECT-only preflight: 3 SELECT queries, 223 rows read, 0 rows written; pending remains 581 / 129701 / 22611646437 and candidates remain 13 + 13.
 - The candidate and its audit artifacts are ready on the existing branch; root-level Wrangler state directories and `/agents/project.md` / `/agents/tasks.md` are excluded from the commit.
+
+- Production execution completed on primary: Wrangler exit 0, 12 queries, 69 rows written.
+- Independent primary postflight confirmed both 13-track edition aggregates, disc/track numbering, complete 13 object and entry links per edition, two display-group members, pending 555 / 123211 / 21466454141, and caches equal actual aggregates.
+- Verified the executed candidate SHA-256 is 51281442F24DB6908D8B9325D6A49A0ADB3FFC339308EDA4AAFA72EF4902A3E8; candidate source left unchanged.
