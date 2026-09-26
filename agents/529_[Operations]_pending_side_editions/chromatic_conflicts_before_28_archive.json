@@ -1,0 +1,28 @@
+[
+  {
+    "results": [
+      {
+        "group_conflicts": 0,
+        "wav_album_conflicts": 0
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "WNAM",
+      "served_by_colo": "DFW",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 0.3446
+      },
+      "duration": 0.3446,
+      "changes": 0,
+      "last_row_id": 1840,
+      "changed_db": false,
+      "size_after": 366796800,
+      "rows_read": 2,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]

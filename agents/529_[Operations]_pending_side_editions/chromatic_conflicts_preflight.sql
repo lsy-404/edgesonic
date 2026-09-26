@@ -1,0 +1,1 @@
+SELECT (SELECT COUNT(*) FROM album_display_group_members WHERE album_id IN ('al-9c7ec22ef5','al-chromatic-wav-20260926')) group_conflicts,(SELECT COUNT(*) FROM albums WHERE id='al-chromatic-wav-20260926' OR name='异色合鸣Chromatic Harmony (WAV)') wav_album_conflicts;
