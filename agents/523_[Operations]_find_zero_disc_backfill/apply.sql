@@ -36,6 +36,12 @@ NOT EXISTS(SELECT 1 FROM c JOIN song_artists sa ON sa.song_id=c.master_id)
 AND NOT EXISTS(SELECT 1 FROM albums WHERE id='al-find-zero-wav')
 AND NOT EXISTS(SELECT 1 FROM album_display_groups WHERE id='dg-find-zero-editions')
 AND EXISTS(SELECT 1 FROM albums WHERE id='al-0494f8ac9c' AND name='Find-Zero' AND song_count=14)
+AND ((SELECT COUNT(*) FROM albums WHERE id='al-0494f8ac9c' AND name='Find-Zero' AND song_count=14 AND duration=0 AND size=411082170)=1 AND
+(SELECT COUNT(*) FROM song_masters WHERE album_id='al-0494f8ac9c')=14 AND
+(SELECT COALESCE(SUM(duration),0) FROM song_masters WHERE album_id='al-0494f8ac9c')=3173 AND
+(SELECT COUNT(*) FROM song_instances si JOIN song_masters sm ON sm.id=si.master_id WHERE sm.album_id='al-0494f8ac9c')=14 AND
+(SELECT COALESCE(SUM(si.duration),0) FROM song_instances si JOIN song_masters sm ON sm.id=si.master_id WHERE sm.album_id='al-0494f8ac9c')=3173 AND
+(SELECT COALESCE(SUM(si.size),0) FROM song_instances si JOIN song_masters sm ON sm.id=si.master_id WHERE sm.album_id='al-0494f8ac9c')=411082170)
 AND NOT EXISTS(SELECT 1 FROM album_display_group_members WHERE album_id IN ('al-0494f8ac9c','al-find-zero-wav')));
 INSERT INTO albums(id,name,sort_name,year,genre,compilation,song_count,duration,size,created_at,updated_at) VALUES('al-find-zero-wav','Find-Zero (WAV)','find-zero-wav',NULL,'未知流派',0,0,0,0,unixepoch(),unixepoch());
 WITH c(master_id,instance_id,object_id,entry_id,parent_id,path,physical_key,title_snapshot,disc,track) AS (VALUES
@@ -108,7 +114,12 @@ WHERE id IN(SELECT master_id FROM c) AND album_id='pending-uploads' AND track IS
 INSERT INTO work_queue(id,task_type,payload,status,created_at)
 SELECT 'guard-find-zero-wav','metadata','{}','guard_failed',unixepoch()
 WHERE changes()!=25;
-UPDATE albums SET song_count=(SELECT COUNT(*) FROM song_masters WHERE album_id=albums.id),duration=(SELECT COALESCE(SUM(si.duration),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),size=(SELECT COALESCE(SUM(si.size),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),updated_at=unixepoch() WHERE id IN('pending-uploads','al-find-zero-wav');
+UPDATE albums SET song_count=(SELECT COUNT(*) FROM song_masters WHERE album_id=albums.id),duration=(SELECT COALESCE(SUM(sm.duration),0) FROM song_masters sm WHERE sm.album_id=albums.id),size=(SELECT COALESCE(SUM(si.size),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),updated_at=unixepoch() WHERE id IN('pending-uploads','al-find-zero-wav','al-0494f8ac9c');
 INSERT INTO work_queue(id,task_type,payload,status,created_at)
 SELECT 'guard-find-zero-wav','metadata','{}','guard_failed',unixepoch()
-WHERE (SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav')!=25 OR (SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav' AND disc=1)!=14 OR (SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav' AND disc=2)!=11;
+WHERE (SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav')!=25 OR (SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav' AND disc=1)!=14 OR (SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav' AND disc=2)!=11 OR NOT ((SELECT COUNT(*) FROM albums WHERE id='al-0494f8ac9c' AND name='Find-Zero' AND song_count=14 AND duration=3173 AND size=411082170)=1 AND
+(SELECT COUNT(*) FROM song_masters WHERE album_id='al-0494f8ac9c')=14 AND
+(SELECT COALESCE(SUM(duration),0) FROM song_masters WHERE album_id='al-0494f8ac9c')=3173 AND
+(SELECT COUNT(*) FROM song_instances si JOIN song_masters sm ON sm.id=si.master_id WHERE sm.album_id='al-0494f8ac9c')=14 AND
+(SELECT COALESCE(SUM(si.duration),0) FROM song_instances si JOIN song_masters sm ON sm.id=si.master_id WHERE sm.album_id='al-0494f8ac9c')=3173 AND
+(SELECT COALESCE(SUM(si.size),0) FROM song_instances si JOIN song_masters sm ON sm.id=si.master_id WHERE sm.album_id='al-0494f8ac9c')=411082170);

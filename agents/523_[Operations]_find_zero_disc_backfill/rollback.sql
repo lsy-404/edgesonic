@@ -35,7 +35,12 @@ AND EXISTS(SELECT 1 FROM album_display_group_members WHERE group_id='dg-find-zer
 AND EXISTS(SELECT 1 FROM album_display_group_members WHERE group_id='dg-find-zero-editions' AND album_id='al-find-zero-wav' AND sort_order=1)
 AND NOT EXISTS(SELECT 1 FROM c JOIN playlist_songs p ON p.song_master_id=c.master_id)
 AND NOT EXISTS(SELECT 1 FROM c JOIN annotations a ON a.item_type='song' AND a.item_id=c.master_id)
-AND NOT EXISTS(SELECT 1 FROM c JOIN song_artists sa ON sa.song_id=c.master_id) AND NOT EXISTS(SELECT 1 FROM annotations WHERE item_type='album' AND item_id='') AND NOT EXISTS(SELECT 1 FROM album_display_group_members WHERE album_id='' AND group_id!='') AND NOT EXISTS(SELECT 1 FROM c JOIN storage_entries se ON se.id=c.entry_id JOIN storage_entries child ON child.parent_id=se.id));
+AND NOT EXISTS(SELECT 1 FROM c JOIN song_artists sa ON sa.song_id=c.master_id) AND NOT EXISTS(SELECT 1 FROM annotations WHERE item_type='album' AND item_id='al-find-zero-wav') AND NOT EXISTS(SELECT 1 FROM album_display_group_members WHERE album_id='al-find-zero-wav' AND group_id!='dg-find-zero-editions') AND ((SELECT COUNT(*) FROM albums WHERE id='al-0494f8ac9c' AND name='Find-Zero' AND song_count=14 AND duration=3173 AND size=411082170)=1 AND
+(SELECT COUNT(*) FROM song_masters WHERE album_id='al-0494f8ac9c')=14 AND
+(SELECT COALESCE(SUM(duration),0) FROM song_masters WHERE album_id='al-0494f8ac9c')=3173 AND
+(SELECT COUNT(*) FROM song_instances si JOIN song_masters sm ON sm.id=si.master_id WHERE sm.album_id='al-0494f8ac9c')=14 AND
+(SELECT COALESCE(SUM(si.duration),0) FROM song_instances si JOIN song_masters sm ON sm.id=si.master_id WHERE sm.album_id='al-0494f8ac9c')=3173 AND
+(SELECT COALESCE(SUM(si.size),0) FROM song_instances si JOIN song_masters sm ON sm.id=si.master_id WHERE sm.album_id='al-0494f8ac9c')=411082170) AND NOT EXISTS(SELECT 1 FROM c JOIN storage_entries se ON se.id=c.entry_id JOIN storage_entries child ON child.parent_id=se.id));
 WITH c(master_id,instance_id,object_id,entry_id,parent_id,path,physical_key,title_snapshot,disc,track) AS (VALUES
 ('sm-upload-2598e63c-2ca','si-upload-24f22661-f90','obj_61f13c2104e31523','se-3c78a1798a1d4049a9f6624abb8406d7','se-aa330137684a497797b2487b76257064','Find-Zero/CD 1 人声碟/01 WE ARE.wav','objects/obj_61f13c2104e31523.wav','01 WE ARE',1,1),
 ('sm-upload-f37ae519-c7e','si-upload-9e39a3bb-588','obj_632790037c287eb3','se-4bebcb2f7e2a49be9b895ffe43ebdf59','se-aa330137684a497797b2487b76257064','Find-Zero/CD 1 人声碟/02 VOCA-LOUDER.wav','objects/obj_632790037c287eb3.wav','02 VOCA-LOUDER',1,2),
@@ -68,7 +73,7 @@ WHERE id IN(SELECT master_id FROM c) AND album_id='al-find-zero-wav';
 INSERT INTO work_queue(id,task_type,payload,status,created_at)
 SELECT 'guard-find-zero-wav-rollback','metadata','{}','guard_failed',unixepoch()
 WHERE changes()!=25;
-UPDATE albums SET song_count=(SELECT COUNT(*) FROM song_masters WHERE album_id=albums.id),duration=(SELECT COALESCE(SUM(si.duration),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),size=(SELECT COALESCE(SUM(si.size),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),updated_at=unixepoch() WHERE id='pending-uploads';
+UPDATE albums SET song_count=(SELECT COUNT(*) FROM song_masters WHERE album_id=albums.id),duration=(SELECT COALESCE(SUM(sm.duration),0) FROM song_masters sm WHERE sm.album_id=albums.id),size=(SELECT COALESCE(SUM(si.size),0) FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.album_id=albums.id),updated_at=unixepoch() WHERE id='pending-uploads';
 DELETE FROM album_display_group_members WHERE group_id='dg-find-zero-editions' AND album_id IN('al-0494f8ac9c','al-find-zero-wav');
 INSERT INTO work_queue(id,task_type,payload,status,created_at)
 SELECT 'guard-find-zero-wav-rollback','metadata','{}','guard_failed',unixepoch()
