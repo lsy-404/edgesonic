@@ -1,0 +1,8 @@
+name = "q5-wav-alternate-rehearsal"
+compatibility_date = "2026-03-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "q5-wav-alternate-rehearsal"
+database_id = "a44b0e27-4113-4dc9-94bb-2d2cf9f4607b"
+migrations_dir = "migrations"
