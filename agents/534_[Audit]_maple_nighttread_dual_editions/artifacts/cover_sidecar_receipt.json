@@ -1,6 +1,6 @@
 {
   "date": "2026-09-26",
-  "production_access": "SELECT-only; no D1 or R2 writes/deletes performed",
+  "production_access": "Audit preparation used SELECT-only access; parent production execution and its read-only postflight are recorded separately below.",
   "d1_sidecars": [
     {
       "entry_id": "se-17ef6ea6262649c5b211c104a8d668b2",
@@ -41,7 +41,6 @@
     "covers/al-maple-nighttread-wav",
     "covers/al-maple-nighttread-mp3"
   ],
-  "r2_targets_absent_at_last_list_check": true,
   "primary_preflight": {
     "source_rows": 20,
     "exact_source_matches": 20,
@@ -98,6 +97,97 @@
       "covers/al-maple-nighttread-mp3": "404: The specified key does not exist"
     },
     "write_performed": false,
-    "note": "The first missing-key request emitted the 404 then Wrangler exited abnormally on Windows; the second exited normally with the same missing-key result."
-  }
+    "note": "The first missing-key request emitted the 404 then Wrangler exited abnormally on Windows; the second exited normally with the same missing-key result.",
+    "phase": "before parent production execution"
+  },
+  "audit_phase_access": "This task used read-only production checks; the parent later performed the listed approved production writes.",
+  "production_receipt": {
+    "executed_by": "parent task",
+    "r2": {
+      "source_physical_key": "objects/obj_1b4a15b85d0840f4.jpg",
+      "source_size": 128995,
+      "source_sha256": "887A4E95410C92BAC1098442241D0265AB907D1EAD51C78A27E0C48DD8B37796",
+      "copies": [
+        {
+          "key": "covers/al-maple-nighttread-wav",
+          "read_back": true,
+          "size": 128995,
+          "sha256": "887A4E95410C92BAC1098442241D0265AB907D1EAD51C78A27E0C48DD8B37796"
+        },
+        {
+          "key": "covers/al-maple-nighttread-mp3",
+          "read_back": true,
+          "size": 128995,
+          "sha256": "887A4E95410C92BAC1098442241D0265AB907D1EAD51C78A27E0C48DD8B37796"
+        }
+      ],
+      "note": "Both destination objects were read back with the source length and SHA-256."
+    },
+    "d1_apply": {
+      "candidate_sha256": "2CEF2C10F6460EAEBC06545ABFFFEA517AEEB9DFA5B94AAC53FF1DBFC1272E88",
+      "command": "wrangler d1 execute --remote --command",
+      "exit_code": 0,
+      "served_by_primary": true,
+      "preflight_sources_exact": "20/20",
+      "preflight_sidecars_exact": "2/2",
+      "pending_before": [
+        522,
+        116545,
+        20262441225
+      ]
+    },
+    "independent_postflight": {
+      "wav_album": {
+        "cache": [
+          10,
+          2356,
+          572036956
+        ],
+        "instances": 10,
+        "objects": 10,
+        "entries": 10,
+        "tag_scanned_all": true,
+        "cover_key": "covers/al-maple-nighttread-wav"
+      },
+      "mp3_album": {
+        "cache": [
+          10,
+          2356,
+          94355582
+        ],
+        "instances": 10,
+        "objects": 10,
+        "entries": 10,
+        "tag_scanned_all": true,
+        "cover_key": "covers/al-maple-nighttread-mp3"
+      },
+      "group": {
+        "id": "ag-maple-nighttread-editions",
+        "name": "枫烬-夜屠灵",
+        "ordered_members": [
+          {
+            "album": "WAV",
+            "sort_order": 0
+          },
+          {
+            "album": "MP3",
+            "sort_order": 1
+          }
+        ]
+      },
+      "pending_cached_and_actual": [
+        502,
+        111833,
+        19596048687
+      ],
+      "source_sidecars_intact": true,
+      "all_postflight_queries_primary": true,
+      "all_postflight_queries_changed_db_false": true,
+      "all_postflight_queries_rows_written": 0,
+      "quick_check": "ok",
+      "foreign_key_check_rows": 0
+    },
+    "version_policy": "Both versions retained because all 10 decoded PCM pairs differ."
+  },
+  "r2_targets_absent_before_production": true
 }

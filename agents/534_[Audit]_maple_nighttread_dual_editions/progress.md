@@ -16,3 +16,7 @@
 - `--file` 聚合查询一度给出 changed_db=true/changes=1 与 rows_written=0 不一致；改用短 `--command` 精确复核后，主库读取证据无上述矛盾。
 
 - 提交前以 Wrangler remote object GET 对两个 canonical cover key 再做只读检查，结果均为不存在；未执行 PUT/DELETE。记录第一个 GET 返回 404 后 Wrangler Windows 端异常退出的工具行为。
+
+- 本任务续接记录父任务已执行的 production 回执：两个 canonical R2 cover 对象复制后读回且 SHA/size 与根 cover 一致；精确 D1 候选成功，source 20/20、sidecar 2/2。
+- 独立 postflight 确认两版 album/实例/对象/entry/tag scan/cache、显示组成员次序、pending 聚合、sidecar 完整性；quick_check 与 foreign_key_check 均通过。所有 postflight 为 primary read-only。
+- 复跑 Wrangler local rehearsal PASS：successFingerprint `9EAD6483EA2527C33683BA4BD8E130F0B7ECFEA94C67581D7964F59AEDFD5942`；sidecar stale、path stale、concurrent、late failure 回滚均 true。

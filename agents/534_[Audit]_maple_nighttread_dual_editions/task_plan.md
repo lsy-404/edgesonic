@@ -14,3 +14,4 @@
 - [x] 更新 apply/preflight SQL 的封面身份守卫与 canonical album cover keys。
 - [x] 扩展本地 fixture、全表指纹与 sidecar 过期/身份过期/并发/末段失败回滚演练。
 - [x] 写 sidecar 证据与 R2 staging 前置要求；本轮未生产写入或删除。
+- [x] 补录 production R2/D1 执行及独立 postflight 回执；仅更新本任务 agents 文件。
