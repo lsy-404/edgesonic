@@ -3,7 +3,7 @@ CREATE TABLE song_masters (id TEXT PRIMARY KEY,album_id TEXT,title TEXT,disc INT
 CREATE TABLE song_instances (id TEXT PRIMARY KEY,master_id TEXT,storage_object_id TEXT,source_id TEXT,source_type TEXT,suffix TEXT,missing INTEGER,tag_scanned INTEGER,size INTEGER);
 CREATE TABLE storage_objects (id TEXT PRIMARY KEY,physical_key TEXT,size INTEGER);
 CREATE TABLE storage_entries (id TEXT PRIMARY KEY,instance_id TEXT,object_id TEXT,path TEXT,kind TEXT);
-INSERT INTO albums VALUES ('pending-uploads','Pending Uploads',NULL,NULL,NULL,NULL,10,0,0,0,0,0),('al-369dc39c99e3a1a27dc05b84aa30d1e1','众虫皆歌',NULL,2024,NULL,NULL,10,0,0,0,0,0);
+INSERT INTO albums VALUES ('pending-uploads','Pending Uploads',NULL,NULL,NULL,NULL,633,0,0,0,0,0),('al-369dc39c99e3a1a27dc05b84aa30d1e1','众虫皆歌',NULL,2024,NULL,NULL,10,0,0,0,0,0);
 INSERT INTO song_masters VALUES
 ('vocal-1','al-369dc39c99e3a1a27dc05b84aa30d1e1','vocal 1',1,1,0,0),('vocal-2','al-369dc39c99e3a1a27dc05b84aa30d1e1','vocal 2',1,2,0,0),('vocal-3','al-369dc39c99e3a1a27dc05b84aa30d1e1','vocal 3',1,3,0,0),('vocal-4','al-369dc39c99e3a1a27dc05b84aa30d1e1','vocal 4',1,4,0,0),('vocal-5','al-369dc39c99e3a1a27dc05b84aa30d1e1','vocal 5',1,5,0,0),('vocal-6','al-369dc39c99e3a1a27dc05b84aa30d1e1','vocal 6',1,6,0,0),('vocal-7','al-369dc39c99e3a1a27dc05b84aa30d1e1','vocal 7',1,7,0,0),('vocal-8','al-369dc39c99e3a1a27dc05b84aa30d1e1','vocal 8',1,8,0,0),('vocal-9','al-369dc39c99e3a1a27dc05b84aa30d1e1','vocal 9',1,9,0,0),('vocal-10','al-369dc39c99e3a1a27dc05b84aa30d1e1','vocal 10',1,10,0,0);
 WITH e(m,i,o,se,p,t,d,z) AS (VALUES

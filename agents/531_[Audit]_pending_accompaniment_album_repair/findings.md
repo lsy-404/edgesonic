@@ -14,6 +14,8 @@ The production database and R2 remain read-only. Instrumental and bonus paths ar
 
 The guarded candidate creates `众虫皆歌（伴奏）` as a separate ten-track WAV edition. It does not merge audio masters, copies no vocal title or artist fields, and makes no R2 change. The candidate requires the exact master, instance, object, entry, path, suffix, active-state, and tag-state snapshot.
 
+The candidate also requires the production pending-album cache to remain at 633. Each mutation has an exact `changes()` sentinel: album creation must affect one row, reassignment must affect ten rows, and aggregate refresh must affect two rows. A final state sentinel aborts the whole atomic file unless all ten tracks are ordered in the new edition and none remains pending.
+
 ## Fresh primary preflight
 
 The final read-only primary check returned ten rows, ten masters, ten distinct R2 physical keys, `pending-uploads` for every master, `missing=0`, `tag_scanned=1`, and no existing disc or track values. The query was served by the primary and reported zero rows written.
