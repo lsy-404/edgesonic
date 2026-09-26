@@ -6,3 +6,5 @@
 - Added the guarded SQL candidate and exact local fixture. The candidate keeps all source identities and titles/durations, creates the companion album, assigns tracks 1–10, adds the two ordered group members, and refreshes pending, companion, and vocal album caches.
 - Ran `pwsh -NoProfile -File test/rehearse_companion_display_group.ps1` with true Wrangler local D1. Success, stale path, concurrent reassignment, and invalid late insert all passed; late failure preserved the full pre-run database fingerprint.
 - No production write was run from this task.
+
+- Recorded the successful guarded production run and independent primary postflight; no follow-up production write was made.
