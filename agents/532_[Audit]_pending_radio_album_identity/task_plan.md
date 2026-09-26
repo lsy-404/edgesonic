@@ -8,9 +8,9 @@
 - [x] Record final hashes and commit only this task directory and its `/test` artifacts.
 
 - [x] Correct A anchor disc metadata under fresh cache guard.
-- [x] Build and refresh complete guarded B edition/group proposal.
+- [x] Build, rehearse, and deliver the guarded B edition/group proposal; record production postflight.
 - [x] Verify local success, stale-source rejection, and late failure rollback.
 - [x] Run fresh primary SELECT-only preflight; record source snapshot.
 - [x] Review explicit `平四1-6` duplicate example with primary reads and exact R2 PCM comparison; preserve both distinct audio objects.
-- [ ] Prepare a separate guarded WAV alternate-edition album candidate after A/B delivery.
+- [ ] Complete a separate guarded WAV alternate-edition album rehearsal and preflight after A/B delivery.
 - [ ] Commit only this task directory and its root `/test` fixture.
