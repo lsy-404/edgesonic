@@ -150,7 +150,9 @@ function makeEnv() {
         // reclaim re-queue
         if (trimmed.startsWith("UPDATE work_queue SET status = 'queued',")) {
           const id = binds[0] as string;
-          const r = rows.find((x) => x.id === id);
+          const r = rows.find((x) => x.id === id && x.status === "claimed"
+            && x.heartbeat_at !== null && x.heartbeat_at < (binds[1] as number)
+            && x.attempts === binds[2] && x.max_attempts === binds[3]);
           if (r) {
             r.status = "queued";
             if (!r.error_message) r.error_message = "stale claim re-queued";
@@ -164,7 +166,9 @@ function makeEnv() {
         // reclaim → failed
         if (trimmed.startsWith("UPDATE work_queue SET status = 'failed',")) {
           const id = binds[0] as string;
-          const r = rows.find((x) => x.id === id);
+          const r = rows.find((x) => x.id === id && x.status === "claimed"
+            && x.heartbeat_at !== null && x.heartbeat_at < (binds[1] as number)
+            && x.attempts === binds[2] && x.max_attempts === binds[3]);
           if (r) {
             r.status = "failed";
             if (!r.error_message) r.error_message = "stale claim: max attempts exceeded";
@@ -271,8 +275,9 @@ function makeEnv() {
   const db = {
     prepare(sql: string) { return makeStmt(sql); },
     async batch(stmts: Array<{ run: () => Promise<unknown> }>) {
-      for (const s of stmts) await s.run();
-      return [];
+      const results = [];
+      for (const s of stmts) results.push(await s.run());
+      return results;
     },
   };
 

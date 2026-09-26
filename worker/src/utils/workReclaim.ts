@@ -36,7 +36,7 @@ export interface ReclaimReport {
   failed: number;
 }
 
-export async function reclaimStaleWork(env: Env): Promise<ReclaimReport> {
+export async function reclaimStaleWork(env: Env, wake = true): Promise<ReclaimReport> {
   const ttl = parseInt(await getFeatureString(env, "worker_claim_ttl_seconds", "60"), 10);
   const ttlSeconds = Number.isFinite(ttl) && ttl > 0 ? ttl : 60;
   const cutoff = Math.floor(Date.now() / 1000) - ttlSeconds;
@@ -67,8 +67,9 @@ export async function reclaimStaleWork(env: Env): Promise<ReclaimReport> {
            SET status = 'failed',
                error_message = COALESCE(error_message, 'stale claim: max attempts exceeded'),
                claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL
-           WHERE id = ? AND status = 'claimed' AND heartbeat_at < ?`,
-        ).bind(row.id, cutoff),
+           WHERE id = ? AND status = 'claimed' AND heartbeat_at < ?
+             AND attempts = ? AND max_attempts = ?`,
+        ).bind(row.id, cutoff, row.attempts, row.max_attempts),
       );
     } else {
       reQueueStmts.push(
@@ -77,20 +78,23 @@ export async function reclaimStaleWork(env: Env): Promise<ReclaimReport> {
            SET status = 'queued',
                error_message = COALESCE(error_message, 'stale claim re-queued'),
                claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL
-           WHERE id = ? AND status = 'claimed' AND heartbeat_at < ?`,
-        ).bind(row.id, cutoff),
+           WHERE id = ? AND status = 'claimed' AND heartbeat_at < ?
+             AND attempts = ? AND max_attempts = ?`,
+        ).bind(row.id, cutoff, row.attempts, row.max_attempts),
       );
     }
   }
-  for (const stmt of reQueueStmts) {
-    if ((await stmt.run()).meta.changes === 1) report.reQueued++;
+  for (let i = 0; i < reQueueStmts.length; i += 80) {
+    const results = await env.DB.batch(reQueueStmts.slice(i, i + 80));
+    for (const result of results) report.reQueued += result.meta.changes ?? 0;
   }
-  for (const stmt of failStmts) {
-    if ((await stmt.run()).meta.changes === 1) report.failed++;
+  for (let i = 0; i < failStmts.length; i += 80) {
+    const results = await env.DB.batch(failStmts.slice(i, i + 80));
+    for (const result of results) report.failed += result.meta.changes ?? 0;
   }
   // Rows put back here would otherwise sit until some unrelated enqueue
   // happened to wake the coordinator — this sweep runs from the cron with no
   // browser involved, so nothing else is going to trigger a dispatch.
-  if (report.reQueued > 0) await wakePool(env);
+  if (wake && report.reQueued > 0) await wakePool(env);
   return report;
 }

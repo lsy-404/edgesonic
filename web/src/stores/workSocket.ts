@@ -258,7 +258,7 @@ export const useWorkSocket = defineStore("workSocket", () => {
     // too many on the wire. Release it rather than acknowledging completion:
     // no result has reached /work/submit yet.
     if (running.value.size >= currentConcurrency.value) {
-      send({ type: "release", id: task.id });
+      send({ type: "release", id: task.id, attempts: task.attempts, claimedAt: task.claimedAt });
       return;
     }
     const fileName = fileNameFrom(task);
@@ -296,7 +296,7 @@ export const useWorkSocket = defineStore("workSocket", () => {
     // Hand the slot back even when the task was aborted — the server needs to
     // know this browser is free again, and the abandoned row recovers through
     // the disconnect release or the reclaim sweep.
-    send({ type: "done", id: task.id });
+    send({ type: "done", id: task.id, attempts: task.attempts, claimedAt: task.claimedAt });
   }
 
   function send(msg: unknown): void {

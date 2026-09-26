@@ -65,7 +65,10 @@ async function main() {
   assert.equal(streamUrl.searchParams.get("id"), sourceId);
   assert.equal(streamUrl.searchParams.get("source"), sourceId);
   assert.deepEqual(request.payload, { instanceId: sourceId });
-  assert.deepEqual(calls, [{ path: "work/submit", body: { id: request.id, result: { tags: {} } } }]);
+  assert.deepEqual(calls, [{ path: "work/submit", body: {
+    id: request.id, attempts: request.attempts, claimedAt: request.claimedAt,
+    result: { tags: {} },
+  } }]);
 }
 
 main().catch((error) => {

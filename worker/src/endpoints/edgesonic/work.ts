@@ -35,10 +35,7 @@
 // wake the coordinator — see wakePool below and its callers. A row queued
 // without a wake waits for the reclaim sweep, which is the slow path.
 //
-// Reclaim of stale claims (heartbeat older than worker_claim_ttl_seconds) is
-// handled by reclaimStaleWork(), wired into index.ts scheduled handler. It
-// covers the case the coordinator can't: a browser that died without its
-// socket closing cleanly.
+// Stale claims are reclaimed by the coordinator alarm and the scheduled sweep.
 
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
@@ -119,6 +116,113 @@ async function applyQueuedMetadata(
   return applyMetadataResult(db, instanceId, tags, tags);
 }
 
+const APPLY_PENDING = "metadata_apply:pending";
+const APPLYING_PREFIX = "metadata_apply:applying:";
+const APPLY_LEASE_SECONDS = 10 * 60;
+
+interface ApplyAnnotation {
+  ok: boolean;
+  reason?: string;
+  masterId?: string;
+}
+
+async function applyCompletedMetadata(
+  env: Env,
+  taskId: string,
+  payloadJson: string,
+  result: unknown,
+): Promise<ApplyAnnotation> {
+  const applying = `${APPLYING_PREFIX}${crypto.randomUUID()}`;
+  const acquired = await env.DB.prepare(
+    `UPDATE work_queue SET error_message = ?, heartbeat_at = unixepoch()
+     WHERE id = ? AND task_type = 'metadata' AND status = 'completed'
+       AND error_message = ?`,
+  ).bind(applying, taskId, APPLY_PENDING).run();
+  if (acquired.meta.changes !== 1) return { ok: false, reason: "metadata apply already in progress" };
+
+  let annotation: ApplyAnnotation = { ok: false, reason: "invalid metadata result" };
+  let retry = false;
+  try {
+    const payload = JSON.parse(payloadJson) as Record<string, unknown>;
+    const r = result as Record<string, unknown> | null;
+    if (!payload || typeof payload !== "object" || !r || typeof r !== "object" ||
+        typeof r.instanceId !== "string" || r.instanceId !== payload.instanceId) {
+      annotation = { ok: false, reason: "task result instance mismatch" };
+    } else {
+      const instanceId = r.instanceId;
+      const tags = r.tags && typeof r.tags === "object" ? r.tags as Record<string, unknown> : {};
+      const apply = await applyQueuedMetadata(env.DB, instanceId, tags, payload);
+      annotation = apply.updated
+        ? { ok: true, masterId: apply.masterId }
+        : { ok: false, reason: apply.reason };
+      if (!apply.updated && apply.reason === "upload generation is being changed or applied") retry = true;
+
+      let coverFailed = false;
+      if (apply.masterId && r.cover && typeof r.cover === "object") {
+        const cover = r.cover as { data?: string; mime?: string };
+        if (typeof cover.data === "string") {
+          try {
+            const coverStatus = await writeEmbeddedCover(
+              env.DB, env.MUSIC_BUCKET, apply.masterId,
+              cover as { data: string; mime?: string },
+              apply.uploadLease
+                ? { markerId: uploadMetadataMarkerId(instanceId), payload: apply.uploadLease.payload }
+                : undefined,
+            );
+            coverFailed = coverStatus === "invalid";
+          } catch (error) {
+            coverFailed = true;
+            retry = true;
+            console.error(`[work/submit] cover write failed for ${instanceId}:`, error);
+          }
+        }
+      }
+      if (apply.uploadLease) {
+        try {
+          await releaseUploadMetadataLease(env.DB, apply.uploadLease, !coverFailed);
+        } catch (error) {
+          retry = true;
+          console.error(`[work/submit] upload generation lease release failed for ${instanceId}:`, error);
+        }
+      }
+    }
+  } catch (error) {
+    retry = true;
+    annotation = { ok: false, reason: error instanceof Error ? error.message : String(error) };
+  }
+
+  await env.DB.prepare(
+    `UPDATE work_queue SET error_message = ?
+     WHERE id = ? AND status = 'completed' AND error_message = ?`,
+  ).bind(retry ? APPLY_PENDING : null, taskId, applying).run();
+  return annotation;
+}
+
+export async function recoverPendingMetadataApplies(env: Env, limit = 20): Promise<number> {
+  await env.DB.prepare(
+    `UPDATE work_queue SET error_message = ?
+     WHERE status = 'completed' AND task_type = 'metadata'
+       AND error_message GLOB 'metadata_apply:applying:*'
+       AND heartbeat_at < unixepoch() - ?`,
+  ).bind(APPLY_PENDING, APPLY_LEASE_SECONDS).run();
+  const rows = (await env.DB.prepare(
+    `SELECT id, payload, result_json FROM work_queue
+     WHERE status = 'completed' AND task_type = 'metadata'
+       AND error_message = ?
+     ORDER BY heartbeat_at ASC LIMIT ?`,
+  ).bind(APPLY_PENDING, Math.max(1, Math.min(limit, 100))).all<{
+    id: string; payload: string; result_json: string | null;
+  }>()).results;
+  for (const row of rows) {
+    let result: unknown = null;
+    try { result = row.result_json ? JSON.parse(row.result_json) : null; }
+    catch { /* invalid saved result is marked terminal by the apply helper */ }
+    try { await applyCompletedMetadata(env, row.id, row.payload, result); }
+    catch (error) { console.error(`[work/recover] metadata apply failed for ${row.id}:`, error); }
+  }
+  return rows.length;
+}
+
 // ---------------------------------------------------------------------------
 // GET /edgesonic/work/socket — the only way to receive work.
 // ---------------------------------------------------------------------------
@@ -164,7 +268,7 @@ workRoutes.get("/work/agents", permissionMiddleware("dispatch_work"), async (c) 
 });
 
 // ---------------------------------------------------------------------------
-// POST /edgesonic/work/submit { id, result?, error? }
+// POST /edgesonic/work/submit { id, attempts, claimedAt, result?, error? }
 // ---------------------------------------------------------------------------
 // Marks a claimed task as completed (success path) or failed (error path).
 // Only the worker that claimed the task may submit — prevents another browser
@@ -172,22 +276,22 @@ workRoutes.get("/work/agents", permissionMiddleware("dispatch_work"), async (c) 
 workRoutes.post("/work/submit", async (c) => {
   const env = c.env as Env;
   const user = c.get("user");
-  let body: { id?: string; result?: unknown; error?: string };
+  let body: { id?: string; attempts?: number; claimedAt?: number; result?: unknown; error?: string };
   try { body = await c.req.json(); } catch {
     return c.json({ ok: false, error: "Invalid JSON body" }, 400);
   }
   if (!body.id) return c.json({ ok: false, error: "Missing id" }, 400);
+  if (!Number.isSafeInteger(body.attempts) || !Number.isSafeInteger(body.claimedAt)) {
+    return c.json({ ok: false, error: "Missing claim identity" }, 400);
+  }
 
-  // path knows whether to cascade the result into song_masters/song_instances.
-  // We used to only store result_json against work_queue and call it
-  // done; admins saw rows pile up as "completed" while song_instances stayed
-  // tag_scanned=0 (82 completed → 1 with tag_scanned,
   const row = await env.DB.prepare(
-    "SELECT status, claimed_by, attempts, max_attempts, task_type, payload FROM work_queue WHERE id = ?",
+    "SELECT status, claimed_by, attempts, claimed_at, max_attempts, task_type, payload FROM work_queue WHERE id = ?",
   ).bind(body.id).first<{
     status: string;
     claimed_by: string | null;
     attempts: number;
+    claimed_at: number | null;
     max_attempts: number;
     task_type: string;
     payload: string;
@@ -199,6 +303,9 @@ workRoutes.post("/work/submit", async (c) => {
   if (row.claimed_by !== user.username) {
     return c.json({ ok: false, error: "Task is claimed by another worker" }, 403);
   }
+  if (row.attempts !== body.attempts || row.claimed_at !== body.claimedAt) {
+    return c.json({ ok: false, error: "Claim has changed" }, 409);
+  }
 
   const now = Math.floor(Date.now() / 1000);
   if (body.error) {
@@ -206,88 +313,37 @@ workRoutes.post("/work/submit", async (c) => {
     // for another browser to pick up. We deliberately keep error_message even
     // on re-queue so admins can read the prior failure reason in status.
     const willRetry = row.attempts < row.max_attempts;
-    await env.DB.prepare(
+    const result = await env.DB.prepare(
       `UPDATE work_queue
        SET status = ?, error_message = ?, claimed_by = NULL,
            claimed_at = NULL, heartbeat_at = NULL
-       WHERE id = ?`,
-    ).bind(willRetry ? "queued" : "failed", body.error.slice(0, 500), body.id).run();
+       WHERE id = ? AND status = 'claimed' AND claimed_by = ?
+         AND attempts = ? AND claimed_at = ?`,
+    ).bind(willRetry ? "queued" : "failed", body.error.slice(0, 500),
+      body.id, user.username, body.attempts, body.claimedAt).run();
+    if (result.meta.changes === 0) return c.json({ ok: false, error: "Claim has changed" }, 409);
+    if (willRetry) await wakePool(env).catch(() => {});
     return c.json({ ok: true, status: willRetry ? "queued" : "failed" });
   }
 
-  // Success path.
-  // the business tables BEFORE flipping work_queue.status. The apply is best-
-  // effort: a failure (e.g. instance row got deleted between dispatch and
-  // submit) is recorded in result_json's "apply" annotation, but we still
-  // mark the task completed so the queue doesn't churn forever. Admins can
-  // re-run the backfill endpoint if they want to retry.
-  // 093e — raised from 100KB to 500KB to accommodate embedded cover art
-  // (base64-encoded, up to 200KB raw → ~270KB base64). D1 TEXT has no
-  // practical row-size limit at this scale.
-  const resultJson = body.result === undefined ? null : JSON.stringify(body.result).slice(0, 500_000);
-  let applyAnnotation: { ok: boolean; reason?: string; masterId?: string } | undefined;
-  let uploadTaskPayload: Record<string, unknown> = {};
-  let embeddedCoverFailed = false;
-  if (row.task_type === "metadata" && body.result && typeof body.result === "object") {
-    const r = body.result as Record<string, unknown>;
-    try {
-      const parsed = JSON.parse(row.payload);
-      if (parsed && typeof parsed === "object") uploadTaskPayload = parsed as Record<string, unknown>;
-    } catch { /* malformed payload */ }
-    try {
-      const tags = (r.tags && typeof r.tags === "object") ? r.tags as Record<string, unknown> : {};
-      // result.instanceId is what the worker actually processed; fall back to
-      // the dispatched payload (52a stores it as a JSON column) when the
-      // worker forgot to echo it. Both should always agree.
-      let instanceId = typeof r.instanceId === "string" ? r.instanceId : "";
-      if (!instanceId && typeof uploadTaskPayload.instanceId === "string") instanceId = uploadTaskPayload.instanceId;
-      const apply = await applyQueuedMetadata(env.DB, instanceId, tags, uploadTaskPayload);
-      applyAnnotation = apply.updated
-        ? { ok: true, masterId: apply.masterId }
-        : { ok: false, reason: apply.reason };
-      // 093e — if the worker extracted an embedded cover and the apply
-      // produced a masterId (so we know which album to attach it to), write
-      // the cover bytes to R2 and update albums.cover_r2_key. Best-effort:
-      // a failure here doesn't fail the task (metadata was still applied).
-      if (apply.masterId && r.cover && typeof r.cover === "object") {
-        try {
-          const cover = r.cover as { data?: string; mime?: string };
-          if (typeof cover.data === "string") {
-            const coverStatus = await writeEmbeddedCover(
-              env.DB,
-              env.MUSIC_BUCKET,
-              apply.masterId,
-              cover as { data: string; mime?: string },
-              apply.uploadLease ? { markerId: uploadMetadataMarkerId(instanceId), payload: apply.uploadLease.payload } : undefined,
-            );
-            if (coverStatus === "invalid") embeddedCoverFailed = true;
-          }
-        } catch (e) {
-          embeddedCoverFailed = true;
-          // Cover write failure is non-fatal — metadata already applied.
-          console.error(`[work/submit] cover write failed for ${instanceId}:`, e);
-        }
-      }
-      if (apply.uploadLease) {
-        try {
-          await releaseUploadMetadataLease(env.DB, apply.uploadLease, !embeddedCoverFailed);
-        } catch (error) {
-          console.error(`[work/submit] upload generation lease release failed for ${instanceId}:`, error);
-        }
-      }
-    } catch (e) {
-      // We deliberately swallow — the queue row still gets marked completed
-      // so workers don't re-poll the same task indefinitely. Backfill is the
-      // recovery path.
-      applyAnnotation = { ok: false, reason: e instanceof Error ? e.message : String(e) };
-    }
+  // Persist the result and finish this exact claim before applying metadata.
+  // A saved result can be replayed if the request stops during application.
+  const resultJson = body.result === undefined ? null : JSON.stringify(body.result);
+  if (resultJson && resultJson.length > 500_000) {
+    return c.json({ ok: false, error: "Result is too large" }, 413);
   }
-  await env.DB.prepare(
+  const completed = await env.DB.prepare(
     `UPDATE work_queue
-     SET status = 'completed', result_json = ?, error_message = NULL,
+     SET status = 'completed', result_json = ?, error_message = ?,
          heartbeat_at = ?
-     WHERE id = ?`,
-  ).bind(resultJson, now, body.id).run();
+     WHERE id = ? AND status = 'claimed' AND claimed_by = ?
+       AND attempts = ? AND claimed_at = ?`,
+  ).bind(resultJson, row.task_type === "metadata" ? APPLY_PENDING : null,
+    now, body.id, user.username, body.attempts, body.claimedAt).run();
+  if (completed.meta.changes === 0) return c.json({ ok: false, error: "Claim has changed" }, 409);
+  const applyAnnotation = row.task_type === "metadata"
+    ? await applyCompletedMetadata(env, body.id, row.payload, body.result)
+    : undefined;
   return c.json({
     ok: true,
     status: "completed",
@@ -296,7 +352,7 @@ workRoutes.post("/work/submit", async (c) => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /edgesonic/work/heartbeat { id }
+// POST /edgesonic/work/heartbeat { id, attempts, claimedAt }
 // ---------------------------------------------------------------------------
 // Long-running task keep-alive. The client should call this every
 // worker_claim_ttl_seconds / 2 while a transcode is in-flight; metadata tasks
@@ -304,11 +360,14 @@ workRoutes.post("/work/submit", async (c) => {
 workRoutes.post("/work/heartbeat", async (c) => {
   const env = c.env as Env;
   const user = c.get("user");
-  let body: { id?: string };
+  let body: { id?: string; attempts?: number; claimedAt?: number };
   try { body = await c.req.json(); } catch {
     return c.json({ ok: false, error: "Invalid JSON body" }, 400);
   }
   if (!body.id) return c.json({ ok: false, error: "Missing id" }, 400);
+  if (!Number.isSafeInteger(body.attempts) || !Number.isSafeInteger(body.claimedAt)) {
+    return c.json({ ok: false, error: "Missing claim identity" }, 400);
+  }
 
   // We UPDATE-AND-CHECK in a single statement: the WHERE clause guards both
   // ownership and current state, so the meta.changes tells us whether the
@@ -316,8 +375,9 @@ workRoutes.post("/work/heartbeat", async (c) => {
   const result = await env.DB.prepare(
     `UPDATE work_queue
      SET heartbeat_at = unixepoch()
-     WHERE id = ? AND status = 'claimed' AND claimed_by = ?`,
-  ).bind(body.id, user.username).run();
+     WHERE id = ? AND status = 'claimed' AND claimed_by = ?
+       AND attempts = ? AND claimed_at = ?`,
+  ).bind(body.id, user.username, body.attempts, body.claimedAt).run();
   if (result.meta.changes === 0) {
     return c.json({ ok: false, error: "Not your claim or task no longer active" }, 409);
   }
@@ -429,10 +489,7 @@ workRoutes.get("/work/status", permissionMiddleware("dispatch_work"), async (c) 
 // ---------------------------------------------------------------------------
 // POST /edgesonic/work/cancel { id }
 // ---------------------------------------------------------------------------
-// permission (super-admin default per 052a). A regular worker can't drop
-// somebody else's queued metadata batch because they don't hold the
-// permission row; the previous level<3 check was a violation of the
-// permission-model rule.
+// Dispatch permission protects another worker's queued tasks.
 workRoutes.post("/work/cancel", permissionMiddleware("dispatch_work"), async (c) => {
   const env = c.env as Env;
   let body: { id?: string };
@@ -455,10 +512,7 @@ workRoutes.post("/work/cancel", permissionMiddleware("dispatch_work"), async (c)
 // ---------------------------------------------------------------------------
 // POST /edgesonic/work/backfillCompleted
 // ---------------------------------------------------------------------------
-// before the cascade was wired in (status='completed', task_type='metadata',
-// result_json IS NOT NULL). The fix to /work/submit means new rows land
-// correctly; this endpoint is the migration path for the ~82 historical rows
-// that completed but never wrote tag_scanned=1.
+// Repairs completed results for instances that remain unscanned.
 //
 // We process rows sequentially (one applyMetadataResult per row) so a partial
 // failure on row N doesn't cancel rows N+1..M. The response carries a small
@@ -479,12 +533,16 @@ workRoutes.post("/work/backfillCompleted",
   const limit = Math.max(1, Math.min(10000, Number.isFinite(rawLimit) ? rawLimit : 1000));
 
   const candidates = (await env.DB.prepare(
-    `SELECT id, payload, result_json
-     FROM work_queue
-     WHERE status = 'completed'
-       AND task_type = 'metadata'
-       AND result_json IS NOT NULL
-     ORDER BY created_at ASC
+    `SELECT w.id, w.payload, w.result_json
+     FROM work_queue w
+     JOIN song_instances si ON si.id = CASE WHEN json_valid(w.payload)
+       THEN json_extract(w.payload, '$.instanceId') ELSE NULL END
+     WHERE w.status = 'completed'
+       AND w.task_type = 'metadata'
+       AND w.result_json IS NOT NULL
+       AND w.error_message IS NULL
+       AND si.tag_scanned = 0
+     ORDER BY w.created_at ASC
      LIMIT ?`,
   ).bind(limit).all<{ id: string; payload: string; result_json: string }>()).results;
 
@@ -505,9 +563,10 @@ workRoutes.post("/work/backfillCompleted",
         const parsed = JSON.parse(cand.payload);
         if (parsed && typeof parsed === "object") payload = parsed as Record<string, unknown>;
       } catch { /* malformed payload */ }
-      let instanceId = typeof result.instanceId === "string" ? result.instanceId : "";
-      if (!instanceId && typeof payload.instanceId === "string") instanceId = payload.instanceId;
-      const apply = await applyQueuedMetadata(env.DB, instanceId, tags, payload);
+      const instanceId = typeof result.instanceId === "string" ? result.instanceId : "";
+      const apply = instanceId && instanceId === payload.instanceId
+        ? await applyQueuedMetadata(env.DB, instanceId, tags, payload)
+        : { updated: false, reason: "task result instance mismatch" };
       if (apply.updated) {
         applied++;
         if (apply.uploadLease) await releaseUploadMetadataLease(env.DB, apply.uploadLease, true);
@@ -585,8 +644,6 @@ export interface DispatchInput {
   // 'queued' with a fresh attempts counter instead of being ignored. Only
   // meaningful when dedupKey is also set.
   upsert?: boolean;
-  // Requeue only terminal rows; leave concurrently active work untouched.
-  upsertTerminalOnly?: boolean;
 }
 
 const REDISPATCH_CONFLICT_CLAUSE = `
@@ -594,10 +651,9 @@ const REDISPATCH_CONFLICT_CLAUSE = `
        status = 'queued', payload = excluded.payload, priority = excluded.priority,
        max_attempts = excluded.max_attempts, attempts = 0, error_message = NULL,
        claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL,
-       result_json = NULL, expires_at = excluded.expires_at`;
-
-const REDISPATCH_TERMINAL_CONFLICT_CLAUSE = `${REDISPATCH_CONFLICT_CLAUSE}
-     WHERE work_queue.status IN ('completed', 'failed', 'canceled')`;
+       result_json = NULL, expires_at = excluded.expires_at
+     WHERE work_queue.status IN ('completed', 'failed', 'canceled')
+       AND (work_queue.status != 'completed' OR work_queue.error_message IS NULL)`;
 
 // `env` is required: nothing pulls from the queue any more, so a row inserted
 // without waking the coordinator waits for the reclaim sweep. Callers that
@@ -620,10 +676,8 @@ export async function dispatchWork(
   const requiredCapsJson = input.requiredCaps && input.requiredCaps.length > 0
     ? JSON.stringify(input.requiredCaps)
     : null;
-  const insertVerb = input.dedupKey && !input.upsert && !input.upsertTerminalOnly ? "INSERT OR IGNORE INTO" : "INSERT INTO";
-  const conflictClause = input.dedupKey && input.upsertTerminalOnly
-    ? REDISPATCH_TERMINAL_CONFLICT_CLAUSE
-    : input.dedupKey && input.upsert ? REDISPATCH_CONFLICT_CLAUSE : "";
+  const insertVerb = input.dedupKey && !input.upsert ? "INSERT OR IGNORE INTO" : "INSERT INTO";
+  const conflictClause = input.dedupKey && input.upsert ? REDISPATCH_CONFLICT_CLAUSE : "";
   await db.prepare(
     `${insertVerb} work_queue (id, task_type, payload, required_caps, priority,
                               status, max_attempts, expires_at)
@@ -649,7 +703,7 @@ export async function wakePool(env: Env): Promise<void> {
   catch (e) { console.error("[work] coordinator notify failed:", e); }
 }
 
-// Batch dispatch — used by scan.ts when 1758 files become pending at once.
+// Batch dispatch for scan results.
 // One D1 INSERT per row via batch(), in chunks of 80 to stay under the D1
 // batch limit. Returns the list of created ids so the caller can log.
 export async function dispatchWorkBatch(

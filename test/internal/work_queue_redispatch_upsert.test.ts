@@ -198,6 +198,46 @@ async function main() {
     assert(JSON.parse(row.payload).v === 1, "still-queued row's original payload untouched (INSERT OR IGNORE, not upsert)");
   }
 
+  console.log("\nredispatch waits for completed metadata application and active claims:");
+  {
+    const sqlite = buildDb();
+    const db = makeD1(sqlite);
+    for (const name of ["pending", "applying"]) {
+      const id = `wt-metadata-${name}`;
+      await dispatchWork(db, { taskType: "metadata", payload: { instanceId: name }, dedupKey: name }, TEST_ENV);
+      markCompleted(sqlite, id);
+      sqlite.prepare("UPDATE work_queue SET error_message = ? WHERE id = ?")
+        .run(name === "pending" ? "metadata_apply:pending" : "metadata_apply:applying:token", id);
+      await dispatchWork(db, {
+        taskType: "metadata", payload: { instanceId: name, version: 2 }, dedupKey: name, upsert: true,
+      }, TEST_ENV);
+      const held = sqlite.prepare("SELECT status, error_message, result_json, payload FROM work_queue WHERE id = ?")
+        .get(id) as { status: string; error_message: string; result_json: string; payload: string };
+      assert(held.status === "completed" && held.error_message.startsWith("metadata_apply:")
+        && held.result_json === '{"ok":true}' && !JSON.parse(held.payload).version,
+        `${name} result stays intact while metadata application is outstanding`);
+      sqlite.prepare("UPDATE work_queue SET error_message = NULL WHERE id = ?").run(id);
+      await dispatchWorkBatch(db, [{
+        taskType: "metadata", payload: { instanceId: name, version: 2 }, dedupKey: name, upsert: true,
+      }], TEST_ENV);
+      const ready = sqlite.prepare("SELECT status, payload FROM work_queue WHERE id = ?")
+        .get(id) as { status: string; payload: string };
+      assert(ready.status === "queued" && JSON.parse(ready.payload).version === 2,
+        `${name} row redispatches once application clears its marker`);
+    }
+
+    await dispatchWork(db, { taskType: "metadata", payload: { instanceId: "active" }, dedupKey: "active" }, TEST_ENV);
+    sqlite.prepare("UPDATE work_queue SET status = 'claimed', attempts = 1, claimed_by = 'alice' WHERE id = ?")
+      .run("wt-metadata-active");
+    await dispatchWorkBatch(db, [{
+      taskType: "metadata", payload: { instanceId: "active", version: 2 }, dedupKey: "active", upsert: true,
+    }], TEST_ENV);
+    const active = sqlite.prepare("SELECT status, payload FROM work_queue WHERE id = ?")
+      .get("wt-metadata-active") as { status: string; payload: string };
+    assert(active.status === "claimed" && !JSON.parse(active.payload).version,
+      "force redispatch does not replace an active claim");
+  }
+
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
   process.exit(failures ? 1 : 0);
 }

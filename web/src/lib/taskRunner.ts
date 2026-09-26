@@ -103,7 +103,7 @@ export async function runTask(
   signal: AbortSignal,
 ): Promise<RunOutcome> {
   let worker: Worker | null = null;
-  const stopHeartbeat = startHeartbeat(task.id, deps, signal);
+  const stopHeartbeat = startHeartbeat(task, deps, signal);
   try {
     // The `new URL(...)` form is the Vite-supported syntax for typed Web
     // Worker imports (no glob, no string-only).
@@ -123,18 +123,38 @@ export async function runTask(
       }
     }
 
-    const result = await runWorkerOnce(worker, augmented, signal);
+    let result: unknown;
+    try {
+      result = await runWorkerOnce(worker, augmented, signal);
+    } catch (e) {
+      if (signal.aborted) return { status: "aborted" };
+      const error = formatTaskError({ id: task.id, task_type: task.taskType }, e);
+      try {
+        await deps.edgesonicPost("work/submit", {
+          id: task.id, attempts: task.attempts, claimedAt: task.claimedAt, error,
+        });
+      } catch { /* reclaim handles an unreported failure */ }
+      return { status: "failed", error };
+    }
     if (signal.aborted) return { status: "aborted" };
-    await deps.edgesonicPost("work/submit", { id: task.id, result }, signal);
-    return { status: "ok" };
+    try {
+      await deps.edgesonicPost("work/submit", {
+        id: task.id, attempts: task.attempts, claimedAt: task.claimedAt, result,
+      }, signal);
+      return { status: "ok" };
+    } catch (e) {
+      if (signal.aborted) return { status: "aborted" };
+      const error = formatTaskError({ id: task.id, task_type: task.taskType }, e);
+      return { status: "failed", error };
+    }
   } catch (e) {
     if (signal.aborted) return { status: "aborted" };
     const error = formatTaskError({ id: task.id, task_type: task.taskType }, e);
-    // Report the failure so the row goes back to queued (or to failed if
-    // attempts are exhausted). We deliberately ignore the submit's own
-    // response — if the network is down too, the reclaim sweep catches it.
-    try { await deps.edgesonicPost("work/submit", { id: task.id, error }); }
-    catch { /* ignore */ }
+    try {
+      await deps.edgesonicPost("work/submit", {
+        id: task.id, attempts: task.attempts, claimedAt: task.claimedAt, error,
+      });
+    } catch { /* reclaim handles an unreported failure */ }
     return { status: "failed", error };
   } finally {
     stopHeartbeat();
@@ -153,7 +173,7 @@ export async function runTask(
 const HEARTBEAT_MS = 30_000;
 
 function startHeartbeat(
-  taskId: string,
+  task: QueuedTask,
   deps: RunnerDeps,
   signal: AbortSignal,
 ): () => void {
@@ -163,7 +183,9 @@ function startHeartbeat(
     // cancelled by an admin). Nothing useful to do about it here: the submit
     // at the end will report the same thing, so stay quiet rather than
     // spamming the console on a queue that is being drained elsewhere.
-    void deps.edgesonicPost("work/heartbeat", { id: taskId }, signal).catch(() => {});
+    void deps.edgesonicPost("work/heartbeat", {
+      id: task.id, attempts: task.attempts, claimedAt: task.claimedAt,
+    }, signal).catch(() => {});
   }, HEARTBEAT_MS);
   return () => clearInterval(timer);
 }

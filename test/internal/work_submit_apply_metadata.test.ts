@@ -32,7 +32,7 @@
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
-import { workRoutes } from "../../worker/src/endpoints/edgesonic/work";
+import { recoverPendingMetadataApplies, workRoutes } from "../../worker/src/endpoints/edgesonic/work";
 import { applyMetadataResult } from "../../worker/src/utils/metadataApply";
 import { markUploadMetadataPending } from "../../worker/src/utils/uploadMetadataQueue";
 
@@ -217,11 +217,20 @@ function makeApp(sqlite: DatabaseSync, user: { username: string; level: number }
   };
   return {
     covers,
-    async post(url: string, body: unknown) {
+    env,
+    async post(url: string, body: unknown, includeClaim = true) {
+      const task = body && typeof body === "object" ? body as { id?: string } : null;
+      const claim = includeClaim && task?.id
+        ? sqlite.prepare("SELECT attempts, claimed_at FROM work_queue WHERE id = ?")
+          .get(task.id) as { attempts: number; claimed_at: number | null } | undefined
+        : undefined;
+      const requestBody = claim
+        ? { attempts: claim.attempts, claimedAt: claim.claimed_at, ...task }
+        : body;
       const req = new Request(`http://test${url}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(requestBody),
       });
       return app.fetch(req, env);
     },
@@ -470,7 +479,7 @@ console.log("work/submit (metadata, unknown instanceId in result) — completed,
   assert(/instance/i.test(body.applied?.reason || ""), `reason mentions instance (got ${body.applied?.reason})`);
 }
 
-console.log("work/submit (metadata, result.instanceId missing) — falls back to payload.instanceId:");
+console.log("work/submit (metadata, result.instanceId missing) — rejects the result:");
 {
   const sqlite = buildDb();
   seedClaimed(sqlite, "wt-metadata-noid", "metadata", { instanceId: "inst-1" });
@@ -478,15 +487,14 @@ console.log("work/submit (metadata, result.instanceId missing) — falls back to
   const r = await post("/edgesonic/work/submit", {
     id: "wt-metadata-noid",
     result: {
-      // NO instanceId — older worker builds occasionally forget to echo it
       tags: { title: "Echo", artist: "Backstop" },
     },
   });
   assert(r.status === 200, `200 status (got ${r.status})`);
   const body = await r.json() as any;
-  assert(body.applied?.ok === true, `applied.ok via payload fallback (got ${JSON.stringify(body.applied)})`);
+  assert(body.applied?.ok === false, `mismatched instance is not applied (got ${JSON.stringify(body.applied)})`);
   const si = sqlite.prepare("SELECT tag_scanned FROM song_instances WHERE id='inst-1'").get() as any;
-  assert(si.tag_scanned === 1, "tag_scanned=1 via payload-fallback path");
+  assert(si.tag_scanned === 0, "missing result instance does not change the song");
 }
 
 console.log("work/submit (error path) — no apply attempted:");
@@ -526,6 +534,139 @@ console.log("work/submit (non-metadata task_type, e.g. transcode) — no apply a
   assert(si.tag_scanned === 0, "tag_scanned untouched for transcode task");
 }
 
+console.log("work claims reject an older attempt from the same user:");
+{
+  const sqlite = buildDb();
+  seedClaimed(sqlite, "wt-stale", "metadata", { instanceId: "inst-1" });
+  sqlite.prepare("UPDATE work_queue SET attempts = 2, claimed_at = 1000000001 WHERE id = ?")
+    .run("wt-stale");
+  const { post } = makeApp(sqlite, { username: "alice", level: 2 });
+  const old = { id: "wt-stale", attempts: 1, claimedAt: 1000000000 };
+  const success = await post("/edgesonic/work/submit", {
+    ...old, result: { instanceId: "inst-1", tags: { title: "Stale Title" } },
+  });
+  const failure = await post("/edgesonic/work/submit", { ...old, error: "old failure" });
+  const heartbeat = await post("/edgesonic/work/heartbeat", old);
+  const missing = await post("/edgesonic/work/submit", { id: "wt-stale", result: {} }, false);
+  assert(success.status === 409 && failure.status === 409 && heartbeat.status === 409,
+    "old success, failure, and heartbeat cannot mutate a newer claim");
+  assert(missing.status === 400, "claim identity is required");
+  const row = sqlite.prepare("SELECT status, attempts, result_json FROM work_queue WHERE id = ?")
+    .get("wt-stale") as any;
+  const master = sqlite.prepare("SELECT title FROM song_masters WHERE id = ?").get("sg-1") as any;
+  assert(row.status === "claimed" && row.attempts === 2 && row.result_json === null && master.title === "Song One",
+    "stale submissions leave the new claim and song untouched");
+}
+
+console.log("work submit fences the claim before applying metadata:");
+{
+  const sqlite = buildDb();
+  seedClaimed(sqlite, "wt-race", "metadata", { instanceId: "inst-1" });
+  let changed = false;
+  const { post } = makeApp(sqlite, { username: "alice", level: 2 }, async (query) => {
+    if (!changed && query.includes("SET status = 'completed', result_json")) {
+      changed = true;
+      sqlite.prepare("UPDATE work_queue SET attempts = 2, claimed_at = 1000000001 WHERE id = ?")
+        .run("wt-race");
+    }
+  });
+  const response = await post("/edgesonic/work/submit", {
+    id: "wt-race", result: { instanceId: "inst-1", tags: { title: "Racing Title" } },
+  });
+  assert(response.status === 409, "changed claim fails the terminal compare-and-set");
+  const master = sqlite.prepare("SELECT title FROM song_masters WHERE id = ?").get("sg-1") as any;
+  assert(master.title === "Song One", "rejected claim performs no metadata writes");
+}
+
+console.log("completed metadata is durably replayed after an interrupted apply:");
+{
+  const sqlite = buildDb();
+  seedClaimed(sqlite, "wt-interrupted", "metadata", { instanceId: "inst-1" });
+  const { post } = makeApp(sqlite, { username: "alice", level: 2 }, async (query) => {
+    if (query.includes("SET error_message = ?, heartbeat_at = unixepoch()")) {
+      throw new Error("request interrupted before apply");
+    }
+  });
+  const originalError = console.error;
+  console.error = () => {};
+  let response: Response;
+  try {
+    response = await post("/edgesonic/work/submit", {
+      id: "wt-interrupted", result: { instanceId: "inst-1", tags: { title: "Recovered" } },
+    });
+  } finally {
+    console.error = originalError;
+  }
+  assert(response.status === 500, "interrupted request ends before applying tags");
+  const pending = sqlite.prepare("SELECT status, error_message, result_json FROM work_queue WHERE id = ?")
+    .get("wt-interrupted") as any;
+  assert(pending.status === "completed" && pending.error_message === "metadata_apply:pending"
+    && pending.result_json.includes("Recovered"), "result and pending marker survive the interruption");
+  let applies = 0;
+  const replayEnv = { DB: makeD1(sqlite, async (query) => {
+    if (query.includes("UPDATE song_masters SET")) applies++;
+  }) } as unknown as Env;
+  await Promise.all([
+    recoverPendingMetadataApplies(replayEnv),
+    recoverPendingMetadataApplies(replayEnv),
+  ]);
+  const completed = sqlite.prepare("SELECT error_message FROM work_queue WHERE id = ?")
+    .get("wt-interrupted") as any;
+  const master = sqlite.prepare("SELECT title FROM song_masters WHERE id = ?")
+    .get("sg-1") as any;
+  assert(completed.error_message === null && master.title === "Recovered",
+    "pending result is applied and marker is cleared");
+  assert(applies === 1, "two replayers race but only one applies the result");
+}
+
+console.log("stale metadata apply lease is recovered:");
+{
+  const sqlite = buildDb();
+  seedClaimed(sqlite, "wt-stale-apply", "metadata", { instanceId: "inst-1" });
+  sqlite.prepare(`UPDATE work_queue SET status = 'completed',
+    error_message = 'metadata_apply:applying:old', heartbeat_at = unixepoch() - 1000,
+    result_json = ? WHERE id = ?`).run(
+      JSON.stringify({ instanceId: "inst-1", tags: { title: "Recovered Lease" } }),
+      "wt-stale-apply",
+    );
+  const replayEnv = { DB: makeD1(sqlite) } as unknown as Env;
+  await recoverPendingMetadataApplies(replayEnv);
+  const marker = sqlite.prepare("SELECT error_message FROM work_queue WHERE id = ?")
+    .get("wt-stale-apply") as any;
+  const master = sqlite.prepare("SELECT title FROM song_masters WHERE id = ?")
+    .get("sg-1") as any;
+  assert(marker.error_message === null && master.title === "Recovered Lease",
+    "expired apply lease is reclaimed and result is applied");
+}
+
+console.log("pending upload result cannot cross a replaced generation:");
+{
+  const sqlite = buildDb();
+  const uri = "webdav://dav/current.m4a";
+  sqlite.prepare("UPDATE song_instances SET storage_uri = ? WHERE id = 'inst-1'").run(uri);
+  sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status, created_at) VALUES (?, 'manual_upload_pending', ?, 'canceled', 1)")
+    .run("wm-upload-pending-inst-1", JSON.stringify({ instanceId: "inst-1", storageUri: uri, uploadNonce: "new" }));
+  seedClaimed(sqlite, "wt-generation", "metadata", {
+    instanceId: "inst-1", sourceUri: uri, origin: "upload", uploadNonce: "old",
+  });
+  sqlite.prepare(`UPDATE work_queue SET status = 'completed', error_message = 'metadata_apply:pending',
+    result_json = ? WHERE id = ?`).run(
+      JSON.stringify({ instanceId: "inst-1", tags: { title: "Old Generation" },
+        cover: { data: "AQID", mime: "image/png" } }),
+      "wt-generation",
+    );
+  let coverWrites = 0;
+  const env = { DB: makeD1(sqlite), MUSIC_BUCKET: {
+    async put() { coverWrites++; },
+  } } as unknown as Env;
+  await recoverPendingMetadataApplies(env);
+  const master = sqlite.prepare("SELECT title FROM song_masters WHERE id = ?").get("sg-1") as any;
+  const marker = sqlite.prepare("SELECT error_message FROM work_queue WHERE id = ?")
+    .get("wt-generation") as any;
+  assert(master.title === "Song One" && coverWrites === 0 && marker.error_message === null,
+    "replay skips stale upload tags and cover without retrying forever");
+}
+
 console.log("work/backfillCompleted: replays multiple completed metadata rows:");
 {
   const sqlite = buildDb();
@@ -550,10 +691,10 @@ console.log("work/backfillCompleted: replays multiple completed metadata rows:")
   const r = await post("/edgesonic/work/backfillCompleted", {});
   assert(r.status === 200, `200 status (got ${r.status})`);
   const body = await r.json() as any;
-  assert(body.processed === 3, `processed=3 (got ${body.processed})`);
+  assert(body.processed === 2, `processed=2 (got ${body.processed})`);
   assert(body.applied === 2, `applied=2 (got ${body.applied})`);
-  assert(body.failed === 1, `failed=1 (got ${body.failed})`);
-  assert(Array.isArray(body.errors) && body.errors.length === 1, `errors[] populated (got ${body.errors?.length})`);
+  assert(body.failed === 0, `failed=0 (got ${body.failed})`);
+  assert(Array.isArray(body.errors) && body.errors.length === 0, `no errors (got ${body.errors?.length})`);
 
   // Confirm the apply actually wrote
   const si = sqlite.prepare("SELECT tag_scanned, bit_rate FROM song_instances WHERE id='inst-1'").get() as any;
@@ -573,10 +714,26 @@ console.log("work/backfillCompleted: completed upload cannot replace direct-uplo
   const { post } = makeApp(sqlite, { username: "root", level: 3 });
   const r = await post("/edgesonic/work/backfillCompleted", {});
   const body = await r.json() as any;
-  assert(r.status === 200 && body.applied === 1 && body.failed === 0, "completed upload task is accounted for");
+  assert(r.status === 200 && body.applied === 0 && body.failed === 0, "already scanned upload is skipped");
   const master = sqlite.prepare("SELECT title, album_id FROM song_masters WHERE id = 'sg-1'").get() as any;
   const instance = sqlite.prepare("SELECT duration FROM song_instances WHERE id = 'inst-1'").get() as any;
   assert(master.title === "Song One" && master.album_id === "al-old" && instance.duration === 180, "direct-upload metadata remains unchanged");
+}
+
+console.log("work/backfillCompleted skips a result owned by automatic apply:");
+{
+  const sqlite = buildDb();
+  seedCompleted(sqlite, "wt-pending-manual", { instanceId: "inst-1" }, {
+    instanceId: "inst-1", tags: { title: "Pending Apply" },
+  });
+  sqlite.prepare("UPDATE work_queue SET error_message = 'metadata_apply:pending' WHERE id = ?")
+    .run("wt-pending-manual");
+  const { post } = makeApp(sqlite, { username: "root", level: 3 });
+  const response = await post("/edgesonic/work/backfillCompleted", {});
+  const body = await response.json() as any;
+  const master = sqlite.prepare("SELECT title FROM song_masters WHERE id = ?").get("sg-1") as any;
+  assert(response.status === 200 && body.processed === 0 && master.title === "Song One",
+    "manual replay does not race with an outstanding apply lease");
 }
 
 console.log("work/backfillCompleted: non-admin rejected:");

@@ -186,7 +186,7 @@ export async function enqueueUploadMetadata(
     requiredCaps: ["music-metadata"],
     priority: 5,
     dedupKey: instance.id,
-    upsertTerminalOnly: true,
+    upsert: true,
   }, env);
 
   const after = await db.prepare("SELECT status FROM work_queue WHERE id = ?")

@@ -225,6 +225,20 @@ tagEditRoutes.post("/rescan", permissionMiddleware("edit_tags"), async (c) => {
     return c.json({ ok: false, error: "No eligible (original) instances found for the given ids" }, 404);
   }
 
+  const taskIds = targets.map((target) => `wt-metadata-${target.instanceId}`);
+  for (let i = 0; i < taskIds.length; i += 80) {
+    const chunk = taskIds.slice(i, i + 80);
+    const placeholders = chunk.map(() => "?").join(",");
+    const pending = await db.prepare(
+      `SELECT id FROM work_queue WHERE id IN (${placeholders})
+         AND status = 'completed' AND error_message GLOB 'metadata_apply:*'
+       LIMIT 1`,
+    ).bind(...chunk).first<{ id: string }>();
+    if (pending) {
+      return c.json({ ok: false, error: "Metadata is still being applied; retry shortly" }, 409);
+    }
+  }
+
   const now = Math.floor(Date.now() / 1000);
   const resetStmts = targets.map((t) =>
     db.prepare("UPDATE song_instances SET tag_scanned = 0, updated_at = ? WHERE id = ?").bind(now, t.instanceId));

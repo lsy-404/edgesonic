@@ -82,10 +82,8 @@ function main(): void {
       "dispatch filters sockets on readyState");
     assert(src.includes("webSocketClose"),
       "close handler present so dead agents leave the pool");
-    // Attachments have no generation token, so only the synchronous failed
-    // send path may return a row; close/release merely clears local capacity.
-    assert((src.match(/attempts = MAX\(0, attempts - 1\)/g) || []).length === 1,
-      "only a synchronous failed send may return a claimed row");
+    assert(!src.includes("attempts = MAX(0, attempts - 1)"),
+      "socket lifecycle cannot return a newer D1 claim");
     assert(src.includes("setWebSocketAutoResponse"),
       "keepalive is answered without waking a hibernating object");
     assert(src.includes("serializeAttachment"),
@@ -104,7 +102,7 @@ function main(): void {
     assert(src.includes("releaseHeld"),
       "a disconnect clears the rows that agent was holding");
     assert(src.includes('case "release"'),
-      "an unstarted task is returned to queued instead of acknowledged as done");
+      "an unstarted task frees its local slot for TTL recovery");
     assert(/worker_pool_enabled[\s\S]{0,120}return \{ dispatched: 0/.test(src),
       "dispatch re-reads the kill switch, so an admin can stop a connected fleet");
   }
@@ -124,7 +122,7 @@ function main(): void {
     const reclaim = fs.readFileSync(path.resolve(__dirname, "../../worker/src/utils/workReclaim.ts"), "utf-8");
     assert(reclaim.includes("status = 'claimed' AND heartbeat_at < ?"),
       "stale reclaim uses heartbeat cutoff as a compare-and-swap condition");
-    assert(reclaim.includes("meta.changes === 1"),
+    assert(reclaim.includes("report.reQueued += result.meta.changes"),
       "reclaim counts and wakes only rows its compare-and-swap actually changed");
   }
 

@@ -220,6 +220,21 @@ async function main() {
     assert(count === 1, `still exactly 1 work_queue row, not a duplicate (got ${count})`);
   }
 
+  console.log("\nrescan waits for outstanding metadata application:");
+  {
+    const sqlite = buildDb();
+    const { post } = makeApp(sqlite);
+    await post("/tag/rescan", { ids: ["sg-1"] });
+    sqlite.prepare(`UPDATE work_queue SET status = 'completed',
+      error_message = 'metadata_apply:applying:token' WHERE id = 'wt-metadata-inst-1'`).run();
+    sqlite.prepare("UPDATE song_instances SET tag_scanned = 1 WHERE id = 'inst-1'").run();
+    const response = await post("/tag/rescan", { ids: ["sg-1"] });
+    const song = sqlite.prepare("SELECT tag_scanned FROM song_instances WHERE id = 'inst-1'")
+      .get() as { tag_scanned: number };
+    assert(response.status === 409 && song.tag_scanned === 1,
+      "rescan waits until a completed result finishes applying");
+  }
+
   console.log("\nvalidation errors:");
   {
     const sqlite = buildDb();

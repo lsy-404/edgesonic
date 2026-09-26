@@ -26,14 +26,20 @@
 //  - dispatch on every edge that can change the answer: a new row arriving,
 //    an agent joining, a slot freeing, a budget or capability changing. This
 //    is the only mechanism now, so an edge that doesn't dispatch is a stall.
-//  - when an agent goes away, put its rows back here rather than waiting for
-//    the TTL sweep. A vanished browser is the common case, not the exception.
+//  - a disconnected agent's D1 claims are recovered by their heartbeat TTL.
 //
 // Agent state lives in each socket's attachment rather than an instance field
 // so it survives hibernation: an idle pool of connected browsers costs
 // nothing until work actually shows up.
 
 import { getFeatureString } from "../utils/features";
+import { reclaimStaleWork } from "../utils/workReclaim";
+
+interface HeldClaim {
+  id: string;
+  attempts: number;
+  claimedAt: number;
+}
 
 // What a browser tells us when it joins, and what we track per socket.
 interface AgentState {
@@ -41,11 +47,8 @@ interface AgentState {
   caps: string[];
   // How many tasks this browser is willing to run at once.
   maxConcurrent: number;
-  // The task ids currently with this agent. Tracked by id rather than a bare
-  // count so a disconnect can put exactly those rows back; its length is the
-  // authoritative in-flight number, since the agent acknowledges each
-  // completion and a browser that silently drops one can't leak capacity.
-  holding: string[];
+  // The attempt number identifies the claim when reconciling local capacity.
+  holding: HeldClaim[];
   joinedAt: number;
 }
 
@@ -58,6 +61,8 @@ interface DispatchOutcome {
 // answers keepalives without waking a hibernating object.
 const PING = "ping";
 const PONG = "pong";
+const SWEEP_INTERVAL_MS = 60_000;
+const SOCKET_STALE_MS = 55_000;
 
 export class WorkCoordinator implements DurableObject {
   constructor(private state: DurableObjectState, private env: Env) {
@@ -98,6 +103,7 @@ export class WorkCoordinator implements DurableObject {
     };
     pair[1].serializeAttachment(agent);
     pair[1].send(JSON.stringify({ type: "welcome", maxConcurrent }));
+    await this.ensureAlarm();
 
     // Hand this agent whatever is already queued before returning. Without
     // this, a browser joining an existing backlog — rows the reclaim sweep
@@ -115,27 +121,29 @@ export class WorkCoordinator implements DurableObject {
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     if (typeof raw !== "string") return;
-    let msg: { type?: string; id?: string; caps?: string[]; maxConcurrent?: number };
+    let msg: { type?: string; id?: string; attempts?: number; claimedAt?: number; caps?: string[]; maxConcurrent?: number };
     try { msg = JSON.parse(raw); } catch { return; }
     const agent = ws.deserializeAttachment() as AgentState | null;
-    if (!agent) return;
+    if (!isAgentState(agent)) {
+      try { ws.close(1001, "Reconnect required"); } catch { /* already closing */ }
+      return;
+    }
 
     switch (msg.type) {
       case "done":
-        // The agent finished with this task — succeeded, failed or abandoned;
-        // /work/submit already recorded which. All that matters here is that
-        // the slot is free. Dropping by id makes a duplicate ack a no-op
-        // instead of manufacturing capacity the browser doesn't have.
-        if (msg.id) agent.holding = agent.holding.filter((id) => id !== msg.id);
+        if (msg.id && Number.isSafeInteger(msg.attempts) && Number.isSafeInteger(msg.claimedAt)) {
+          agent.holding = agent.holding.filter((claim) =>
+            claim.id !== msg.id || claim.attempts !== msg.attempts || claim.claimedAt !== msg.claimedAt);
+        }
         ws.serializeAttachment(agent);
         // Freed capacity is the cheapest moment to look for more work.
         await this.dispatch();
         break;
       case "release":
-        if (msg.id && agent.holding.includes(msg.id)) {
-          // An attachment has no claim generation. It can release its local
-          // slot, but only the TTL sweep may return the D1 row safely.
-          agent.holding = agent.holding.filter((id) => id !== msg.id);
+        if (msg.id && agent.holding.some((claim) => claim.id === msg.id
+          && claim.attempts === msg.attempts && claim.claimedAt === msg.claimedAt)) {
+          agent.holding = agent.holding.filter((claim) =>
+            claim.id !== msg.id || claim.attempts !== msg.attempts || claim.claimedAt !== msg.claimedAt);
           ws.serializeAttachment(agent);
           await this.dispatch();
         }
@@ -180,8 +188,64 @@ export class WorkCoordinator implements DurableObject {
   // Called after rows land in work_queue. Claims on behalf of whichever agents
   // have spare capacity and pushes the tasks straight down their sockets.
   private async notify(): Promise<Response> {
+    if (this.liveAgents().length > 0) await this.ensureAlarm();
     const outcome = await this.dispatch();
     return Response.json({ ok: true, ...outcome });
+  }
+
+  async alarm(): Promise<void> {
+    try {
+      await reclaimStaleWork(this.env, false);
+      const live = this.liveAgents();
+      if (live.length === 0) return;
+      await this.reconcileHoldings(live);
+      await this.dispatch();
+    } finally {
+      const live = this.liveAgents().length > 0;
+      let claimed = false;
+      if (!live) {
+        try {
+          claimed = !!(await this.env.DB.prepare(
+            "SELECT 1 AS active FROM work_queue WHERE status = 'claimed' AND task_type != 'manual_upload_pending' LIMIT 1",
+          ).first<{ active: number }>());
+        } catch { claimed = true; }
+      }
+      if (live || claimed) {
+        await this.state.storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
+      }
+    }
+  }
+
+  private async ensureAlarm(): Promise<void> {
+    if (await this.state.storage.getAlarm() === null) {
+      await this.state.storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
+    }
+  }
+
+  private async reconcileHoldings(live: Array<{ ws: WebSocket; agent: AgentState }>): Promise<void> {
+    const ids = [...new Set(live.flatMap(({ agent }) => agent.holding.map((claim) => claim.id)))];
+    if (ids.length === 0) return;
+    type ClaimRow = { id: string; status: string; claimed_by: string | null; attempts: number; claimed_at: number | null };
+    const byId = new Map<string, ClaimRow>();
+    for (let i = 0; i < ids.length; i += 80) {
+      const chunk = ids.slice(i, i + 80);
+      const placeholders = chunk.map(() => "?").join(",");
+      const rows = (await this.env.DB.prepare(
+        `SELECT id, status, claimed_by, attempts, claimed_at FROM work_queue WHERE id IN (${placeholders})`,
+      ).bind(...chunk).all<ClaimRow>()).results;
+      for (const row of rows) byId.set(row.id, row);
+    }
+    for (const { ws, agent } of live) {
+      const holding = agent.holding.filter((claim) => {
+        const row = byId.get(claim.id);
+        return row?.status === "claimed" && row.claimed_by === agent.username
+          && row.attempts === claim.attempts && row.claimed_at === claim.claimedAt;
+      });
+      if (holding.length !== agent.holding.length) {
+        agent.holding = holding;
+        try { ws.serializeAttachment(agent); } catch { /* socket closed during query */ }
+      }
+    }
   }
 
   private async agents(): Promise<Response> {
@@ -202,7 +266,19 @@ export class WorkCoordinator implements DurableObject {
     for (const ws of this.state.getWebSockets()) {
       if (ws.readyState !== WebSocket.READY_STATE_OPEN) continue;
       const agent = ws.deserializeAttachment() as AgentState | null;
-      if (agent) out.push({ ws, agent });
+      if (!isAgentState(agent)) {
+        try { ws.close(1001, "Reconnect required"); } catch { /* already closing */ }
+        continue;
+      }
+      const lastPing = this.state.getWebSocketAutoResponseTimestamp(ws)?.getTime()
+        ?? agent.joinedAt * 1000;
+      if (Date.now() - lastPing > SOCKET_STALE_MS) {
+        agent.holding = [];
+        try { ws.serializeAttachment(agent); } catch { /* already closed */ }
+        try { ws.close(1001, "Heartbeat timeout"); } catch { /* already closed */ }
+        continue;
+      }
+      out.push({ ws, agent });
     }
     return out;
   }
@@ -278,17 +354,12 @@ export class WorkCoordinator implements DurableObject {
       try {
         target.ws.send(JSON.stringify({ type: "task", task }));
       } catch {
-        // The socket died between the readyState check and the send. Put the
-        // row straight back rather than waiting on the reclaim sweep.
-        await this.env.DB.prepare(
-          `UPDATE work_queue
-              SET status = 'queued', claimed_by = NULL, claimed_at = NULL,
-                  heartbeat_at = NULL, attempts = MAX(0, attempts - 1)
-            WHERE id = ? AND status = 'claimed'`,
-        ).bind(claimed.id).run();
+        // The TTL sweep owns recovery because an old socket has no D1 lease token.
+        try { target.ws.close(1001, "Delivery failed"); } catch { /* already closed */ }
+        live.splice(live.findIndex(({ ws }) => ws === target.ws), 1);
         continue;
       }
-      target.agent.holding.push(claimed.id);
+      target.agent.holding.push({ id: claimed.id, attempts: claimed.attempts, claimedAt: claimed.claimed_at });
       target.ws.serializeAttachment(target.agent);
       dispatched++;
     }
@@ -328,6 +399,16 @@ function safeJsonParse(s: string): unknown {
 function clampInt(n: number, lo: number, hi: number): number {
   if (!Number.isFinite(n)) return lo;
   return Math.max(lo, Math.min(hi, Math.floor(n)));
+}
+
+function isAgentState(value: unknown): value is AgentState {
+  if (!value || typeof value !== "object") return false;
+  const agent = value as Partial<AgentState>;
+  return typeof agent.username === "string" && Array.isArray(agent.caps)
+    && typeof agent.maxConcurrent === "number" && typeof agent.joinedAt === "number"
+    && Array.isArray(agent.holding)
+    && agent.holding.every((claim) => claim && typeof claim.id === "string"
+      && typeof claim.attempts === "number" && typeof claim.claimedAt === "number");
 }
 
 // Wakes the coordinator after rows are inserted. Best-effort by design: if the
