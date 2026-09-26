@@ -11,4 +11,6 @@ The primary D1 read completed without writes.
 | Queue | two matching completed metadata rows, retained by the candidate |
 | Recovery material | both stable R2 objects and their `storage_objects` rows remain |
 
+The latest primary query matched all guarded fields: 2 masters, 2 instances, 2 leaf entries, 3 ancestor folders, 2 recovery objects, and 2 completed queue records. It was served by the primary and wrote zero rows. The stored names are intentionally the source's mojibake values (for example `鎴愭洸`), and the candidate uses those exact values.
+
 The local retrieved object bytes begin with AppleDouble magic `00 05 16 07`, version `00 02 00 00`, and the `Mac OS X` filler. Neither begins with the WAV `RIFF` signature.

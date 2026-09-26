@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $repo = Split-Path -Parent $PSScriptRoot
 $candidate = Join-Path $repo 'agents\524_[Audit]_appledouble_audio_retirement\apply_guarded.sql'
+$fixture = Join-Path $PSScriptRoot 'fixtures\appledouble_retirement_fixture.sql'
 $sqlite = (Get-Command sqlite3 -ErrorAction Stop).Source
 $run = Join-Path $PSScriptRoot '.appledouble-retirement-run'
 New-Item -ItemType Directory -Force -Path $run | Out-Null
@@ -22,30 +23,36 @@ CREATE TABLE annotations (user_id TEXT, item_id TEXT, item_type TEXT);
 CREATE TABLE song_artists (song_id TEXT, artist_id TEXT);
 INSERT INTO storage_objects VALUES ('obj_46853707a4374e3f','objects/obj_46853707a4374e3f.wav','wav','audio/wav',176,'b954c440f766c22dc1ee864ce123a552');
 INSERT INTO storage_objects VALUES ('obj_9cd17677e37b57ae','objects/obj_9cd17677e37b57ae.wav','wav','audio/wav',176,'aaca93a9fd581611ac1fb2a7eb22a783');
-INSERT INTO song_masters VALUES ('sm-upload-1dad3581-327','pending-uploads','unknown-artist','._12 另一世界的你');
-INSERT INTO song_masters VALUES ('sm-upload-bc490030-464','pending-uploads','unknown-artist','._4 南风');
+INSERT INTO song_masters VALUES ('sm-upload-1dad3581-327','pending-uploads','unknown-artist','._12 鍙︿竴涓栫晫鐨勪綘');
+INSERT INTO song_masters VALUES ('sm-upload-bc490030-464','pending-uploads','unknown-artist','._4 鍗楅');
 INSERT INTO song_instances VALUES ('si-upload-3d42deba-be4','sm-upload-1dad3581-327','r2-local','original','r2://objects/obj_46853707a4374e3f.wav','obj_46853707a4374e3f','wav','audio/wav',176,0,1,NULL);
 INSERT INTO song_instances VALUES ('si-upload-41afe0be-b8a','sm-upload-bc490030-464','r2-local','original','r2://objects/obj_9cd17677e37b57ae.wav','obj_9cd17677e37b57ae','wav','audio/wav',176,0,1,NULL);
 INSERT INTO storage_entries VALUES ('se-affca85b8070429b9f6c18268697ef60','r2-local',NULL,'遇依 成曲','遇依 成曲','folder',NULL,NULL,NULL);
 INSERT INTO storage_entries VALUES ('se-76a936f017574c6e8019bb6bab14437d','r2-local','se-affca85b8070429b9f6c18268697ef60','遇依 成曲/__MACOSX','__MACOSX','folder',NULL,NULL,NULL);
-INSERT INTO storage_entries VALUES ('se-19c7b239036f4af085368d01c0f5ba0c','r2-local','se-76a936f017574c6e8019bb6bab14437d','遇依 成曲/__MACOSX/成曲','成曲','folder',NULL,NULL,NULL);
-INSERT INTO storage_entries VALUES ('se-43ce6cb7239645558c5e9acd48ff2b30','r2-local','se-19c7b239036f4af085368d01c0f5ba0c','遇依 成曲/__MACOSX/成曲/成曲','成曲','folder',NULL,NULL,NULL);
-INSERT INTO storage_entries VALUES ('se-90c99a8efdcb4a8d8f98dae14c0b54f6','r2-local','se-43ce6cb7239645558c5e9acd48ff2b30','遇依 成曲/__MACOSX/成曲/成曲/._12 另一世界的你.wav','._12 另一世界的你.wav','file','obj_46853707a4374e3f','si-upload-3d42deba-be4',NULL);
-INSERT INTO storage_entries VALUES ('se-5f1eae6efc5c4b7da336d0c499c780f3','r2-local','se-43ce6cb7239645558c5e9acd48ff2b30','遇依 成曲/__MACOSX/成曲/成曲/._4 南风.wav','._4 南风.wav','file','obj_9cd17677e37b57ae','si-upload-41afe0be-b8a',NULL);
+INSERT INTO storage_entries VALUES ('se-19c7b239036f4af085368d01c0f5ba0c','r2-local','se-76a936f017574c6e8019bb6bab14437d','遇依 成曲/__MACOSX/鎴愭洸','鎴愭洸','folder',NULL,NULL,NULL);
+INSERT INTO storage_entries VALUES ('se-43ce6cb7239645558c5e9acd48ff2b30','r2-local','se-19c7b239036f4af085368d01c0f5ba0c','遇依 成曲/__MACOSX/鎴愭洸/鎴愭洸','鎴愭洸','folder',NULL,NULL,NULL);
+INSERT INTO storage_entries VALUES ('se-90c99a8efdcb4a8d8f98dae14c0b54f6','r2-local','se-43ce6cb7239645558c5e9acd48ff2b30','遇依 成曲/__MACOSX/鎴愭洸/鎴愭洸/._12 鍙︿竴涓栫晫鐨勪綘.wav','._12 鍙︿竴涓栫晫鐨勪綘.wav','file','obj_46853707a4374e3f','si-upload-3d42deba-be4',NULL);
+INSERT INTO storage_entries VALUES ('se-5f1eae6efc5c4b7da336d0c499c780f3','r2-local','se-43ce6cb7239645558c5e9acd48ff2b30','遇依 成曲/__MACOSX/鎴愭洸/鎴愭洸/._4 鍗楅.wav','._4 鍗楅.wav','file','obj_9cd17677e37b57ae','si-upload-41afe0be-b8a',NULL);
 INSERT INTO work_queue VALUES ('wt-metadata-si-upload-3d42deba-be4','metadata','{"instanceId":"si-upload-3d42deba-be4","sourceUri":"r2://objects/obj_46853707a4374e3f.wav","suffix":"wav","size":176}','completed',1);
 INSERT INTO work_queue VALUES ('wt-metadata-si-upload-41afe0be-b8a','metadata','{"instanceId":"si-upload-41afe0be-b8a","sourceUri":"r2://objects/obj_9cd17677e37b57ae.wav","suffix":"wav","size":176}','completed',1);
 '@
-  & $sqlite $db $schema
+  & $sqlite $db ".read '$fixture'"
   if ($LASTEXITCODE -ne 0) { throw "fixture failed: $name" }
   return $db
 }
 
-function Invoke-Candidate([string] $db, [bool] $rollback) {
-  $sql = Get-Content -Raw -LiteralPath $candidate
-  # Prefix a statement so sqlite3 does not interpret the candidate's opening SQL comment as a CLI option.
-  $sql = "SELECT 1;`n$sql"
-  if ($rollback) { $sql = "BEGIN IMMEDIATE;`n$sql`nROLLBACK;" }
-  $out = & $sqlite $db $sql
+function Invoke-Candidate([string] $db, [bool] $rollback, [bool] $expectFailure = $false) {
+  $driver = Join-Path $run ($(if ($rollback) { 'rollback-driver.sql' } else { 'apply-driver.sql' }))
+  if ($rollback) {
+    Set-Content -LiteralPath $driver -Value ".bail on`nBEGIN IMMEDIATE;`n.read '$candidate'`nROLLBACK;" -Encoding ASCII
+  } else {
+    Set-Content -LiteralPath $driver -Value ".bail on`n.read '$candidate'" -Encoding ASCII
+  }
+  $out = & $sqlite $db ".read '$driver'"
+  if ($expectFailure) {
+    if ($LASTEXITCODE -eq 0) { throw "candidate unexpectedly succeeded: $db" }
+    return $out
+  }
   if ($LASTEXITCODE -ne 0) { throw "candidate failed: $db" }
   return $out
 }
@@ -61,13 +68,13 @@ $out = Invoke-Candidate $success $false
 if (($out -join "`n") -notmatch '0\|0\|0\|2\|2') { throw 'success receipt did not preserve both recovery objects and completed queue rows' }
 if ((Scalar $success "SELECT COUNT(*) FROM song_masters;") -ne '0') { throw 'success left masters' }
 if ((Scalar $success "SELECT COUNT(*) FROM song_instances;") -ne '0') { throw 'success left instances' }
-if ((Scalar $success "SELECT COUNT(*) FROM storage_entries WHERE path LIKE '遇依 成曲/__MACOSX%';") -ne '0') { throw 'success left AppleDouble tree' }
+if ((Scalar $success "SELECT COUNT(*) FROM storage_entries WHERE id IN ('se-76a936f017574c6e8019bb6bab14437d','se-19c7b239036f4af085368d01c0f5ba0c','se-43ce6cb7239645558c5e9acd48ff2b30','se-90c99a8efdcb4a8d8f98dae14c0b54f6','se-5f1eae6efc5c4b7da336d0c499c780f3');") -ne '0') { throw 'success left AppleDouble tree' }
 if ((Scalar $success "SELECT COUNT(*) FROM storage_objects;") -ne '2') { throw 'success removed recovery objects' }
 
 $stale = New-Fixture 'stale'
 & $sqlite $stale "UPDATE storage_entries SET path='stale' WHERE id='se-90c99a8efdcb4a8d8f98dae14c0b54f6';"
 if ($LASTEXITCODE -ne 0) { throw 'stale setup failed' }
-Invoke-Candidate $stale $false | Out-Null
+Invoke-Candidate $stale $false $true | Out-Null
 if ((Scalar $stale "SELECT COUNT(*) FROM song_masters;") -ne '2') { throw 'stale guard mutated masters' }
 if ((Scalar $stale "SELECT COUNT(*) FROM song_instances;") -ne '2') { throw 'stale guard mutated instances' }
 if ((Scalar $stale "SELECT COUNT(*) FROM storage_entries WHERE id IN ('se-90c99a8efdcb4a8d8f98dae14c0b54f6','se-5f1eae6efc5c4b7da336d0c499c780f3');") -ne '2') { throw 'stale guard mutated leaves' }
@@ -76,7 +83,7 @@ $rollback = New-Fixture 'rollback'
 Invoke-Candidate $rollback $true | Out-Null
 if ((Scalar $rollback "SELECT COUNT(*) FROM song_masters;") -ne '2') { throw 'rollback did not restore masters' }
 if ((Scalar $rollback "SELECT COUNT(*) FROM song_instances;") -ne '2') { throw 'rollback did not restore instances' }
-if ((Scalar $rollback "SELECT COUNT(*) FROM storage_entries WHERE path LIKE '遇依 成曲/__MACOSX%';") -ne '5') { throw 'rollback did not restore tree' }
+if ((Scalar $rollback "SELECT COUNT(*) FROM storage_entries WHERE id IN ('se-76a936f017574c6e8019bb6bab14437d','se-19c7b239036f4af085368d01c0f5ba0c','se-43ce6cb7239645558c5e9acd48ff2b30','se-90c99a8efdcb4a8d8f98dae14c0b54f6','se-5f1eae6efc5c4b7da336d0c499c780f3');") -ne '5') { throw 'rollback did not restore tree' }
 if ((Scalar $rollback "SELECT COUNT(*) FROM storage_objects;") -ne '2') { throw 'rollback changed recovery objects' }
 
 Write-Output 'success, stale guard, and rollback rehearsal passed'

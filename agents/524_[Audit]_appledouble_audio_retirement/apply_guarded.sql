@@ -7,8 +7,8 @@ WHERE id IN ('se-90c99a8efdcb4a8d8f98dae14c0b54f6', 'se-5f1eae6efc5c4b7da336d0c4
     (id = 'se-90c99a8efdcb4a8d8f98dae14c0b54f6'
       AND source_id = 'r2-local'
       AND parent_id = 'se-43ce6cb7239645558c5e9acd48ff2b30'
-      AND path = '遇依 成曲/__MACOSX/成曲/成曲/._12 另一世界的你.wav'
-      AND display_name = '._12 另一世界的你.wav'
+      AND path = '遇依 成曲/__MACOSX/鎴愭洸/鎴愭洸/._12 鍙︿竴涓栫晫鐨勪綘.wav'
+      AND display_name = '._12 鍙︿竴涓栫晫鐨勪綘.wav'
       AND kind = 'file'
       AND object_id = 'obj_46853707a4374e3f'
       AND instance_id = 'si-upload-3d42deba-be4'
@@ -17,8 +17,8 @@ WHERE id IN ('se-90c99a8efdcb4a8d8f98dae14c0b54f6', 'se-5f1eae6efc5c4b7da336d0c4
     (id = 'se-5f1eae6efc5c4b7da336d0c499c780f3'
       AND source_id = 'r2-local'
       AND parent_id = 'se-43ce6cb7239645558c5e9acd48ff2b30'
-      AND path = '遇依 成曲/__MACOSX/成曲/成曲/._4 南风.wav'
-      AND display_name = '._4 南风.wav'
+      AND path = '遇依 成曲/__MACOSX/鎴愭洸/鎴愭洸/._4 鍗楅.wav'
+      AND display_name = '._4 鍗楅.wav'
       AND kind = 'file'
       AND object_id = 'obj_9cd17677e37b57ae'
       AND instance_id = 'si-upload-41afe0be-b8a'
@@ -28,14 +28,14 @@ WHERE id IN ('se-90c99a8efdcb4a8d8f98dae14c0b54f6', 'se-5f1eae6efc5c4b7da336d0c4
     SELECT COUNT(*) FROM storage_entries
     WHERE (id = 'se-90c99a8efdcb4a8d8f98dae14c0b54f6'
            AND source_id = 'r2-local' AND parent_id = 'se-43ce6cb7239645558c5e9acd48ff2b30'
-           AND path = '遇依 成曲/__MACOSX/成曲/成曲/._12 另一世界的你.wav'
-           AND display_name = '._12 另一世界的你.wav' AND kind = 'file'
+           AND path = '遇依 成曲/__MACOSX/鎴愭洸/鎴愭洸/._12 鍙︿竴涓栫晫鐨勪綘.wav'
+           AND display_name = '._12 鍙︿竴涓栫晫鐨勪綘.wav' AND kind = 'file'
            AND object_id = 'obj_46853707a4374e3f' AND instance_id = 'si-upload-3d42deba-be4'
            AND companion_of IS NULL)
        OR (id = 'se-5f1eae6efc5c4b7da336d0c499c780f3'
            AND source_id = 'r2-local' AND parent_id = 'se-43ce6cb7239645558c5e9acd48ff2b30'
-           AND path = '遇依 成曲/__MACOSX/成曲/成曲/._4 南风.wav'
-           AND display_name = '._4 南风.wav' AND kind = 'file'
+           AND path = '遇依 成曲/__MACOSX/鎴愭洸/鎴愭洸/._4 鍗楅.wav'
+           AND display_name = '._4 鍗楅.wav' AND kind = 'file'
            AND object_id = 'obj_9cd17677e37b57ae' AND instance_id = 'si-upload-41afe0be-b8a'
            AND companion_of IS NULL)
   )
@@ -46,7 +46,7 @@ WHERE id IN ('se-90c99a8efdcb4a8d8f98dae14c0b54f6', 'se-5f1eae6efc5c4b7da336d0c4
     JOIN storage_objects so ON so.id = si.storage_object_id
     WHERE (sm.id = 'sm-upload-1dad3581-327'
            AND sm.album_id = 'pending-uploads' AND sm.artist_id = 'unknown-artist'
-           AND sm.title = '._12 另一世界的你'
+           AND sm.title = '._12 鍙︿竴涓栫晫鐨勪綘'
            AND si.id = 'si-upload-3d42deba-be4' AND si.source_id = 'r2-local'
            AND si.source_type = 'original' AND si.storage_uri = 'r2://objects/obj_46853707a4374e3f.wav'
            AND si.storage_object_id = 'obj_46853707a4374e3f' AND si.suffix = 'wav'
@@ -55,7 +55,7 @@ WHERE id IN ('se-90c99a8efdcb4a8d8f98dae14c0b54f6', 'se-5f1eae6efc5c4b7da336d0c4
            AND so.etag = 'b954c440f766c22dc1ee864ce123a552')
        OR (sm.id = 'sm-upload-bc490030-464'
            AND sm.album_id = 'pending-uploads' AND sm.artist_id = 'unknown-artist'
-           AND sm.title = '._4 南风'
+           AND sm.title = '._4 鍗楅'
            AND si.id = 'si-upload-41afe0be-b8a' AND si.source_id = 'r2-local'
            AND si.source_type = 'original' AND si.storage_uri = 'r2://objects/obj_9cd17677e37b57ae.wav'
            AND si.storage_object_id = 'obj_9cd17677e37b57ae' AND si.suffix = 'wav'
@@ -72,26 +72,35 @@ WHERE id IN ('se-90c99a8efdcb4a8d8f98dae14c0b54f6', 'se-5f1eae6efc5c4b7da336d0c4
            AND task_type = 'metadata' AND status = 'completed' AND attempts = 1
            AND payload = '{"instanceId":"si-upload-41afe0be-b8a","sourceUri":"r2://objects/obj_9cd17677e37b57ae.wav","suffix":"wav","size":176}')
   );
+INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id)
+SELECT 'appledouble-guard', 'r2-local', '__guard__', '__guard__', 'file', NULL
+WHERE changes() <> 2;
 
 DELETE FROM storage_entries
 WHERE id = 'se-43ce6cb7239645558c5e9acd48ff2b30'
   AND source_id = 'r2-local'
   AND parent_id = 'se-19c7b239036f4af085368d01c0f5ba0c'
-  AND path = '遇依 成曲/__MACOSX/成曲/成曲'
-  AND display_name = '成曲'
+  AND path = '遇依 成曲/__MACOSX/鎴愭洸/鎴愭洸'
+  AND display_name = '鎴愭洸'
   AND kind = 'folder'
   AND object_id IS NULL AND instance_id IS NULL AND companion_of IS NULL
   AND NOT EXISTS (SELECT 1 FROM storage_entries WHERE parent_id = 'se-43ce6cb7239645558c5e9acd48ff2b30');
+INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id)
+SELECT 'appledouble-guard', 'r2-local', '__guard__', '__guard__', 'file', NULL
+WHERE changes() <> 1;
 
 DELETE FROM storage_entries
 WHERE id = 'se-19c7b239036f4af085368d01c0f5ba0c'
   AND source_id = 'r2-local'
   AND parent_id = 'se-76a936f017574c6e8019bb6bab14437d'
-  AND path = '遇依 成曲/__MACOSX/成曲'
-  AND display_name = '成曲'
+  AND path = '遇依 成曲/__MACOSX/鎴愭洸'
+  AND display_name = '鎴愭洸'
   AND kind = 'folder'
   AND object_id IS NULL AND instance_id IS NULL AND companion_of IS NULL
   AND NOT EXISTS (SELECT 1 FROM storage_entries WHERE parent_id = 'se-19c7b239036f4af085368d01c0f5ba0c');
+INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id)
+SELECT 'appledouble-guard', 'r2-local', '__guard__', '__guard__', 'file', NULL
+WHERE changes() <> 1;
 
 DELETE FROM storage_entries
 WHERE id = 'se-76a936f017574c6e8019bb6bab14437d'
@@ -102,6 +111,9 @@ WHERE id = 'se-76a936f017574c6e8019bb6bab14437d'
   AND kind = 'folder'
   AND object_id IS NULL AND instance_id IS NULL AND companion_of IS NULL
   AND NOT EXISTS (SELECT 1 FROM storage_entries WHERE parent_id = 'se-76a936f017574c6e8019bb6bab14437d');
+INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id)
+SELECT 'appledouble-guard', 'r2-local', '__guard__', '__guard__', 'file', NULL
+WHERE changes() <> 1;
 
 DELETE FROM song_instances
 WHERE id IN ('si-upload-3d42deba-be4', 'si-upload-41afe0be-b8a')
@@ -122,16 +134,22 @@ WHERE id IN ('si-upload-3d42deba-be4', 'si-upload-41afe0be-b8a')
   AND NOT EXISTS (SELECT 1 FROM storage_entries WHERE instance_id IN ('si-upload-3d42deba-be4', 'si-upload-41afe0be-b8a'))
   AND NOT EXISTS (SELECT 1 FROM song_instances WHERE parent_instance_id IN ('si-upload-3d42deba-be4', 'si-upload-41afe0be-b8a'))
   AND NOT EXISTS (SELECT 1 FROM transcode_jobs WHERE instance_id IN ('si-upload-3d42deba-be4', 'si-upload-41afe0be-b8a') OR output_instance_id IN ('si-upload-3d42deba-be4', 'si-upload-41afe0be-b8a'));
+INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id)
+SELECT 'appledouble-guard', 'r2-local', '__guard__', '__guard__', 'file', NULL
+WHERE changes() <> 2;
 
 DELETE FROM song_masters
 WHERE id IN ('sm-upload-1dad3581-327', 'sm-upload-bc490030-464')
-  AND ((id = 'sm-upload-1dad3581-327' AND album_id = 'pending-uploads' AND artist_id = 'unknown-artist' AND title = '._12 另一世界的你')
-    OR (id = 'sm-upload-bc490030-464' AND album_id = 'pending-uploads' AND artist_id = 'unknown-artist' AND title = '._4 南风'))
+  AND ((id = 'sm-upload-1dad3581-327' AND album_id = 'pending-uploads' AND artist_id = 'unknown-artist' AND title = '._12 鍙︿竴涓栫晫鐨勪綘')
+    OR (id = 'sm-upload-bc490030-464' AND album_id = 'pending-uploads' AND artist_id = 'unknown-artist' AND title = '._4 鍗楅'))
   AND 2 = (SELECT COUNT(*) FROM song_masters WHERE id IN ('sm-upload-1dad3581-327', 'sm-upload-bc490030-464'))
   AND NOT EXISTS (SELECT 1 FROM song_instances WHERE master_id IN ('sm-upload-1dad3581-327', 'sm-upload-bc490030-464'))
   AND NOT EXISTS (SELECT 1 FROM playlist_songs WHERE song_master_id IN ('sm-upload-1dad3581-327', 'sm-upload-bc490030-464'))
   AND NOT EXISTS (SELECT 1 FROM annotations WHERE item_type = 'song' AND item_id IN ('sm-upload-1dad3581-327', 'sm-upload-bc490030-464'))
   AND NOT EXISTS (SELECT 1 FROM song_artists WHERE song_id IN ('sm-upload-1dad3581-327', 'sm-upload-bc490030-464'));
+INSERT INTO storage_entries (id, source_id, path, display_name, kind, object_id)
+SELECT 'appledouble-guard', 'r2-local', '__guard__', '__guard__', 'file', NULL
+WHERE changes() <> 2;
 
 SELECT
   (SELECT COUNT(*) FROM song_masters WHERE id IN ('sm-upload-1dad3581-327', 'sm-upload-bc490030-464')) AS masters_remaining,
