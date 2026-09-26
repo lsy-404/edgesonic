@@ -11,3 +11,5 @@
 - Refreshed the candidate guard and local fixture after the next production archive changed pending to 555 / 123211 / 21466454141. Repeated all three Wrangler local scenes successfully and refreshed the SELECT-only primary snapshot.
 - Final SQL SHA256: `170BA8DFABDFF4D60679E8B5A245BEE9F816400041030CF3BDEA20CBF94EB7C2`.
 - Latest task commit after rebasing to `origin/main`: `67a6b76` on `codex/pending-radio-audit`.
+- Repository operator executed the A candidate; independent primary postflight verified 8 / 1540 / 271656352, pending 549 / 122071 / 21265357877, eight intact sources, and tracks 1–8 unique. Two existing anchors remain `disc=NULL`, while the six newly archived masters are `disc=1`.
+- Refreshed primary reads confirm the B sibling remains a separate 16-track pending cohort; no B album or A/B display group exists yet. Preserve both editions and defer display-group creation until B is archived.
