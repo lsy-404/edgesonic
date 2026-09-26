@@ -1,0 +1,81 @@
+{
+  "schema": "production-readonly-preflight-v1",
+  "read_only": true,
+  "worker_config": "F:\\Development\\lsy-404@edgesonic\\worker\\wrangler.toml",
+  "queries": {
+    "ref_bookmarks.json": {
+      "served_by_primary": true,
+      "rows_written": 0,
+      "rows_read": 1,
+      "result_rows": 1
+    },
+    "ref_annotations.json": {
+      "served_by_primary": true,
+      "rows_written": 0,
+      "rows_read": 935,
+      "result_rows": 1
+    },
+    "atlantis_album_preflight.json": {
+      "served_by_primary": true,
+      "rows_written": 0,
+      "rows_read": 1,
+      "result_rows": 1
+    },
+    "ref_active_queue.json": {
+      "served_by_primary": true,
+      "rows_written": 0,
+      "rows_read": 9770,
+      "result_rows": 1
+    },
+    "ref_clone_map.json": {
+      "served_by_primary": true,
+      "rows_written": 0,
+      "rows_read": 3065,
+      "result_rows": 16
+    },
+    "atlantis_group_preflight.json": {
+      "served_by_primary": true,
+      "rows_written": 0,
+      "rows_read": 3,
+      "result_rows": 0
+    },
+    "final_primary_track_snapshot.json": {
+      "served_by_primary": true,
+      "rows_written": 0,
+      "rows_read": 120,
+      "result_rows": 17
+    },
+    "ref_share_entries.json": {
+      "served_by_primary": true,
+      "rows_written": 0,
+      "rows_read": 35,
+      "result_rows": 1
+    },
+    "ref_playlist_songs.json": {
+      "served_by_primary": true,
+      "rows_written": 0,
+      "rows_read": 55,
+      "result_rows": 1
+    }
+  },
+  "production_write_executed": false,
+  "database_integrity": {
+    "quick_check": "ok",
+    "foreign_key_check_rows": 0
+  },
+  "album": {
+    "id": "al-eddee4ba83",
+    "masters": 17,
+    "wav": 8,
+    "bracketed_flac": 8,
+    "unbracketed_flac_track3": 1,
+    "missing": 0,
+    "group_membership": 0,
+    "annotations": 0,
+    "bookmarks": 0,
+    "playlist_songs": 0,
+    "share_entries": 0,
+    "clone_map_rows": 16,
+    "active_queue": 0
+  }
+}

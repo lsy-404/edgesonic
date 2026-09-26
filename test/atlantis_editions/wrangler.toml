@@ -1,0 +1,8 @@
+name = "atlantis-editions-local-rehearsal"
+main = "../../worker/src/index.ts"
+compatibility_date = "2025-05-24"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "edgesonic-db"
+database_id = "00000000-0000-0000-0000-000000000001"

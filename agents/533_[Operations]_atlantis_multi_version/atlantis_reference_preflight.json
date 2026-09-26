@@ -1,0 +1,15 @@
+
+{
+  "error": {
+    "text": "A request to the Cloudflare API (/accounts/df4481f3ce1fa0394b4617442a97d147/d1/database/b91ba5a7-08c4-4887-a439-e1d226dcd8e6/query) failed.",
+    "notes": [
+      {
+        "text": "too many terms in compound SELECT: SQLITE_ERROR [code: 7500]"
+      }
+    ],
+    "kind": "error",
+    "name": "APIError",
+    "code": 7500,
+    "accountTag": "df4481f3ce1fa0394b4617442a97d147"
+  }
+}
