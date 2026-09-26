@@ -1,0 +1,8 @@
+{
+  "result": "PASS",
+  "successFingerprint": "9EAD6483EA2527C33683BA4BD8E130F0B7ECFEA94C67581D7964F59AEDFD5942",
+  "sidecarStaleRollback": true,
+  "staleRollback": true,
+  "concurrentRollback": true,
+  "lateRollback": true
+}
