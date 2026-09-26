@@ -434,6 +434,9 @@ workRoutes.get("/work/status", permissionMiddleware("dispatch_work"), async (c) 
   ).all<{ status: string; n: number }>()).results;
   const byStatus: Record<string, number> = { queued: 0, claimed: 0, completed: 0, failed: 0, canceled: 0 };
   for (const r of counts) byStatus[r.status] = r.n;
+  if (c.req.query("countsOnly") === "1") {
+    return c.json({ ok: true, counts: byStatus });
+  }
 
   // Per-user active load — claimed tasks OR recently completed (last 60s)
   // so the "active workers" list doesn't flicker to empty between tasks.

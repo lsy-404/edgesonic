@@ -135,7 +135,7 @@ function loadProgress(): Promise<void> {
   progressController = controller;
   progressInFlight = (async () => {
     try {
-    const data = JSON.parse(await edgesonicFetch("work/status", undefined, controller.signal)) as { ok?: boolean; counts?: Partial<typeof progress.value> };
+    const data = JSON.parse(await edgesonicFetch("work/status", { countsOnly: "1" }, controller.signal)) as { ok?: boolean; counts?: Partial<typeof progress.value> };
     if (controller.signal.aborted || !mounted) return;
     if (data.ok) progress.value = { queued: data.counts?.queued ?? 0, claimed: data.counts?.claimed ?? 0, completed: data.counts?.completed ?? 0, failed: data.counts?.failed ?? 0 };
     } catch { /* Retain the last known progress while offline. */ }
