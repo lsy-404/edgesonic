@@ -265,10 +265,10 @@ month — check current pricing at `https://developers.cloudflare.com/images/pri
 ```bash
 VERSION=$(date +%s)
 # Default (Sandbox container disabled — matches step 2 item 5 = no):
-wrangler deploy --config wrangler.toml --containers-rollout=none --var WORKER_VERSION:"$VERSION"
+wrangler deploy --config wrangler.toml --containers-rollout=none --keep-vars --var WORKER_VERSION:"$VERSION"
 
 # Only if the operator opted into the Sandbox transcoder in step 2 item 5 AND Docker is running:
-# wrangler deploy --config wrangler.toml --var WORKER_VERSION:"$VERSION"
+# wrangler deploy --config wrangler.toml --keep-vars --var WORKER_VERSION:"$VERSION"
 ```
 
 `--containers-rollout=none` skips building the Sandbox transcoder's Docker image (server-side

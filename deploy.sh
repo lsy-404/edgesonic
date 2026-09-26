@@ -78,7 +78,7 @@ if [ "$VERSION_ONLY" -eq 1 ]; then
   echo "✓ 完成。WORKER_VERSION=$VERSION（版本上传，未切生产，cron 未受影响）"
 else
   echo "▶ [部署] wrangler deploy（含 web/dist 静态资源）…"
-  npx wrangler deploy --config "$CONFIG" $CONTAINERS_FLAG --var WORKER_VERSION:"$VERSION" --var EDGESONIC_VERSION:"$VERSION" --var EDGESONIC_BUILD_TIME:"$BUILD_TIME"
+  npx wrangler deploy --config "$CONFIG" $CONTAINERS_FLAG --keep-vars --var WORKER_VERSION:"$VERSION" --var EDGESONIC_VERSION:"$VERSION" --var EDGESONIC_BUILD_TIME:"$BUILD_TIME"
   echo ""
   echo "✓ 完成。WORKER_VERSION=$VERSION"
 fi
