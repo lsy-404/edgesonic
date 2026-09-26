@@ -15,7 +15,7 @@ Production-primary D1 inspection covered every entry, instance, stable object, s
 
 The final primary preflight observed `633` pending masters, `139321` seconds, and `24334446389` bytes; independent recomputation matched all three values. It matched all 28 candidate rows, all 28 unique positions from 1 through 28, the 30-entry physical tree, and the exact CUE object key `objects/obj_568cc33144589d95.cue` (suffix `cue`, size `4649`). It found no target artist or album conflict. The D1 response identified the primary, reported `rows_written=0`, and `changed_db=false`.
 
-The candidate creates artist `ar-abdf58605e` and album `al-fe198b18b1`, assigns the 28 masters to tracks 1–28 on disc 1, and recomputes pending and target album caches. It performs no deletes and contains no updates to storage entries, storage objects, song instances, lyrics, or sidecars. It is a local rehearsal artifact; it has not been executed against production.
+The candidate creates artist `ar-abdf58605e` and album `al-fe198b18b1`, assigns the 28 masters to tracks 1–28 on disc 1, and recomputes pending and target album caches. It performs no deletes and contains no updates to storage entries, storage objects, song instances, lyrics, or sidecars.
 
 Wrangler local rehearsal results:
 
@@ -23,4 +23,10 @@ Wrangler local rehearsal results:
 - Stale-source rehearsal changed one captured title. The first guard failed with a CHECK constraint; no target artist or album was created, all 28 remained pending, and the changed title remained intact.
 - Late-failure rehearsal inserted the deliberate marker that triggers the final guard after album and cache updates. The CHECK failure rolled back the full candidate: zero target artist, album, or masters; all 28 remained pending; the 29 child entries and marker remained intact.
 
-Fixture setup initially exposed a local schema mismatch; the test fixture was corrected before the three recorded rehearsals. No production mutation was issued.
+Fixture setup initially exposed a local schema mismatch; the test fixture was corrected before the three recorded rehearsals.
+
+## Production execution and postflight
+
+The user-authorized production run used this candidate's recorded SHA256 (`9F727150F3F37BD73918F5A80D9984C33649C9CD16AC6A7E93713346282DE684`). Wrangler exited successfully after 9 queries; Cloudflare reported primary service and 120 written rows.
+
+The independent primary postflight confirmed the new album has 28 tracks, 4408 seconds, and 803037536 bytes; these caches match the underlying masters and instances. Tracks 1–28 are unique and continuous, and all 28 original references remain intact. The pending album now has 605 masters, 134913 seconds, and 23531408853 bytes; each value matches independent recomputation. No execution or postflight discrepancy was reported.
