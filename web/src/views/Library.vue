@@ -587,6 +587,7 @@ async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
   detailRequest++;
   currentArtist.value = null;
   currentAlbum.value = null;
+  currentDisplayGroup.value = null;
   try {
     const [xml] = await Promise.all([
       authFetch("search3", buildLibrarySearchParams(query, lyricQuery, sortMode.value), controller.signal),
@@ -1427,7 +1428,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       </div>
     </div>
 
-    <template v-if="!isSearchActive">
+    <template v-if="!isSearchActive || currentDisplayGroup">
     <!-- View tabs and sorting (hidden while drilled into an artist/album) -->
     <div v-if="!currentArtist && !currentAlbum && !currentDisplayGroup && !embedded" class="library-controls">
       <div class="view-tabs">
