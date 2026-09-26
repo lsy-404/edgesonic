@@ -18,8 +18,8 @@ WITH expected(master_id, original_album_id, track_number, instance_id, entry_id,
   JOIN storage_objects so ON so.id=e.object_id AND so.physical_key=e.physical_key
 )
 INSERT INTO albums (id, name, sort_name, cover_r2_key, song_count, duration, size)
-SELECT 'al-524-qichengzhuanhe', '起程转合', '起程转合', 'objects/obj_52c5c2fbd8c092f8.jpg', 7, 1662, 334281538
-WHERE NOT EXISTS (SELECT 1 FROM albums WHERE id='al-524-qichengzhuanhe')
+SELECT 'al-qichengzhuanhe-wav', '起程转合', '起程转合', 'objects/obj_52c5c2fbd8c092f8.jpg', 7, 1662, 334281538
+WHERE NOT EXISTS (SELECT 1 FROM albums WHERE id='al-qichengzhuanhe-wav')
   AND (SELECT count(*) FROM valid_source)=7
   AND (SELECT count(*) FROM song_masters WHERE album_id='al-3ff61cef3d')=40
   AND (SELECT count(*) FROM song_masters WHERE album_id='pending-uploads')=692
@@ -46,10 +46,10 @@ WITH expected(master_id, original_album_id, track_number, instance_id, entry_id,
   JOIN storage_objects so ON so.id=e.object_id AND so.physical_key=e.physical_key
 )
 UPDATE song_masters
-SET album_id='al-524-qichengzhuanhe', track=(SELECT track_number FROM expected WHERE master_id=song_masters.id), updated_at=unixepoch()
+SET album_id='al-qichengzhuanhe-wav', track=(SELECT track_number FROM expected WHERE master_id=song_masters.id), updated_at=unixepoch()
 WHERE id IN (SELECT master_id FROM expected)
   AND (SELECT count(*) FROM valid_source)=7
-  AND EXISTS (SELECT 1 FROM albums WHERE id='al-524-qichengzhuanhe' AND name='起程转合' AND cover_r2_key='objects/obj_52c5c2fbd8c092f8.jpg')
+  AND EXISTS (SELECT 1 FROM albums WHERE id='al-qichengzhuanhe-wav' AND name='起程转合' AND cover_r2_key='objects/obj_52c5c2fbd8c092f8.jpg')
   AND album_id=(SELECT original_album_id FROM expected WHERE master_id=song_masters.id)
   AND track IS NULL AND disc IS NULL;
 
@@ -58,6 +58,6 @@ SET song_count=(SELECT count(*) FROM song_masters WHERE album_id=albums.id),
     duration=(SELECT coalesce(sum(duration),0) FROM song_masters WHERE album_id=albums.id),
     size=(SELECT coalesce(sum(si.size),0) FROM song_instances si JOIN song_masters sm ON sm.id=si.master_id WHERE sm.album_id=albums.id),
     updated_at=unixepoch()
-WHERE id IN ('pending-uploads','al-3ff61cef3d','al-524-qichengzhuanhe')
-  AND (SELECT count(*) FROM song_masters WHERE album_id='al-524-qichengzhuanhe' AND track BETWEEN 1 AND 7)=7
-  AND (SELECT count(*) FROM song_masters WHERE album_id='al-524-qichengzhuanhe')=7;
+WHERE id IN ('pending-uploads','al-3ff61cef3d','al-qichengzhuanhe-wav')
+  AND (SELECT count(*) FROM song_masters WHERE album_id='al-qichengzhuanhe-wav' AND track BETWEEN 1 AND 7)=7
+  AND (SELECT count(*) FROM song_masters WHERE album_id='al-qichengzhuanhe-wav')=7;

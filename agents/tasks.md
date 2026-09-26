@@ -4,4 +4,4 @@
 
 | 编号 | 任务名称 | 任务描述 | 变更动机 | 状态 |
 | :--: | :------: | :------: | :------: | :--: |
-| 524 | [Audit] 混杂 Pending Uploads 专辑修复 | 审计并准备起程转合七首 WAV 的 guarded D1 独立专辑回填 | 修复 Pending Uploads 中混入多张专辑的曲目，保留全部音频对象 | 🔄 进行中 |
+| 525 | [Operations] 混杂 Pending Uploads 专辑修复 | 审计并准备起程转合七首 WAV 的 guarded D1 独立专辑回填 | 修复 Pending Uploads 中混入多张专辑的曲目，保留全部音频对象 | ✅ 已完成 |
