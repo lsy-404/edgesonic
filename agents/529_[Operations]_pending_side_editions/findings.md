@@ -25,4 +25,8 @@
 - 现有 FLAC album `al-9c7ec22ef5` 的缓存与实际行聚合一致：24 首、5171 秒、1166586233 字节。候选会把此状态作为前置守卫，不修正 FLAC 缓存。
 - 此分支执行期间，协调任务先归档 8 首、随后又归档 28 首 WAV。pending 专辑由 641 首降为 605 首；归档 28 首后的 fresh primary SELECT-only 检查中 pending 缓存与实际均为 605 首、134913 秒、23531408853 字节。候选以归组后的实际 `song_masters` 和 `song_instances` 聚合刷新 pending 与新 WAV 专辑缓存，不依赖这个可变化的全局 pending 基线。
 - 新 WAV 专辑只更改 24 个 master 的 `album_id`、`disc`、`track` 和更新时间；保留 title/duration、音频实例、对象、物理键、entry 与路径。A/B 映射为 disc 1/2，各自 track 1--12。
-- Wrangler local 成功、source snapshot 过期、最终 CHECK 失败三种演练均通过；后两种确认整批回滚。没有在本分支向生产写入数据。
+- Wrangler local 成功、source snapshot 过期、最终 CHECK 失败三种演练均通过；后两种确认整批回滚。候选随后由协调任务执行，生产回执见 `production_receipt.md`。
+
+### Production postflight
+
+生产 postflight 确认：FLAC 24 首 / 5171 秒 / 1166586233 字节；WAV 24 首 / 5212 秒 / 919762416 字节。两版各 24 个 refs；WAV 两碟各 12 首，disc 内 track 1--12 唯一，显示组恰有两个成员。pending 581 首 / 129701 秒 / 22611646437 字节，缓存与实际一致。

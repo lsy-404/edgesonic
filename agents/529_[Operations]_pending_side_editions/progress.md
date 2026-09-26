@@ -13,4 +13,5 @@
 - 对 production primary 执行 SELECT-only fresh preflight，保存 24 行完整 WAV 源快照、pending/FLAC 聚合与冲突计数。协调任务归档另外 28 首后重新预检；24 行快照未变、目标冲突仍为 0，pending 缓存与实际均为 605 首 / 134913 秒 / 23531408853 字节。所有查询写入计数为 0，primary 路由为真。
 - 生成 `apply_chromatic_wav_guarded.sql`：对 24 行身份及 FLAC 的 24 首 / 5171 秒 / 1166586233 字节缓存加前置守卫；建立独立 WAV album 和显示组；保留标题、时长和所有音频/目录身份；按本地实际聚合重算 pending/WAV 缓存。
 - 新增 Wrangler 本地 fixture 和 rehearsal，真实 Wrangler local 批次验证成功、过期快照回滚、最后一条 CHECK 失败回滚。
-- 未在本分支对 production 执行写入。候选与演练完成，等待协调任务决定集中执行时间。
+- 候选由协调任务执行：primary Wrangler 成功写入 65 行；独立 postflight 确认双版、refs、碟序、显示组及 pending 缓存均符合预期。
+- 追加 Chromatic 生产执行与 primary postflight 回执至 production_receipt.md。
