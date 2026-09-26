@@ -1,0 +1,8 @@
+name = "edgesonic-audit-rehearsal"
+main = "worker.js"
+compatibility_date = "2025-05-24"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "edgesonic-audit-rehearsal"
+database_id = "00000000-0000-0000-0000-000000000531"
