@@ -1,0 +1,6 @@
+name = "maple-nighttread-rehearsal"
+compatibility_date = "2025-05-24"
+[[d1_databases]]
+binding = "DB"
+database_name = "maple-nighttread-rehearsal"
+database_id = "00000000-0000-0000-0000-000000005340"
