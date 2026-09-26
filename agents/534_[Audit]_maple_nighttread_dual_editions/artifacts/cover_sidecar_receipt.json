@@ -90,5 +90,14 @@
     "concurrent_identity_rollback": true,
     "late_failure_rollback": true,
     "success_fingerprint": "9EAD6483EA2527C33683BA4BD8E130F0B7ECFEA94C67581D7964F59AEDFD5942"
+  },
+  "r2_target_verification": {
+    "method": "Wrangler remote object GET, read-only",
+    "keys": {
+      "covers/al-maple-nighttread-wav": "404: The specified key does not exist",
+      "covers/al-maple-nighttread-mp3": "404: The specified key does not exist"
+    },
+    "write_performed": false,
+    "note": "The first missing-key request emitted the 404 then Wrangler exited abnormally on Windows; the second exited normally with the same missing-key result."
   }
 }

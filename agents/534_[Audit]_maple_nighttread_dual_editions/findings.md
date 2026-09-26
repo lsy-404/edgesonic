@@ -39,3 +39,5 @@
 - fresh primary source guard 以 5 条分片的纯 SELECT `--command` 检查全部 20 行，五组均 expected=4/exact=4/unique=4；sidecar exact=2。pending cache/actual 为 522/116545/20262441225，album/group 冲突均为 0，所有命令均 primary、`changed_db=false`、`rows_written=0`。
 - 单文件 `--file` 的 Wrangler 汇总曾显示 `changed_db=true/changes=1`，但 `rows_written=0`。最终 preflight 改用独立纯 SELECT `--command`，结果均 `changed_db=false/changes=0`；文件模式汇总不作为最终 preflight 证据。
 - 扩展 Wrangler local 演练通过：成功、sidecar 物理键过期、音频 path 过期、master title 并发改变、末段 integer overflow。四种失败后的完整相关表指纹均保持不变。
+
+- Commit 前再次对两个完整 canonical key 执行 Wrangler remote object GET（只读），均明确返回 key does not exist；本轮无 R2 写操作。一个 GET 在返回 404 后触发 Wrangler Windows 进程断言并异常退出，第二个以标准错误码退出，但两者对象结果都是不存在。

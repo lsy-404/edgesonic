@@ -14,3 +14,5 @@
 - Wrangler local 演练 PASS：成功指纹 `9EAD6483EA2527C33683BA4BD8E130F0B7ECFEA94C67581D7964F59AEDFD5942`；sidecar stale、source stale、concurrent、late failure rollback 均为 true。
 - Production preflight 使用独立 `wrangler d1 execute ... --command` 纯 SELECT，fresh source tuple 20/20、sidecar 2/2、pending/cache 与冲突为预期；所有命令均 primary、rows_written=0、changed_db=false。未执行生产写入。
 - `--file` 聚合查询一度给出 changed_db=true/changes=1 与 rows_written=0 不一致；改用短 `--command` 精确复核后，主库读取证据无上述矛盾。
+
+- 提交前以 Wrangler remote object GET 对两个 canonical cover key 再做只读检查，结果均为不存在；未执行 PUT/DELETE。记录第一个 GET 返回 404 后 Wrangler Windows 端异常退出的工具行为。
