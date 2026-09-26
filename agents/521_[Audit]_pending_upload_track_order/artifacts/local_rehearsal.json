@@ -1,0 +1,34 @@
+{
+  "masters": 243,
+  "albums": 25,
+  "success_apply": {
+    "state": [
+      243,
+      0,
+      243
+    ]
+  },
+  "success_rollback": {
+    "state": [
+      243,
+      243,
+      0
+    ]
+  },
+  "stale_apply": {
+    "state": [
+      243,
+      242,
+      1
+    ],
+    "changed_rows": 0
+  },
+  "late_rollback": {
+    "state": [
+      243,
+      0,
+      243
+    ],
+    "changed_rows": 0
+  }
+}
