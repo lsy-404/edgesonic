@@ -12,4 +12,5 @@
 - [x] 以精确快照守卫演练 D1 SQL 的成功、过期快照拒绝、末段失败完整回滚；核对完整 JSON 尾部。
 - [x] 保存候选、审计材料和本地回执；不执行 production 写入。
 - [x] 使用最终快照重建候选，并重新通过本地成功、stale guard 和 late failure 回滚演练。
+- [x] 记录生产操作员提供的 guarded apply SHA、primary postflight、存储完整性与 pending/cache 状态；不重跑候选。
 - [x] 仅提交本任务目录和本任务 `/test` 文件；自检提交范围。
