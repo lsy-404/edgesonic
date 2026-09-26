@@ -10,7 +10,7 @@ WITH expected(master_id, target_album_id, filename_track, instance_id, entry_id,
   ('sm-upload-9d07ba09-a49', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 3, 'si-upload-8aeef399-0f1', 'se-f54fc98571ce4691a2c7cea1f4cab833', 'r2-local', 'se-4bc99f8cc76144189cde41684fd8af27', '众虫皆歌/歌曲本体/003 LYRA·Artist version(feat.廖澄奏).wav', '003 LYRA·Artist version(feat.廖澄奏).wav', 'obj_60b97aebb7ff0636'),
   ('sm-upload-e94697d9-8e4', 'al-369dc39c99e3a1a27dc05b84aa30d1e1', 4, 'si-upload-363f152d-4d9', 'se-dd99063938d54e5a8de47248930f57ed', 'r2-local', 'se-4bc99f8cc76144189cde41684fd8af27', '众虫皆歌/歌曲本体/004 主板都市(feat.语飞）.wav', '004 主板都市(feat.语飞）.wav', 'obj_31eb60b98e5bec1a')
 )
-SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track IS NULL AND sm.disc IS NULL
+SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track=e.filename_track AND sm.disc=1
 AND EXISTS (SELECT 1 FROM song_instances si JOIN storage_entries se ON se.instance_id=si.id AND se.kind='file'
             WHERE si.id=e.instance_id AND si.master_id=sm.id AND si.source_id=e.source_id
               AND si.storage_object_id=e.storage_object_id AND se.id=e.entry_id AND se.source_id=e.source_id

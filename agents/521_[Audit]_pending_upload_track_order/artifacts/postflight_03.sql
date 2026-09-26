@@ -10,7 +10,7 @@ WITH expected(master_id, target_album_id, filename_track, instance_id, entry_id,
   ('sm-upload-3020e076-7c7', 'al-3601f0337902ef9583048198e3640d3b', 1, 'si-upload-47222c92-2a3', 'se-e8c146ce89e84ec18a8fb351f3eb2e64', 'r2-local', 'se-946c53a8d4b24847816c4a5e138be87f', 'sakuya薯片~THE NOCTURNE/wav/01.霓虹燈 c.wav', '01.霓虹燈 c.wav', 'obj_44e32e86d521f879'),
   ('sm-upload-4af9cee4-3d9', 'al-3601f0337902ef9583048198e3640d3b', 2, 'si-upload-34e9a3f9-d6c', 'se-e375650f772f456e91b3c5cfe49f9c4f', 'r2-local', 'se-946c53a8d4b24847816c4a5e138be87f', 'sakuya薯片~THE NOCTURNE/wav/02.NIGHTWALK.wav', '02.NIGHTWALK.wav', 'obj_fbd452923cc0ce18')
 )
-SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track IS NULL AND sm.disc IS NULL
+SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track=e.filename_track AND sm.disc=1
 AND EXISTS (SELECT 1 FROM song_instances si JOIN storage_entries se ON se.instance_id=si.id AND se.kind='file'
             WHERE si.id=e.instance_id AND si.master_id=sm.id AND si.source_id=e.source_id
               AND si.storage_object_id=e.storage_object_id AND se.id=e.entry_id AND se.source_id=e.source_id

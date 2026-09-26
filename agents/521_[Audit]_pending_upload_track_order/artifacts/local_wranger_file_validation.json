@@ -1,0 +1,7 @@
+{
+  "database": "isolated local D1",
+  "schema_setup": "success",
+  "apply_guarded_sql": "success",
+  "rollback_guarded_sql": "success",
+  "manual_transaction_statements": false
+}

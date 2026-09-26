@@ -10,7 +10,7 @@ WITH expected(master_id, target_album_id, filename_track, instance_id, entry_id,
   ('sm-be8ba6dfd67f4f9a91bdb33b44d41d3a', 'al-0f93c4e539eb79562fce224989b22aec', 9, 'si-8d92cb80fed94a5da9c7dd1cf628612b', 'se-637883663688450d8b82cf083ddf1adc', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/09 孤独患者.wav', '09 孤独患者.wav', 'obj_862b8fd284235c25'),
   ('sm-e23ea8bf9f4846d7bfbda205e7b09672', 'al-0f93c4e539eb79562fce224989b22aec', 10, 'si-639adf60d5ce408c8d70309a59f1b988', 'se-bad93573486e454b98ebf97415b23b17', 'r2-local', 'se-76d461ab64cb426083c9b6a102617296', '黑白/wav/10 他.wav', '10 他.wav', 'obj_9695fd0b039a72cc')
 )
-SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track IS NULL AND sm.disc IS NULL
+SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track=e.filename_track AND sm.disc=1
 AND EXISTS (SELECT 1 FROM song_instances si JOIN storage_entries se ON se.instance_id=si.id AND se.kind='file'
             WHERE si.id=e.instance_id AND si.master_id=sm.id AND si.source_id=e.source_id
               AND si.storage_object_id=e.storage_object_id AND se.id=e.entry_id AND se.source_id=e.source_id

@@ -12,8 +12,8 @@
     "expected_storage_object_id": "obj_9fe897c25ad887ac",
     "actual_master_id": "sm-upload-ce73a06c-13b",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -29,8 +29,8 @@
     "expected_storage_object_id": "obj_f57d0a0f61318fcc",
     "actual_master_id": "sm-upload-abf7fe3c-d54",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -46,8 +46,8 @@
     "expected_storage_object_id": "obj_5ebd6947ff0c1a55",
     "actual_master_id": "sm-upload-2207d12c-443",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -63,8 +63,8 @@
     "expected_storage_object_id": "obj_aa47411a7d5489fc",
     "actual_master_id": "sm-upload-3d0dfe07-125",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -80,8 +80,8 @@
     "expected_storage_object_id": "obj_916d89f14d149400",
     "actual_master_id": "sm-upload-152098f7-f9e",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -97,8 +97,8 @@
     "expected_storage_object_id": "obj_f71bb5647395f8cd",
     "actual_master_id": "sm-cdeaab57721d46afb6365cca2b0a146f",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -114,8 +114,8 @@
     "expected_storage_object_id": "obj_cfddbae1a47ede0c",
     "actual_master_id": "sm-22e86a0b11974fe4915430f2119da7c4",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -131,8 +131,8 @@
     "expected_storage_object_id": "obj_db092e221f2f7be0",
     "actual_master_id": "sm-4d0d004dd8d74ebaadc851d5efab5525",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -148,8 +148,8 @@
     "expected_storage_object_id": "obj_862b8fd284235c25",
     "actual_master_id": "sm-be8ba6dfd67f4f9a91bdb33b44d41d3a",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -165,8 +165,8 @@
     "expected_storage_object_id": "obj_9695fd0b039a72cc",
     "actual_master_id": "sm-e23ea8bf9f4846d7bfbda205e7b09672",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -182,8 +182,8 @@
     "expected_storage_object_id": "obj_ab8dd51924d060f4",
     "actual_master_id": "sm-f9ae632a2ba14540a099fbb663bd3750",
     "actual_album_id": "al-0f93c4e539eb79562fce224989b22aec",
-    "track": null,
-    "disc": null,
+    "track": 11,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -199,8 +199,8 @@
     "expected_storage_object_id": "obj_8cb76695b007eb9d",
     "actual_master_id": "sm-upload-a4e20343-e35",
     "actual_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -216,8 +216,8 @@
     "expected_storage_object_id": "obj_ca5405956c25f1ae",
     "actual_master_id": "sm-upload-8dac0faa-885",
     "actual_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -233,8 +233,8 @@
     "expected_storage_object_id": "obj_242e5faa38f193ca",
     "actual_master_id": "sm-upload-54a04d18-b6d",
     "actual_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -250,8 +250,8 @@
     "expected_storage_object_id": "obj_fdcfe954b4e558a2",
     "actual_master_id": "sm-upload-1c1d6c3a-6ac",
     "actual_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -267,8 +267,8 @@
     "expected_storage_object_id": "obj_e48535c1e40f44e7",
     "actual_master_id": "sm-upload-85febee1-add",
     "actual_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -284,8 +284,8 @@
     "expected_storage_object_id": "obj_703c347237b9b8ab",
     "actual_master_id": "sm-upload-f35ebe3d-fb5",
     "actual_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -301,8 +301,8 @@
     "expected_storage_object_id": "obj_fd58ad76bcd2f0a1",
     "actual_master_id": "sm-upload-2cc2cded-f96",
     "actual_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -318,8 +318,8 @@
     "expected_storage_object_id": "obj_88b8b54f0f15e947",
     "actual_master_id": "sm-upload-f8b47093-229",
     "actual_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -335,8 +335,8 @@
     "expected_storage_object_id": "obj_8d4093f4b5c64586",
     "actual_master_id": "sm-upload-2ed4a91f-50f",
     "actual_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -352,8 +352,8 @@
     "expected_storage_object_id": "obj_d3888497c5f61868",
     "actual_master_id": "sm-upload-8c8ff71c-39c",
     "actual_album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -369,8 +369,8 @@
     "expected_storage_object_id": "obj_a46771e2d9640a9c",
     "actual_master_id": "sm-upload-22d36802-2ad",
     "actual_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -386,8 +386,8 @@
     "expected_storage_object_id": "obj_e44259dce0a07698",
     "actual_master_id": "sm-upload-605d34a4-800",
     "actual_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -403,8 +403,8 @@
     "expected_storage_object_id": "obj_ff0ca9ccb73e5c30",
     "actual_master_id": "sm-upload-079b5a30-681",
     "actual_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -420,8 +420,8 @@
     "expected_storage_object_id": "obj_e65fa1bfab239546",
     "actual_master_id": "sm-upload-3e173d57-c25",
     "actual_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -437,8 +437,8 @@
     "expected_storage_object_id": "obj_e47db6f692669ab4",
     "actual_master_id": "sm-upload-cdea3d45-1a9",
     "actual_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -454,8 +454,8 @@
     "expected_storage_object_id": "obj_e6d0b14ef66ec797",
     "actual_master_id": "sm-upload-604ea1ac-255",
     "actual_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -471,8 +471,8 @@
     "expected_storage_object_id": "obj_d79626a5435c451b",
     "actual_master_id": "sm-upload-11bfd8b6-551",
     "actual_album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -488,8 +488,8 @@
     "expected_storage_object_id": "obj_44e32e86d521f879",
     "actual_master_id": "sm-upload-3020e076-7c7",
     "actual_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -505,8 +505,8 @@
     "expected_storage_object_id": "obj_fbd452923cc0ce18",
     "actual_master_id": "sm-upload-4af9cee4-3d9",
     "actual_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -522,8 +522,8 @@
     "expected_storage_object_id": "obj_73ea3b0636c09cb2",
     "actual_master_id": "sm-upload-47be279d-a1f",
     "actual_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -539,8 +539,8 @@
     "expected_storage_object_id": "obj_2cf8928d3505b029",
     "actual_master_id": "sm-upload-00474c5a-882",
     "actual_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -556,8 +556,8 @@
     "expected_storage_object_id": "obj_fd7c401aa8af58f0",
     "actual_master_id": "sm-upload-5080d6c6-ec3",
     "actual_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -573,8 +573,8 @@
     "expected_storage_object_id": "obj_45c2554fe1c13ee7",
     "actual_master_id": "sm-upload-12d68563-b7d",
     "actual_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -590,8 +590,8 @@
     "expected_storage_object_id": "obj_5c9c4ce03e0b2874",
     "actual_master_id": "sm-upload-2e7224ec-39c",
     "actual_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -607,8 +607,8 @@
     "expected_storage_object_id": "obj_6d7fa2f61e50bed1",
     "actual_master_id": "sm-9259e6f5144348d3b9f1881d95c31d97",
     "actual_album_id": "al-3601f0337902ef9583048198e3640d3b",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -624,8 +624,8 @@
     "expected_storage_object_id": "obj_e8ec03ec27945551",
     "actual_master_id": "sm-upload-2a26712c-984",
     "actual_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -641,8 +641,8 @@
     "expected_storage_object_id": "obj_d93763f2bbc2cf4f",
     "actual_master_id": "sm-upload-8b54d965-cef",
     "actual_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -658,8 +658,8 @@
     "expected_storage_object_id": "obj_60b97aebb7ff0636",
     "actual_master_id": "sm-upload-9d07ba09-a49",
     "actual_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -675,8 +675,8 @@
     "expected_storage_object_id": "obj_31eb60b98e5bec1a",
     "actual_master_id": "sm-upload-e94697d9-8e4",
     "actual_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -692,8 +692,8 @@
     "expected_storage_object_id": "obj_29a96f084015891b",
     "actual_master_id": "sm-upload-95c704d9-7a3",
     "actual_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -709,8 +709,8 @@
     "expected_storage_object_id": "obj_ebe8871a6b10c251",
     "actual_master_id": "sm-upload-cd65bb92-34f",
     "actual_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -726,8 +726,8 @@
     "expected_storage_object_id": "obj_14723b525b4f8d25",
     "actual_master_id": "sm-upload-f748f953-ced",
     "actual_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -743,8 +743,8 @@
     "expected_storage_object_id": "obj_f6b8d483a3723d5c",
     "actual_master_id": "sm-upload-0f2e057c-5a1",
     "actual_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -760,8 +760,8 @@
     "expected_storage_object_id": "obj_11bf7b044b307b83",
     "actual_master_id": "sm-upload-3c2f0270-93c",
     "actual_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -777,8 +777,8 @@
     "expected_storage_object_id": "obj_1cb55e6e153bf9b5",
     "actual_master_id": "sm-upload-fa58b133-8bc",
     "actual_album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -794,8 +794,8 @@
     "expected_storage_object_id": "obj_9fb495d501267c11",
     "actual_master_id": "sm-upload-0d698ddd-586",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -811,8 +811,8 @@
     "expected_storage_object_id": "obj_9e8b2986bbcd0287",
     "actual_master_id": "sm-upload-3e4a3e0c-5e1",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -828,8 +828,8 @@
     "expected_storage_object_id": "obj_116dbfb9d9e7221f",
     "actual_master_id": "sm-upload-55fa915d-2e6",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -845,8 +845,8 @@
     "expected_storage_object_id": "obj_3bc3a89a8a810973",
     "actual_master_id": "sm-upload-d38bae55-e32",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -862,8 +862,8 @@
     "expected_storage_object_id": "obj_6d6d8ffb82a0fc3f",
     "actual_master_id": "sm-upload-642c5555-32e",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -879,8 +879,8 @@
     "expected_storage_object_id": "obj_b6179c2a55820e14",
     "actual_master_id": "sm-upload-be4c6092-980",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -896,8 +896,8 @@
     "expected_storage_object_id": "obj_76182786d0d472e5",
     "actual_master_id": "sm-upload-d4898d69-3e7",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -913,8 +913,8 @@
     "expected_storage_object_id": "obj_9099e6575a6a60b2",
     "actual_master_id": "sm-upload-68e21ac4-af0",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -930,8 +930,8 @@
     "expected_storage_object_id": "obj_5e5652961337a006",
     "actual_master_id": "sm-upload-962f69d3-a47",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -947,8 +947,8 @@
     "expected_storage_object_id": "obj_88318c2465ce715b",
     "actual_master_id": "sm-upload-5189133a-af2",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -964,8 +964,8 @@
     "expected_storage_object_id": "obj_187b3fe5e7cc9b29",
     "actual_master_id": "sm-upload-412884aa-3c6",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 11,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -981,8 +981,8 @@
     "expected_storage_object_id": "obj_3e70ffdcfdb11556",
     "actual_master_id": "sm-upload-d9e8676f-0f4",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 12,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -998,8 +998,8 @@
     "expected_storage_object_id": "obj_ef95f85ac026c01e",
     "actual_master_id": "sm-upload-e258a0c1-196",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 13,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1015,8 +1015,8 @@
     "expected_storage_object_id": "obj_b91bcb3fe111be6b",
     "actual_master_id": "sm-upload-c823de32-b12",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 14,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1032,8 +1032,8 @@
     "expected_storage_object_id": "obj_b461c8362363fd42",
     "actual_master_id": "sm-upload-34a4e79c-3ac",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 15,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1049,8 +1049,8 @@
     "expected_storage_object_id": "obj_555dc3d4b0197af0",
     "actual_master_id": "sm-upload-0796f5d3-fd3",
     "actual_album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
-    "track": null,
-    "disc": null,
+    "track": 16,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1066,8 +1066,8 @@
     "expected_storage_object_id": "obj_cb8abfa22e0bd72b",
     "actual_master_id": "sm-upload-f3f4157d-6ee",
     "actual_album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1083,8 +1083,8 @@
     "expected_storage_object_id": "obj_b41f2e2f400a2848",
     "actual_master_id": "sm-upload-46552f7f-fae",
     "actual_album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1100,8 +1100,8 @@
     "expected_storage_object_id": "obj_f0f6f92ad590ad8b",
     "actual_master_id": "sm-upload-56571117-ce0",
     "actual_album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1117,8 +1117,8 @@
     "expected_storage_object_id": "obj_944f0fa40ed327d4",
     "actual_master_id": "sm-upload-a0ec2a9f-fe9",
     "actual_album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1134,8 +1134,8 @@
     "expected_storage_object_id": "obj_c2f21ec16f428bcf",
     "actual_master_id": "sm-upload-553e0240-555",
     "actual_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1151,8 +1151,8 @@
     "expected_storage_object_id": "obj_861f81415cdfab64",
     "actual_master_id": "sm-upload-05511bcc-4d5",
     "actual_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1168,8 +1168,8 @@
     "expected_storage_object_id": "obj_4fbb65dfe6853bc3",
     "actual_master_id": "sm-upload-620c477b-70a",
     "actual_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1185,8 +1185,8 @@
     "expected_storage_object_id": "obj_39ca104746eb6547",
     "actual_master_id": "sm-upload-660bdf12-2ce",
     "actual_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1202,8 +1202,8 @@
     "expected_storage_object_id": "obj_fbd149aefbd5cdb1",
     "actual_master_id": "sm-upload-70333488-8b5",
     "actual_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1219,8 +1219,8 @@
     "expected_storage_object_id": "obj_119b4600b52c0914",
     "actual_master_id": "sm-upload-43d08570-b2e",
     "actual_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1236,8 +1236,8 @@
     "expected_storage_object_id": "obj_61d4efd9840cceb8",
     "actual_master_id": "sm-upload-8e189cf4-bc2",
     "actual_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1253,8 +1253,8 @@
     "expected_storage_object_id": "obj_e1681aa2856c54be",
     "actual_master_id": "sm-upload-f4c839d7-939",
     "actual_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1270,8 +1270,8 @@
     "expected_storage_object_id": "obj_1ec64a7096462a57",
     "actual_master_id": "sm-upload-f1efcbe8-2fb",
     "actual_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1287,8 +1287,8 @@
     "expected_storage_object_id": "obj_35a1870e92ed2b52",
     "actual_master_id": "sm-upload-c659b405-246",
     "actual_album_id": "al-3e2385da217b494f06495b58255c609f",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1304,8 +1304,8 @@
     "expected_storage_object_id": "obj_a83ad4a5f1a4eeca",
     "actual_master_id": "sm-upload-914669ae-daf",
     "actual_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1321,8 +1321,8 @@
     "expected_storage_object_id": "obj_45ac0842b5b2c646",
     "actual_master_id": "sm-upload-e38cb628-82f",
     "actual_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1338,8 +1338,8 @@
     "expected_storage_object_id": "obj_9facc6394befe5bf",
     "actual_master_id": "sm-upload-8027cffa-3f0",
     "actual_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1355,8 +1355,8 @@
     "expected_storage_object_id": "obj_cd29cd903cdab963",
     "actual_master_id": "sm-upload-c5006572-e0e",
     "actual_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1372,8 +1372,8 @@
     "expected_storage_object_id": "obj_d88c8b9fb381ea19",
     "actual_master_id": "sm-upload-04e4f884-8c1",
     "actual_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1389,8 +1389,8 @@
     "expected_storage_object_id": "obj_84aca424452f7379",
     "actual_master_id": "sm-upload-baaca575-1e5",
     "actual_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1406,8 +1406,8 @@
     "expected_storage_object_id": "obj_9f0a5e4c526db935",
     "actual_master_id": "sm-upload-e4b4a430-9bf",
     "actual_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1423,8 +1423,8 @@
     "expected_storage_object_id": "obj_5839c65c17608e3d",
     "actual_master_id": "sm-upload-c80b56a6-9cb",
     "actual_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1440,8 +1440,8 @@
     "expected_storage_object_id": "obj_598c371502c4b65c",
     "actual_master_id": "sm-upload-15add848-cb6",
     "actual_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1457,8 +1457,8 @@
     "expected_storage_object_id": "obj_97ca3ba82bbc8934",
     "actual_master_id": "sm-upload-c422ca21-bc0",
     "actual_album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1474,8 +1474,8 @@
     "expected_storage_object_id": "obj_725875c5a6e7bff7",
     "actual_master_id": "sm-upload-6175a166-606",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1491,8 +1491,8 @@
     "expected_storage_object_id": "obj_6f3c84f4eb572606",
     "actual_master_id": "sm-upload-e424797b-1e7",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1508,8 +1508,8 @@
     "expected_storage_object_id": "obj_359e3fdc7d2115bc",
     "actual_master_id": "sm-upload-55d617d1-946",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1525,8 +1525,8 @@
     "expected_storage_object_id": "obj_924a14eca863d22a",
     "actual_master_id": "sm-upload-1dd2c3ea-51a",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1542,8 +1542,8 @@
     "expected_storage_object_id": "obj_328688fc61c8c5f3",
     "actual_master_id": "sm-upload-52918a7d-d0d",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1559,8 +1559,8 @@
     "expected_storage_object_id": "obj_98062fffbd0b3805",
     "actual_master_id": "sm-upload-fac12da8-c8b",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1576,8 +1576,8 @@
     "expected_storage_object_id": "obj_3ab58560b6375297",
     "actual_master_id": "sm-upload-ce7ca9dd-629",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1593,8 +1593,8 @@
     "expected_storage_object_id": "obj_7d55e94de2cbe525",
     "actual_master_id": "sm-upload-f5f11cb1-5e6",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1610,8 +1610,8 @@
     "expected_storage_object_id": "obj_a915515bba94ac77",
     "actual_master_id": "sm-upload-45c17eb9-747",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1627,8 +1627,8 @@
     "expected_storage_object_id": "obj_763fca5ee8dabe5d",
     "actual_master_id": "sm-upload-ba3fca4b-62d",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1644,8 +1644,8 @@
     "expected_storage_object_id": "obj_c04b2357e31d4dbf",
     "actual_master_id": "sm-upload-59b1f46e-a95",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 11,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1661,8 +1661,8 @@
     "expected_storage_object_id": "obj_0f7c846b361a3276",
     "actual_master_id": "sm-upload-7bdaf28e-f9e",
     "actual_album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
-    "track": null,
-    "disc": null,
+    "track": 12,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1678,8 +1678,8 @@
     "expected_storage_object_id": "obj_92fe47c5b5c4d133",
     "actual_master_id": "sm-upload-03470670-934",
     "actual_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1695,8 +1695,8 @@
     "expected_storage_object_id": "obj_52121ca15e4da41e",
     "actual_master_id": "sm-upload-748d72b1-fc1",
     "actual_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1712,8 +1712,8 @@
     "expected_storage_object_id": "obj_35f665ddcac27462",
     "actual_master_id": "sm-upload-d178378d-bc5",
     "actual_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1729,8 +1729,8 @@
     "expected_storage_object_id": "obj_635fdce630fd1a0a",
     "actual_master_id": "sm-upload-6d9de5af-539",
     "actual_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1746,8 +1746,8 @@
     "expected_storage_object_id": "obj_52a896c3e29e823c",
     "actual_master_id": "sm-upload-374b472d-1d7",
     "actual_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1763,8 +1763,8 @@
     "expected_storage_object_id": "obj_343a5728004e631c",
     "actual_master_id": "sm-upload-690ad431-b59",
     "actual_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1780,8 +1780,8 @@
     "expected_storage_object_id": "obj_70131a723b49b0d2",
     "actual_master_id": "sm-upload-a4759b23-456",
     "actual_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1797,8 +1797,8 @@
     "expected_storage_object_id": "obj_53ff1466ec3cd6b7",
     "actual_master_id": "sm-upload-9bf8a3dc-49c",
     "actual_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1814,8 +1814,8 @@
     "expected_storage_object_id": "obj_fd957cc89de54192",
     "actual_master_id": "sm-upload-5b301238-460",
     "actual_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1831,8 +1831,8 @@
     "expected_storage_object_id": "obj_9ac1b7d0d782eac1",
     "actual_master_id": "sm-upload-f55d9ac5-408",
     "actual_album_id": "al-513e3da59502f103e5112f7b1408f656",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1848,8 +1848,8 @@
     "expected_storage_object_id": "obj_e06c51abddacf34d",
     "actual_master_id": "sm-upload-481244dd-64a",
     "actual_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1865,8 +1865,8 @@
     "expected_storage_object_id": "obj_c450ecd3681b7f94",
     "actual_master_id": "sm-upload-ae0d532d-833",
     "actual_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1882,8 +1882,8 @@
     "expected_storage_object_id": "obj_95e5e536c2ff6b14",
     "actual_master_id": "sm-upload-5cb2b5d2-c80",
     "actual_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1899,8 +1899,8 @@
     "expected_storage_object_id": "obj_a1bed56019cad6fa",
     "actual_master_id": "sm-upload-ada463c4-049",
     "actual_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1916,8 +1916,8 @@
     "expected_storage_object_id": "obj_9e17e6f5dbeae985",
     "actual_master_id": "sm-upload-b84182f5-1a9",
     "actual_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1933,8 +1933,8 @@
     "expected_storage_object_id": "obj_3a06e73a21cc932f",
     "actual_master_id": "sm-upload-6204a4fa-7d4",
     "actual_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1950,8 +1950,8 @@
     "expected_storage_object_id": "obj_ce7320f32e67978f",
     "actual_master_id": "sm-upload-2ee8f752-0ca",
     "actual_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1967,8 +1967,8 @@
     "expected_storage_object_id": "obj_ef62dfed10c69cd4",
     "actual_master_id": "sm-upload-62e99b99-1d9",
     "actual_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -1984,8 +1984,8 @@
     "expected_storage_object_id": "obj_0ab8d854f6b039af",
     "actual_master_id": "sm-upload-a6899ade-703",
     "actual_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2001,8 +2001,8 @@
     "expected_storage_object_id": "obj_73e8bead421ba09d",
     "actual_master_id": "sm-upload-0c73cb05-35e",
     "actual_album_id": "al-71bf81052233fba89504b82c9349782e",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2018,8 +2018,8 @@
     "expected_storage_object_id": "obj_f6d33db52061aeae",
     "actual_master_id": "sm-upload-8b0078a9-701",
     "actual_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2035,8 +2035,8 @@
     "expected_storage_object_id": "obj_53e134b8e96fc73e",
     "actual_master_id": "sm-upload-6e85a152-b10",
     "actual_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2052,8 +2052,8 @@
     "expected_storage_object_id": "obj_f924d178faec5841",
     "actual_master_id": "sm-upload-a4b6dd5d-b13",
     "actual_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2069,8 +2069,8 @@
     "expected_storage_object_id": "obj_eacd81ef446671bb",
     "actual_master_id": "sm-upload-21b7d621-482",
     "actual_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2086,8 +2086,8 @@
     "expected_storage_object_id": "obj_6131a1012eac59c4",
     "actual_master_id": "sm-upload-342fe6c2-97a",
     "actual_album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2103,8 +2103,8 @@
     "expected_storage_object_id": "obj_6020a639885e96c7",
     "actual_master_id": "sm-upload-e18930ac-8e1",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2120,8 +2120,8 @@
     "expected_storage_object_id": "obj_c8a2d119c1e882ee",
     "actual_master_id": "sm-upload-004b6062-e62",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2137,8 +2137,8 @@
     "expected_storage_object_id": "obj_49d4bc576873b4a3",
     "actual_master_id": "sm-upload-1e608bde-aeb",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2154,8 +2154,8 @@
     "expected_storage_object_id": "obj_4f5409fb06d71778",
     "actual_master_id": "sm-upload-9bfc667e-5ef",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2171,8 +2171,8 @@
     "expected_storage_object_id": "obj_b5689f43527f86f9",
     "actual_master_id": "sm-upload-15e574ee-8ae",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2188,8 +2188,8 @@
     "expected_storage_object_id": "obj_296764c2b83e15d8",
     "actual_master_id": "sm-upload-43974d21-5b5",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2205,8 +2205,8 @@
     "expected_storage_object_id": "obj_070b7b5abe692be7",
     "actual_master_id": "sm-upload-ed4828e7-cf9",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2222,8 +2222,8 @@
     "expected_storage_object_id": "obj_bb624193807f5021",
     "actual_master_id": "sm-upload-39152c54-b80",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2239,8 +2239,8 @@
     "expected_storage_object_id": "obj_54c46cb779270c4a",
     "actual_master_id": "sm-upload-dbc1d60c-3c2",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2256,8 +2256,8 @@
     "expected_storage_object_id": "obj_0b703870494474ff",
     "actual_master_id": "sm-upload-43a886a9-559",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2273,8 +2273,8 @@
     "expected_storage_object_id": "obj_ca39f53debfffbe8",
     "actual_master_id": "sm-upload-bb441daa-4a0",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 11,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2290,8 +2290,8 @@
     "expected_storage_object_id": "obj_dc78ca3499ee4f55",
     "actual_master_id": "sm-upload-0eebf238-f29",
     "actual_album_id": "al-8722d4ca7293612ea92d2f283d159900",
-    "track": null,
-    "disc": null,
+    "track": 12,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2307,8 +2307,8 @@
     "expected_storage_object_id": "obj_0cc2762e6e0d343a",
     "actual_master_id": "sm-upload-e6ce4e4e-0b8",
     "actual_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2324,8 +2324,8 @@
     "expected_storage_object_id": "obj_51dc3886d974cdf5",
     "actual_master_id": "sm-upload-0bbfaed5-aa8",
     "actual_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2341,8 +2341,8 @@
     "expected_storage_object_id": "obj_5443add4424cedae",
     "actual_master_id": "sm-upload-2913df11-776",
     "actual_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2358,8 +2358,8 @@
     "expected_storage_object_id": "obj_6cd8b21a1fd4cd71",
     "actual_master_id": "sm-upload-4a6b97de-6d6",
     "actual_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2375,8 +2375,8 @@
     "expected_storage_object_id": "obj_2aced5bf5a35dcc0",
     "actual_master_id": "sm-upload-67747466-85e",
     "actual_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2392,8 +2392,8 @@
     "expected_storage_object_id": "obj_01c17832059d9c1c",
     "actual_master_id": "sm-upload-5d55b9ac-edb",
     "actual_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2409,8 +2409,8 @@
     "expected_storage_object_id": "obj_16b4aa8344145d83",
     "actual_master_id": "sm-cb51493104794550b49f7988b8d268e5",
     "actual_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2426,8 +2426,8 @@
     "expected_storage_object_id": "obj_714acff878bd1525",
     "actual_master_id": "sm-205b475a8daa49e7aac80f692e08ef85",
     "actual_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2443,8 +2443,8 @@
     "expected_storage_object_id": "obj_067e6a83f492c59b",
     "actual_master_id": "sm-77217bc2bfde468a9df2c5898f54cfbf",
     "actual_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2460,8 +2460,8 @@
     "expected_storage_object_id": "obj_2bd571ccbd3569a6",
     "actual_master_id": "sm-upload-0243c28d-146",
     "actual_album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2477,8 +2477,8 @@
     "expected_storage_object_id": "obj_b087fa1cac73ebfa",
     "actual_master_id": "sm-c86a75e7bd6c409c80504a463e1ff433",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2494,8 +2494,8 @@
     "expected_storage_object_id": "obj_33d00c3c1c6d7c71",
     "actual_master_id": "sm-1e2f1e4b7ae042fe9e1ffc8ff5768369",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2511,8 +2511,8 @@
     "expected_storage_object_id": "obj_5c781beabb8276f5",
     "actual_master_id": "sm-70c6f0dada0f40efbf94b99f514d791a",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2528,8 +2528,8 @@
     "expected_storage_object_id": "obj_7eb05ebeba65fdd6",
     "actual_master_id": "sm-upload-1805dfeb-63c",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2545,8 +2545,8 @@
     "expected_storage_object_id": "obj_d64f8693ba65dcce",
     "actual_master_id": "sm-upload-9baef4f8-44e",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2562,8 +2562,8 @@
     "expected_storage_object_id": "obj_5747d1a976244562",
     "actual_master_id": "sm-upload-387d305f-426",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2579,8 +2579,8 @@
     "expected_storage_object_id": "obj_5582948d1d469e3c",
     "actual_master_id": "sm-upload-5f9bc5da-1ad",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2596,8 +2596,8 @@
     "expected_storage_object_id": "obj_4bf0f90cbace6f58",
     "actual_master_id": "sm-upload-b61ffb2c-af6",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2613,8 +2613,8 @@
     "expected_storage_object_id": "obj_a04b8a1e0ccfca19",
     "actual_master_id": "sm-upload-6899401d-dbe",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2630,8 +2630,8 @@
     "expected_storage_object_id": "obj_0447b3300c997592",
     "actual_master_id": "sm-upload-b721a47b-0fb",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2647,8 +2647,8 @@
     "expected_storage_object_id": "obj_9d46ee7368eddc03",
     "actual_master_id": "sm-upload-37d48b57-ed8",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 11,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2664,8 +2664,8 @@
     "expected_storage_object_id": "obj_31e36d31fe4cd5eb",
     "actual_master_id": "sm-upload-90b61b6f-15e",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 12,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2681,8 +2681,8 @@
     "expected_storage_object_id": "obj_a620fe96e3ba2a78",
     "actual_master_id": "sm-upload-811fea79-705",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 13,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2698,8 +2698,8 @@
     "expected_storage_object_id": "obj_7716537656406db8",
     "actual_master_id": "sm-upload-f279b49d-8f9",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 14,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2715,8 +2715,8 @@
     "expected_storage_object_id": "obj_9ec7e17a320f06d6",
     "actual_master_id": "sm-upload-9483fe4b-134",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 15,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2732,8 +2732,8 @@
     "expected_storage_object_id": "obj_691c4ed6546bf3dc",
     "actual_master_id": "sm-upload-fdfb8b5a-f7f",
     "actual_album_id": "al-b67665d31c26b1883a27db8a47859379",
-    "track": null,
-    "disc": null,
+    "track": 16,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2749,8 +2749,8 @@
     "expected_storage_object_id": "obj_636379356bce5abc",
     "actual_master_id": "sm-upload-b6fe712d-3a5",
     "actual_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2766,8 +2766,8 @@
     "expected_storage_object_id": "obj_27825638167392f7",
     "actual_master_id": "sm-upload-bafd2d2b-bd0",
     "actual_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2783,8 +2783,8 @@
     "expected_storage_object_id": "obj_e5c83c96c1374193",
     "actual_master_id": "sm-upload-b8855014-029",
     "actual_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2800,8 +2800,8 @@
     "expected_storage_object_id": "obj_b8078e0d34022c87",
     "actual_master_id": "sm-upload-4f002225-23e",
     "actual_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2817,8 +2817,8 @@
     "expected_storage_object_id": "obj_6bc218ce67f8605a",
     "actual_master_id": "sm-upload-505a75f1-b7c",
     "actual_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2834,8 +2834,8 @@
     "expected_storage_object_id": "obj_b563e2520abc3d18",
     "actual_master_id": "sm-upload-d8657b96-c3e",
     "actual_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2851,8 +2851,8 @@
     "expected_storage_object_id": "obj_41165b811c5270b5",
     "actual_master_id": "sm-upload-0b952309-f12",
     "actual_album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2868,8 +2868,8 @@
     "expected_storage_object_id": "obj_7cd5d7656e1c7513",
     "actual_master_id": "sm-upload-6a01492c-ebe",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2885,8 +2885,8 @@
     "expected_storage_object_id": "obj_bb3c1a563d283338",
     "actual_master_id": "sm-upload-74718096-633",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2902,8 +2902,8 @@
     "expected_storage_object_id": "obj_cf6fbe076dfd0e3e",
     "actual_master_id": "sm-upload-b831ca53-608",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2919,8 +2919,8 @@
     "expected_storage_object_id": "obj_d151a322ddf882b3",
     "actual_master_id": "sm-upload-67b27f56-b5b",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2936,8 +2936,8 @@
     "expected_storage_object_id": "obj_0048669ec0be60fd",
     "actual_master_id": "sm-upload-aa969a9a-7db",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2953,8 +2953,8 @@
     "expected_storage_object_id": "obj_3ac57db4c6936d83",
     "actual_master_id": "sm-upload-26c13d22-002",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2970,8 +2970,8 @@
     "expected_storage_object_id": "obj_e035bfc7c367e91c",
     "actual_master_id": "sm-upload-986e39a0-94d",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -2987,8 +2987,8 @@
     "expected_storage_object_id": "obj_dbc7f845e231c3e7",
     "actual_master_id": "sm-upload-831d9eee-6f0",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3004,8 +3004,8 @@
     "expected_storage_object_id": "obj_68da9b4387a67b36",
     "actual_master_id": "sm-upload-64d8dc24-596",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3021,8 +3021,8 @@
     "expected_storage_object_id": "obj_753fd9d9a23cde64",
     "actual_master_id": "sm-upload-eba9f299-c67",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3038,8 +3038,8 @@
     "expected_storage_object_id": "obj_1a74a9ec82486c9b",
     "actual_master_id": "sm-upload-bbb56a95-410",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 11,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3055,8 +3055,8 @@
     "expected_storage_object_id": "obj_07a02077add13315",
     "actual_master_id": "sm-upload-e327ba41-cf6",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 12,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3072,8 +3072,8 @@
     "expected_storage_object_id": "obj_c18840ff27164717",
     "actual_master_id": "sm-upload-db5279a1-e00",
     "actual_album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
-    "track": null,
-    "disc": null,
+    "track": 13,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3089,8 +3089,8 @@
     "expected_storage_object_id": "obj_9551e3421ee8e30e",
     "actual_master_id": "sm-upload-d3e438fe-c79",
     "actual_album_id": "al-d1eb61467eb114e11bfea9d9690057c2",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3106,8 +3106,8 @@
     "expected_storage_object_id": "obj_3c4babbca0eebfc9",
     "actual_master_id": "sm-upload-0e5df05d-8f8",
     "actual_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3123,8 +3123,8 @@
     "expected_storage_object_id": "obj_f6a771072c6a2b0a",
     "actual_master_id": "sm-upload-f994d933-d13",
     "actual_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3140,8 +3140,8 @@
     "expected_storage_object_id": "obj_bb24c78cdf23f88d",
     "actual_master_id": "sm-upload-229fabb8-45d",
     "actual_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3157,8 +3157,8 @@
     "expected_storage_object_id": "obj_81d38c9f01e289a1",
     "actual_master_id": "sm-upload-d0988a3b-ddc",
     "actual_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3174,8 +3174,8 @@
     "expected_storage_object_id": "obj_b8a39e462ffc87e9",
     "actual_master_id": "sm-upload-cc9304d5-527",
     "actual_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3191,8 +3191,8 @@
     "expected_storage_object_id": "obj_213c0f965edbcc4d",
     "actual_master_id": "sm-upload-fd16b9a8-697",
     "actual_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3208,8 +3208,8 @@
     "expected_storage_object_id": "obj_58597e3e1ae89dba",
     "actual_master_id": "sm-upload-c44b0f7c-761",
     "actual_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3225,8 +3225,8 @@
     "expected_storage_object_id": "obj_30008623e310f63c",
     "actual_master_id": "sm-upload-9a2b0423-b81",
     "actual_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3242,8 +3242,8 @@
     "expected_storage_object_id": "obj_b4ffba87a0a1cb85",
     "actual_master_id": "sm-upload-5ef32f7a-887",
     "actual_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3259,8 +3259,8 @@
     "expected_storage_object_id": "obj_1c49571bac20767c",
     "actual_master_id": "sm-upload-741e30e9-2a8",
     "actual_album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3276,8 +3276,8 @@
     "expected_storage_object_id": "obj_467a823bd54129a6",
     "actual_master_id": "sm-upload-23889318-5b0",
     "actual_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3293,8 +3293,8 @@
     "expected_storage_object_id": "obj_9394cefee20a3a01",
     "actual_master_id": "sm-upload-a2d38eb8-164",
     "actual_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3310,8 +3310,8 @@
     "expected_storage_object_id": "obj_3fa66cadd99c906d",
     "actual_master_id": "sm-upload-10cb9874-55d",
     "actual_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3327,8 +3327,8 @@
     "expected_storage_object_id": "obj_d05cd6cf96f5ff5e",
     "actual_master_id": "sm-upload-ecbc0416-dfd",
     "actual_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3344,8 +3344,8 @@
     "expected_storage_object_id": "obj_1078624884c64792",
     "actual_master_id": "sm-upload-c011a487-1d5",
     "actual_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3361,8 +3361,8 @@
     "expected_storage_object_id": "obj_84568c5d92c2f832",
     "actual_master_id": "sm-c92fa5ec76c8405d9c7cec39c7e97587",
     "actual_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3378,8 +3378,8 @@
     "expected_storage_object_id": "obj_949654206414b1ec",
     "actual_master_id": "sm-cc2b8a2847e94a7586e169984ce00b4d",
     "actual_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3395,8 +3395,8 @@
     "expected_storage_object_id": "obj_8d275a7c2dfccd33",
     "actual_master_id": "sm-1dd661f9659f4669ba92d344dbb67f38",
     "actual_album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3412,8 +3412,8 @@
     "expected_storage_object_id": "obj_a1e4042f00bb1c1c",
     "actual_master_id": "sm-upload-bc3bb5a0-94b",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3429,8 +3429,8 @@
     "expected_storage_object_id": "obj_ad894325a91fced8",
     "actual_master_id": "sm-upload-f1c183f2-879",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3446,8 +3446,8 @@
     "expected_storage_object_id": "obj_2d7ff09d2c32f009",
     "actual_master_id": "sm-upload-cab08fa5-c3a",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3463,8 +3463,8 @@
     "expected_storage_object_id": "obj_e4bd97b4d83ad1d8",
     "actual_master_id": "sm-upload-4438c1e4-e9b",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3480,8 +3480,8 @@
     "expected_storage_object_id": "obj_ae7f61215975a44d",
     "actual_master_id": "sm-upload-64e68350-1e0",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3497,8 +3497,8 @@
     "expected_storage_object_id": "obj_fce0a0571d927cb7",
     "actual_master_id": "sm-upload-4663e1f2-1e1",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3514,8 +3514,8 @@
     "expected_storage_object_id": "obj_19f02b87fabc36c8",
     "actual_master_id": "sm-upload-61fbaa65-987",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3531,8 +3531,8 @@
     "expected_storage_object_id": "obj_4503701ef1075569",
     "actual_master_id": "sm-upload-5ca7125b-fa4",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3548,8 +3548,8 @@
     "expected_storage_object_id": "obj_49087024e3001a1f",
     "actual_master_id": "sm-upload-a68ccf5a-864",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3565,8 +3565,8 @@
     "expected_storage_object_id": "obj_b1ce97dc7d9bae0c",
     "actual_master_id": "sm-upload-58a0f37c-7c7",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3582,8 +3582,8 @@
     "expected_storage_object_id": "obj_c30c0377027dcfaf",
     "actual_master_id": "sm-upload-f2cf4e7c-18e",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 11,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3599,8 +3599,8 @@
     "expected_storage_object_id": "obj_b6d1f7582e1ba660",
     "actual_master_id": "sm-upload-4a92f357-06e",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 12,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3616,8 +3616,8 @@
     "expected_storage_object_id": "obj_c94237ba829ebfbb",
     "actual_master_id": "sm-upload-42481750-586",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 13,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3633,8 +3633,8 @@
     "expected_storage_object_id": "obj_b6fc2facc77a1362",
     "actual_master_id": "sm-upload-093f74ab-8b9",
     "actual_album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
-    "track": null,
-    "disc": null,
+    "track": 14,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3650,8 +3650,8 @@
     "expected_storage_object_id": "obj_d18a76fad29d01f9",
     "actual_master_id": "sm-upload-8f24fa72-b29",
     "actual_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3667,8 +3667,8 @@
     "expected_storage_object_id": "obj_4fb27e9e65b89938",
     "actual_master_id": "sm-upload-de754d56-ea4",
     "actual_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3684,8 +3684,8 @@
     "expected_storage_object_id": "obj_1e217dfed916e5d0",
     "actual_master_id": "sm-upload-87176740-d8e",
     "actual_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3701,8 +3701,8 @@
     "expected_storage_object_id": "obj_7a384e5b61c4712d",
     "actual_master_id": "sm-upload-be0b96c2-963",
     "actual_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3718,8 +3718,8 @@
     "expected_storage_object_id": "obj_207ee063f23aab83",
     "actual_master_id": "sm-upload-fcb9b5ca-27c",
     "actual_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3735,8 +3735,8 @@
     "expected_storage_object_id": "obj_153857a34adc19f6",
     "actual_master_id": "sm-upload-702be9dc-d25",
     "actual_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3752,8 +3752,8 @@
     "expected_storage_object_id": "obj_8c138271160946a1",
     "actual_master_id": "sm-upload-b908a83a-97a",
     "actual_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3769,8 +3769,8 @@
     "expected_storage_object_id": "obj_8317e20b00d4898d",
     "actual_master_id": "sm-upload-57aa6388-1d3",
     "actual_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3786,8 +3786,8 @@
     "expected_storage_object_id": "obj_7f92d0b815622c46",
     "actual_master_id": "sm-upload-d0a56a7b-4f8",
     "actual_album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3803,8 +3803,8 @@
     "expected_storage_object_id": "obj_cda207550f94c1f3",
     "actual_master_id": "sm-04afa76593a947bab6e7aa9ab1fac848",
     "actual_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3820,8 +3820,8 @@
     "expected_storage_object_id": "obj_97a189f0478a91df",
     "actual_master_id": "sm-upload-5028ec56-8ea",
     "actual_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3837,8 +3837,8 @@
     "expected_storage_object_id": "obj_7f73234122fc02d7",
     "actual_master_id": "sm-upload-139421cf-b09",
     "actual_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3854,8 +3854,8 @@
     "expected_storage_object_id": "obj_b4bcda21423e3463",
     "actual_master_id": "sm-upload-0223d040-b1c",
     "actual_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3871,8 +3871,8 @@
     "expected_storage_object_id": "obj_5a0c3591fb0d709b",
     "actual_master_id": "sm-upload-04789844-9c6",
     "actual_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3888,8 +3888,8 @@
     "expected_storage_object_id": "obj_fbe453d2fb16dfbe",
     "actual_master_id": "sm-upload-096c103b-c28",
     "actual_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3905,8 +3905,8 @@
     "expected_storage_object_id": "obj_a997b15b43653f1f",
     "actual_master_id": "sm-upload-3ccc4425-662",
     "actual_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3922,8 +3922,8 @@
     "expected_storage_object_id": "obj_32030d1307efc6e0",
     "actual_master_id": "sm-a04802ee79434c569c4a8037334fffe9",
     "actual_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3939,8 +3939,8 @@
     "expected_storage_object_id": "obj_d0e51179c64b0738",
     "actual_master_id": "sm-aea8f18fd18a48d29d2a9b8e6c9cbfdc",
     "actual_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3956,8 +3956,8 @@
     "expected_storage_object_id": "obj_c48c7808b0502474",
     "actual_master_id": "sm-upload-558f35c9-d77",
     "actual_album_id": "al-f79d077d5e583272b3cc93b078334fe1",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3973,8 +3973,8 @@
     "expected_storage_object_id": "obj_565716cb081f592b",
     "actual_master_id": "sm-upload-40ec654c-f08",
     "actual_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "track": null,
-    "disc": null,
+    "track": 1,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -3990,8 +3990,8 @@
     "expected_storage_object_id": "obj_7ef05bab1b339861",
     "actual_master_id": "sm-upload-5cd6f1b2-596",
     "actual_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "track": null,
-    "disc": null,
+    "track": 2,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -4007,8 +4007,8 @@
     "expected_storage_object_id": "obj_c966ffb2f3ce1003",
     "actual_master_id": "sm-upload-d1382210-3d5",
     "actual_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "track": null,
-    "disc": null,
+    "track": 3,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -4024,8 +4024,8 @@
     "expected_storage_object_id": "obj_eda24484fe4a883b",
     "actual_master_id": "sm-upload-b4b6cc03-4a0",
     "actual_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "track": null,
-    "disc": null,
+    "track": 4,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -4041,8 +4041,8 @@
     "expected_storage_object_id": "obj_ea160a8ace8e243d",
     "actual_master_id": "sm-upload-8492670d-25f",
     "actual_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "track": null,
-    "disc": null,
+    "track": 5,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -4058,8 +4058,8 @@
     "expected_storage_object_id": "obj_819b3ae7bdb4cd0a",
     "actual_master_id": "sm-upload-afdf5f4f-429",
     "actual_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "track": null,
-    "disc": null,
+    "track": 6,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -4075,8 +4075,8 @@
     "expected_storage_object_id": "obj_71cfea199d0b719a",
     "actual_master_id": "sm-upload-2fa950da-a07",
     "actual_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "track": null,
-    "disc": null,
+    "track": 7,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -4092,8 +4092,8 @@
     "expected_storage_object_id": "obj_451faeb13a9c0df5",
     "actual_master_id": "sm-upload-5d8c3e73-3b9",
     "actual_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "track": null,
-    "disc": null,
+    "track": 8,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -4109,8 +4109,8 @@
     "expected_storage_object_id": "obj_f69c59bd4666ea24",
     "actual_master_id": "sm-upload-0f2858ab-23e",
     "actual_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "track": null,
-    "disc": null,
+    "track": 9,
+    "disc": 1,
     "exact_source_match": 1
   },
   {
@@ -4126,8 +4126,8 @@
     "expected_storage_object_id": "obj_6a67bb57c292ef97",
     "actual_master_id": "sm-upload-5c324864-c88",
     "actual_album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
-    "track": null,
-    "disc": null,
+    "track": 10,
+    "disc": 1,
     "exact_source_match": 1
   }
 ]

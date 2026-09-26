@@ -10,7 +10,7 @@ WITH expected(master_id, target_album_id, filename_track, instance_id, entry_id,
   ('sm-upload-55fa915d-2e6', 'al-379190d71773f7eda5c8e71260f1e1a8', 3, 'si-upload-e0095cad-9e7', 'se-f3f268e0c0aa4a19a35fd9ee9699275d', 'r2-local', 'se-8207e3d583784b0f8e464dbb500f28bd', 'cop十周年纪念专辑/flac/03.兑上阙.wav', '03.兑上阙.wav', 'obj_116dbfb9d9e7221f'),
   ('sm-upload-d38bae55-e32', 'al-379190d71773f7eda5c8e71260f1e1a8', 4, 'si-upload-95a91288-d19', 'se-a6c23eff27864237b78169db9bd73897', 'r2-local', 'se-8207e3d583784b0f8e464dbb500f28bd', 'cop十周年纪念专辑/flac/04.和你一起.wav', '04.和你一起.wav', 'obj_3bc3a89a8a810973')
 )
-SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track IS NULL AND sm.disc IS NULL
+SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track=e.filename_track AND sm.disc=1
 AND EXISTS (SELECT 1 FROM song_instances si JOIN storage_entries se ON se.instance_id=si.id AND se.kind='file'
             WHERE si.id=e.instance_id AND si.master_id=sm.id AND si.source_id=e.source_id
               AND si.storage_object_id=e.storage_object_id AND se.id=e.entry_id AND se.source_id=e.source_id

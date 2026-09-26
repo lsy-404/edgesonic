@@ -10,7 +10,7 @@ WITH expected(master_id, target_album_id, filename_track, instance_id, entry_id,
   ('sm-upload-f8b47093-229', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 8, 'si-upload-16704d90-7d5', 'se-f73e90a18d424916986fb630e4c5dcbf', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/08 格兰芬多印象曲·伴奏.wav', '08 格兰芬多印象曲·伴奏.wav', 'obj_88b8b54f0f15e947'),
   ('sm-upload-2ed4a91f-50f', 'al-18ec76e1cfd7e7dc3e8258b060e8f228', 9, 'si-upload-76c5c719-ae3', 'se-0e130016f5c348b79bbcebddfbce6fc2', 'r2-local', 'se-f104690a5b024491962419b76618435d', '哈利波特·学院印象曲/wav/09 拉文克劳印象曲·伴奏.wav', '09 拉文克劳印象曲·伴奏.wav', 'obj_8d4093f4b5c64586')
 )
-SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track IS NULL AND sm.disc IS NULL
+SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, sm.album_id=e.target_album_id AND sm.track=e.filename_track AND sm.disc=1
 AND EXISTS (SELECT 1 FROM song_instances si JOIN storage_entries se ON se.instance_id=si.id AND se.kind='file'
             WHERE si.id=e.instance_id AND si.master_id=sm.id AND si.source_id=e.source_id
               AND si.storage_object_id=e.storage_object_id AND se.id=e.entry_id AND se.source_id=e.source_id
