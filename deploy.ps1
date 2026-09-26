@@ -85,7 +85,7 @@ if ($VersionOnly) {
   Write-Host "✓ 完成。WORKER_VERSION=$Version（版本上传，未切生产，cron 未受影响）"
 } else {
   Write-Host "▶ [部署] wrangler deploy（含 web/dist 静态资源）…"
-  npx wrangler deploy --config $Config $ContainersFlag --var "WORKER_VERSION:$Version" --var "EDGESONIC_VERSION:$Version" --var "EDGESONIC_BUILD_TIME:$BuildTime"
+  npx wrangler deploy --config $Config $ContainersFlag --keep-vars --var "WORKER_VERSION:$Version" --var "EDGESONIC_VERSION:$Version" --var "EDGESONIC_BUILD_TIME:$BuildTime"
 
   # wrangler deploy 会清空 Cloudflare 上的所有 cron 触发器。
   # 部署完毕后立即通过 CF API 恢复默认时间表。
