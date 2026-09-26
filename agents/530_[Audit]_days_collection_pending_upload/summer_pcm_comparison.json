@@ -1,0 +1,179 @@
+[
+  {
+    "wav_master": "sm-upload-2108ede5-c31",
+    "mp3_master": null,
+    "title": "01 序曲",
+    "wav": {
+      "hash": "5c89f307870f7f1f7d5d49e91dd01698c241a04cffdb1ae87b153f3f50caaaa7",
+      "bytes": 8914080,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 2228520,
+      "nb_frames": null
+    },
+    "mp3": null,
+    "decoded_pcm_equal": false,
+    "duration_ts_equal": false
+  },
+  {
+    "wav_master": "sm-upload-e2b18d47-ca7",
+    "mp3_master": "sm-upload-a2bd0446-160",
+    "title": "02 夏夕空",
+    "wav": {
+      "hash": "29944ac1da699339b0260ec55cb8902220e228ab105da014e6811d5abb6e8dfd",
+      "bytes": 53802000,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 13450500,
+      "nb_frames": null
+    },
+    "mp3": {
+      "hash": "9681a26d1f829282843d93c9db0c7db8ada82fcf76a4dace115383f3a17092b4",
+      "bytes": 53802000,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 4304160000,
+      "nb_frames": null
+    },
+    "decoded_pcm_equal": false,
+    "duration_ts_equal": false
+  },
+  {
+    "wav_master": "sm-upload-05875896-e06",
+    "mp3_master": "sm-upload-dc0b325f-3ac",
+    "title": "03 夏日恋歌",
+    "wav": {
+      "hash": "6ad5b193e9cc298c1d6a6388aca32857b67f68f73d5470306a431faa2f3238b9",
+      "bytes": 36514800,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 9128700,
+      "nb_frames": null
+    },
+    "mp3": {
+      "hash": "c98015c3970d5be08c47b9dddcd0ec4ac02cc5c3ce9216cecc820bb6f6a21fe9",
+      "bytes": 36514800,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 2921184000,
+      "nb_frames": null
+    },
+    "decoded_pcm_equal": false,
+    "duration_ts_equal": false
+  },
+  {
+    "wav_master": "sm-upload-ad152a69-a46",
+    "mp3_master": "sm-upload-a173a6d4-a66",
+    "title": "04 荧光蝶",
+    "wav": {
+      "hash": "e81062d4f4f3697cd8905ced1bf46a9684c12656468170ea9fa730e5c1e26a2d",
+      "bytes": 60860352,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 15215088,
+      "nb_frames": null
+    },
+    "mp3": {
+      "hash": "819d5b1a044ae1eafcf82dac51863fa8f67ec73ab591b8a3bf4496cd1b79e0ae",
+      "bytes": 60860352,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 4868828160,
+      "nb_frames": null
+    },
+    "decoded_pcm_equal": false,
+    "duration_ts_equal": false
+  },
+  {
+    "wav_master": "sm-upload-dd26cda1-cef",
+    "mp3_master": "sm-upload-ca3c07f3-c72",
+    "title": "05 透明的幻境",
+    "wav": {
+      "hash": "b0b860368d48ee72c05034bbd6dcb404caca1e0a990be680d3b7d81db9c8141e",
+      "bytes": 44906736,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 11226684,
+      "nb_frames": null
+    },
+    "mp3": {
+      "hash": "9549c6cd24be485b00e7e8432abb6fc6e5c4e729ca186febe17655bbe13c0ba6",
+      "bytes": 44906736,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 3592538880,
+      "nb_frames": null
+    },
+    "decoded_pcm_equal": false,
+    "duration_ts_equal": false
+  },
+  {
+    "wav_master": "sm-upload-521326c5-da0",
+    "mp3_master": "sm-upload-ceb5ad26-2c3",
+    "title": "06 雨夏轻吟",
+    "wav": {
+      "hash": "d333cb7625117df74a3199f916fc03e46325a7b0d4c0eeef8ff542b416a4783d",
+      "bytes": 52743600,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 13185900,
+      "nb_frames": null
+    },
+    "mp3": {
+      "hash": "2199059d2091568f06573a2ac5c8b620c9dfd49dc6c230cb59f8bd5dd2834f91",
+      "bytes": 52743600,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 4219488000,
+      "nb_frames": null
+    },
+    "decoded_pcm_equal": false,
+    "duration_ts_equal": false
+  },
+  {
+    "wav_master": "sm-upload-f039ff21-f82",
+    "mp3_master": "sm-upload-88c422e4-91e",
+    "title": "07 夏日的梦",
+    "wav": {
+      "hash": "df8a027e43d23938af2ffec091e27f45f6c51a55e8b958118f1485589400149c",
+      "bytes": 59348016,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 14837004,
+      "nb_frames": null
+    },
+    "mp3": {
+      "hash": "0388decc9ae3c504d07207039627575f06287961a812c577742080727d729a8d",
+      "bytes": 59348016,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 4747841280,
+      "nb_frames": null
+    },
+    "decoded_pcm_equal": false,
+    "duration_ts_equal": false
+  },
+  {
+    "wav_master": "sm-upload-7033e52e-a49",
+    "mp3_master": "sm-upload-5e51edd2-390",
+    "title": "08 三月雨 Ver.Piano",
+    "wav": {
+      "hash": "ea0fb20350bea2cdd0334bd28ca52e49254c38bb36fc8107e224dda8de1fe637",
+      "bytes": 48686400,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 12171600,
+      "nb_frames": null
+    },
+    "mp3": {
+      "hash": "bffd121f6348b6ad358ec4fd176ae72bc1856ca637fefed04860de1142cd268b",
+      "bytes": 48684048,
+      "sample_rate": "44100",
+      "channels": 2,
+      "duration_ts": 3894723840,
+      "nb_frames": null
+    },
+    "decoded_pcm_equal": false,
+    "duration_ts_equal": false
+  }
+]
