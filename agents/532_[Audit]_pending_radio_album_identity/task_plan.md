@@ -12,5 +12,5 @@
 - [x] Verify local success, stale-source rejection, and late failure rollback.
 - [x] Run fresh primary SELECT-only preflight; record source snapshot.
 - [x] Review explicit `平四1-6` duplicate example with primary reads and exact R2 PCM comparison; preserve both distinct audio objects.
-- [ ] Complete a separate guarded WAV alternate-edition album rehearsal and preflight after A/B delivery.
-- [ ] Commit only this task directory and its root `/test` fixture.
+- [x] Complete a separate guarded WAV alternate-edition album rehearsal and primary preflight after A/B delivery.
+- [x] Commit only this task directory and its root `/test` fixture.
