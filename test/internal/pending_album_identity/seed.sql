@@ -1,4 +1,4 @@
-INSERT INTO albums(id,name,song_count,duration,size) VALUES('pending-uploads','Pending Uploads',652,143817,25247901901);
+INSERT INTO albums(id,name,song_count,duration,size) VALUES('pending-uploads','Pending Uploads',641,141395,24700222725);
 INSERT INTO artists(id,name) VALUES('unknown-artist','Unknown Artist');
 INSERT INTO storage_entries(id,path,kind) VALUES('root','蔗蓝的创作集1.0-蔗蓝（wav）','folder');
 WITH c(id,n) AS (VALUES

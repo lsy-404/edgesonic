@@ -17,7 +17,7 @@ WHERE NOT (
        WHERE se.kind='file' AND se.parent_id='se-e43af23755444b1aa56d4501c7ba77d4' AND se.path LIKE '蔗蓝的创作集1.0-蔗蓝（wav）/%' AND si.source_id='r2-local' AND si.source_type='original' AND si.missing=0 AND si.tag_scanned=1 AND lower(si.suffix)='wav')=28
   AND (SELECT COUNT(*) FROM storage_entries WHERE path='蔗蓝的创作集1.0-蔗蓝（wav）' OR path LIKE '蔗蓝的创作集1.0-蔗蓝（wav）/%')=30
   AND EXISTS(SELECT 1 FROM storage_entries WHERE id='se-9c7a6e8fe38949a6b6a231dafc7ccad1' AND object_id='obj_568cc33144589d95' AND path='蔗蓝的创作集1.0-蔗蓝（wav）/蔗蓝的创作集1.0.cue')
-  AND EXISTS(SELECT 1 FROM albums WHERE id='pending-uploads' AND song_count=652 AND duration=143817 AND size=25247901901)
+  AND EXISTS(SELECT 1 FROM albums WHERE id='pending-uploads' AND song_count=641 AND duration=141395 AND size=24700222725)
   AND NOT EXISTS(SELECT 1 FROM artists WHERE id='ar-abdf58605e' OR name='蔗蓝')
   AND NOT EXISTS(SELECT 1 FROM albums WHERE id='al-fe198b18b1' OR name='蔗蓝的创作集1.0')
 );
