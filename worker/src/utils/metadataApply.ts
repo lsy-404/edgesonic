@@ -22,7 +22,7 @@ import {
   parseArtistCredits,
   songArtistStatements,
 } from "./artistCredits";
-import { recoverMetadataFromStoragePath } from "./storageMetadata";
+import { recoverMetadataFromStoragePath, sourceFolderAlbumName } from "./storageMetadata";
 
 export interface SubmittedMetadata {
   title?: string;
@@ -83,16 +83,18 @@ export async function applyMetadataResult(
   // Normalize numeric tag values before binding them to SQLite.
   let tags = mergeToSubmitted(common ?? {}, format ?? {});
 
-  // An empty scan must not replace artist or album with unknown sentinels.
+  const inst = await db.prepare(
+    `SELECT si.id, si.master_id, si.size, si.storage_uri, si.suffix, sm.album_id
+     FROM song_instances si LEFT JOIN song_masters sm ON sm.id = si.master_id WHERE si.id = ?`,
+  ).bind(instanceId).first<{ id: string; master_id: string; size: number | null; storage_uri: string; suffix: string; album_id: string | null }>();
+  if (!inst) return { updated: false, reason: "instance not found" };
+  tags = recoverMetadataFromStoragePath(inst.storage_uri, tags);
+  if (!tags.album && inst.album_id === "pending-uploads") {
+    tags.album = await sourceFolderAlbumName(db, instanceId) ?? undefined;
+  }
   const hasLogical =
     !!(tags.title || tags.artist || tags.album || tags.albumArtist ||
        tags.genre || tags.year || tags.track || tags.disc);
-
-  const inst = await db.prepare(
-    "SELECT id, master_id, size, storage_uri, suffix FROM song_instances WHERE id = ?",
-  ).bind(instanceId).first<{ id: string; master_id: string; size: number | null; storage_uri: string; suffix: string }>();
-  if (!inst) return { updated: false, reason: "instance not found" };
-  tags = recoverMetadataFromStoragePath(inst.storage_uri, tags);
 
   let masterId: string | undefined;
   if (hasLogical) {

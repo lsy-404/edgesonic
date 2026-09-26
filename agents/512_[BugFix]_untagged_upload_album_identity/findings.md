@@ -1,0 +1,10 @@
+# Findings
+
+- Primary D1 has 1,062 tracks in the exact `pending-uploads` album, all `tag_scanned=1` and `artist_id='unknown-artist'`. Of these, 1,037 have indexed file entries in 124 source folders and 25 lack indexed entries; the latter include older paths and video extras.
+- A sample completed metadata task returned empty logical tags and valid audio properties. `applyMetadataResult` tests `hasLogical` before path recovery, then marks the instance scanned without album relinking. The storage URI is an opaque `r2://objects/<id>` key; the indexed source entry retains the original album path.
+- The source folder is a reliable import identity when a file instance has exactly one file entry. Album name recovery must avoid generic format folders and collection roots. Embedded album tags remain authoritative.
+- Existing completed work rows are historical data and need separate guarded remediation after the runtime fix.
+- The runtime recovery only runs for the exact `pending-uploads` album when the parsed album tag is absent. It requires exactly one indexed file entry, skips `__MACOSX` resource-fork paths and generic roots, removes a terminal format folder, and retains disc/variant context in the display name. Full source-folder ID logic still separates codecs and physical folders.
+- `hasLogical` now runs after path recovery. Previously, even a recoverable album could not trigger a relink when the parser returned technical fields alone. The existing master title and artist IDs remain untouched unless incoming tags provide replacements.
+- Independent primary inventory found 46 tracks in five additional quality-folder labels and 44 in disc, bonus, mastering or special folders. The path parser now recognizes the observed quality labels and retains release context for bonus and mastering folders. Historical bulk relinking still needs an exact guarded plan; path inference alone is insufficient to choose edition display groups.
+- The legacy tag reader returns `null` for untagged WAVs. It now tries the unique indexed source folder only for pending uploads in that case; a focused route test covers this path.

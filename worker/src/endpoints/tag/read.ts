@@ -16,9 +16,9 @@
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import { md5 } from "../../utils/md5";
-import { parseTags } from "../../utils/tags";
+import { parseTags, type SongTags } from "../../utils/tags";
 import { fetchSlices, type SourceRow } from "../../utils/slices";
-import { recoverMetadataFromStoragePath } from "../../utils/storageMetadata";
+import { recoverMetadataFromStoragePath, sourceFolderAlbumName } from "../../utils/storageMetadata";
 import { compilationMarkerStatement, retainCompilationAlbum, sourceFolderAlbumIdForScan } from "../../utils/albumIdentity";
 import {
   artistInsertStatements,
@@ -75,7 +75,13 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
       const slices = await fetchSlices(env, sources, row.storage_uri, row.suffix);
       if (slices) {
         const parsed = parseTags(slices.head, slices.tail);
-        const tags = parsed && recoverMetadataFromStoragePath(row.storage_uri, parsed);
+        const tags: SongTags | null = parsed
+          ? recoverMetadataFromStoragePath(row.storage_uri, parsed)
+          : row.current_album_id === "pending-uploads" ? {} : null;
+        if (tags && !tags.album && row.current_album_id === "pending-uploads") {
+          databaseAttempted = true;
+          tags.album = await sourceFolderAlbumName(db, row.id) ?? undefined;
+        }
         if (tags && (tags.title || tags.artist || tags.album)) {
           // Album artist is separate from track artist when the file provides it.
           const artistName = tags.artist || row.current_artist_name || "Unknown Artist";

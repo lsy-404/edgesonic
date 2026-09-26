@@ -10,6 +10,7 @@ import { subsonicRoutes } from "../../worker/src/endpoints/subsonic";
 import { createQueries } from "../../worker/src/db/queries";
 import { applyMetadataResult } from "../../worker/src/utils/metadataApply";
 import { md5 } from "../../worker/src/utils/md5";
+import { albumNameFromSourcePath } from "../../worker/src/utils/storageMetadata";
 
 let failures = 0;
 function assert(value: unknown, message: string) {
@@ -218,6 +219,14 @@ async function main() {
   readDb.close();
 
   const importDb = buildDb();
+  assert(albumNameFromSourcePath("Dream Radio/wav/01 Opening.wav") === "Dream Radio", "format folders resolve to their album parent");
+  for (const format of ["MP3(有损)", "音频WAV", "【星遇】CD音频", "母带级无损WAV", "母带版无损伴奏"]) {
+    assert(albumNameFromSourcePath(`Release/${format}/01.wav`) === "Release", `${format} resolves to the release folder`);
+  }
+  assert(albumNameFromSourcePath("Collection/Find-Zero/CD 1 人声碟/01.flac") === "Find-Zero (CD 1 人声碟)", "disc folders retain their release context");
+  assert(albumNameFromSourcePath("Release/Bonus Tracks/01.flac") === "Release (Bonus Tracks)", "bonus folders retain their release context");
+  assert(albumNameFromSourcePath("Release/CD_mastered_CN/01.flac") === "Release (CD_mastered_CN)", "mastering folders retain their release context");
+  assert(albumNameFromSourcePath("Release/__MACOSX/._01.wav") === null, "resource-fork folders do not become albums");
   importDb.exec(`
     INSERT INTO albums(id,name,sort_name) VALUES ('pending-uploads','Pending Uploads','pending uploads');
     INSERT INTO song_masters(id,album_id,artist_id,title) VALUES
@@ -236,6 +245,14 @@ async function main() {
       ('entry-c','r2-local','other-folder','Other/01.flac','file','import-inst-c'),
       ('entry-d','r2-local','release-folder','Compilation/01.wav','file','import-inst-d');
   `);
+  const untaggedImport = await applyMetadataResult(d1(importDb), "import-inst-a", {}, { duration: 10 });
+  const inferred = importDb.prepare("SELECT sm.album_id, al.name, si.tag_scanned, si.duration FROM song_masters sm JOIN albums al ON al.id=sm.album_id JOIN song_instances si ON si.master_id=sm.id WHERE sm.id='import-a'").get() as { album_id: string; name: string; tag_scanned: number; duration: number };
+  assert(untaggedImport.updated && inferred.name === "Compilation" && inferred.album_id !== "pending-uploads", "technical-only metadata uses the indexed source folder for an untagged album");
+  assert(inferred.tag_scanned === 1 && inferred.duration === 10, "untagged folder import retains parsed physical metadata");
+  importDb.exec("UPDATE song_instances SET tag_scanned = 1 WHERE id != 'import-inst-c'");
+  const noTagRead = await appFor(importDb)("/tag/read?batch=1");
+  const noTagAlbum = importDb.prepare("SELECT al.name, si.tag_scanned FROM song_masters sm JOIN albums al ON al.id=sm.album_id JOIN song_instances si ON si.master_id=sm.id WHERE sm.id='import-c'").get() as { name: string; tag_scanned: number };
+  assert(noTagRead.status === 200 && noTagAlbum.name === "Other" && noTagAlbum.tag_scanned === 1, "tag scan groups an untagged file using its indexed source folder");
   await applyMetadataResult(d1(importDb), "import-inst-a", { title: "First", artist: "Singer A", albumArtist: "Producer A", album: "Compilation", track: 1 }, {});
   await applyMetadataResult(d1(importDb), "import-inst-b", { title: "Second", artist: "Singer B", albumArtist: "Producer B", album: "Compilation", track: 2 }, {});
   const imported = importDb.prepare("SELECT id,album_id,artist_id,album_artist_id FROM song_masters WHERE id IN ('import-a','import-b') ORDER BY id").all() as Array<{ id: string; album_id: string; artist_id: string; album_artist_id: string }>;
