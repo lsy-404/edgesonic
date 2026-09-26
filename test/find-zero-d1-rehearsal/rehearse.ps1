@@ -24,8 +24,8 @@ function Assert-Equal($actual,$expected,[string]$name){if($actual -ne $expected)
 $success=Join-Path $state 'success'
 Invoke-D1 $success @('--file',(Join-Path $task 'fixture.sql')) | Out-Null
 Invoke-D1 $success @('--file',(Join-Path $task 'apply.sql')) | Out-Null
-$row=Invoke-Query $success "SELECT (SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav') tracks,(SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav' AND disc=1) disc1,(SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav' AND disc=2) disc2,(SELECT year FROM albums WHERE id='al-find-zero-wav') year,(SELECT COUNT(*) FROM album_display_group_members WHERE group_id='dg-find-zero-editions') members;"
-Assert-Equal $row.tracks 25 'tracks'; Assert-Equal $row.disc1 14 'disc 1 tracks'; Assert-Equal $row.disc2 11 'disc 2 tracks'; Assert-Equal $row.year 2022 'year'; Assert-Equal $row.members 2 'display group members'
+$row=Invoke-Query $success "SELECT (SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav') tracks,(SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav' AND disc=1) disc1,(SELECT COUNT(*) FROM song_masters WHERE album_id='al-find-zero-wav' AND disc=2) disc2,(SELECT year IS NULL FROM albums WHERE id='al-find-zero-wav') year_is_null,(SELECT COUNT(*) FROM album_display_group_members WHERE group_id='dg-find-zero-editions') members;"
+Assert-Equal $row.tracks 25 'tracks'; Assert-Equal $row.disc1 14 'disc 1 tracks'; Assert-Equal $row.disc2 11 'disc 2 tracks'; Assert-Equal $row.year_is_null 1 'unset year'; Assert-Equal $row.members 2 'display group members'
 Invoke-D1 $success @('--file',(Join-Path $task 'rollback.sql')) | Out-Null
 $row=Invoke-Query $success "SELECT (SELECT COUNT(*) FROM song_masters WHERE album_id='pending-uploads' AND track IS NULL AND disc IS NULL) pending,(SELECT COUNT(*) FROM albums WHERE id='al-find-zero-wav') target;"
 Assert-Equal $row.pending 25 'rollback pending tracks'; Assert-Equal $row.target 0 'rollback target album'

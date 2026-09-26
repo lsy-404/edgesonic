@@ -11,3 +11,5 @@ Fetched 28 scoped R2 objects read-only and completed full PCM decode/hash compar
 Parent review requested a real Wrangler `d1 execute --local --file` rehearsal, CTE-based exact-snapshot guards, and no explicit transaction statements. Began a repair on the existing isolated branch; no production write is authorized or planned in this subtask.
 
 Replaced TEMP-table assertions with CTE-based fail-fast guards and exact source snapshots in `apply.sql` and `rollback.sql`. Updated the fixture generator and added a reusable Wrangler local D1 rehearsal under `/test`; all apply/rollback and stale/late-reference scenarios passed. Refreshed the production preflight through the D1 API; it was primary-served and returned no writes or DB change. No production mutation was issued.
+
+Parent review identified that the candidate year was unsupported. Confirmed the existing `Find-Zero` album's year is NULL on the primary and changed the candidate to NULL. Reran the local Wrangler D1 success, rollback, stale-snapshot, and late-reference scenarios; all passed. Refreshed the primary scope preflight and an independent album-year read; both were primary-served and read-only.

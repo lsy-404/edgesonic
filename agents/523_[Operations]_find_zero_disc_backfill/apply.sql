@@ -37,7 +37,7 @@ AND NOT EXISTS(SELECT 1 FROM albums WHERE id='al-find-zero-wav')
 AND NOT EXISTS(SELECT 1 FROM album_display_groups WHERE id='dg-find-zero-editions')
 AND EXISTS(SELECT 1 FROM albums WHERE id='al-0494f8ac9c' AND name='Find-Zero' AND song_count=14)
 AND NOT EXISTS(SELECT 1 FROM album_display_group_members WHERE album_id IN ('al-0494f8ac9c','al-find-zero-wav')));
-INSERT INTO albums(id,name,sort_name,year,genre,compilation,song_count,duration,size,created_at,updated_at) VALUES('al-find-zero-wav','Find-Zero (WAV)','find-zero-wav',2022,'未知流派',0,0,0,0,unixepoch(),unixepoch());
+INSERT INTO albums(id,name,sort_name,year,genre,compilation,song_count,duration,size,created_at,updated_at) VALUES('al-find-zero-wav','Find-Zero (WAV)','find-zero-wav',NULL,'未知流派',0,0,0,0,unixepoch(),unixepoch());
 WITH c(master_id,instance_id,object_id,entry_id,parent_id,path,physical_key,title_snapshot,disc,track) AS (VALUES
 ('sm-upload-2598e63c-2ca','si-upload-24f22661-f90','obj_61f13c2104e31523','se-3c78a1798a1d4049a9f6624abb8406d7','se-aa330137684a497797b2487b76257064','Find-Zero/CD 1 人声碟/01 WE ARE.wav','objects/obj_61f13c2104e31523.wav','01 WE ARE',1,1),
 ('sm-upload-f37ae519-c7e','si-upload-9e39a3bb-588','obj_632790037c287eb3','se-4bebcb2f7e2a49be9b895ffe43ebdf59','se-aa330137684a497797b2487b76257064','Find-Zero/CD 1 人声碟/02 VOCA-LOUDER.wav','objects/obj_632790037c287eb3.wav','02 VOCA-LOUDER',1,2),

@@ -9,7 +9,7 @@ CREATE TABLE song_artists(song_id TEXT,artist_id TEXT);
 CREATE TABLE album_display_groups(id TEXT PRIMARY KEY,display_name TEXT,sort_name TEXT);
 CREATE TABLE album_display_group_members(group_id TEXT,album_id TEXT,sort_order INTEGER);
 CREATE TABLE work_queue(id TEXT PRIMARY KEY,task_type TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN('queued','claimed','completed','failed','canceled')),created_at INTEGER NOT NULL);
-INSERT INTO albums(id,name,sort_name,year,genre,compilation,song_count,duration,size) VALUES('pending-uploads','pending-uploads','pending-uploads',NULL,NULL,0,25,0,0),('al-0494f8ac9c','Find-Zero','find-zero',2022,'未知流派',0,14,0,0);INSERT INTO storage_entries(id,kind,display_name,parent_id,path) VALUES('se-79312b6ab4744f8c903b04ccbbf31418','directory','CD 2 伴奏碟',NULL,'Find-Zero/CD 2 伴奏碟');
+INSERT INTO albums(id,name,sort_name,year,genre,compilation,song_count,duration,size) VALUES('pending-uploads','pending-uploads','pending-uploads',NULL,NULL,0,25,0,0),('al-0494f8ac9c','Find-Zero','find-zero',NULL,'未知流派',0,14,0,0);INSERT INTO storage_entries(id,kind,display_name,parent_id,path) VALUES('se-79312b6ab4744f8c903b04ccbbf31418','directory','CD 2 伴奏碟',NULL,'Find-Zero/CD 2 伴奏碟');
 INSERT INTO storage_entries(id,kind,display_name,parent_id,path) VALUES('se-aa330137684a497797b2487b76257064','directory','CD 1 人声碟',NULL,'Find-Zero/CD 1 人声碟');
 INSERT INTO song_masters(id,album_id,title) VALUES('sm-upload-2598e63c-2ca','pending-uploads','01 WE ARE');
 INSERT INTO song_instances VALUES('si-upload-24f22661-f90','sm-upload-2598e63c-2ca','r2-local','original','wav',0,1,'obj_61f13c2104e31523',0,16419404);

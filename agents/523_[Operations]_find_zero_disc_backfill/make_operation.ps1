@@ -36,7 +36,7 @@ AND NOT EXISTS(SELECT 1 FROM albums WHERE id='$target')
 AND NOT EXISTS(SELECT 1 FROM album_display_groups WHERE id='$group')
 AND EXISTS(SELECT 1 FROM albums WHERE id='$existing' AND name='Find-Zero' AND song_count=14)
 AND NOT EXISTS(SELECT 1 FROM album_display_group_members WHERE album_id IN ('$existing','$target')));
-INSERT INTO albums(id,name,sort_name,year,genre,compilation,song_count,duration,size,created_at,updated_at) VALUES('$target','Find-Zero (WAV)','find-zero-wav',2022,'未知流派',0,0,0,0,unixepoch(),unixepoch());
+INSERT INTO albums(id,name,sort_name,year,genre,compilation,song_count,duration,size,created_at,updated_at) VALUES('$target','Find-Zero (WAV)','find-zero-wav',NULL,'未知流派',0,0,0,0,unixepoch(),unixepoch());
 WITH c($columns) AS (VALUES
 $values
 )
