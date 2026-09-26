@@ -32,11 +32,29 @@ export async function sourceFolderAlbumId(
     suffix.toLowerCase(),
     albumName.normalize("NFC").trim().toLowerCase(),
   ].join("\0");
-  return "al-" + md5(identity).substring(0, 10);
+  return "al-" + md5(identity);
 }
 
-export async function markCompilationIfMixed(db: D1Database, albumId: string): Promise<void> {
-  await db.prepare(
+export async function sourceFolderAlbumIdForScan(
+  db: D1Database,
+  instanceId: string,
+  currentAlbumId: string | null,
+  currentAlbumName: string | null,
+  albumName: string,
+  suffix: string,
+): Promise<string | null> {
+  const folderAlbumId = await sourceFolderAlbumId(db, instanceId, albumName, suffix);
+  if (!folderAlbumId) return null;
+  if (currentAlbumId === "pending-uploads") return folderAlbumId;
+  if (!currentAlbumId || !currentAlbumName) return null;
+  const currentFolderId = currentAlbumName === albumName
+    ? folderAlbumId
+    : await sourceFolderAlbumId(db, instanceId, currentAlbumName, suffix);
+  return currentFolderId === currentAlbumId ? folderAlbumId : null;
+}
+
+export function compilationMarkerStatement(db: D1Database, albumId: string): D1PreparedStatement {
+  return db.prepare(
     `UPDATE albums SET compilation = 1 WHERE id = ? AND EXISTS (
        SELECT 1 FROM song_masters first
        JOIN song_masters other ON other.album_id = first.album_id AND other.id != first.id
@@ -45,5 +63,5 @@ export async function markCompilationIfMixed(db: D1Database, albumId: string): P
          COALESCE(first.album_artist_id, '') != COALESCE(other.album_artist_id, '')
        )
      )`,
-  ).bind(albumId, albumId).run();
+  ).bind(albumId, albumId);
 }

@@ -31,7 +31,11 @@ function d1(sqlite: DatabaseSync): any {
       async run() { const result = statement.run(...args); return { success: true, meta: { changes: Number(result.changes ?? 0) } }; },
     };
   }
-  return { prepare, batch: async (items: Array<{ run: () => Promise<unknown> }>) => Promise.all(items.map((item) => item.run())) };
+  return { prepare, batch: async (items: Array<{ run: () => Promise<unknown> }>) => {
+    const results = [];
+    for (const item of items) results.push(await item.run());
+    return results;
+  } };
 }
 
 function buildDb(): DatabaseSync {
@@ -238,6 +242,11 @@ async function main() {
   const importedAlbum = importDb.prepare("SELECT compilation,song_count FROM albums WHERE id = ?").get(imported[0].album_id) as { compilation: number; song_count: number };
   assert(imported[0].album_id === imported[1].album_id && importedAlbum.song_count === 2, "same-folder imports form one album despite per-track album artists");
   assert(importedAlbum.compilation === 1 && imported[0].album_artist_id !== imported[1].album_artist_id, "imported compilation retains the original track credits");
+  await applyMetadataResult(d1(importDb), "import-inst-a", { title: "First", artist: "Singer A", albumArtist: "Producer A", album: "Compilation", track: 1 }, {});
+  await applyMetadataResult(d1(importDb), "import-inst-b", { artist: "Singer B", track: 2 }, {});
+  const rescanned = importDb.prepare("SELECT id,album_id,album_artist_id FROM song_masters WHERE id IN ('import-a','import-b') ORDER BY id").all() as Array<{ id: string; album_id: string; album_artist_id: string }>;
+  assert(rescanned.every((row) => row.album_id === imported[0].album_id), "full and partial metadata rescans retain the source-folder album identity");
+  assert(rescanned[0].album_artist_id === imported[0].album_artist_id && rescanned[1].album_artist_id === imported[1].album_artist_id, "metadata rescans preserve per-track album artist credits");
   await applyMetadataResult(d1(importDb), "import-inst-c", { title: "Other Folder", artist: "Singer A", album: "Compilation", track: 1 }, {});
   await applyMetadataResult(d1(importDb), "import-inst-d", { title: "Other Codec", artist: "Singer A", album: "Compilation", track: 1 }, {});
   const separate = importDb.prepare("SELECT id,album_id FROM song_masters WHERE id IN ('import-c','import-d') ORDER BY id").all() as Array<{ id: string; album_id: string }>;

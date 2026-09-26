@@ -19,7 +19,7 @@ import { md5 } from "../../utils/md5";
 import { parseTags } from "../../utils/tags";
 import { fetchSlices, type SourceRow } from "../../utils/slices";
 import { recoverMetadataFromStoragePath } from "../../utils/storageMetadata";
-import { markCompilationIfMixed, retainCompilationAlbum, sourceFolderAlbumId } from "../../utils/albumIdentity";
+import { compilationMarkerStatement, retainCompilationAlbum, sourceFolderAlbumIdForScan } from "../../utils/albumIdentity";
 import {
   artistInsertStatements,
   parseAlbumArtistCredit,
@@ -70,6 +70,7 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
   for (const row of rows) {
     processed++;
     let scanned = 2; // default: no usable tags
+    let databaseAttempted = false;
     try {
       const slices = await fetchSlices(env, sources, row.storage_uri, row.suffix);
       if (slices) {
@@ -85,9 +86,10 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           const linkArtistName = albumArtist?.name || primaryArtist.name;
           const albumName = tags.album || row.current_album_name || "Unknown Album";
           const artistId = primaryArtist.id;
-          const importAlbumId = row.current_album_id === "pending-uploads" && tags.album
-            ? await sourceFolderAlbumId(db, row.id, tags.album, row.suffix)
-            : null;
+          databaseAttempted = true;
+          const importAlbumId = await sourceFolderAlbumIdForScan(
+            db, row.id, row.current_album_id, row.current_album_name, albumName, row.suffix,
+          );
           const albumId = importAlbumId ?? (row.current_album_id && retainCompilationAlbum(
             { name: row.current_album_name, compilation: row.current_album_compilation },
             albumName, tags.albumArtist, row.current_album_artist_name,
@@ -95,8 +97,6 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
             ? row.current_album_id
             : "al-" + md5(linkArtistName + " " + albumName).substring(0, 10));
           const albumArtistId = albumArtist?.id ?? null;
-          touchedAlbums.add(albumId);
-
           const stmts: D1PreparedStatement[] = [
             ...artistInsertStatements(db, [...artistCredits, ...albumArtistCredits], now),
             db.prepare("INSERT OR IGNORE INTO albums (id, name, sort_name, year, genre, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
@@ -117,16 +117,17 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
               now, row.master_id,
             ),
             ...songArtistStatements(db, row.master_id, artistCredits),
+            ...(importAlbumId ? [compilationMarkerStatement(db, albumId)] : []),
           ];
           await db.batch(stmts);
-          if (importAlbumId) {
-            await markCompilationIfMixed(db, albumId);
-          }
+          touchedAlbums.add(albumId);
           scanned = 1;
           tagged++;
         }
       }
-    } catch { /* leave scanned = 2 so we don't loop forever on broken files */ }
+    } catch {
+      if (databaseAttempted) continue;
+    }
     await db.prepare("UPDATE song_instances SET tag_scanned = ? WHERE id = ?").bind(scanned, row.id).run();
   }
 

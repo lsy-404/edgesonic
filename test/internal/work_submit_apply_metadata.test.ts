@@ -13,23 +13,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// tables (song_masters / song_instances), and a backfill endpoint must replay
-// older completed rows that were finished before the fix landed.
-//
-// Coverage:
-//  1. submit metadata task → song_instances.tag_scanned=1 + physical params updated
-//  2. song_masters relink artist_id/album_id (incl. brand-new artist/album)
-//  3. format.bitrate / sampleRate / channels / duration land on song_instances
-//  4. partial result (only some tag fields) — still flips tag_scanned, never throws
-//  5. unknown instanceId in result → completed but applied.ok=false (no crash)
-//  6. error path still works (no apply attempted)
-//  7. /work/backfillCompleted: replays N pre-existing completed rows, returns
-//    processed/applied/failed
-//  8. helper directly: applyMetadataResult on an empty payload only flips
-//    tag_scanned (no relink, no artist clobber)
-//
-// Run: npx tsx test/internal/work_submit_apply_metadata.test.ts
-
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { recoverPendingMetadataApplies, workRoutes } from "../../worker/src/endpoints/edgesonic/work";
@@ -66,7 +49,11 @@ function makeD1(sqlite: DatabaseSync, beforeRun?: (query: string) => Promise<voi
       },
     };
   }
-  return { prepare, batch: async (stmts: any[]) => Promise.all(stmts.map((s) => s.run())) };
+  return { prepare, batch: async (stmts: any[]) => {
+    const results = [];
+    for (const stmt of stmts) results.push(await stmt.run());
+    return results;
+  } };
 }
 
 // ---------------------------------------------------------------------------
@@ -113,6 +100,14 @@ function buildDb() {
       compilation INTEGER DEFAULT 0,
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
+    );
+    CREATE TABLE storage_entries (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      parent_id TEXT,
+      path TEXT,
+      kind TEXT NOT NULL,
+      instance_id TEXT
     );
     CREATE TABLE song_masters (
       id TEXT PRIMARY KEY,

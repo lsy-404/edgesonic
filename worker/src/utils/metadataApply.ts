@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import { md5 } from "./md5";
-import { markCompilationIfMixed, retainCompilationAlbum, sourceFolderAlbumId } from "./albumIdentity";
+import { compilationMarkerStatement, retainCompilationAlbum, sourceFolderAlbumIdForScan } from "./albumIdentity";
 import { deriveBitrate } from "./audioMetrics";
 import {
   artistInsertStatements,
@@ -102,8 +102,13 @@ export async function applyMetadataResult(
       id: string; album_id: string; artist_id: string; album_artist_id: string | null; title: string;
     }>();
     if (!master) return { updated: false, reason: "master not found" };
-    const importAlbumId = master.album_id === "pending-uploads" && tags.album
-      ? await sourceFolderAlbumId(db, instanceId, tags.album, inst.suffix)
+    const currentAlbum = master.album_id === "pending-uploads" ? null
+      : await db.prepare("SELECT name FROM albums WHERE id = ?")
+        .bind(master.album_id).first<{ name: string }>();
+    const scanAlbumName = tags.album || currentAlbum?.name;
+    const importAlbumId = scanAlbumName
+      ? await sourceFolderAlbumIdForScan(db, instanceId, master.album_id,
+        currentAlbum?.name ?? null, scanAlbumName, inst.suffix)
       : null;
     await relinkArtistAlbum(db, master, tags, importAlbumId);
     masterId = master.id;
@@ -221,16 +226,13 @@ export async function relinkArtistAlbum(
       now, master.id,
     ),
     ...(artistChanged ? songArtistStatements(db, master.id, artistCredits) : []),
+    ...(importAlbumId ? [compilationMarkerStatement(db, albumId)] : []),
   ]);
 
   // Existing album rows can lack year or genre after INSERT OR IGNORE.
   if (tags.year || tags.genre) {
     await db.prepare("UPDATE albums SET year = COALESCE(?, year), genre = COALESCE(?, genre), updated_at = ? WHERE id = ?")
       .bind(tags.year ?? null, tags.genre ?? null, now, albumId).run();
-  }
-
-  if (importAlbumId) {
-    await markCompilationIfMixed(db, albumId);
   }
 
   // Both album aggregates change when a track moves.
