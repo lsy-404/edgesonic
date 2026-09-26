@@ -4,6 +4,6 @@
 
 候选只会把九个既有 WAV master 归入新 WAV 专辑、复制既有 FLAC 的曲目元数据和 artist credits，并建立一个两成员展示组。不会创建、删除或替换任何音频对象、实例或文件目录项。
 
-候选文件 SHA-256 为 `fe6362a92f3c262655f35f29bc576573bd36bd2e75d170a6fa121fd0190670d2`。真实 Wrangler 本地文件执行完成了成功、源路径过期和末段唯一约束失败三个场景：成功场景得到 9 首 WAV、9 首 FLAC 和两个展示成员；两个失败场景均保持 9 首 WAV 在 Pending Uploads 且未留下展示组。
+候选文件 SHA-256 为 `4f90557a8de08db720bd1c5dd1d139d09f3e434f49bf04d2b044fd2c3abfb4b9`。WAV master 保留原有 duration；新 WAV 专辑复制 FLAC 专辑封面。候选末段从实际 song_masters 和 song_instances 重算新 WAV 专辑与 Pending Uploads 的 `song_count`、`duration`、`size`，随后验证两张专辑的缓存字段与实际行一致。真实 Wrangler 本地文件执行完成了成功、源路径过期和末段唯一约束失败三个场景：成功场景得到 9 首 WAV、9 首 FLAC 和两个展示成员；两个失败场景均保持 9 首 WAV 在 Pending Uploads 且未留下展示组。
 
-最终生产主库只读前置检查：FLAC master/path 为 9/9，待处理 WAV/path 为 9/9，九项 master/instance/object/entry/path 快照均匹配，目标专辑和展示组都尚不存在。请求未写入数据库。
+最终生产主库只读前置检查：FLAC master/path 为 9/9，待处理 WAV/path 为 9/9，WAV 当前总时长为 2334 秒、实例总大小为 411729756 字节，FLAC 专辑封面为 `covers/al-1a27548730`，目标专辑和展示组都尚不存在。请求未写入数据库。
