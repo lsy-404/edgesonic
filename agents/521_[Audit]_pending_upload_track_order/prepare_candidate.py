@@ -65,6 +65,9 @@ SELECT (SELECT COUNT(*) FROM expected) AS expected_masters, (SELECT COUNT(DISTIN
         write(output / f"primary_preflight_{offset // 10 + 1:02d}.sql", f"""{cte(chunk)}
 SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, {source_guard()} AS exact_source_match FROM expected e LEFT JOIN song_masters sm ON sm.id=e.master_id ORDER BY e.target_album_id, e.filename_track, e.master_id;
 """)
+        write(output / f"postflight_{offset // 10 + 1:02d}.sql", f"""{cte(chunk)}
+SELECT e.master_id, e.target_album_id AS expected_album_id, e.filename_track, e.instance_id, e.entry_id, e.source_id, e.parent_id, e.path AS expected_path, e.display_name AS expected_display_name, e.storage_object_id AS expected_storage_object_id, sm.id AS actual_master_id, sm.album_id AS actual_album_id, sm.track, sm.disc, {source_guard(nulls=False)} AS exact_source_match FROM expected e LEFT JOIN song_masters sm ON sm.id=e.master_id ORDER BY e.target_album_id, e.filename_track, e.master_id;
+""")
     write(output / "apply_guarded.sql", f"""{all_cte}
 UPDATE song_masters SET track=(SELECT e.filename_track FROM expected e WHERE e.master_id=song_masters.id), disc=1, updated_at=unixepoch() WHERE id IN (SELECT master_id FROM expected) AND (SELECT COUNT(*) FROM song_masters sm JOIN expected e ON e.master_id=sm.id WHERE {guard})=(SELECT COUNT(*) FROM expected);
 """)

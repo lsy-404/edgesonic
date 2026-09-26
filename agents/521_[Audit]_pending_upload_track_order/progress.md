@@ -10,3 +10,4 @@
 - Replaced manual transaction statements with Wrangler-file-compatible guarded single updates and added exact instance, object, file-entry, source-parent, path, and filename guards.
 - Confirmed the 25 albums each have a single source parent and each album's filename indices are unique.
 - Executed both SQL files through Wrangler local `--file` using an isolated minimal D1 schema, then ran a fresh 25-query primary preflight with 243 exact source matches.
+- Ran a post-apply read-only primary verification across all 243 masters and 25 albums. All expected metadata and source-entry guards matched; no album-level anomaly was found.

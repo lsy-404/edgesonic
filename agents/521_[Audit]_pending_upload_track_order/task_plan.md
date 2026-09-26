@@ -8,3 +8,4 @@
 - [x] Add exact source-entry path guards and remove manual transaction statements.
 - [x] Confirm each album has one source parent and no reused filename index.
 - [x] Re-run local rehearsals, Wrangler local file syntax tests, and fresh primary preflight.
+- [x] Run a read-only production postflight after the approved apply and record its receipt.

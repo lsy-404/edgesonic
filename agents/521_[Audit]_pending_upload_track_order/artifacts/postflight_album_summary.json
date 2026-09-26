@@ -1,0 +1,420 @@
+[
+  {
+    "album_id": "al-0f93c4e539eb79562fce224989b22aec",
+    "members": 11,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-18ec76e1cfd7e7dc3e8258b060e8f228",
+    "members": 10,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-1ec1e919cdf08d8aa1af5dc344608fa2",
+    "members": 7,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-3601f0337902ef9583048198e3640d3b",
+    "members": 8,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-369dc39c99e3a1a27dc05b84aa30d1e1",
+    "members": 10,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-379190d71773f7eda5c8e71260f1e1a8",
+    "members": 16,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-3a2710cebd830ec6fee4ae8c4131044b",
+    "members": 4,
+    "tracks": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-3e2385da217b494f06495b58255c609f",
+    "members": 10,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-45137ca79f34f6134d6c13be85f2f0fb",
+    "members": 10,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-4c9a3a416c2c4378a9c451729fe5b934",
+    "members": 12,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-513e3da59502f103e5112f7b1408f656",
+    "members": 10,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-71bf81052233fba89504b82c9349782e",
+    "members": 10,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-725a42450daa5e1b1472c6d73cc00b92",
+    "members": 5,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-8722d4ca7293612ea92d2f283d159900",
+    "members": 12,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-a3063d83f8e97bbb84445eef22c0a8f2",
+    "members": 10,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-b67665d31c26b1883a27db8a47859379",
+    "members": 16,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-ba482cba45e7e1408c59fa6fe9e5d1d1",
+    "members": 7,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-cfe9a2e735c7900a5b0e96f5ddf53069",
+    "members": 13,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-d1eb61467eb114e11bfea9d9690057c2",
+    "members": 1,
+    "tracks": [
+      1
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-d302ed534fe12110d275ff786cfb5fdf",
+    "members": 10,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-d93c526c9fd2f47003248e5ebc83cf23",
+    "members": 8,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-e2b6feeda9f07f575b32fadf2c4cb6bc",
+    "members": 14,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-e8c944eb0c92b7c25aef28645b59c9ae",
+    "members": 9,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-f79d077d5e583272b3cc93b078334fe1",
+    "members": 10,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "invalid": 0
+  },
+  {
+    "album_id": "al-fe774f1b1c6a6738d25d732bcf66a64d",
+    "members": 10,
+    "tracks": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "invalid": 0
+  }
+]

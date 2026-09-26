@@ -27,3 +27,7 @@ Twenty-five read-only D1 queries returned 243 rows from the primary. Every actua
 ## Wrangler local file validation
 
 The candidate and rollback files both executed successfully through `wrangler d1 execute --local --file` against an isolated minimal local D1 schema. The SQL contains no manual `BEGIN` or `COMMIT` statement.
+
+## Production postflight
+
+After the approved production apply reported 243 written rows on the primary, 25 read-only D1 queries verified every expected master. All 243 have the expected album, filename-derived track, and `disc=1`; every instance, storage object, file entry, source, parent, path, and display name still matches. The 25 album summaries contain no duplicate track values or other anomalies. The receipt is `artifacts/postflight_execution_receipt.json` with per-row and per-album results beside it. This audit did not execute apply or rollback.

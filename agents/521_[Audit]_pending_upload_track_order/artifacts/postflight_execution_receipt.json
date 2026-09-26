@@ -1,0 +1,10 @@
+{
+  "served_by_primary": true,
+  "expected_masters": 243,
+  "received_rows": 243,
+  "expected_albums": 25,
+  "exact_source_matches": 243,
+  "mismatches": 0,
+  "album_anomalies": 0,
+  "status": "GO"
+}
