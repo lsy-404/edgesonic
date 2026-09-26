@@ -13,3 +13,20 @@ Primary read-only follow-up also confirms the B folder still contains 16 pending
 ## Production postflight receip
 
 The repository operator reports successful production execution of the B edition and two-anchor repair. The B candidate applied with SQL SHA-256 `E649B9B6BD901478BA4B8FA56C52653B6DFF951F32BCF6B5FBE9B0C2F210F00F`; the A anchor candidate updated the two existing rows. Independent postflight reported A 8 / 1540 / 271656352, B 16 / 3230 / 569772704, pending 523 / 116804 / 20308060661, all caches matching live aggregates, complete source references, no missing objects, and display-group members A at order 0 and B at order 1. No source audio or storage object was changed.
+
+## Q5 WAV alternate production postflight receipt
+
+The repository operator executed `prepare_q5_wav_alternate.sql` against production. SQL SHA-256: `7AE478CFF7A336F9FB5D96FB2F11C690CBB0693F789E89F0DEEF9221C8E9CD52`. Wrangler exited 0, reported 11 queries and 20 rows written, served by primary.
+
+An independent primary postflight reported:
+
+- Existing FLAC album unchanged: 10 tracks / 2,691 seconds / 457,556,360 bytes.
+- WAV alternate album: 1 track / 259 seconds / 45,619,436 bytes.
+- Pending: 522 tracks / 116,545 seconds / 20,262,441,225 bytes.
+- All three cached aggregates equal their live aggregates.
+- Display group contains exactly the FLAC album at order 0 and WAV alternate at order 1.
+- Existing FLAC master id 486 and the WAV master, instance, object, entry, path, and physical key remain intact; missing references = 0 and `tag_scanned=1`.
+- No active related queue item and no guard marker remain. `quick_check` is `ok`; `foreign_key_check` returned no rows.
+- The postflight was SELECT-only and reported zero rows written.
+
+No production write was issued by this audit agent. The observed pending cache is one track lower than the pre-execution prediction because the candidate was executed by the repository operator.
