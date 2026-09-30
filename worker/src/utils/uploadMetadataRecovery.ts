@@ -70,15 +70,11 @@ export async function recoverPendingUploadMetadata(env: Env): Promise<number> {
     }
 
     try {
-      const task = await enqueueUploadMetadata(env.DB, env, { ...instance, uploadNonce: payload.uploadNonce });
+      const task = await enqueueUploadMetadata(env.DB, env, { ...instance, uploadNonce: payload.uploadNonce, automaticRecovery: true });
       if (task.status === "stale_claimed") continue;
       const row = await env.DB.prepare("SELECT status, payload FROM work_queue WHERE id = ?")
         .bind(task.taskId).first<{ status: string; payload: string }>();
-      const currentPayload = JSON.stringify({
-        instanceId: instance.id, sourceUri: instance.storage_uri, suffix: instance.suffix,
-        size: instance.size || 0, origin: "upload", uploadNonce: payload.uploadNonce,
-      });
-      if (row?.payload !== currentPayload || !["queued", "claimed"].includes(row.status)) continue;
+      if (row?.payload !== task.payload || !["queued", "claimed"].includes(row.status)) continue;
       if (task.status === "queued") queued++;
     } catch (error) {
       console.error(`[upload-recovery] could not recover metadata for ${instance.id}:`, error);
@@ -97,7 +93,13 @@ export async function recoverPendingUploadMetadata(env: Env): Promise<number> {
         AND si.tag_scanned = 0
         AND si.missing = 0
         AND si.created_at <= ?
-        AND w.id IS NULL
+        AND (w.id IS NULL OR (
+          w.status IN ('failed', 'canceled')
+          AND CASE WHEN json_valid(w.payload)
+            THEN COALESCE(json_extract(w.payload, '$.automaticRecoveryAttempt'), 0) < 1
+            ELSE 1
+          END
+        ))
         AND marker.id IS NULL
       ORDER BY si.created_at ASC
       LIMIT ${RECOVERY_BATCH_SIZE}`,
@@ -105,7 +107,7 @@ export async function recoverPendingUploadMetadata(env: Env): Promise<number> {
 
   for (const instance of candidates) {
     try {
-      const task = await enqueueUploadMetadata(env.DB, env, instance);
+      const task = await enqueueUploadMetadata(env.DB, env, { ...instance, automaticRecovery: true });
       if (task.status === "queued") queued++;
     } catch (error) {
       console.error(`[upload-recovery] could not queue metadata for ${instance.id}:`, error);

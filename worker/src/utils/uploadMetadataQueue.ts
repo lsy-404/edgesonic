@@ -8,6 +8,7 @@ export interface UploadMetadataTaskInput {
   suffix: string;
   size: number | null;
   uploadNonce?: string;
+  automaticRecovery?: boolean;
 }
 
 export interface UploadMetadataTaskPayload {
@@ -17,6 +18,7 @@ export interface UploadMetadataTaskPayload {
   size: number;
   origin: "upload";
   uploadNonce?: string;
+  automaticRecoveryAttempt?: number;
 }
 
 export interface UploadMetadataLease {
@@ -145,8 +147,24 @@ export async function enqueueUploadMetadata(
   db: D1Database,
   env: Env,
   instance: UploadMetadataTaskInput,
-): Promise<{ taskId: string; status: "queued" | "claimed" | "stale_claimed" | "completed" | "failed" | "canceled" }> {
+): Promise<{ taskId: string; payload: string; status: "queued" | "claimed" | "stale_claimed" | "completed" | "failed" | "canceled" }> {
   const taskId = `wt-metadata-${instance.id}`;
+  const existing = await db.prepare("SELECT status, payload FROM work_queue WHERE id = ?")
+    .bind(taskId).first<{ status: "queued" | "claimed" | "completed" | "failed" | "canceled"; payload: string }>();
+  let automaticRecoveryAttempt: number | undefined;
+  if (instance.automaticRecovery && existing && ["completed", "failed", "canceled"].includes(existing.status)) {
+    try {
+      const payload = JSON.parse(existing.payload) as { automaticRecoveryAttempt?: unknown };
+      const previous = typeof payload.automaticRecoveryAttempt === "number"
+        && Number.isInteger(payload.automaticRecoveryAttempt) && payload.automaticRecoveryAttempt >= 0
+        ? payload.automaticRecoveryAttempt
+        : 0;
+      if (previous >= 1) return { taskId, payload: existing.payload, status: existing.status };
+      automaticRecoveryAttempt = previous + 1;
+    } catch {
+      automaticRecoveryAttempt = 1;
+    }
+  }
   const expected = JSON.stringify({
     instanceId: instance.id,
     sourceUri: instance.storage_uri,
@@ -154,22 +172,21 @@ export async function enqueueUploadMetadata(
     size: instance.size || 0,
     origin: "upload",
     ...(instance.uploadNonce ? { uploadNonce: instance.uploadNonce } : {}),
+    ...(automaticRecoveryAttempt ? { automaticRecoveryAttempt } : {}),
   } satisfies UploadMetadataTaskPayload);
-  const existing = await db.prepare("SELECT status, payload FROM work_queue WHERE id = ?")
-    .bind(taskId).first<{ status: "queued" | "claimed" | "completed" | "failed" | "canceled"; payload: string }>();
   if (existing?.status === "claimed") {
-    return { taskId, status: existing.payload === expected ? "claimed" : "stale_claimed" };
+    return { taskId, payload: existing.payload, status: existing.payload === expected ? "claimed" : "stale_claimed" };
   }
   if (existing?.status === "queued") {
-    if (existing.payload === expected) return { taskId, status: "queued" };
+    if (existing.payload === expected) return { taskId, payload: expected, status: "queued" };
     await db.prepare(
       "UPDATE work_queue SET payload = ?, required_caps = '[\"music-metadata\"]', priority = 5 WHERE id = ? AND status = 'queued'",
     ).bind(expected, taskId).run();
     const refreshed = await db.prepare("SELECT status, payload FROM work_queue WHERE id = ?")
       .bind(taskId).first<{ status: "queued" | "claimed"; payload: string }>();
-    if (refreshed?.payload === expected) return { taskId, status: refreshed.status };
+    if (refreshed?.payload === expected) return { taskId, payload: expected, status: refreshed.status };
     if (refreshed?.status === "claimed") {
-      return { taskId, status: refreshed.payload === expected ? "claimed" : "stale_claimed" };
+      return { taskId, payload: refreshed.payload, status: refreshed.payload === expected ? "claimed" : "stale_claimed" };
     }
   }
 
@@ -182,6 +199,7 @@ export async function enqueueUploadMetadata(
       size: instance.size || 0,
       origin: "upload",
       ...(instance.uploadNonce ? { uploadNonce: instance.uploadNonce } : {}),
+      ...(automaticRecoveryAttempt ? { automaticRecoveryAttempt } : {}),
     },
     requiredCaps: ["music-metadata"],
     priority: 5,
@@ -191,5 +209,5 @@ export async function enqueueUploadMetadata(
 
   const after = await db.prepare("SELECT status FROM work_queue WHERE id = ?")
     .bind(taskId).first<{ status: "queued" | "claimed" | "completed" | "failed" | "canceled" }>();
-  return { taskId, status: after?.status || "queued" };
+  return { taskId, payload: expected, status: after?.status || "queued" };
 }
