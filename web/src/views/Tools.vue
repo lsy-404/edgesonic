@@ -1589,8 +1589,8 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 
       <section v-if="canRepairLibraryStats" class="settings-section card" :class="{ open: open.libraryStats }">
         <button type="button" class="section-header" :aria-expanded="open.libraryStats" aria-controls="tools-panel-library-stats" @click="toggleSection('libraryStats')">
-          <span class="section-heading"><Icon name="library" class="section-icon" /><span class="section-meta"><span class="section-title">{{ t("tools.sections.libraryStats") }}</span><span class="section-summary">{{ t("tools.libraryStats.description") }}</span></span></span>
-          <Icon name="chevronDown" class="section-caret" />
+          <span class="section-heading"><span class="section-icon"><Icon name="library" size="18" /></span><span class="section-meta"><span class="section-title">{{ t("tools.sections.libraryStats") }}</span><span class="section-summary">{{ t("tools.libraryStats.description") }}</span></span></span>
+          <Icon name="chevronDown" size="18" class="section-caret" />
         </button>
         <div id="tools-panel-library-stats" v-show="open.libraryStats" class="section-body">
           <div class="sub-block library-stats-card">
@@ -1623,8 +1623,8 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
       <!-- ============ Subsonic migrate tool (clone + push, switch in middle) ============ -->
       <section class="settings-section card" :class="{ open: open.migrate }">
         <button type="button" class="section-header" :aria-expanded="open.migrate" aria-controls="tools-panel-migrate" @click="toggleSection('migrate')">
-          <span class="section-heading"><Icon name="repeat" class="section-icon" /><span class="section-title">{{ t("tools.sections.migrate") }}</span></span>
-          <Icon name="chevronDown" class="section-caret" />
+          <span class="section-heading"><span class="section-icon"><Icon name="repeat" size="18" /></span><span class="section-title">{{ t("tools.sections.migrate") }}</span></span>
+          <Icon name="chevronDown" size="18" class="section-caret" />
         </button>
         <div id="tools-panel-migrate" v-show="open.migrate" class="section-body">
           <div class="seg">
@@ -1832,8 +1832,8 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
       <!-- ============ Peer sync (per-user, non-guest) ============ -->
       <section v-if="!isGuest" class="settings-section card" :class="{ open: open.peerSync }">
         <button type="button" class="section-header" :aria-expanded="open.peerSync" aria-controls="tools-panel-peer-sync" @click="toggleSection('peerSync')">
-          <span class="section-heading"><Icon name="share" class="section-icon" /><span class="section-meta"><span class="section-title">{{ t("tools.sections.peerSync") }}</span><span class="section-summary">{{ t("settings.common.sync.desc") }}</span></span></span>
-          <Icon name="chevronDown" class="section-caret" />
+          <span class="section-heading"><span class="section-icon"><Icon name="share" size="18" /></span><span class="section-meta"><span class="section-title">{{ t("tools.sections.peerSync") }}</span><span class="section-summary">{{ t("settings.common.sync.desc") }}</span></span></span>
+          <Icon name="chevronDown" size="18" class="section-caret" />
         </button>
 
         <div id="tools-panel-peer-sync" v-show="open.peerSync" class="section-body">
@@ -1893,8 +1893,8 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
       <!-- ============ Storage & R2 cost ============ -->
       <section class="settings-section card" :class="{ open: open.storage }">
         <button type="button" class="section-header" :aria-expanded="open.storage" aria-controls="tools-panel-storage" @click="toggleSection('storage')">
-          <span class="section-heading"><Icon name="folder" class="section-icon" /><span class="section-title">{{ t("tools.sections.storage") }}</span></span>
-          <Icon name="chevronDown" class="section-caret" />
+          <span class="section-heading"><span class="section-icon"><Icon name="folder" size="18" /></span><span class="section-title">{{ t("tools.sections.storage") }}</span></span>
+          <Icon name="chevronDown" size="18" class="section-caret" />
         </button>
         <div id="tools-panel-storage" v-show="open.storage" class="section-body">
       <div class="card tools-storage-card">
@@ -1950,8 +1950,8 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
       <!-- ============ Orphan song cleanup ============ -->
       <section class="settings-section card" :class="{ open: open.orphanSongs }">
         <button type="button" class="section-header" :aria-expanded="open.orphanSongs" aria-controls="tools-panel-orphan-songs" @click="toggleSection('orphanSongs')">
-          <span class="section-heading"><Icon name="music" class="section-icon" /><span class="section-title">{{ t("tools.sections.orphanSongs") }}</span></span>
-          <Icon name="chevronDown" class="section-caret" />
+          <span class="section-heading"><span class="section-icon"><Icon name="music" size="18" /></span><span class="section-title">{{ t("tools.sections.orphanSongs") }}</span></span>
+          <Icon name="chevronDown" size="18" class="section-caret" />
         </button>
         <div id="tools-panel-orphan-songs" v-show="open.orphanSongs" class="section-body">
       <div class="card tools-orphan-card">
@@ -2027,7 +2027,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 .section-header:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: -3px; }
 .section-heading { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
 .section-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; min-width: 0; }
-.section-icon { display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0.45rem; border-radius: 6px; color: var(--color-accent-primary); background: var(--color-accent-dim); }
+.section-icon { display: grid; place-items: center; flex: 0 0 2rem; width: 2rem; height: 2rem; border-radius: 6px; color: var(--color-accent-primary); background: var(--color-accent-dim); }
 .section-title {
   font-family: var(--font-body, system-ui, sans-serif);
   font-size: var(--fs-md);
@@ -2036,7 +2036,9 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 }
 .section-summary { color: var(--color-text-secondary); font-size: var(--fs-sm); font-weight: 400; line-height: 1.4; }
 .section-caret {
+  flex: 0 0 1.25rem;
   width: 1.25rem;
+  height: 1.25rem;
   color: var(--color-accent-primary);
   transition: transform 0.18s ease;
 }
