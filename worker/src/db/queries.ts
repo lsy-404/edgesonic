@@ -36,8 +36,25 @@ export interface SongPhysical {
 }
 
 export type SongRow = SongMaster & SongNames & SongPhysical;
+export type SongSearchRow = Pick<
+  SongMaster,
+  "id" | "album_id" | "artist_id" | "title" | "track" | "disc" | "duration" | "genre" | "created_at"
+> & SongNames & SongPhysical;
 
 const SONG_ROW_COLS = `sm.*,
+       COALESCE((SELECT group_concat(name, ', ') FROM (
+         SELECT sar.name FROM song_artists sa
+         JOIN artists sar ON sar.id = sa.artist_id
+         WHERE sa.song_id = sm.id ORDER BY sa.position
+       )), ar.name) AS artist_name,
+       al.name AS album_name,
+       aar.name AS album_artist_name,
+       si.suffix AS inst_suffix, si.content_type AS inst_content_type,
+       si.bit_rate AS inst_bit_rate, si.size AS inst_size,
+       si.duration AS inst_duration, si.storage_uri AS inst_storage_uri`;
+
+const SONG_SEARCH_ROW_COLS = `sm.id, sm.album_id, sm.artist_id, sm.title, sm.track, sm.disc,
+       sm.duration, sm.genre, sm.created_at,
        COALESCE((SELECT group_concat(name, ', ') FROM (
          SELECT sar.name FROM song_artists sa
          JOIN artists sar ON sar.id = sa.artist_id
@@ -59,6 +76,24 @@ const SONG_ROW_JOINS = `LEFT JOIN artists ar ON ar.id = sm.artist_id
                   bit_rate DESC
          LIMIT 1)`;
 
+export const LIBRARY_COUNTS_SQL = `WITH playable AS MATERIALIZED (
+  SELECT DISTINCT sm.id AS master_id
+  FROM song_instances si JOIN song_masters sm ON sm.id = si.master_id
+  WHERE si.missing = 0
+), artist_ids AS (
+  SELECT sm.artist_id AS id FROM playable p JOIN song_masters sm ON sm.id = p.master_id
+  UNION
+  SELECT sm.album_artist_id FROM playable p JOIN song_masters sm ON sm.id = p.master_id
+  WHERE sm.album_artist_id IS NOT NULL
+  UNION
+  SELECT sa.artist_id FROM playable p JOIN song_artists sa ON sa.song_id = p.master_id
+)
+SELECT
+  (SELECT COUNT(*) FROM artists ar JOIN artist_ids ai ON ai.id = ar.id) AS artists,
+  (SELECT COUNT(DISTINCT sm.album_id) FROM playable p JOIN song_masters sm ON sm.id = p.master_id
+    JOIN albums al ON al.id = sm.album_id) AS albums,
+  (SELECT COUNT(*) FROM playable) AS songs`;
+
 export function createQueries(db: D1Database) {
   return {
     // Artists
@@ -72,35 +107,12 @@ export function createQueries(db: D1Database) {
     // which silently plateaus at exactly 500 for any library past that size
     // instead of showing the true total.
     async getLibraryCounts(): Promise<{ artists: number; albums: number; songs: number }> {
-      const [artists, albums, songs] = await Promise.all([
-        db.prepare(
-          `SELECT COUNT(*) AS n FROM artists ar
-           WHERE EXISTS (
-             SELECT 1 FROM song_masters sm
-             JOIN song_instances si ON si.master_id = sm.id AND si.missing = 0
-             WHERE sm.artist_id = ar.id OR sm.album_artist_id = ar.id
-                OR EXISTS (SELECT 1 FROM song_artists sa WHERE sa.song_id = sm.id AND sa.artist_id = ar.id)
-           )`,
-        ).first<{ n: number }>(),
-        db.prepare(
-          `SELECT COUNT(*) AS n FROM albums al
-           WHERE EXISTS (
-             SELECT 1 FROM song_masters sm
-             JOIN song_instances si ON si.master_id = sm.id AND si.missing = 0
-             WHERE sm.album_id = al.id
-           )`,
-        ).first<{ n: number }>(),
-        db.prepare(
-          `SELECT COUNT(DISTINCT sm.id) AS n
-           FROM song_masters sm
-           JOIN song_instances si ON si.master_id = sm.id
-           WHERE si.missing = 0`,
-        ).first<{ n: number }>(),
-      ]);
+      const counts = await db.prepare(LIBRARY_COUNTS_SQL)
+        .first<{ artists: number; albums: number; songs: number }>();
       return {
-        artists: artists?.n ?? 0,
-        albums: albums?.n ?? 0,
-        songs: songs?.n ?? 0,
+        artists: counts?.artists ?? 0,
+        albums: counts?.albums ?? 0,
+        songs: counts?.songs ?? 0,
       };
     },
 
@@ -467,7 +479,7 @@ export function createQueries(db: D1Database) {
     } = {}): Promise<{
       artists: Artist[];
       albums: Album[];
-      songs: SongRow[];
+      songs: SongSearchRow[];
     }> {
       const like = `%${query}%`;
       const songOrder = opts.songSort === "newest"
@@ -477,6 +489,7 @@ export function createQueries(db: D1Database) {
           : opts.songSort === "titleDesc"
             ? "sm.sort_title DESC"
             : "sm.sort_title ASC";
+      const songIdOrder = opts.songSort === "newest" || opts.songSort === "titleDesc" ? "DESC" : "ASC";
       if (opts.lyricsQuery?.trim()) {
         const normalized = normalizeLyricsSearchQuery(opts.lyricsQuery);
         if (Array.from(normalized).length > 512) throw new Error("lyrics-search-query-too-long");
@@ -487,28 +500,47 @@ export function createQueries(db: D1Database) {
             SELECT g.song_id FROM wanted w CROSS JOIN lyrics_search_grams g
             WHERE g.gram = w.gram GROUP BY g.song_id
             HAVING COUNT(*) = (SELECT COUNT(*) FROM wanted)
+          ),
+          page AS MATERIALIZED (
+            SELECT sm.id FROM candidates matches
+            JOIN lyrics_search_documents document ON document.song_id = matches.song_id
+            JOIN song_masters sm ON sm.id = matches.song_id
+            WHERE instr(document.body, ?) > 0 AND sm.title LIKE ?
+              AND NOT EXISTS (SELECT 1 FROM lyrics_search_dirty dirty WHERE dirty.song_id = sm.id)
+            ORDER BY ${songOrder}, sm.id ASC LIMIT ? OFFSET ?
           )
-          SELECT ${SONG_ROW_COLS} FROM candidates matches
-          JOIN lyrics_search_documents document ON document.song_id = matches.song_id
-          JOIN song_masters sm ON sm.id = matches.song_id ${SONG_ROW_JOINS}
-          WHERE instr(document.body, ?) > 0 AND sm.title LIKE ?
-            AND NOT EXISTS (SELECT 1 FROM lyrics_search_dirty dirty WHERE dirty.song_id = sm.id)
-          ORDER BY ${songOrder}, sm.id ASC LIMIT ? OFFSET ?`
-        ).bind(JSON.stringify(lyricsSearchGrams(normalized)), normalized, like, opts.songCount ?? 20, opts.songOffset ?? 0).all<SongRow>();
+          SELECT ${SONG_SEARCH_ROW_COLS} FROM page
+          CROSS JOIN song_masters sm ${SONG_ROW_JOINS}
+          WHERE sm.id = page.id
+          ORDER BY ${songOrder}, sm.id ASC`
+        ).bind(JSON.stringify(lyricsSearchGrams(normalized)), normalized, like, opts.songCount ?? 20, opts.songOffset ?? 0).all<SongSearchRow>();
         return { artists: [], albums: [], songs: result.results };
       }
       const [artists, albums, songs] = await Promise.all([
-        db.prepare(
-          "SELECT * FROM artists WHERE name LIKE ? ORDER BY sort_name ASC LIMIT ? OFFSET ?"
-        ).bind(like, opts.artistCount ?? 20, opts.artistOffset ?? 0).all<Artist>(),
-        db.prepare(
-          "SELECT * FROM albums WHERE name LIKE ? ORDER BY sort_name ASC LIMIT ? OFFSET ?"
-        ).bind(like, opts.albumCount ?? 20, opts.albumOffset ?? 0).all<Album>(),
-        db.prepare(
-          `SELECT ${SONG_ROW_COLS} FROM song_masters sm ${SONG_ROW_JOINS}
-           WHERE sm.title LIKE ? ORDER BY ${songOrder} LIMIT ? OFFSET ?`
-        ).bind(like, opts.songCount ?? 20, opts.songOffset ?? 0)
-          .all<SongRow>(),
+        (opts.artistCount ?? 20) === 0
+          ? Promise.resolve({ results: [] as Artist[] })
+          : db.prepare(
+            "SELECT * FROM artists WHERE name LIKE ? ORDER BY sort_name ASC LIMIT ? OFFSET ?"
+          ).bind(like, opts.artistCount ?? 20, opts.artistOffset ?? 0).all<Artist>(),
+        (opts.albumCount ?? 20) === 0
+          ? Promise.resolve({ results: [] as Album[] })
+          : db.prepare(
+            "SELECT * FROM albums WHERE name LIKE ? ORDER BY sort_name ASC LIMIT ? OFFSET ?"
+          ).bind(like, opts.albumCount ?? 20, opts.albumOffset ?? 0).all<Album>(),
+        (opts.songCount ?? 20) === 0
+          ? Promise.resolve({ results: [] as SongSearchRow[] })
+          : db.prepare(
+            `WITH page AS MATERIALIZED (
+               SELECT sm.id FROM song_masters sm
+               WHERE sm.title LIKE ?
+               ORDER BY ${songOrder}, sm.id ${songIdOrder}
+               LIMIT ? OFFSET ?
+             )
+             SELECT ${SONG_SEARCH_ROW_COLS} FROM page
+             CROSS JOIN song_masters sm ${SONG_ROW_JOINS}
+             WHERE sm.id = page.id
+             ORDER BY ${songOrder}, sm.id ${songIdOrder}`
+          ).bind(like, opts.songCount ?? 20, opts.songOffset ?? 0).all<SongSearchRow>(),
       ]);
       return {
         artists: artists.results,
@@ -525,9 +557,7 @@ export function createQueries(db: D1Database) {
     },
 
     // Returns Map keyed by `${itemType}:${itemId}` → annotation row.
-    // Empty `ids` short-circuits to avoid an empty IN(...) query.
-    // songCount=500 used to crash with "too many SQL variables at offset 28".
-    // Chunk to ≤ 80 ids per query (leaves 2 slots for user_id + item_type).
+    // Empty `ids` short-circuits to avoid an empty query.
     async getAnnotationsMap(
       userId: string,
       itemType: "song" | "album" | "artist",
@@ -535,18 +565,13 @@ export function createQueries(db: D1Database) {
     ): Promise<Map<string, Annotation>> {
       const map = new Map<string, Annotation>();
       if (ids.length === 0) return map;
-      const uniq = Array.from(new Set(ids));
-      const BATCH = 80;
-      for (let i = 0; i < uniq.length; i += BATCH) {
-        const batch = uniq.slice(i, i + BATCH);
-        const placeholders = batch.map(() => "?").join(",");
-        const result = await db.prepare(
-          `SELECT * FROM annotations
-           WHERE user_id = ? AND item_type = ? AND item_id IN (${placeholders})`
-        ).bind(userId, itemType, ...batch).all<Annotation>();
-        for (const row of result.results) {
-          map.set(`${row.item_type}:${row.item_id}`, row);
-        }
+      const result = await db.prepare(
+        `SELECT * FROM annotations
+         WHERE user_id = ? AND item_type = ?
+           AND item_id IN (SELECT value FROM json_each(?))`
+      ).bind(userId, itemType, JSON.stringify(Array.from(new Set(ids)))).all<Annotation>();
+      for (const row of result.results) {
+        map.set(`${row.item_type}:${row.item_id}`, row);
       }
       return map;
     },

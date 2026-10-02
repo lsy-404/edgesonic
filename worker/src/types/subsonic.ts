@@ -102,7 +102,7 @@ export function mapAlbum(a: Album, artistName?: string, annotation?: AnnotationL
 // queries.ts SongPhysical); clients gate playback on suffix/contentType/
 // bitRate/size/path, so emit them whenever the row has them.
 export function mapSong(
-  s: SongMaster & {
+  s: Pick<SongMaster, "id" | "album_id" | "artist_id" | "title" | "track" | "disc" | "duration" | "genre" | "created_at"> & {
     artist_name?: string | null; album_name?: string | null; album_artist_name?: string | null;
     inst_suffix?: string | null; inst_content_type?: string | null;
     inst_bit_rate?: number | null; inst_size?: number | null;

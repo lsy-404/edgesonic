@@ -360,6 +360,7 @@ CREATE TABLE IF NOT EXISTS artists (
   updated_at INTEGER DEFAULT (unixepoch())
 );
 CREATE INDEX IF NOT EXISTS idx_artists_name ON artists(name);
+CREATE INDEX IF NOT EXISTS idx_artists_sort_name_id ON artists(sort_name, id);
 
 -- ============================================================================
 -- 8. Albums
@@ -379,6 +380,7 @@ CREATE TABLE IF NOT EXISTS albums (
   updated_at INTEGER DEFAULT (unixepoch())
 );
 CREATE INDEX IF NOT EXISTS idx_albums_name ON albums(name);
+CREATE INDEX IF NOT EXISTS idx_albums_sort_name_id ON albums(sort_name, id);
 
 CREATE TABLE IF NOT EXISTS album_display_groups (
   id TEXT PRIMARY KEY,
@@ -446,6 +448,8 @@ CREATE INDEX IF NOT EXISTS idx_songmasters_album ON song_masters(album_id);
 CREATE INDEX IF NOT EXISTS idx_songmasters_artist ON song_masters(artist_id);
 CREATE INDEX IF NOT EXISTS idx_songmasters_album_artist ON song_masters(album_artist_id);
 CREATE INDEX IF NOT EXISTS idx_songmasters_title ON song_masters(title);
+CREATE INDEX IF NOT EXISTS idx_songmasters_sort_title_id ON song_masters(sort_title, id);
+CREATE INDEX IF NOT EXISTS idx_songmasters_created_id ON song_masters(created_at, id);
 
 CREATE TABLE IF NOT EXISTS lyrics_search_documents (
   song_id TEXT PRIMARY KEY,
@@ -529,6 +533,8 @@ CREATE TABLE IF NOT EXISTS song_instances (
   FOREIGN KEY (parent_instance_id) REFERENCES song_instances(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_instances_master ON song_instances(master_id);
+CREATE INDEX IF NOT EXISTS idx_instances_playable_master
+  ON song_instances(master_id) WHERE missing = 0;
 CREATE INDEX IF NOT EXISTS idx_instances_source ON song_instances(source_id);
 CREATE INDEX IF NOT EXISTS idx_instances_dedup ON song_instances(source_dedup_key);
 CREATE INDEX IF NOT EXISTS idx_instances_parent ON song_instances(parent_instance_id);

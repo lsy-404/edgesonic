@@ -15,7 +15,7 @@
 
 //
 // Coverage:
-//  * getAnnotationsMap chunks ≤ 80 ids per query, merges results into a Map.
+//  * getAnnotationsMap binds ID arrays as JSON to keep large lists within D1 variable limits.
 //  * getAnnotationsMap(empty) short-circuits with zero prepare() calls.
 //  * getSongMastersByIds chunks ≤ 80, concatenates rows, dedupes input.
 //  * getSongMastersByIds(empty) short-circuits.
@@ -104,14 +104,13 @@ function makeSpyDb(
 
 async function run() {
   // ---------------------------------------------------------------------------
-  // getAnnotationsMap — 200 ids → 3 batches (80 + 80 + 40)
+  // getAnnotationsMap — 200 ids → one bounded-parameter query
   // ---------------------------------------------------------------------------
-  console.log("getAnnotationsMap (200 ids → 3 batches):");
+  console.log("getAnnotationsMap (200 ids → one query):");
   {
     const ids = Array.from({ length: 200 }, (_, i) => `song-${i}`);
     const { db, calls } = makeSpyDb((call) => {
-      // Return one annotation row per bound id (skip the first 2 fixed binds).
-      const annIds = call.binds.slice(2) as string[];
+      const annIds = JSON.parse(String(call.binds[2])) as string[];
       const results = annIds.map((id) => ({
         user_id: "alice",
         item_type: "song",
@@ -127,22 +126,33 @@ async function run() {
     const q = createQueries(db as D1Database);
     const map = await q.getAnnotationsMap("alice", "song", ids);
 
-    assert(calls.length === 3, "exactly 3 prepare() calls for 200 ids");
-    assert(calls[0].inCount === 80, "batch 1 has 80 ? placeholders");
-    assert(calls[1].inCount === 80, "batch 2 has 80 ? placeholders");
-    assert(calls[2].inCount === 40, "batch 3 has 40 ? placeholders");
+    assert(calls.length === 1, "exactly 1 prepare() call for 200 ids");
+    assert(calls[0].inCount === 1, "JSON ID expansion has one internal placeholder");
     assert(map.size === 200, "merged Map has all 200 entries");
     assert(map.get("song:song-0") !== undefined, "first id present");
     assert(map.get("song:song-199") !== undefined, "last id present");
     assert(
-      calls.every((c) => c.binds[0] === "alice" && c.binds[1] === "song"),
-      "fixed params user_id + item_type forwarded each batch",
+      calls[0].binds[0] === "alice" && calls[0].binds[1] === "song",
+      "user_id and item_type are forwarded",
     );
     // No batch should exceed the D1 cap with headroom (80 + 2 = 82).
     assert(
-      calls.every((c) => c.binds.length <= 82),
-      "no batch crosses D1 ~100 bind cap (≤ 82 with fixed params)",
+      calls[0].binds.length === 3,
+      "large ID lists use three SQL bind parameters",
     );
+  }
+
+  console.log("getAnnotationsMap (100 ids → one query):");
+  {
+    const ids = Array.from({ length: 100 }, (_, i) => `song-${i}`);
+    const { db, calls } = makeSpyDb((call) => ({
+      results: (JSON.parse(String(call.binds[2])) as string[]).map((id) => ({
+        user_id: "alice", item_type: "song", item_id: id,
+      })),
+    }));
+    const map = await createQueries(db as D1Database).getAnnotationsMap("alice", "song", ids);
+    assert(calls.length === 1 && calls[0].binds.length === 3, "100 IDs issue one query with three binds");
+    assert(map.size === 100, "all 100 annotations are mapped");
   }
 
   // ---------------------------------------------------------------------------
@@ -158,13 +168,13 @@ async function run() {
   }
 
   // ---------------------------------------------------------------------------
-  // getAnnotationsMap — duplicate ids deduped before chunking
+  // getAnnotationsMap — duplicate IDs retain unique map keys
   // ---------------------------------------------------------------------------
-  console.log("\ngetAnnotationsMap (dedup + small set → 1 batch):");
+  console.log("\ngetAnnotationsMap (dedup + small set):");
   {
     const ids = ["a", "b", "a", "c", "b"];
     const { db, calls } = makeSpyDb((call) => {
-      const annIds = call.binds.slice(2) as string[];
+      const annIds = JSON.parse(String(call.binds[2])) as string[];
       return {
         results: annIds.map((id) => ({
           user_id: "alice", item_type: "album", item_id: id,
@@ -174,8 +184,8 @@ async function run() {
     });
     const q = createQueries(db as D1Database);
     const map = await q.getAnnotationsMap("alice", "album", ids);
-    assert(calls.length === 1, "1 batch for ≤ 80 deduped ids");
-    assert(calls[0].inCount === 3, "3 unique ids → 3 placeholders");
+    assert(calls.length === 1, "one query for the ID set");
+    assert(JSON.stringify(JSON.parse(String(calls[0].binds[2]))) === JSON.stringify(["a", "b", "c"]), "duplicate IDs are removed before binding");
     assert(map.size === 3, "Map has 3 unique entries");
   }
 
@@ -339,15 +349,15 @@ async function run() {
   }
 
   // ---------------------------------------------------------------------------
-  // Sanity: exactly-80 boundary issues exactly 1 batch (no off-by-one)
+  // Sanity: large ID arrays always use one SQL statement
   // ---------------------------------------------------------------------------
-  console.log("\nexact-boundary sanity (80 ids → 1 batch, 81 ids → 2 batches):");
+  console.log("\nlarge-list sanity (80 and 81 IDs → one query each):");
   {
     const exact80 = Array.from({ length: 80 }, (_, i) => `e-${i}`);
     const exact81 = Array.from({ length: 81 }, (_, i) => `e-${i}`);
     {
       const { db, calls } = makeSpyDb((call) => ({
-        results: (call.binds.slice(2) as string[]).map((id) => ({
+        results: (JSON.parse(String(call.binds[2])) as string[]).map((id) => ({
           user_id: "u", item_type: "song", item_id: id,
           starred: 0, starred_at: null, rating: null, play_count: 0, play_date: null,
         })),
@@ -355,21 +365,20 @@ async function run() {
       const q = createQueries(db as D1Database);
       const m = await q.getAnnotationsMap("u", "song", exact80);
       assert(calls.length === 1, "exactly 80 ids = 1 batch");
-      assert(calls[0].inCount === 80, "1st batch has 80 placeholders");
+      assert(calls[0].binds.length === 3, "80 IDs use three bind parameters");
       assert(m.size === 80, "Map size 80");
     }
     {
       const { db, calls } = makeSpyDb((call) => ({
-        results: (call.binds.slice(2) as string[]).map((id) => ({
+        results: (JSON.parse(String(call.binds[2])) as string[]).map((id) => ({
           user_id: "u", item_type: "song", item_id: id,
           starred: 0, starred_at: null, rating: null, play_count: 0, play_date: null,
         })),
       }));
       const q = createQueries(db as D1Database);
       const m = await q.getAnnotationsMap("u", "song", exact81);
-      assert(calls.length === 2, "81 ids = 2 batches");
-      assert(calls[0].inCount === 80, "1st batch has 80 placeholders");
-      assert(calls[1].inCount === 1, "2nd batch has 1 placeholder");
+      assert(calls.length === 1, "81 IDs use one query");
+      assert(calls[0].binds.length === 3, "81 IDs use three bind parameters");
       assert(m.size === 81, "Map size 81");
     }
   }
