@@ -8,7 +8,7 @@ const base = process.env.UI_TEST_BASE || "http://127.0.0.1:5179";
 const output = new URL("../artifacts/library-interface/", import.meta.url);
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true, channel: "msedge", args: ["--mute-audio"] });
-const permissions = Object.fromEntries(["manage_credentials", "manage_settings", "manage_files", "manage_sources", "share", "participate_work"].map(key => [key, true]));
+const permissions = Object.fromEntries(["browse", "manage_credentials", "manage_settings", "manage_files", "manage_sources", "share", "participate_work", "maintenance_reclaim"].map(key => [key, true]));
 const xml = body => `<?xml version="1.0"?><subsonic-response status="ok" version="1.16.1">${body}</subsonic-response>`;
 const songs = Array.from({ length: 1121 }, (_, index) => ({ id: `song-${index + 1}`, title: `Track ${String(index + 1).padStart(4, "0")}${index % 5 === 0 ? " (Instrumental)" : ""}`, artist: "Test artist", album: "Test album", albumId: "album-1", artistId: "artist-1", duration: "180", created: "2026-10-01T00:00:00Z" }));
 const artists = Array.from({ length: 63 }, (_, index) => ({ id: `artist-${index + 1}`, name: `Artist ${index + 1}`, albumCount: "1" }));
@@ -41,8 +41,14 @@ let credentials = [];
 let clientPermission = true;
 let meDelay = 0;
 let songLimit = songs.length;
+let statsReady = true;
+let statsStale = false;
 let blockSongRequest = null;
 let releaseSongRequest = null;
+let blockedQuery = null;
+let failNextSongPage = false;
+let failNextSongPageQuery = "";
+let failedPageBody = "Temporary test failure";
 const credentialCalls = [];
 await context.route("**/*", async route => {
   const request = route.request();
@@ -56,7 +62,11 @@ await context.route("**/*", async route => {
     if (endpoint === "search3") {
       const query = (url.searchParams.get("query") || "").toLowerCase();
       const selected = songs.slice(0, songLimit).filter(song => !query || song.title.toLowerCase().includes(query));
-      if (!query && Number(url.searchParams.get("songOffset")) >= 200 && blockSongRequest) {
+      if (query === failNextSongPageQuery && Number(url.searchParams.get("songCount")) > 0 && Number(url.searchParams.get("songOffset")) > 0 && failNextSongPage) {
+        failNextSongPage = false;
+        return route.fulfill({ status: 503, contentType: "text/plain", body: failedPageBody });
+      }
+      if (blockSongRequest && ((!query && Number(url.searchParams.get("songOffset")) >= 200) || (query === blockedQuery && Number(url.searchParams.get("songOffset")) > 0))) {
         const blocked = blockSongRequest;
         blockSongRequest = null;
         await new Promise(resolve => { releaseSongRequest = resolve; blocked(); });
@@ -66,7 +76,7 @@ await context.route("**/*", async route => {
         const count = Math.min(500, Number(url.searchParams.get(`${tag}Count`) || 20));
         return items.slice(offset, offset + count).map(item => element(tag, item)).join("");
       };
-      return sendXml(`<searchResult3>${bucket(query ? [] : artists, "artist")}${bucket(query ? [] : albums, "album")}${bucket(selected, "song")}</searchResult3>`);
+      return sendXml(`<searchResult3>${bucket(artists.filter(artist => !query || artist.name.toLowerCase().includes(query)), "artist")}${bucket(albums.filter(album => !query || album.name.toLowerCase().includes(query)), "album")}${bucket(selected, "song")}</searchResult3>`);
     }
     if (endpoint === "getArtists") return sendXml(`<artists><index name="A">${artists.map(item => element("artist", item)).join("")}</index></artists>`);
     if (endpoint === "getAlbumList2") {
@@ -82,6 +92,7 @@ await context.route("**/*", async route => {
     return sendXml("");
   }
   if (path.startsWith("/edgesonic/")) {
+    if (path.endsWith("/stats/library")) return json({ ok: true, ready: statsReady, stale: statsStale, artists: artists.length, albums: albums.length, songs: songLimit, updatedAt: 1790812800 });
     if (path.endsWith("/auth/me")) {
       if (meDelay) await new Promise(resolve => setTimeout(resolve, meDelay));
       return json({ ok: true, username: "test-account", level: 3, permissions: { ...permissions, manage_credentials: clientPermission } });
@@ -133,6 +144,21 @@ async function changePage(direction, section = page.locator(".library-pagination
   await page.waitForFunction(element => element && !element.disabled, await control.elementHandle());
   await control.click();
 }
+async function chooseLoadMode(automatic) {
+  await page.getByRole("combobox", { name: "Loading", exact: true }).click();
+  await page.getByRole("option", { name: automatic ? "Automatic loading" : "Manual pages", exact: true }).click();
+}
+async function jumpToPage(value) {
+  const input = page.getByRole("spinbutton", { name: /Jump to page/ }).last();
+  await input.fill(String(value));
+  await input.press("Enter");
+}
+async function scrollToBottom() {
+  return page.locator(".main").evaluate(element => {
+    element.scrollTop = element.scrollHeight;
+    return element.scrollTop;
+  });
+}
 
 try {
   await page.goto(`${base}/#/library`);
@@ -160,9 +186,32 @@ try {
     await page.locator(".load-more").waitFor({ state: "hidden" });
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert.equal(await page.locator(".song-row").first().getAttribute("data-song-id"), "song-1", `${reset} reset survives a stale page response`);
-    assert.equal(await page.locator(".library-pagination .mono-label").last().textContent(), "Page 1");
+    assert.match(await page.locator(".library-pagination > .mono-label").last().textContent(), /^Page 1(?:\b|$)/);
   }
   songLimit = songs.length;
+  await page.reload();
+  await waitCount(".song-row", 50);
+  await page.getByText("Page 1 of 23", { exact: true }).waitFor();
+  await jumpToPage(23);
+  await waitCount(".song-row", 21);
+  assert.equal(await page.locator(".song-row").first().getAttribute("data-song-id"), "song-1101");
+  assert.ok(await page.getByRole("button", { name: "Next", exact: true }).isDisabled());
+  await jumpToPage(1);
+  await waitCount(".song-row", 50);
+  for (const value of ["", "9999"]) {
+    await jumpToPage(value);
+    assert.equal(await page.locator(".song-row").first().getAttribute("data-song-id"), "song-1", "invalid page jumps leave the current page intact");
+  }
+  for (const snapshot of [{ ready: true, stale: true }, { ready: false, stale: false }]) {
+    statsReady = snapshot.ready;
+    statsStale = snapshot.stale;
+    await page.reload();
+    await waitCount(".song-row", 50);
+    await page.getByText("Page 1 · at least 2 pages", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("spinbutton", { name: /Jump to page/ }).count(), 0, "unknown totals do not expose an exact page limit");
+  }
+  statsReady = true;
+  statsStale = false;
   await page.reload();
   await waitCount(".song-row", 50);
   await choosePageSize(20);
@@ -227,6 +276,95 @@ try {
   }
   assert.equal(new Set(albumNames).size, 119, "album display groups are emitted once across page boundaries");
   assert.ok(await page.getByRole("button", { name: "Next", exact: true }).isDisabled());
+  await page.getByText("Page 6 of 6", { exact: true }).waitFor();
+  await page.reload();
+  await waitCount(".song-row", 50);
+  await choosePageSize(20);
+  await waitCount(".song-row", 20);
+  await chooseLoadMode(true);
+  failNextSongPage = true;
+  await scrollToBottom();
+  await waitCount(".song-row", 40);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await scrollToBottom();
+  await page.getByRole("button", { name: /^retry$/i }).waitFor({ timeout: 10000 }).catch(async error => {
+    console.error("Automatic failure state", { rows: await page.locator(".song-row").count(), failNextSongPage, calls: calls.filter(call => call.endpoint === "search3").slice(-5), state: await page.locator(".main").evaluate(element => ({ top: element.scrollTop, height: element.scrollHeight, clientHeight: element.clientHeight, text: element.innerText.slice(-600) })) });
+    throw error;
+  });
+  assert.equal(await page.locator(".song-row").count(), 40, "failed automatic page retains the existing results");
+  await page.getByRole("button", { name: /^retry$/i }).click();
+  await waitCount(".song-row", 60);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  failedPageBody = "";
+  failNextSongPage = true;
+  await scrollToBottom();
+  await page.getByRole("button", { name: /^retry$/i }).waitFor();
+  assert.equal(await page.locator(".song-row").count(), 60, "an empty failed response does not become an empty last page");
+  await page.getByRole("button", { name: /^retry$/i }).click();
+  await waitCount(".song-row", 80);
+  failedPageBody = "Temporary test failure";
+  await chooseLoadMode(false);
+  await jumpToPage(1);
+  await waitCount(".song-row", 20);
+  await page.reload();
+  await waitCount(".song-row", 50);
+  await choosePageSize(20);
+  await waitCount(".song-row", 20);
+  await chooseLoadMode(true);
+  const scrolledBeforeAppend = await scrollToBottom();
+  await waitCount(".song-row", 40);
+  assert.ok(await page.locator(".main").evaluate(element => element.scrollTop) >= scrolledBeforeAppend - 2, "automatic loading preserves the scrolled position");
+  const appendedIds = await page.locator(".song-row").evaluateAll(rows => rows.map(row => row.dataset.songId));
+  assert.equal(new Set(appendedIds).size, 40);
+  assert.equal(appendedIds[0], "song-1");
+  assert.equal(appendedIds[20], "song-21");
+  const appendedTitle = await page.locator(".song-row .song-title").nth(25).textContent();
+  await page.locator(".song-row .song-title").nth(25).click();
+  await page.waitForFunction(title => document.querySelector(".pb-title")?.textContent === title, appendedTitle);
+  await page.reload();
+  await waitCount(".song-row", 50);
+  assert.ok((await page.getByRole("combobox", { name: "Loading", exact: true }).textContent()).includes("Automatic loading"), "loading preference survives reload");
+  await choosePageSize(20);
+  await waitCount(".song-row", 20);
+  blockedQuery = "track";
+  await page.locator("#library-search").fill("Track");
+  await waitCount(".search-results .song-row", 20);
+  failNextSongPageQuery = "track";
+  failNextSongPage = true;
+  await scrollToBottom();
+  await page.getByRole("button", { name: /^retry$/i }).waitFor();
+  assert.equal(await page.locator(".search-results .song-row").count(), 20, "failed search continuation retains the current results");
+  await page.getByRole("button", { name: /^retry$/i }).click();
+  await waitCount(".search-results .song-row", 40);
+  await page.reload();
+  await waitCount(".song-row", 50);
+  await choosePageSize(20);
+  await waitCount(".song-row", 20);
+  const pendingSearch = new Promise((resolve, reject) => {
+    const deadline = setTimeout(() => reject(new Error("Delayed search page was not reached")), 30000);
+    blockSongRequest = () => { clearTimeout(deadline); resolve(); };
+  });
+  await page.locator("#library-search").fill("Track");
+  await waitCount(".search-results .song-row", 20);
+  const searchScroll = await scrollToBottom();
+  await pendingSearch;
+  assert.equal(await page.locator(".search-results .song-row").count(), 20, "pending search page keeps previous results mounted");
+  assert.ok(await page.locator(".main").evaluate(element => element.scrollTop) >= searchScroll - 2, "pending search page preserves the scroll anchor");
+  releaseSongRequest();
+  blockedQuery = null;
+  await waitCount(".search-results .song-row", 40);
+  assert.equal(await page.locator(".search-results .song-row .song-title").first().textContent(), songs[0].title);
+  await chooseLoadMode(false);
+  await waitCount(".search-results .song-row", 20);
+  await page.locator("#library-search").fill("Artist");
+  await waitCount(".search-results .artist-card", 20);
+  await chooseLoadMode(true);
+  await scrollToBottom();
+  await waitCount(".search-results .artist-card", 40);
+  assert.equal(new Set(await page.locator(".search-results .artist-name").allTextContents()).size, 40, "artist search appends each result once");
+  await chooseLoadMode(false);
+  await page.locator("#library-search").fill("");
+  await page.locator(".search-results").waitFor({ state: "hidden" });
   await page.goto(`${base}/#/starred`);
   await waitCount(".song-row", 50);
   await choosePageSize(20);
@@ -261,11 +399,25 @@ try {
   await page.goto(`${base}/#/subsonic-clients`);
   await page.locator(".connection-detail").first().waitFor();
   assert.equal(await page.locator(".connection-detail code").first().textContent(), base);
-  assert.equal(await page.locator(".setup-steps li").count(), 4);
-  assert.equal(await page.getByRole("link", { name: "Subsonic Clients", exact: true }).count(), 1);
+  assert.equal(await page.locator(".setup-steps").count(), 0);
+  assert.equal(await page.getByRole("link", { name: "Clients", exact: true }).count(), 1);
+  assert.equal(await page.getByRole("button", { name: "Create client password", exact: true }).count(), 1);
+  assert.ok(!(await page.locator(".clients-page").textContent()).includes("file management"));
+  const recommendations = page.locator(".recommended-clients");
+  assert.equal(await recommendations.getAttribute("open"), null);
+  assert.ok(await recommendations.locator("a").first().isHidden());
+  await recommendations.locator("summary").focus();
+  await page.keyboard.press("Enter");
+  await recommendations.locator("a").first().waitFor({ state: "visible" });
+  assert.deepEqual(await recommendations.locator("a").evaluateAll(links => links.map(link => link.href)), [
+    "https://music.aqzscn.cn/docs/intro/", "https://www.symfonium.app/", "https://ultrasonic.gitlab.io/", "https://github.com/supersonic-app/supersonic",
+  ]);
+  assert.ok(await recommendations.locator("a").evaluateAll(links => links.every(link => link.target === "_blank" && link.rel.includes("noopener"))));
+  await page.keyboard.press("Enter");
+  assert.equal(await recommendations.getAttribute("open"), null);
   await snapshot("clients-desktop");
   await page.locator(".cred-label-field input").fill("Music app");
-  await page.getByRole("button", { name: "Issue credential", exact: true }).click();
+  await page.getByRole("button", { name: "Create client password", exact: true }).click();
   await page.locator(".issued-password-row code").waitFor();
   assert.equal((await page.locator(".issued-password-row code").textContent()).length, 20);
   await waitCount(".credential-card", 1);
@@ -287,9 +439,48 @@ try {
     await page.goto(`${base}/#/${route}`);
     await page.waitForFunction(title => document.querySelector(".page-title")?.textContent.trim() === title, route === "settings" ? "Settings" : "Tools");
     await page.locator(".settings-section").first().waitFor();
-    if (route === "tools") {
-      await page.locator(".tools .section-header").first().click();
-      await page.locator(".tools .section-body").first().waitFor({ state: "visible" });
+    const headers = page.locator(".section-header");
+    for (const header of await headers.all()) {
+      const panelId = await header.getAttribute("aria-controls");
+      assert.ok(panelId, "expander header names its controlled panel");
+      assert.equal(await page.locator(`[id="${panelId}"]`).count(), 1);
+      assert.ok(["true", "false"].includes(await header.getAttribute("aria-expanded")));
+      assert.ok(await header.locator(".section-icon svg").evaluate(element => {
+        const bounds = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return bounds.width >= 18 && bounds.height >= 18 && style.padding === "0px";
+      }), "category icon remains legible inside its wrapper");
+    }
+    const keyboardHeader = headers.first();
+    const wasExpanded = await keyboardHeader.getAttribute("aria-expanded");
+    await keyboardHeader.focus();
+    await page.keyboard.press("Space");
+    assert.equal(await keyboardHeader.getAttribute("aria-expanded"), wasExpanded === "true" ? "false" : "true");
+    await page.keyboard.press("Enter");
+    assert.equal(await keyboardHeader.getAttribute("aria-expanded"), wasExpanded);
+    if (route === "settings") {
+      const systemHeader = page.locator('[aria-controls="settings-panel-system"]');
+      await systemHeader.click();
+      const nestedHeaders = page.locator(".sub-section-header");
+      assert.equal(await nestedHeaders.count(), 6);
+      for (const header of await nestedHeaders.all()) {
+        assert.equal(await header.getAttribute("aria-expanded"), "false");
+        const panelId = await header.getAttribute("aria-controls");
+        assert.ok(panelId);
+        assert.equal(await page.locator(`[id="${panelId}"]`).count(), 1);
+      }
+      await nestedHeaders.first().focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await nestedHeaders.first().getAttribute("aria-expanded"), "true");
+      assert.equal(await systemHeader.getAttribute("aria-expanded"), "true");
+      const nestedPanelId = await nestedHeaders.first().getAttribute("aria-controls");
+      assert.ok(await page.locator(`[id="${nestedPanelId}"]`).isVisible());
+      await noHorizontalOverflow();
+      await snapshot("settings-nested-mobile");
+      await page.keyboard.press("Enter");
+    } else {
+      await page.locator('.tools [aria-controls="tools-panel-migrate"]').click();
+      await page.locator("#tools-panel-migrate").waitFor({ state: "visible" });
     }
     await noHorizontalOverflow();
     assert.equal(await page.locator("#subsonic-clients").count(), 0);
