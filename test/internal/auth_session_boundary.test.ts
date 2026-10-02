@@ -52,7 +52,7 @@ function assert(cond: unknown, msg: string) {
 declare global { type D1Database = unknown; type Env = unknown; }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeD1(sqlite: DatabaseSync): any {
+function makeD1(sqlite: DatabaseSync, runStatements: string[] = []): any {
   function prepare(query: string) {
     const stmt = sqlite.prepare(query);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -69,6 +69,7 @@ function makeD1(sqlite: DatabaseSync): any {
         return { results: stmt.all(...boundArgs) as T[], success: true, meta: {} };
       },
       async run() {
+        runStatements.push(query);
         const info = stmt.run(...boundArgs);
         return { success: true, meta: { changes: Number(info.changes ?? 0) } };
       },
@@ -110,7 +111,7 @@ function insertSession(sqlite: DatabaseSync, token: string, expiresAt: number) {
   ).run(`sess-${token}`, token, expiresAt, Math.floor(Date.now() / 1000));
 }
 
-function makeApp(sqlite: DatabaseSync) {
+function makeApp(sqlite: DatabaseSync, runStatements: string[] = []) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const app = new Hono<{ Bindings: any; Variables: any }>();
   // Mirrors worker/src/index.ts's real mounting exactly (same four prefixes).
@@ -123,7 +124,7 @@ function makeApp(sqlite: DatabaseSync) {
   app.get("/tag/whoami", ok);
   app.get("/storage/whoami", ok);
   app.get("/edgesonic/whoami", ok);
-  const env = { DB: makeD1(sqlite) };
+  const env = { DB: makeD1(sqlite, runStatements) };
   return {
     async get(path: string, qs: string, cookie?: string) {
       const headers: Record<string, string> = {};
@@ -132,6 +133,28 @@ function makeApp(sqlite: DatabaseSync) {
       return app.fetch(new Request(`http://test${path}?${qs}`, { headers }), env as any);
     },
   };
+}
+
+async function verifyLastUsedThrottle(label: string, validQuery: string, invalidQuery: string) {
+  const sqlite = buildDb();
+  sqlite.prepare("UPDATE subsonic_credentials SET last_used = NULL WHERE id = 'client-alice'").run();
+  const runStatements: string[] = [];
+  const { get } = makeApp(sqlite, runStatements);
+  const writes = () => runStatements.filter((sql) => /UPDATE\s+subsonic_credentials\s+SET\s+last_used/i.test(sql));
+
+  assert((await get("/rest/ping", validQuery)).status === 200, `${label}: first successful auth is accepted`);
+  assert(writes().length === 1, `${label}: first auth records last_used`);
+  assert((await get("/rest/ping", validQuery)).status === 200, `${label}: hot request is accepted`);
+  assert(writes().length === 1, `${label}: request within 60 seconds skips the write`);
+
+  sqlite.prepare("UPDATE subsonic_credentials SET last_used = ? WHERE id = 'client-alice'")
+    .run(Math.floor(Date.now() / 1000) - 61);
+  assert((await get("/rest/ping", validQuery)).status === 200, `${label}: stale credential remains accepted`);
+  assert(writes().length === 2, `${label}: stale marker is refreshed`);
+  assert(/last_used\s+IS\s+NULL\s+OR\s+last_used\s*</i.test(writes()[1]), `${label}: refresh has a concurrency guard`);
+
+  assert((await get("/rest/ping", invalidQuery)).status === 401, `${label}: failed auth is rejected`);
+  assert(writes().length === 2, `${label}: failed auth does not update last_used`);
 }
 
 async function main() {
@@ -163,6 +186,13 @@ async function main() {
       assert(r.status === 403, `${p} 403 (got ${r.status})`);
     }
   }
+
+  console.log("\nSubsonic credential last_used writes are throttled:");
+  const saltForThrottle = "throttle-salt";
+  const validTokenQuery = `u=alice&t=${md5(`clientpw${saltForThrottle}`)}&s=${saltForThrottle}`;
+  const invalidTokenQuery = `u=alice&t=invalid&s=${saltForThrottle}`;
+  await verifyLastUsedThrottle("token/salt", validTokenQuery, invalidTokenQuery);
+  await verifyLastUsedThrottle("password", "u=alice&p=clientpw", "u=alice&p=invalid");
 
   console.log("\nsession (web login token as t+s) → 401 everywhere: session tokens are cookie-only, not Subsonic credentials:");
   {

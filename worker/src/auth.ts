@@ -22,7 +22,7 @@ import { md5 } from "./utils/md5";
 import { getServerRelayPolicy, parseChain } from "./utils/features";
 import { hasPermission } from "./utils/permissions";
 import { resolveActivation, clampExpiryToActivation, clampTtlToActivation, isGuestAccessEnabled, type ActivationState } from "./utils/activation";
-import { ensureActivationSchema, ensureSubsonicMasterPasswordNoticeColumn } from "./utils/schema_patch";
+import { ensureSubsonicMasterPasswordNoticeColumn } from "./utils/schema_patch";
 import { resolveSsoPolicy } from "./utils/ssoPolicy";
 import { SERVER_TYPE, SERVER_VERSION } from "./utils/xml";
 import type { User } from "./types/entities";
@@ -294,20 +294,23 @@ export async function verifyWebPassword(password: string, stored: string): Promi
 // or salt in any form. Sessions must use HTTP-only cookie authentication.
 // expires_at carries the activation horizon a credential was issued under
 // (NULL = unbounded); a lapsed one stops matching until the account is
-// re-activated, which re-stamps it. A deployment upgrading from a schema
-// without the column self-heals on the first call rather than failing auth.
+// re-activated, which re-stamps it.
 async function liveCredentials(
   db: D1Database,
   username: string,
-): Promise<{ results: Array<{ id: string; password: string; stream_proxy_strategy: string | null }> }> {
-  const sql = "SELECT id, password, stream_proxy_strategy FROM subsonic_credentials WHERE username = ? AND (expires_at IS NULL OR expires_at > unixepoch())";
-  try {
-    return await db.prepare(sql).bind(username).all<{ id: string; password: string; stream_proxy_strategy: string | null }>();
-  } catch (e) {
-    if (!/no such column/i.test(e instanceof Error ? e.message : String(e))) throw e;
-    await ensureActivationSchema({ DB: db });
-    return await db.prepare(sql).bind(username).all<{ id: string; password: string; stream_proxy_strategy: string | null }>();
-  }
+): Promise<{ results: Array<{ id: string; password: string; stream_proxy_strategy: string | null; last_used: number | null }> }> {
+  return await db.prepare(
+    "SELECT id, password, stream_proxy_strategy, last_used FROM subsonic_credentials WHERE username = ? AND (expires_at IS NULL OR expires_at > unixepoch())",
+  ).bind(username).all<{ id: string; password: string; stream_proxy_strategy: string | null; last_used: number | null }>();
+}
+
+async function markCredentialUsed(db: D1Database, username: string, password: string, lastUsed: number | null): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+  const cutoff = now - 60;
+  if (lastUsed !== null && lastUsed >= cutoff) return;
+  await db.prepare(
+    "UPDATE subsonic_credentials SET last_used = ? WHERE username = ? AND password = ? AND (last_used IS NULL OR last_used < ?)",
+  ).bind(now, username, password, cutoff).run();
 }
 
 async function findSubsonicCredential(
@@ -320,11 +323,7 @@ async function findSubsonicCredential(
 
   for (const cred of creds.results) {
     if (md5(cred.password + salt) === token) {
-      // Update last_used
-      await db
-        .prepare("UPDATE subsonic_credentials SET last_used = ? WHERE username = ? AND password = ?")
-        .bind(Math.floor(Date.now() / 1000), username, cred.password)
-        .run();
+      await markCredentialUsed(db, username, cred.password, cred.last_used);
       const strat = cred.stream_proxy_strategy;
       const strategy = (strat === "always" || strat === "never" || strat === "r2_only" || strat === "webdav_only")
         ? strat
@@ -374,10 +373,7 @@ async function findSubsonicCredentialByPassword(
   const creds = await liveCredentials(db, username);
   for (const cred of creds.results) {
     if (cred.password === password) {
-      await db
-        .prepare("UPDATE subsonic_credentials SET last_used = ? WHERE username = ? AND password = ?")
-        .bind(Math.floor(Date.now() / 1000), username, cred.password)
-        .run();
+      await markCredentialUsed(db, username, cred.password, cred.last_used);
       const strat = cred.stream_proxy_strategy;
       const strategy = (strat === "always" || strat === "never" || strat === "r2_only" || strat === "webdav_only")
         ? strat
