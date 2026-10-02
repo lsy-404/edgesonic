@@ -17,6 +17,7 @@ import { md5 } from "./md5";
 import {
   compilationMarkerStatement,
   normalizeScannedAlbumName,
+  needsScannedSourceAlbumRecovery,
   recoverScannedAlbumName,
   retainCompilationAlbum,
   retainScannedVariousArtistsAlbum,
@@ -120,7 +121,7 @@ export async function applyMetadataResult(
     if (options.scanIdentity && tags.album && currentAlbum?.name) {
       tags.album = normalizeScannedAlbumName(tags.album, currentAlbum.name);
     }
-    if (options.scanIdentity && currentAlbum?.name) {
+    if (options.scanIdentity && currentAlbum?.name && needsScannedSourceAlbumRecovery(currentAlbum.name)) {
       const sourceAlbumName = await sourceFolderAlbumName(db, instanceId);
       tags.album = recoverScannedAlbumName(tags.album ?? currentAlbum.name, currentAlbum.name, sourceAlbumName);
     }

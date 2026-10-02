@@ -237,6 +237,13 @@ async function main() {
   const usableAlbumRow = usableAlbumDb.prepare("SELECT al.name FROM song_masters sm JOIN albums al ON al.id=sm.album_id WHERE sm.id='sg-a'").get() as { name: string };
   assert(usableAlbumRow.name === "Another Real Album", "metadata scan preserves a real incoming album title");
   usableAlbumDb.close();
+  const existingFolderAlbumDb = buildDb();
+  existingFolderAlbumDb.exec("UPDATE albums SET name='梦境电台' WHERE id='al-old'; INSERT INTO albums(id,name,sort_name) VALUES ('al-unknown','Unknown Album','unknown album'); UPDATE song_masters SET album_id='al-unknown' WHERE id='sg-a';");
+  existingFolderAlbumDb.exec("INSERT INTO storage_entries(id,source_id,parent_id,path,kind,instance_id) VALUES ('entry-a','r2-local','album-parent','梦境电台/wav/01 Track.mp3','file','inst-a'),('entry-b','r2-local','album-parent','梦境电台/wav/02 Track.mp3','file','inst-b');");
+  await applyMetadataResult(d1(existingFolderAlbumDb), "inst-a", { album: "Unknown Album" }, {}, { scanIdentity: true });
+  const existingFolderAlbumRow = existingFolderAlbumDb.prepare("SELECT album_id FROM song_masters WHERE id='sg-a'").get() as { album_id: string };
+  assert(existingFolderAlbumRow.album_id === "al-old", "source recovery reuses the sole correct album already represented in the same folder");
+  existingFolderAlbumDb.close();
 
   const vaApplyDb = buildDb();
   const vaId = `ar-${md5("Various Artists").substring(0, 10)}`;

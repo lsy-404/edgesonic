@@ -22,6 +22,7 @@ import { recoverMetadataFromStoragePath, sourceFolderAlbumName, sourceFolderLogi
 import {
   compilationMarkerStatement,
   normalizeScannedAlbumName,
+  needsScannedSourceAlbumRecovery,
   recoverScannedAlbumName,
   retainCompilationAlbum,
   retainScannedAlbumIdentity,
@@ -92,7 +93,7 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           databaseAttempted = true;
           tags.album = await sourceFolderAlbumName(db, row.id) ?? undefined;
         }
-        if (tags && row.current_album_name) {
+        if (tags && row.current_album_name && needsScannedSourceAlbumRecovery(row.current_album_name)) {
           const sourceAlbumName = await sourceFolderAlbumName(db, row.id);
           tags.album = recoverScannedAlbumName(
             tags.album ?? row.current_album_name,
