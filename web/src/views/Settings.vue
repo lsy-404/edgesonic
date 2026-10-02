@@ -1575,12 +1575,12 @@ onMounted(() => {
 
     <!-- ============ USER ============ -->
     <section class="settings-section card" :class="{ open: open.user }">
-      <button class="section-header" @click="toggleSection('user')">
-        <span class="section-title">{{ t("settings.user.title") }}</span>
-        <span class="section-caret">{{ open.user ? "−" : "+" }}</span>
+      <button type="button" class="section-header" :aria-expanded="open.user" aria-controls="settings-panel-user" @click="toggleSection('user')">
+        <span class="section-heading"><Icon name="users" class="section-icon" /><span class="section-title">{{ t("settings.user.title") }}</span></span>
+        <Icon name="chevronDown" class="section-caret" />
       </button>
 
-      <div v-show="open.user" class="section-body">
+      <div id="settings-panel-user" v-show="open.user" class="section-body">
         <!-- Self-service account (avatar / nickname / password), non-guest -->
         <div v-if="!isGuest" class="sub-block">
           <div class="sub-header"><span class="mono-label">{{ t("settings.account.title") }}</span></div>
@@ -1827,12 +1827,12 @@ onMounted(() => {
 
     <!-- ============ ACTIVATION ============ -->
     <section v-if="showActivationSection" class="settings-section card" :class="{ open: open.activation }">
-      <button class="section-header" @click="toggleSection('activation')">
-        <span class="section-title">{{ t("settings.activation.title") }}</span>
-        <span class="section-caret">{{ open.activation ? "−" : "+" }}</span>
+      <button type="button" class="section-header" :aria-expanded="open.activation" aria-controls="settings-panel-activation" @click="toggleSection('activation')">
+        <span class="section-heading"><Icon name="info" class="section-icon" /><span class="section-title">{{ t("settings.activation.title") }}</span></span>
+        <Icon name="chevronDown" class="section-caret" />
       </button>
 
-      <div v-show="open.activation" class="section-body">
+      <div id="settings-panel-activation" v-show="open.activation" class="section-body">
         <div class="sub-block">
           <div class="sub-header"><span class="mono-label">{{ t("settings.activation.current") }}</span></div>
           <div class="act-status-row">
@@ -1868,14 +1868,12 @@ onMounted(() => {
 
     <!-- ============ AUDIO CACHE ============ -->
     <section class="settings-section card" :class="{ open: open.audioCache }">
-      <button class="section-header" @click="toggleSection('audioCache')">
-        <span class="section-title">{{ t("settings.audioCache.title") }}</span>
-        <span class="section-caret">{{ open.audioCache ? "−" : "+" }}</span>
+      <button type="button" class="section-header" :aria-expanded="open.audioCache" aria-controls="settings-panel-audio-cache" @click="toggleSection('audioCache')">
+        <span class="section-heading"><Icon name="headphones" class="section-icon" /><span class="section-meta"><span class="section-title">{{ t("settings.audioCache.title") }}</span><span class="section-summary">{{ t("settings.audioCache.desc") }}</span></span></span>
+        <Icon name="chevronDown" class="section-caret" />
       </button>
 
-      <div v-show="open.audioCache" class="section-body">
-        <p class="feature-desc section-desc">{{ t("settings.audioCache.desc") }}</p>
-
+      <div id="settings-panel-audio-cache" v-show="open.audioCache" class="section-body">
         <div v-if="cacheStats" class="cache-usage">
           <span class="mono-label">
             {{ t("settings.audioCache.usage", { count: cacheStats.count, size: formatSize(cacheStats.bytes), max: formatSize(cacheCapMb * 1024 * 1024) }) }}
@@ -1902,12 +1900,12 @@ onMounted(() => {
 
     <!-- ============ SYSTEM (advanced — gated on manage_settings) ============ -->
     <section v-if="canManageSettings" class="settings-section card" :class="{ open: open.system }">
-      <button class="section-header" @click="toggleSection('system')">
-        <span class="section-title">{{ t("settings.system.title") }}</span>
-        <span class="section-caret">{{ open.system ? "−" : "+" }}</span>
+      <button type="button" class="section-header" :aria-expanded="open.system" aria-controls="settings-panel-system" @click="toggleSection('system')">
+        <span class="section-heading"><Icon name="settings" class="section-icon" /><span class="section-title">{{ t("settings.system.title") }}</span></span>
+        <Icon name="chevronDown" class="section-caret" />
       </button>
 
-      <div v-show="open.system" class="section-body">
+      <div id="settings-panel-system" v-show="open.system" class="section-body">
         <!-- Instance ID -->
         <div class="sub-block">
           <div class="sub-header">
@@ -1923,11 +1921,11 @@ onMounted(() => {
         </div>
 
         <div class="sub-section" :class="{ open: subOpen.media }">
-          <button class="sub-section-header" @click="toggleSubSection('media')">
+          <button type="button" class="sub-section-header" :aria-expanded="subOpen.media" aria-controls="settings-panel-sub-media" @click="toggleSubSection('media')">
             <span class="sub-section-title">{{ t("settings.system.subMedia") }}</span>
-            <span class="sub-section-caret">{{ subOpen.media ? '−' : '+' }}</span>
+            <Icon name="chevronDown" class="sub-section-caret" />
           </button>
-          <div v-show="subOpen.media" class="sub-section-body">
+          <div id="settings-panel-sub-media" v-show="subOpen.media" class="sub-section-body">
 
         <div class="sub-block">
           <div class="sub-header">
@@ -2083,11 +2081,11 @@ onMounted(() => {
         </div>
 
         <div class="sub-section" :class="{ open: subOpen.integrations }">
-          <button class="sub-section-header" @click="toggleSubSection('integrations')">
+          <button type="button" class="sub-section-header" :aria-expanded="subOpen.integrations" aria-controls="settings-panel-sub-integrations" @click="toggleSubSection('integrations')">
             <span class="sub-section-title">{{ t("settings.system.subIntegrations") }}</span>
-            <span class="sub-section-caret">{{ subOpen.integrations ? '−' : '+' }}</span>
+            <Icon name="chevronDown" class="sub-section-caret" />
           </button>
-          <div v-show="subOpen.integrations" class="sub-section-body">
+          <div id="settings-panel-sub-integrations" v-show="subOpen.integrations" class="sub-section-body">
 
         <div class="sub-block">
           <div class="sub-header">
@@ -2359,11 +2357,11 @@ onMounted(() => {
          </div>
 
         <div class="sub-section" :class="{ open: subOpen.lastfm }">
-          <button class="sub-section-header" @click="toggleSubSection('lastfm')">
+          <button type="button" class="sub-section-header" :aria-expanded="subOpen.lastfm" aria-controls="settings-panel-sub-lastfm" @click="toggleSubSection('lastfm')">
             <span class="sub-section-title">{{ t("settings.system.subLastfm") }}</span>
-            <span class="sub-section-caret">{{ subOpen.lastfm ? '−' : '+' }}</span>
+            <Icon name="chevronDown" class="sub-section-caret" />
           </button>
-          <div v-show="subOpen.lastfm" class="sub-section-body">
+          <div id="settings-panel-sub-lastfm" v-show="subOpen.lastfm" class="sub-section-body">
 
         <div v-if="canManageSettings" class="sub-block">
           <div class="sub-header">
@@ -2487,11 +2485,11 @@ onMounted(() => {
         </div>
 
         <div class="sub-section" :class="{ open: subOpen.email }">
-          <button class="sub-section-header" @click="toggleSubSection('email')">
+          <button type="button" class="sub-section-header" :aria-expanded="subOpen.email" aria-controls="settings-panel-sub-email" @click="toggleSubSection('email')">
             <span class="sub-section-title">{{ t("settings.system.subEmail") }}</span>
-            <span class="sub-section-caret">{{ subOpen.email ? '−' : '+' }}</span>
+            <Icon name="chevronDown" class="sub-section-caret" />
           </button>
-          <div v-show="subOpen.email" class="sub-section-body">
+          <div id="settings-panel-sub-email" v-show="subOpen.email" class="sub-section-body">
 
         <div class="sub-block">
           <div class="sub-header">
@@ -2657,11 +2655,11 @@ onMounted(() => {
         </div>
 
         <div class="sub-section" :class="{ open: subOpen.workers }">
-           <button class="sub-section-header" @click="toggleSubSection('workers')">
+           <button type="button" class="sub-section-header" :aria-expanded="subOpen.workers" aria-controls="settings-panel-sub-workers" @click="toggleSubSection('workers')">
             <span class="sub-section-title">{{ t("settings.system.subWorkers") }}</span>
-            <span class="sub-section-caret">{{ subOpen.workers ? '−' : '+' }}</span>
+            <Icon name="chevronDown" class="sub-section-caret" />
           </button>
-          <div v-show="subOpen.workers" class="sub-section-body">
+          <div id="settings-panel-sub-workers" v-show="subOpen.workers" class="sub-section-body">
 
         <div class="sub-block">
           <div class="sub-header">
@@ -2875,11 +2873,11 @@ onMounted(() => {
         </div>
 
         <div class="sub-section" :class="{ open: subOpen.featureFlags }">
-          <button class="sub-section-header" @click="toggleSubSection('featureFlags')">
+          <button type="button" class="sub-section-header" :aria-expanded="subOpen.featureFlags" aria-controls="settings-panel-sub-feature-flags" @click="toggleSubSection('featureFlags')">
             <span class="sub-section-title">{{ t("settings.system.subFeatureFlags") }}</span>
-            <span class="sub-section-caret">{{ subOpen.featureFlags ? '−' : '+' }}</span>
+            <Icon name="chevronDown" class="sub-section-caret" />
           </button>
-          <div v-show="subOpen.featureFlags" class="sub-section-body">
+          <div id="settings-panel-sub-feature-flags" v-show="subOpen.featureFlags" class="sub-section-body">
 
         <!-- Feature flags -->
         <div class="sub-block">
@@ -2964,14 +2962,12 @@ onMounted(() => {
 
     <!-- ============ SESSIONS ============ -->
     <section class="settings-section card" :class="{ open: open.sessions }">
-      <button class="section-header" @click="toggleSection('sessions')">
-        <span class="section-title">{{ t("settings.sessions.title") }}</span>
-        <span class="section-caret">{{ open.sessions ? "−" : "+" }}</span>
+      <button type="button" class="section-header" :aria-expanded="open.sessions" aria-controls="settings-panel-sessions" @click="toggleSection('sessions')">
+        <span class="section-heading"><Icon name="clock" class="section-icon" /><span class="section-meta"><span class="section-title">{{ t("settings.sessions.title") }}</span><span class="section-summary">{{ t("settings.sessions.desc") }}</span></span></span>
+        <Icon name="chevronDown" class="section-caret" />
       </button>
 
-      <div v-show="open.sessions" class="section-body">
-        <p class="feature-desc section-desc">{{ t("settings.sessions.desc") }}</p>
-
+      <div id="settings-panel-sessions" v-show="open.sessions" class="section-body">
         <div v-if="sessionsLoading" class="empty-state">{{ t("common.loading") }}</div>
 
         <div v-else-if="sessionsError" class="error-panel">
@@ -3011,15 +3007,15 @@ onMounted(() => {
 
     <!-- ============ PERMISSIONS ============ -->
     <section v-if="isSuperAdmin" class="settings-section card" :class="{ open: open.permissions }">
-      <button class="section-header" @click="toggleSection('permissions')">
-        <span class="section-title">{{ t("settings.permissions.title") }}</span>
+      <button type="button" class="section-header" :aria-expanded="open.permissions" aria-controls="settings-panel-permissions" @click="toggleSection('permissions')">
+        <span class="section-heading"><Icon name="lock" class="section-icon" /><span class="section-title">{{ t("settings.permissions.title") }}</span></span>
         <span class="section-side">
           <span class="status-badge warning">{{ t("settings.permissions.superOnly") }}</span>
-          <span class="section-caret">{{ open.permissions ? "−" : "+" }}</span>
+          <Icon name="chevronDown" class="section-caret" />
         </span>
       </button>
 
-      <div v-show="open.permissions" class="section-body">
+      <div id="settings-panel-permissions" v-show="open.permissions" class="section-body">
         <PermissionsMatrix />
       </div>
 
@@ -3039,30 +3035,35 @@ onMounted(() => {
 .settings-section { padding: 0; margin-bottom: 1.1rem; overflow: hidden; }
 .section-header {
   width: 100%;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.95rem 1.2rem;
-  background: var(--color-bg-primary);
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.9rem 1rem;
+  background: var(--card-bg-secondary);
+  border: 0;
   color: var(--color-text-primary);
+  text-align: left;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 .section-header:hover { background: var(--color-bg-tertiary); }
-.settings-section.open .section-header { border-bottom: 1px solid var(--color-border-subtle); }
+.section-header:focus-visible, .sub-section-header:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: -3px; }
+.section-heading { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.section-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; min-width: 0; }
+.section-icon { display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0.45rem; border-radius: 6px; color: var(--color-accent-primary); background: var(--color-accent-dim); }
 .section-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-body, system-ui, sans-serif);
   font-size: var(--fs-md);
   font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
+.section-summary { color: var(--color-text-secondary); font-size: var(--fs-sm); font-weight: 400; line-height: 1.4; }
 .section-caret {
-  font-family: var(--font-mono);
-  font-size: 1.1rem;
+  width: 1.25rem;
   color: var(--color-accent-primary);
-  width: 20px; text-align: center;
+  transition: transform 0.18s ease;
 }
+.settings-section.open > .section-header .section-caret { transform: rotate(180deg); }
 .section-side { display: flex; align-items: center; gap: 0.7rem; }
-.section-body { padding: 1.1rem 1.2rem 1.3rem; }
+.section-body { padding: 1rem 1.1rem 1.2rem; background: var(--color-bg-primary); border-top: 1px solid var(--color-border-subtle); }
 .section-desc { margin-bottom: 0.8rem; }
 
 /* --- Sub blocks inside Common --- */
@@ -3080,15 +3081,15 @@ onMounted(() => {
 .sub-section-header {
   width: 100%;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0.7rem 0.9rem;
-  background: var(--color-bg-secondary);
+  gap: 0.8rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--card-bg-secondary);
   border: none;
   color: var(--color-text-primary);
   cursor: pointer;
   transition: background 0.15s;
 }
 .sub-section-header:hover { background: var(--color-bg-tertiary); }
-.sub-section.open .sub-section-header { border-bottom: 1px solid var(--color-border-subtle); }
 .sub-section-title {
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
@@ -3096,12 +3097,12 @@ onMounted(() => {
   letter-spacing: 0.1em;
 }
 .sub-section-caret {
-  font-family: var(--font-mono);
-  font-size: 1rem;
+  width: 1rem;
   color: var(--color-accent-primary);
-  width: 18px; text-align: center;
+  transition: transform 0.18s ease;
 }
-.sub-section-body { padding: 0.2rem 1rem 0.4rem; background: var(--color-bg-primary); }
+.sub-section.open .sub-section-caret { transform: rotate(180deg); }
+.sub-section-body { padding: 0.75rem 1rem 0.9rem; background: var(--color-bg-primary); border-top: 1px solid var(--color-border-subtle); }
 .sub-section-body .sub-block { padding-left: 0.2rem; padding-right: 0.2rem; }
 
 .instance-row { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
@@ -3149,8 +3150,10 @@ onMounted(() => {
 @media (max-width: 760px) {
   .theme-swatches { grid-template-columns: repeat(4, minmax(70px, 1fr)); }
   .settings-section { margin-bottom: 0.75rem; }
-  .section-header { padding: 0.8rem 0.9rem; }
-  .section-body { padding: 0.9rem; }
+  .section-header { padding: 0.75rem 0.8rem; }
+  .section-body { padding: 0.8rem; }
+  .section-heading { gap: 0.6rem; }
+  .section-icon { width: 1.8rem; height: 1.8rem; }
   .tc-row { align-items: stretch; flex-direction: column; gap: 0.4rem; }
   .tc-key { min-width: 0; }
   .tc-row .form-select, .tc-row .form-input { min-width: 0; width: 100%; }

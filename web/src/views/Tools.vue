@@ -1588,13 +1588,12 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
       </section>
 
       <section v-if="canRepairLibraryStats" class="settings-section card" :class="{ open: open.libraryStats }">
-        <button class="section-header" @click="toggleSection('libraryStats')">
-          <span class="section-title">{{ t("tools.sections.libraryStats") }}</span>
-          <span class="section-caret">{{ open.libraryStats ? "−" : "+" }}</span>
+        <button type="button" class="section-header" :aria-expanded="open.libraryStats" aria-controls="tools-panel-library-stats" @click="toggleSection('libraryStats')">
+          <span class="section-heading"><Icon name="library" class="section-icon" /><span class="section-meta"><span class="section-title">{{ t("tools.sections.libraryStats") }}</span><span class="section-summary">{{ t("tools.libraryStats.description") }}</span></span></span>
+          <Icon name="chevronDown" class="section-caret" />
         </button>
-        <div v-show="open.libraryStats" class="section-body">
+        <div id="tools-panel-library-stats" v-show="open.libraryStats" class="section-body">
           <div class="sub-block library-stats-card">
-            <p class="feature-desc tc-desc">{{ t("tools.libraryStats.description") }}</p>
             <div v-if="libraryStatsLoading && !libraryStats" class="storage-loading">{{ t("tools.libraryStats.loading") }}</div>
             <div v-else-if="libraryStats && !libraryStats.ready" class="storage-loading muted">{{ t("tools.libraryStats.notReady") }}</div>
             <template v-else-if="libraryStats?.ready">
@@ -1623,11 +1622,11 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 
       <!-- ============ Subsonic migrate tool (clone + push, switch in middle) ============ -->
       <section class="settings-section card" :class="{ open: open.migrate }">
-        <button class="section-header" @click="toggleSection('migrate')">
-          <span class="section-title">{{ t("tools.sections.migrate") }}</span>
-          <span class="section-caret">{{ open.migrate ? '−' : '+' }}</span>
+        <button type="button" class="section-header" :aria-expanded="open.migrate" aria-controls="tools-panel-migrate" @click="toggleSection('migrate')">
+          <span class="section-heading"><Icon name="repeat" class="section-icon" /><span class="section-title">{{ t("tools.sections.migrate") }}</span></span>
+          <Icon name="chevronDown" class="section-caret" />
         </button>
-        <div v-show="open.migrate" class="section-body">
+        <div id="tools-panel-migrate" v-show="open.migrate" class="section-body">
           <div class="seg">
             <button type="button" :class="['seg-btn', { active: migrateMode === 'clone' }]" @click="migrateMode = 'clone'">{{ t("tools.migrate.clonePull") }}</button>
             <button v-if="isSuperAdmin" type="button" :class="['seg-btn', { active: migrateMode === 'push' }]" @click="migrateMode = 'push'">{{ t("tools.migrate.pushWrite") }}</button>
@@ -1832,18 +1831,17 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 
       <!-- ============ Peer sync (per-user, non-guest) ============ -->
       <section v-if="!isGuest" class="settings-section card" :class="{ open: open.peerSync }">
-        <button class="section-header" @click="toggleSection('peerSync')">
-          <span class="section-title">{{ t("tools.sections.peerSync") }}</span>
-          <span class="section-caret">{{ open.peerSync ? "−" : "+" }}</span>
+        <button type="button" class="section-header" :aria-expanded="open.peerSync" aria-controls="tools-panel-peer-sync" @click="toggleSection('peerSync')">
+          <span class="section-heading"><Icon name="share" class="section-icon" /><span class="section-meta"><span class="section-title">{{ t("tools.sections.peerSync") }}</span><span class="section-summary">{{ t("settings.common.sync.desc") }}</span></span></span>
+          <Icon name="chevronDown" class="section-caret" />
         </button>
 
-        <div v-show="open.peerSync" class="section-body">
+        <div id="tools-panel-peer-sync" v-show="open.peerSync" class="section-body">
           <div class="sub-block">
             <div class="sub-header">
               <span class="mono-label">{{ t("settings.common.sync.title") }}</span>
               <FluentSwitch :aria-label="t('settings.common.sync.title')" :model-value="syncEnabled" :disabled="syncBusy" :title="syncEnabled ? t('settings.common.sync.on') : t('settings.common.sync.off')" @update:model-value="saveSyncConfig($event)" />
             </div>
-            <p class="feature-desc tc-desc" style="margin-left:0">{{ t("settings.common.sync.desc") }}</p>
             <label class="tc-row">
               <span class="tc-key">{{ t("settings.common.sync.url") }}</span>
               <input v-model="syncUrl" type="text" maxlength="512" class="form-input" placeholder="https://peer.example.com" autocomplete="off" :disabled="syncBusy" />
@@ -1894,11 +1892,11 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
       <template v-if="isSuperAdmin">
       <!-- ============ Storage & R2 cost ============ -->
       <section class="settings-section card" :class="{ open: open.storage }">
-        <button class="section-header" @click="toggleSection('storage')">
-          <span class="section-title">{{ t("tools.sections.storage") }}</span>
-          <span class="section-caret">{{ open.storage ? '−' : '+' }}</span>
+        <button type="button" class="section-header" :aria-expanded="open.storage" aria-controls="tools-panel-storage" @click="toggleSection('storage')">
+          <span class="section-heading"><Icon name="folder" class="section-icon" /><span class="section-title">{{ t("tools.sections.storage") }}</span></span>
+          <Icon name="chevronDown" class="section-caret" />
         </button>
-        <div v-show="open.storage" class="section-body">
+        <div id="tools-panel-storage" v-show="open.storage" class="section-body">
       <div class="card tools-storage-card">
         <div class="card-header">
           <span class="card-title">{{ t("tools.storage.title") }}</span>
@@ -1951,11 +1949,11 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 
       <!-- ============ Orphan song cleanup ============ -->
       <section class="settings-section card" :class="{ open: open.orphanSongs }">
-        <button class="section-header" @click="toggleSection('orphanSongs')">
-          <span class="section-title">{{ t("tools.sections.orphanSongs") }}</span>
-          <span class="section-caret">{{ open.orphanSongs ? '−' : '+' }}</span>
+        <button type="button" class="section-header" :aria-expanded="open.orphanSongs" aria-controls="tools-panel-orphan-songs" @click="toggleSection('orphanSongs')">
+          <span class="section-heading"><Icon name="music" class="section-icon" /><span class="section-title">{{ t("tools.sections.orphanSongs") }}</span></span>
+          <Icon name="chevronDown" class="section-caret" />
         </button>
-        <div v-show="open.orphanSongs" class="section-body">
+        <div id="tools-panel-orphan-songs" v-show="open.orphanSongs" class="section-body">
       <div class="card tools-orphan-card">
         <div class="card-header">
           <span class="card-title">{{ t("tools.orphan.title") }}</span>
@@ -2012,37 +2010,38 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 .tools { max-width: 1120px; min-width: 0; margin: 0 auto; padding-bottom: 2rem; }
 .tools .page-header { align-items: flex-start; }
 .page-description { max-width: 72ch; margin: 0.45rem 0 0; color: var(--color-text-secondary); line-height: 1.5; }
-/* Sections mirror Settings.vue's .settings-section exactly (same
-   markup shape: button.section-header + v-show'd .section-body, no
-   collapse transition) so Tools and Settings share one design language
-   instead of Tools having its own bespoke accordion. */
+/* Keep the management expander rows visually aligned with Settings.vue. */
 .settings-section { padding: 0; margin-bottom: 1.1rem; overflow: hidden; }
 .section-header {
   width: 100%;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.95rem 1.2rem;
-  background: var(--color-bg-primary);
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.9rem 1rem;
+  background: var(--card-bg-secondary);
   border: none;
   color: var(--color-text-primary);
+  text-align: left;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 .section-header:hover { background: var(--color-bg-tertiary); }
-.settings-section.open .section-header { border-bottom: 1px solid var(--color-border-subtle); }
+.section-header:focus-visible { outline: 2px solid var(--color-accent-primary); outline-offset: -3px; }
+.section-heading { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.section-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; min-width: 0; }
+.section-icon { display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0.45rem; border-radius: 6px; color: var(--color-accent-primary); background: var(--color-accent-dim); }
 .section-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-body, system-ui, sans-serif);
   font-size: var(--fs-md);
   font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
+.section-summary { color: var(--color-text-secondary); font-size: var(--fs-sm); font-weight: 400; line-height: 1.4; }
 .section-caret {
-  font-family: var(--font-mono);
-  font-size: 1.1rem;
+  width: 1.25rem;
   color: var(--color-accent-primary);
-  width: 20px; text-align: center;
+  transition: transform 0.18s ease;
 }
-.section-body { padding: 1.1rem 1.2rem 1.3rem; }
+.settings-section.open > .section-header .section-caret { transform: rotate(180deg); }
+.section-body { padding: 1rem 1.1rem 1.2rem; background: var(--color-bg-primary); border-top: 1px solid var(--color-border-subtle); }
 .sub-block { padding: 0.9rem 0; border-bottom: 1px solid var(--color-border-subtle); }
 .sub-block:first-child { padding-top: 0; }
 .sub-block:last-child { border-bottom: none; padding-bottom: 0; }
@@ -2204,8 +2203,10 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 
 @media (max-width: 760px) {
   .settings-section { margin-bottom: 0.75rem; }
-  .section-header { padding: 0.8rem 0.9rem; }
-  .section-body { padding: 0.9rem; }
+  .section-header { padding: 0.75rem 0.8rem; }
+  .section-body { padding: 0.8rem; }
+  .section-heading { gap: 0.6rem; }
+  .section-icon { width: 1.8rem; height: 1.8rem; }
   .tc-row { align-items: stretch; flex-direction: column; gap: 0.4rem; }
   .tc-key { min-width: 0; }
   .tc-row .form-input { min-width: 0; width: 100%; }
