@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ref, computed, watch, nextTick, onBeforeUnmount } from "vue";
 import { useI18n } from "vue-i18n";
+import { FluentScrollViewer, type FluentScrollViewerHandle } from "@platform-kit/fluent/vue";
 import { usePlayerStore } from "../stores/player";
 import { useAuth } from "../api";
 import { getTrackLyrics } from "../lib/trackPrefetch";
@@ -39,7 +40,8 @@ const lyricsError = ref("");
 const hasSynced = computed(() => lyrics.value.some((l) => l.synced));
 const karaokeTime = ref(0);
 const userScrolled = ref(false);
-const lyricsScrollEl = ref<HTMLElement | null>(null);
+const lyricsViewerRef = ref<FluentScrollViewerHandle | null>(null);
+const lyricsScrollEl = computed(() => lyricsViewerRef.value?.element() ?? null);
 const suppressScrollUntil = ref(0);
 const autoScrolling = ref(false);
 const ACTIVE_CENTER_TOLERANCE_PX = 24;
@@ -253,7 +255,7 @@ function agentNameFor(rootXml: string, agentId: string): string | undefined {
 let lyricsRequest = 0;
 let lyricsController: AbortController | null = null;
 function resetLyricsScroll() {
-  lyricsScrollEl.value?.scrollTo({ top: 0, behavior: "auto" });
+  lyricsViewerRef.value?.scrollTo({ top: 0, behavior: "auto" });
 }
 
 watch(() => [player.current?.id, player.current?.libraryId] as const, async ([id, libraryId]) => {
@@ -326,7 +328,7 @@ async function centerActiveLyric(idx = activeIdx.value) {
   const target = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2;
   suppressScrollUntil.value = Date.now() + 600;
   autoScrolling.value = true;
-  container.scrollTo({ top: target, behavior: "smooth" });
+  lyricsViewerRef.value?.scrollTo({ top: target, behavior: "smooth" });
   setTimeout(() => { autoScrolling.value = false; }, 600);
 }
 
@@ -392,21 +394,28 @@ watch(coverSrc, (src) => {
 <template>
   <div class="nowplaying">
     <!-- Left: cover + controls -->
-    <div class="np-left">
+    <section class="np-left" :aria-label="track?.title || t('pageTitles.Now Playing')">
       <div class="np-cover-wrap">
         <img v-if="displayCoverSrc" :src="displayCoverSrc" class="np-cover" @error="onCoverError" alt="cover" />
         <div v-else class="np-cover-placeholder"><span class="np-placeholder-icon" v-html="'<svg viewBox=\'0 0 24 24\' width=\'48\' height=\'48\'><path fill=\'currentColor\' d=\'M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z\'/></svg>'"></span></div>
       </div>
       <div class="np-track-info">
-        <div class="np-title">{{ track?.title || "—" }}</div>
-        <div class="np-artist">{{ track?.artist || "" }}</div>
-        <div class="np-album" v-if="track?.album">{{ track.album }}</div>
+        <h1 class="np-title">{{ track?.title || "—" }}</h1>
+        <p class="np-artist">{{ track?.artist || "" }}</p>
+        <p class="np-album" v-if="track?.album">{{ track.album }}</p>
       </div>
 
-    </div>
+    </section>
 
     <!-- Right: lyrics with auto-scroll + translation + word karaoke -->
-    <div class="np-right" :class="{ 'auto-scrolling': autoScrolling }" ref="lyricsScrollEl" @scroll.passive="onLyricsScroll">
+    <FluentScrollViewer
+      ref="lyricsViewerRef"
+      class="np-right"
+      :class="{ 'auto-scrolling': autoScrolling }"
+      focusable
+      :aria-label="t('pageTitles.Now Playing')"
+      @scroll.passive="onLyricsScroll"
+    >
       <div v-if="lyricsLoading" class="np-lyrics-status">{{ t("nowPlaying.lyricsLoading") }}</div>
       <div v-else-if="lyricsError" class="np-lyrics-status">{{ lyricsError }}</div>
       <div v-else-if="lyrics.length === 0" class="np-lyrics-status">{{ t("nowPlaying.lyricsEmpty") }}</div>
@@ -434,34 +443,38 @@ watch(coverSrc, (src) => {
         </div>
         <div class="np-lyrics-spacer"></div>
       </div>
-    </div>
+    </FluentScrollViewer>
   </div>
 </template>
 
 <style scoped>
 .nowplaying {
   position: relative;
-  display: flex;
-  height: calc(100vh - var(--nav-h) - var(--player-h));
-  padding: 1.5rem 1.5rem 0.5rem;
-  gap: 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  height: 100%;
+  min-height: min(540px, 100%);
+  padding: clamp(16px, 3vw, 36px);
+  gap: clamp(20px, 4vw, 56px);
   overflow: hidden;
 }
 
 /* Left: cover + controls */
 .np-left {
-  flex: 0 0 340px;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: clamp(12px, 2vh, 24px);
 }
 .np-cover-wrap {
   position: relative;
-  width: 280px;
-  height: 280px;
-  border-radius: 12px;
+  width: min(100%, 420px);
+  aspect-ratio: 1;
+  height: auto;
+  border-radius: var(--ContentDialogCornerRadius);
   overflow: hidden;
   box-shadow: 0 8px 40px rgba(0,0,0,0.5);
   background: var(--color-bg-tertiary);
@@ -472,18 +485,21 @@ watch(coverSrc, (src) => {
   display: flex; align-items: center; justify-content: center;
   color: var(--color-text-muted);
 }
-.np-track-info { text-align: center; }
-.np-title { font-size: 1.2rem; font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.2rem; }
-.np-artist { font-size: 0.95rem; color: var(--color-text-secondary); }
-.np-album { font-size: var(--fs-sm); color: var(--color-text-muted); margin-top: 0.1rem; }
+.np-track-info { width: min(100%, 420px); text-align: center; }
+.np-title { margin: 0 0 .25rem; font-size: clamp(1.1rem, 2vw, 1.5rem); font-weight: 600; line-height: 1.3; color: var(--color-text-primary); }
+.np-artist { margin: 0; font-size: .95rem; color: var(--color-text-secondary); }
+.np-album { margin: .25rem 0 0; font-size: var(--fs-sm); color: var(--color-text-muted); }
 
 
 /* Right: lyrics */
 .np-right {
-  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
   overflow-y: auto;
   position: relative;
   scrollbar-width: none;
+  overscroll-behavior: contain;
 }
 .np-right::-webkit-scrollbar { display: none; }
 
@@ -560,9 +576,22 @@ watch(coverSrc, (src) => {
 
 /* Mobile */
 @media (max-width: 768px) {
-  .nowplaying { flex-direction: column; padding: 0.5rem; gap: 0.5rem; }
-  .np-left { flex: none; }
-  .np-cover-wrap { width: min(180px, 28vh); height: min(180px, 28vh); }
-  .np-right { flex: 1; min-height: 0; }
+  .nowplaying {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px 12px 12px;
+  }
+  .np-left { display: grid; grid-template-columns: auto minmax(0, 1fr); justify-content: start; gap: 12px; text-align: left; }
+  .np-cover-wrap { width: clamp(72px, 18vw, 112px); height: auto; }
+  .np-track-info { width: auto; align-self: center; text-align: left; }
+  .np-title { font-size: 1rem; }
+  .np-artist { font-size: .875rem; }
+  .np-lyrics-spacer { height: 22vh; }
+}
+@media (max-height: 560px) and (min-width: 769px) {
+  .nowplaying { padding-block: 12px; gap: 20px; }
+  .np-cover-wrap { width: min(100%, 36vh); }
+  .np-left { gap: 10px; }
 }
 </style>
