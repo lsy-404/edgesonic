@@ -1356,7 +1356,7 @@
       "title": "Subsonic 客户端",
       "desc": "为原生 Subsonic 客户端（DSub、Symfonium 等）签发持久凭据。此类凭据可播放与浏览，但永远无法访问文件与管理功能。",
       "connectTitle": "连接音乐客户端",
-      "setupServer": "在音乐客户端中填写上方显示的服务器地址，只填写站点基础地址，不要添加 /rest。",
+      "setupServer": "在音乐客户端中填写本页显示的服务器地址，只填写站点基础地址，不要添加 /rest。",
       "setupUsername": "用户名填写 EdgeSonic 用户名：{username}。",
       "setupPassword": "在下方创建独立的客户端密码并填入客户端。主账户密码不能用于客户端登录。",
       "setupConnect": "在客户端保存连接后即可浏览或播放音乐。你可以随时在此撤销该设备凭据。",

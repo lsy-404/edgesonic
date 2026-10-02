@@ -166,7 +166,7 @@ onBeforeUnmount(() => {
   <div class="clients-page">
     <div class="page-header">
       <div>
-        <div class="mono-label">{{ t("settings.label") }}</div>
+        <div class="mono-label">{{ t("app.groups.management") }}</div>
         <h1 class="page-title">{{ t("settings.clients.title") }}</h1>
       </div>
     </div>

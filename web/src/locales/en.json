@@ -1373,7 +1373,7 @@
       "title": "Subsonic Clients",
       "desc": "Issue long-lived credentials for native Subsonic apps (DSub, Symfonium…). They can stream and browse, but can never touch files or admin.",
       "connectTitle": "Connect a music app",
-      "setupServer": "In your music app, enter the Server address shown above. Use the site base URL only; do not add /rest.",
+      "setupServer": "In your music app, enter the Server address shown on this page. Use the site base URL only; do not add /rest.",
       "setupUsername": "Use your EdgeSonic username: {username}.",
       "setupPassword": "Create a separate client password below and use it in the app. Your main account password is not accepted.",
       "setupConnect": "Save the connection in the app, then browse or play music. You can revoke its credential here at any time.",
