@@ -10,7 +10,7 @@
     "EDGESONIC_VERSION": "dev"
   },
   "assets": {
-    "directory": "./assets",
+    "directory": "../../web/dist",
     "binding": "ASSETS"
   },
   "d1_databases": [
@@ -20,5 +20,6 @@
       "database_id": "00000000-0000-0000-0000-000000000000"
     }
   ],
+  "r2_buckets": [{ "binding": "MUSIC_BUCKET", "bucket_name": "edgesonic-pressure-media-local" }],
   "observability": { "enabled": false }
 }

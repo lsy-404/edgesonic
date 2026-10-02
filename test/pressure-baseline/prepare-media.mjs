@@ -1,0 +1,23 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+
+const directory = new URL('./.state/media/', import.meta.url);
+await mkdir(directory, { recursive: true });
+const samples = 44100 * 5;
+const audio = Buffer.alloc(44 + samples * 2);
+audio.write('RIFF', 0);
+audio.writeUInt32LE(audio.length - 8, 4);
+audio.write('WAVEfmt ', 8);
+audio.writeUInt32LE(16, 16);
+audio.writeUInt16LE(1, 20);
+audio.writeUInt16LE(1, 22);
+audio.writeUInt32LE(44100, 24);
+audio.writeUInt32LE(88200, 28);
+audio.writeUInt16LE(2, 32);
+audio.writeUInt16LE(16, 34);
+audio.write('data', 36);
+audio.writeUInt32LE(samples * 2, 40);
+const cover = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXioAAAAASUVORK5CYII=', 'base64');
+await writeFile(new URL('audio.wav', directory), audio);
+await writeFile(new URL('cover.png', directory), cover);
+process.stdout.write(`Prepared synthetic local media in ${fileURLToPath(directory)}\n`);
