@@ -766,13 +766,17 @@ let searchRequest = 0;
 let searchController: AbortController | null = null;
 
 function searchProtocolError(xml: string): { code: string; message: string } | null {
-  if (!xml.trim()) return null;
+  if (!xml.trim()) return { code: "", message: "Empty Subsonic response" };
   const document = new DOMParser().parseFromString(xml, "application/xml");
   const root = document.documentElement;
   if (root.localName !== "subsonic-response" || document.querySelector("parsererror")) {
     return { code: "", message: "Invalid Subsonic response" };
   }
-  if (root.getAttribute("status") !== "failed" && !root.querySelector("error")) return null;
+  const status = root.getAttribute("status");
+  if (status !== "failed") {
+    if (status === "ok" && !root.querySelector("error")) return null;
+    return { code: "", message: "Invalid Subsonic response status" };
+  }
   const error = parseXmlAttrs(xml, "error")[0];
   return { code: error?.code || "", message: error?.message || xml };
 }
