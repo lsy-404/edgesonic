@@ -141,15 +141,17 @@ async function oneRequest(baseUrl, headers, path, timeoutMs, endpoint) {
     const body = await readBoundedBody(response);
     const elapsedMs = Math.round(performance.now() - started);
     let errorClass = httpErrorClass(response.status);
-    if (!errorClass && !response.ok) errorClass = 'http_4xx';
-    else if (body === null) errorClass = 'response_too_large';
-    else if (!response.headers.get('content-type')?.toLowerCase().includes('application/json')) errorClass = 'protocol_error';
-    else {
-      try {
-        const payload = JSON.parse(new TextDecoder().decode(body));
-        if (endpoint === 'stats' ? payload?.ok !== true : payload?.['subsonic-response']?.status !== 'ok') errorClass = 'protocol_error';
-      } catch {
-        errorClass = 'protocol_error';
+    if (!errorClass) {
+      if (!response.ok) errorClass = 'http_4xx';
+      else if (body === null) errorClass = 'response_too_large';
+      else if (!response.headers.get('content-type')?.toLowerCase().includes('application/json')) errorClass = 'protocol_error';
+      else {
+        try {
+          const payload = JSON.parse(new TextDecoder().decode(body));
+          if (endpoint === 'stats' ? payload?.ok !== true : payload?.['subsonic-response']?.status !== 'ok') errorClass = 'protocol_error';
+        } catch {
+          errorClass = 'protocol_error';
+        }
       }
     }
     return { elapsedMs, ttfbMs, status: receivedStatus, errorClass, serverTiming, colo };
