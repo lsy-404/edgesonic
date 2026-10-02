@@ -471,7 +471,7 @@ watch(coverSrc, (src) => {
 }
 .np-cover-wrap {
   position: relative;
-  width: min(100%, 420px);
+  width: min(100%, 420px, max(72px, calc(100dvh - var(--nav-h) - var(--player-h) - var(--bottom-nav-space, 0px) - 220px)));
   aspect-ratio: 1;
   height: auto;
   border-radius: var(--ContentDialogCornerRadius);
