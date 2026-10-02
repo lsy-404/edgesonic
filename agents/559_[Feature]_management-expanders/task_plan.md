@@ -1,8 +1,6 @@
 # Management expanders
 
-重设计设置与工具的一二级折叠卡，使用现有 Fluent API/主题，改善键盘语义与响应式
-
-- [ ] 检查现有模块和已知数据来源。
-- [ ] 完成独立实现与针对性验证。
-- [ ] 集成并检查桌面、移动端与异步边界。
-- [ ] 本地提交并按 main 保护策略交付。
+- [x] Inspect the assigned worktree, existing view patterns, Fluent package, and project instructions.
+- [x] Add accessible expander semantics and recognizable Fluent row/panel styling to Settings, Tools, and nested Settings groups.
+- [x] Review the focused diff and record validation outcome.
+- [x] Commit only the assigned view and audit files.
