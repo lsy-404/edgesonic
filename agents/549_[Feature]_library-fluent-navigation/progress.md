@@ -5,3 +5,4 @@
 - 前端、Worker、installer 类型检查及 web/installer 构建通过；detail panels、library lyrics/default tab/file share/mobile/starred、Subsonic pagination 测试通过。
 - 隔离浏览器通过五种页长、末页/EOF、过滤搜索、跨页专辑分组、收藏播放、查看器桌面/矮屏/手机、凭据生命周期/冷授权/拒绝授权、设置工具响应式检查，无页面异常。
 - 新增竞态修复并验证延迟响应下排序/页长重置；浏览器测试数据全部本地 mock，无生产数据写入。
+- 合并远端专辑身份更新后，再次通过 web/worker 类型检查与 album_artist_roundtrip 全部检查。
