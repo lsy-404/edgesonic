@@ -1249,3 +1249,87 @@ CREATE TABLE IF NOT EXISTS ktv_pv_bindings (
 -- ALTER TABLE artists ADD COLUMN image_url TEXT;
 -- ALTER TABLE artists ADD COLUMN biography TEXT;
 -- ALTER TABLE artists ADD COLUMN biography_source TEXT;
+
+-- ============================================================================
+-- Cached library totals
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS library_stats_cache (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  artists INTEGER NOT NULL DEFAULT 0,
+  albums INTEGER NOT NULL DEFAULT 0,
+  songs INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER,
+  dirty INTEGER NOT NULL DEFAULT 1 CHECK (dirty IN (0, 1))
+);
+INSERT OR IGNORE INTO library_stats_cache (id, artists, albums, songs, updated_at, dirty)
+VALUES (1, 0, 0, 0, NULL, 1);
+
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_song_master_insert
+AFTER INSERT ON song_masters BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_song_master_delete
+AFTER DELETE ON song_masters BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_song_master_links
+AFTER UPDATE OF id, artist_id, album_artist_id, album_id ON song_masters
+WHEN OLD.id IS NOT NEW.id OR OLD.artist_id IS NOT NEW.artist_id
+  OR OLD.album_artist_id IS NOT NEW.album_artist_id OR OLD.album_id IS NOT NEW.album_id BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_instance_insert
+AFTER INSERT ON song_instances WHEN NEW.missing = 0 BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_instance_delete
+AFTER DELETE ON song_instances WHEN OLD.missing = 0 BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_instance_links
+AFTER UPDATE OF master_id, missing ON song_instances
+WHEN OLD.master_id IS NOT NEW.master_id OR OLD.missing IS NOT NEW.missing BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0
+    AND (OLD.missing = 0 OR NEW.missing = 0);
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_song_artist_insert
+AFTER INSERT ON song_artists BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_song_artist_delete
+AFTER DELETE ON song_artists BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_song_artist_links
+AFTER UPDATE OF song_id, artist_id ON song_artists
+WHEN OLD.song_id IS NOT NEW.song_id OR OLD.artist_id IS NOT NEW.artist_id BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_artist_insert
+AFTER INSERT ON artists BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_artist_delete
+AFTER DELETE ON artists BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_artist_id
+AFTER UPDATE OF id ON artists WHEN OLD.id IS NOT NEW.id BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_album_insert
+AFTER INSERT ON albums BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_album_delete
+AFTER DELETE ON albums BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;
+CREATE TRIGGER IF NOT EXISTS library_stats_dirty_album_id
+AFTER UPDATE OF id ON albums WHEN OLD.id IS NOT NEW.id BEGIN
+  UPDATE library_stats_cache SET dirty = 1 WHERE id = 1 AND dirty = 0;
+END;

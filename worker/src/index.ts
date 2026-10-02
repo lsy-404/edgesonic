@@ -33,6 +33,7 @@ import { maybeRunPeerSync } from "./utils/peerSync";
 import { reapExpiredGuestTokens } from "./utils/guestTokenReaper";
 import { maybeRunCacheEviction } from "./utils/cacheEviction";
 import { advanceLyricsSearchIndex } from "./utils/lyricsSearch";
+import { refreshLibraryStats } from "./utils/libraryStats";
 import { webLoginRoutes } from "./endpoints/edgesonic/auth";
 import { sharePublicRoutes } from "./endpoints/share_public";
 import { spaHashRedirect } from "./spa";
@@ -167,6 +168,11 @@ export default {
     return spaHashRedirect(request) || response;
   },
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(
+      refreshLibraryStats(env.DB).catch(() => {
+        console.error("scheduled library statistics refresh failed");
+      }),
+    );
     ctx.waitUntil(
       refreshAllChannels(env.DB).catch((e) => {
         console.error("scheduled refreshAllChannels failed:", e);

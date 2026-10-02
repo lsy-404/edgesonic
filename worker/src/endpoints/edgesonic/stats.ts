@@ -15,8 +15,9 @@
 
 import { Hono } from "hono";
 import { getFeatureString } from "../../utils/features";
-import { createQueries } from "../../db/queries";
 import { permissionMiddleware } from "../../auth";
+import { hasPermission } from "../../utils/permissions";
+import { initializeAndRefreshLibraryStats, readLibraryStats, refreshLibraryStats, type LibraryStatsRow } from "../../utils/libraryStats";
 import type { AuthMethod } from "../../auth";
 import type { User } from "../../types/entities";
 
@@ -26,14 +27,41 @@ export const statsRoutes = new Hono<{
 }>();
 
 // GET /edgesonic/stats/library
-// Real COUNT(*) totals (artists/albums/songs) for the Dashboard stat
-// tiles — same "browse" permission as the /rest/* Subsonic reads it's
-// replacing (getArtists / the old capped search3 call), so any logged-in
-// user who can see the library sees an accurate count of it, not just admins.
+function libraryStatsResponse(row: LibraryStatsRow | null) {
+  const ready = row !== null && row.updated_at !== null;
+  return {
+    ok: true,
+    artists: row?.artists ?? 0,
+    albums: row?.albums ?? 0,
+    songs: row?.songs ?? 0,
+    updatedAt: row?.updated_at ?? null,
+    stale: !ready || row.dirty !== 0,
+    ready,
+  };
+}
+
+// Cached counts keep normal dashboard reads independent of catalog scans.
 statsRoutes.get("/stats/library", permissionMiddleware("browse"), async (c) => {
-  const queries = createQueries(c.env.DB);
-  const counts = await queries.getLibraryCounts();
-  return c.json({ ok: true, ...counts });
+  const row = await readLibraryStats(c.env.DB);
+  if (!row || row.dirty !== 0 || row.updated_at === null) {
+    const refresh = row
+      ? refreshLibraryStats(c.env.DB)
+      : initializeAndRefreshLibraryStats(c.env.DB);
+    c.executionCtx.waitUntil(refresh.catch(() => {
+      console.error("Library statistics refresh failed");
+    }));
+  }
+  return c.json(libraryStatsResponse(row));
+});
+
+statsRoutes.post("/stats/library/rebuild", async (c) => {
+  const user = c.get("user");
+  if (user.level < 2 || !(await hasPermission(c.env, user, "maintenance_reclaim"))) {
+    return c.json({ ok: false, error: "Not authorized" }, 403);
+  }
+  const row = await refreshLibraryStats(c.env.DB, true);
+  if (!row) return c.json({ ok: false, error: "Library statistics rebuild did not update the cache" }, 500);
+  return c.json(libraryStatsResponse(row));
 });
 
 // GET /edgesonic/stats/storage
