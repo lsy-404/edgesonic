@@ -23,7 +23,7 @@
   "subsonicPasswordNotice": {
     "title": "Subsonic sign-in blocked",
     "createClientPasswordPrefix": "For your security, this website does not allow its main account password to be used with Subsonic clients. Create a separate client password in",
-    "clientsLink": "Settings → Subsonic Clients.",
+    "clientsLink": "Open Subsonic Clients to create a separate app password.",
     "clientsNotEnabled": "Subsonic clients are not enabled for your account by the site administrator.",
     "openClients": "Open Subsonic Clients"
   },
@@ -64,7 +64,7 @@
   "app": {
     "groups": {
       "library": "Music",
-      "management": "Manage & help"
+      "management": "Management"
     },
     "menu": {
       "dashboard": "Dashboard",
@@ -74,6 +74,7 @@
       "sources": "Sources",
       "users": "Users",
       "settings": "Settings",
+      "subsonicClients": "Subsonic Clients",
       "tools": "Tools",
       "work": "Work Mode",
       "radio": "Radio",
@@ -116,6 +117,7 @@
     "Files": "Files",
     "Users": "Users",
     "Settings": "Settings",
+    "Subsonic Clients": "Subsonic Clients",
     "Tools": "Tools",
     "Radio": "Radio",
     "Podcasts": "Podcasts",
@@ -787,6 +789,7 @@
   "tools": {
     "label": "SYSTEM / TOOLS",
     "title": "Tools",
+    "intro": "Import, synchronize, and maintain your music library.",
     "workMode": "Work Mode",
     "workModeDesc": "Participate in background parsing and enrichment",
     "superAdminOnly": "This page requires super-admin (level 3)",
@@ -850,6 +853,7 @@
   "settings": {
     "label": "SYSTEM / SETTINGS",
     "title": "Settings",
+    "intro": "Manage your account, appearance, playback, and service preferences.",
     "readOnly": "READ ONLY — LEVEL 3 REQUIRED",
     "account": {
       "title": "Account",
@@ -1368,6 +1372,17 @@
     "clients": {
       "title": "Subsonic Clients",
       "desc": "Issue long-lived credentials for native Subsonic apps (DSub, Symfonium…). They can stream and browse, but can never touch files or admin.",
+      "connectTitle": "Connect a music app",
+      "setupServer": "In your music app, enter the Server address shown above. Use the site base URL only; do not add /rest.",
+      "setupUsername": "Use your EdgeSonic username: {username}.",
+      "setupPassword": "Create a separate client password below and use it in the app. Your main account password is not accepted.",
+      "setupConnect": "Save the connection in the app, then browse or play music. You can revoke its credential here at any time.",
+      "oneTimeHint": "Copy these connection details into your music app now. The generated password is shown only once.",
+      "credentialsTitle": "Issued credentials",
+      "credentialsDesc": "Rename, choose the stream delivery strategy, or revoke a device credential.",
+      "permissionRequired": "You need the manage credentials permission to access this page.",
+      "revokeConfirm": "Revoke this client credential? The connected app will stop working.",
+      "revoke": "Revoke",
       "labelPlaceholder": "Device label (e.g. Pixel-DSub)",
       "create": "Issue credential",
       "createdTitle": "Credential issued — shown only once",

@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, onMounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatSize } from "../api";
@@ -13,7 +13,7 @@ import { getTheme, registeredThemeIds, externalThemeIds, loadExternalTheme, unre
 import { audioCacheStats, clearAudioCache, audioCacheMaxMb, setAudioCacheMaxMb } from "../lib/audioCache";
 import PermissionsMatrix from "../components/PermissionsMatrix.vue";
 import Icon from "../components/Icon.vue";
-import { FluentSelect } from "@platform-kit/fluent/vue";
+import { FluentSelect, FluentSwitch } from "@platform-kit/fluent/vue";
 import { useWorkSocket } from "../stores/workSocket";
 import {
   buildReleaseOptions,
@@ -188,23 +188,13 @@ async function saveSelfPassword() {
 
 // ---- Peer sync moved to Tools.vue ----
 
-type SectionKey = "user" | "activation" | "audioCache" | "system" | "sessions" | "clients" | "permissions";
-const open = ref<Record<SectionKey, boolean>>({ user: true, activation: false, audioCache: false, system: false, sessions: false, clients: false, permissions: false });
+type SectionKey = "user" | "activation" | "audioCache" | "system" | "sessions" | "permissions";
+const open = ref<Record<SectionKey, boolean>>({ user: true, activation: false, audioCache: false, system: false, sessions: false, permissions: false });
 function toggleSection(key: SectionKey) { open.value[key] = !open.value[key]; }
-const clientsSection = ref<HTMLElement | null>(null);
-async function locateClientsSection() {
-  await nextTick();
-  clientsSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
-  clientsSection.value?.querySelector<HTMLButtonElement>(".section-header")?.focus({ preventScroll: true });
-}
 // The expired-activation banner deep-links here with ?section=activation.
 if (route.query.section === "activation") { open.value.user = false; open.value.activation = true; }
-if (route.query.section === "clients") { open.value.user = false; open.value.clients = true; }
 watch(() => route.query.section, (section) => {
-  if (section !== "clients") return;
-  open.value.user = false;
-  open.value.clients = true;
-  void locateClientsSection();
+  if (section === "activation") { open.value.user = false; open.value.activation = true; }
 });
 // Nothing to redeem or read while the account is unbounded, so the section
 // only appears once activation actually constrains it.
@@ -1559,121 +1549,10 @@ async function revokeSession(id: string) {
   } catch { showToast(t("settings.sessions.revokeFailed"), "error"); }
 }
 
-interface Credential { id: string; label: string; lastUsed: number; createdAt: number; streamProxyStrategy: string; }
-const credentials = ref<Credential[]>([]);
-const credLoading = ref(true);
-const credError = ref("");
-const credLabel = ref("");
-const credBusy = ref(false);
-const issued = ref<{ password: string; label: string } | null>(null);
-const serverUrl = window.location.origin;
-
-async function loadCredentials() {
-  credLoading.value = true;
-  credError.value = "";
-  try {
-    const xml = await edgesonicFetch("auth/credentials/list");
-    if (/status="failed"/.test(xml)) throw new Error("rejected");
-    credentials.value = parseXmlAttrs(xml, "credential").map((r) => ({
-      id: r.id || "",
-      label: r.label || "",
-      lastUsed: parseInt(r.lastUsed || "0"),
-      createdAt: parseInt(r.createdAt || "0"),
-      streamProxyStrategy: r.streamProxyStrategy || "always",
-    }));
-  } catch {
-    credentials.value = [];
-    credError.value = t("settings.clients.loadFailed");
-  }
-  credLoading.value = false;
-}
-
-function genPassword(): string {
-  // unambiguous alphanumerics; 20 chars ≈ 119 bits of entropy
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-  const buf = new Uint32Array(20);
-  crypto.getRandomValues(buf);
-  return Array.from(buf, (v) => chars[v % chars.length]).join("");
-}
-
-async function createCredential() {
-  credBusy.value = true;
-  const password = genPassword();
-  const label = credLabel.value.trim();
-  try {
-    const xml = await edgesonicPost("auth/credentials/create", { password, label });
-    if (/status="failed"/.test(xml)) throw new Error("rejected");
-    issued.value = { password, label };
-    credLabel.value = "";
-    await loadCredentials();
-  } catch {
-    showToast(t("settings.clients.loadFailed"), "error");
-  }
-  credBusy.value = false;
-}
-
-async function updateCredentialLabel(cr: { id: string; label: string }, newLabel: string) {
-  const trimmed = newLabel.trim();
-  if (trimmed === cr.label) return;            // no-op — user pressed blur with no change
-  if (trimmed.length > 200) {
-    showToast(t("settings.clients.labelTooLong"), "error");
-    // Reload to snap the oversized input back to the persisted value — the
-    // server would have rejected this anyway (400 Label too long), so we
-    // skip the round-trip and just resync from D1.
-    await loadCredentials();
-    return;
-  }
-  try {
-    const xml = await edgesonicPost("auth/credentials/update", { id: cr.id, label: trimmed });
-    if (/status="failed"/.test(xml)) throw new Error("rejected");
-    cr.label = trimmed;
-    showToast(t("settings.clients.labelSaved"));
-  } catch {
-    showToast(t("settings.clients.loadFailed"), "error");
-    await loadCredentials();                   // resync UI to server truth
-  }
-}
-
-async function deleteCredential(id: string) {
-  if (!confirm(t("settings.sessions.confirmRevoke"))) return;
-  try {
-    const xml = await edgesonicPost("auth/credentials/delete", { id });
-    if (/status="failed"/.test(xml)) throw new Error("rejected");
-    if (issued.value) issued.value = null;
-    await loadCredentials();
-  } catch { showToast(t("settings.clients.loadFailed"), "error"); }
-}
-
-const STRATEGY_OPTIONS: Array<{ value: string; key: string }> = [
-  { value: "always", key: "settings.clients.strategyAlways" },
-  { value: "never", key: "settings.clients.strategyNever" },
-  { value: "r2_only", key: "settings.clients.strategyR2Only" },
-  { value: "webdav_only", key: "settings.clients.strategyWebdavOnly" },
-];
-async function updateCredentialStrategy(cr: { id: string; label: string; streamProxyStrategy: string }, newStrategy: string) {
-  if (newStrategy === cr.streamProxyStrategy) return;
-  try {
-    const xml = await edgesonicPost("auth/credentials/update", { id: cr.id, label: cr.label, streamProxyStrategy: newStrategy });
-    if (/status="failed"/.test(xml)) throw new Error("rejected");
-    cr.streamProxyStrategy = newStrategy;
-    showToast(t("settings.clients.strategySaved"));
-  } catch {
-    showToast(t("settings.clients.loadFailed"), "error");
-    await loadCredentials();
-  }
-}
-
-async function copyText(text: string) {
-  try { await navigator.clipboard.writeText(text); showToast(t("common.copied")); }
-  catch { showToast(t("settings.common.copyFailed"), "error"); }
-}
-
 onMounted(() => {
-  if (route.query.section === "clients") void locateClientsSection();
   if (canManageSettings.value) loadFeatures();
   if (canManageSettings.value) void loadSsoStatus();
   loadSessions();
-  if (!isGuest.value) loadCredentials();
   if (canManageSettings.value) loadWorkerStatus();
   if (hasPerm("manage_cloudflare")) {
     loadCfStatus();
@@ -1690,6 +1569,7 @@ onMounted(() => {
       <div>
         <div class="mono-label">{{ t("settings.label") }}</div>
         <h1 class="page-title">{{ t("settings.title") }}</h1>
+        <p class="page-description">{{ t("settings.intro") }}</p>
       </div>
     </div>
 
@@ -3129,107 +3009,6 @@ onMounted(() => {
       <div class="corner corner-br"></div>
     </section>
 
-    <!-- ============ SUBSONIC CLIENTS ============ -->
-    <section v-if="hasPerm('manage_credentials')" id="subsonic-clients" ref="clientsSection" class="settings-section card" :class="{ open: open.clients }">
-      <button class="section-header" @click="toggleSection('clients')">
-        <span class="section-title">{{ t("settings.clients.title") }}</span>
-        <span class="section-caret">{{ open.clients ? "−" : "+" }}</span>
-      </button>
-
-      <div v-show="open.clients" class="section-body">
-        <p class="feature-desc section-desc">{{ t("settings.clients.desc") }}</p>
-
-        <!-- Issue form -->
-        <div class="cred-create">
-          <input
-            v-model="credLabel"
-            class="form-input cred-label-input"
-            :placeholder="t('settings.clients.labelPlaceholder')"
-            @keydown.enter="createCredential"
-          />
-          <button class="btn-primary" :disabled="credBusy" @click="createCredential">{{ t("settings.clients.create") }}</button>
-        </div>
-
-        <!-- One-time reveal of the issued credential -->
-        <div v-if="issued" class="issued-panel">
-          <div class="issued-title">{{ t("settings.clients.createdTitle") }}</div>
-          <div class="issued-row">
-            <span class="mono-label">{{ t("settings.clients.server") }}</span>
-            <code class="issued-value">{{ serverUrl }}</code>
-            <button class="btn-secondary btn-sm" @click="copyText(serverUrl)">{{ t("common.copy") }}</button>
-          </div>
-          <div class="issued-row">
-            <span class="mono-label">{{ t("settings.clients.username") }}</span>
-            <code class="issued-value">{{ username }}</code>
-            <button class="btn-secondary btn-sm" @click="copyText(username)">{{ t("common.copy") }}</button>
-          </div>
-          <div class="issued-row">
-            <span class="mono-label">{{ t("settings.clients.password") }}</span>
-            <code class="issued-value">{{ issued.password }}</code>
-            <button class="btn-secondary btn-sm" @click="copyText(issued.password)">{{ t("common.copy") }}</button>
-          </div>
-        </div>
-
-        <div v-if="credLoading" class="empty-state">{{ t("common.loading") }}</div>
-
-        <div v-else-if="credError" class="error-panel">
-          <span class="status-badge error">{{ t("settings.common.apiError") }}</span>
-          <p class="error-text">{{ credError }}</p>
-          <button class="btn-secondary btn-sm" @click="loadCredentials">{{ t("common.retry") }}</button>
-        </div>
-
-        <div v-else-if="!credentials.length" class="empty-state">
-          <div class="empty-state-icon"><Icon name="empty" /></div>
-          <div>{{ t("settings.clients.empty") }}</div>
-        </div>
-
-        <div v-else class="table-wrap session-table" style="--grid-cols: 1fr 1.4fr 1fr 1fr 1.2fr auto">
-          <div class="table-header">
-            <span>ID</span>
-            <span>{{ t("settings.clients.colLabel") }}</span>
-            <span>{{ t("settings.clients.colCreated") }}</span>
-            <span>{{ t("settings.clients.colLastUsed") }}</span>
-            <span>{{ t("settings.clients.colStrategy") }}</span>
-            <span></span>
-          </div>
-          <div v-for="cr in credentials" :key="cr.id" class="table-row">
-            <span class="session-id" :title="cr.id">{{ cr.id }}</span>
-            <!-- inline label editor. blur and Enter commit; Esc reverts
-                 by reloading the list. We keep the original value in a data-
-                 attribute so the handler can detect "no change" cheaply. -->
-            <span class="session-ua">
-              <input
-                class="form-input cred-label-edit"
-                :value="cr.label"
-                :placeholder="t('settings.clients.labelEditPlaceholder')"
-                maxlength="200"
-                @keydown.enter="($event.target as HTMLInputElement).blur()"
-                @keydown.esc="loadCredentials()"
-                @blur="updateCredentialLabel(cr, ($event.target as HTMLInputElement).value)"
-              />
-            </span>
-            <span class="session-time">{{ formatTs(cr.createdAt) }}</span>
-            <span class="session-time">{{ cr.lastUsed ? formatTs(cr.lastUsed) : t("settings.clients.never") }}</span>
-            <!-- per-credential stream proxy strategy. 302 direct-stream
-                 can be toggled per client for backward compatibility. -->
-            <span class="session-strategy">
-              <FluentSelect
-                class="form-input cred-strategy-select"
-                :model-value="cr.streamProxyStrategy"
-                :aria-label="t('settings.clients.colStrategy')"
-                :options="STRATEGY_OPTIONS.map(opt => ({ value: opt.value, label: t(opt.key) }))"
-                @update:model-value="updateCredentialStrategy(cr, $event)"
-              />
-            </span>
-            <span><button class="btn-danger btn-sm" @click="deleteCredential(cr.id)">{{ t("common.delete") }}</button></span>
-          </div>
-        </div>
-      </div>
-
-      <div class="corner corner-tl"></div>
-      <div class="corner corner-br"></div>
-    </section>
-
     <!-- ============ PERMISSIONS ============ -->
     <section v-if="isSuperAdmin" class="settings-section card" :class="{ open: open.permissions }">
       <button class="section-header" @click="toggleSection('permissions')">
@@ -3254,6 +3033,9 @@ onMounted(() => {
 
 <style scoped>
 /* --- Accordion sections --- */
+.settings { max-width: 1120px; min-width: 0; margin: 0 auto; padding-bottom: 2rem; }
+.settings .page-header { align-items: flex-start; }
+.page-description { max-width: 72ch; margin: 0.45rem 0 0; color: var(--color-text-secondary); line-height: 1.5; }
 .settings-section { padding: 0; margin-bottom: 1.1rem; overflow: hidden; }
 .section-header {
   width: 100%;
@@ -3364,7 +3146,16 @@ onMounted(() => {
    the active swatch sat against ("top/bottom/left/right not covered"). An
    inset ring lives entirely inside the button and never clips. */
 .theme-swatch.active { border-color: var(--color-accent-primary); box-shadow: inset 0 0 0 2px var(--color-accent-primary), inset 0 0 0 3px rgba(0,0,0,.32); }
-@media (max-width: 760px) { .theme-swatches { grid-template-columns: repeat(4, minmax(70px, 1fr)); } }
+@media (max-width: 760px) {
+  .theme-swatches { grid-template-columns: repeat(4, minmax(70px, 1fr)); }
+  .settings-section { margin-bottom: 0.75rem; }
+  .section-header { padding: 0.8rem 0.9rem; }
+  .section-body { padding: 0.9rem; }
+  .tc-row { align-items: stretch; flex-direction: column; gap: 0.4rem; }
+  .tc-key { min-width: 0; }
+  .tc-row .form-select, .tc-row .form-input { min-width: 0; width: 100%; }
+  .tc-desc { margin-left: 0; }
+}
 
 .external-theme-list { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.6rem; }
 .external-theme-row {
@@ -3412,42 +3203,6 @@ onMounted(() => {
 }
 .session-ua { color: var(--color-text-secondary); }
 .session-time { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--color-text-muted); white-space: nowrap; }
-
-/* --- Subsonic clients --- */
-.cred-create { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
-.cred-label-input { flex: 1; min-width: 220px; }
-/* inline label editor inside the credential table row: tight padding so
-   it doesn't push the row taller than the read-only siblings. */
-.cred-label-edit { width: 100%; padding: 0.25rem 0.4rem; font-size: 0.85rem; }
-.issued-panel {
-  border: 1px solid var(--color-accent-primary);
-  background: var(--color-bg-primary);
-  padding: 0.9rem 1rem;
-  margin-bottom: 1rem;
-  display: flex; flex-direction: column; gap: 0.55rem;
-}
-.issued-title {
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-accent-primary);
-}
-.issued-row { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
-.issued-row .mono-label { min-width: 80px; }
-.issued-value {
-  font-family: var(--font-mono);
-  font-size: var(--fs-md);
-  color: var(--color-text-primary);
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border-subtle);
-  padding: 0.25rem 0.6rem;
-  user-select: all;
-}
-
-.error-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 0.7rem; padding: 0.5rem 0; }
-.error-text { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--color-text-secondary); }
 
 /* --- Transcode controls --- */
 .transcode-grid { display: flex; flex-direction: column; gap: 0.65rem; }

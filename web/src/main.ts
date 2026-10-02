@@ -52,6 +52,7 @@ const routes = [
   { path: "/files", component: Files, meta: { title: "Files", perm: "manage_files" } },
   { path: "/users", component: Users, meta: { title: "Users", perm: "manage_users" } },
   { path: "/settings", component: Settings, meta: { title: "Settings" } },
+  { path: "/subsonic-clients", component: () => import("./views/SubsonicClients.vue"), meta: { title: "Subsonic Clients", perm: "manage_credentials" } },
   // Tools hosts the Subsonic sync (clone-to-self) available to every non-guest;
   // admin-only tools inside gate themselves. Lazy-loaded, rarely visited.
   { path: "/tools", component: () => import("./views/Tools.vue"), meta: { title: "Tools" } },

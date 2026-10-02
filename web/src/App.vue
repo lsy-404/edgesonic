@@ -106,7 +106,7 @@ function goRenewActivation() {
 }
 function openSubsonicClients() {
   dismissSubsonicMasterPasswordNotice();
-  void router.push({ path: "/settings", query: { section: "clients" } });
+  void router.push("/subsonic-clients");
 }
 watch(isLoggedIn, (now) => {
   if (now) {
@@ -120,7 +120,7 @@ watch(isLoggedIn, (now) => {
   }
 }, { immediate: true });
 
-const pageOrder = ["/", "/library", "/starred", "/playlists", "/radio", "/podcasts", "/shares", "/dashboard", "/files", "/sources", "/users", "/tools", "/settings", "/about"];
+const pageOrder = ["/", "/library", "/starred", "/playlists", "/radio", "/podcasts", "/shares", "/dashboard", "/files", "/sources", "/users", "/tools", "/settings", "/subsonic-clients", "/about"];
 const pageTransitionName = ref("page-next");
 watch(() => route.path, (to, from) => {
   pageTransitionName.value = pageOrder.indexOf(to) < pageOrder.indexOf(from) ? "page-previous" : "page-next";
@@ -216,6 +216,7 @@ const groups = computed<NavGroup[]>(() => {
         { label: t("app.menu.users"), path: "/users", minLevel: 1, perm: "manage_users", icon: "users" },
         { label: t("app.menu.tools"), path: "/tools", minLevel: 1, icon: "tools" },
         { label: t("app.menu.settings"), path: "/settings", minLevel: 0, icon: "gear" },
+        { label: t("app.menu.subsonicClients"), path: "/subsonic-clients", minLevel: 0, perm: "manage_credentials", icon: "music" },
         { label: t("app.menu.about"), path: "/about", minLevel: 0, icon: "help" },
       ],
     },
