@@ -1,4 +1,4 @@
-export const MAX_PAGE_SIZE = 200;
+export const MAX_PAGE_SIZE = 500;
 export const MAX_PAGE_OFFSET = 1_000_000;
 
 export function parsePageSize(raw: string | undefined, defaultSize: number): number {

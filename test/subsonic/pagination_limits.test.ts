@@ -54,6 +54,7 @@ function lastBind(calls: Call[], marker: string): unknown[] {
 }
 
 async function run() {
+  assert(MAX_PAGE_SIZE === 500, "page sizes support the largest Library page option");
   console.log("search routes clamp counts and offsets before D1:");
   {
     const { db, hit } = makeApp(searchRoutes);
