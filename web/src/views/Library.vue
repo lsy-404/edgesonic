@@ -510,6 +510,7 @@ function loadMoreAlbums(count: number = pageSize.value): Promise<void> {
           : sortMode.value === "nameDesc" ? "alphabeticalByNameDesc" : "alphabeticalByName",
         size: String(Math.min(500, Math.max(1, count))), offset: String(albumOffset.value),
       }), ensureAlbumDisplayGroups()]);
+      if (!isLibraryPageResponse(xml)) throw new Error("Album page request failed");
       const page = parseXmlAttrs(xml, "album").map((a) => ({
         id: a.id || "", name: a.name || "", artist: a.artist || "",
         year: a.year || "", coverArt: a.coverArt || "", songCount: a.songCount || "",
@@ -620,6 +621,7 @@ function loadMoreSongs(count: number = pageSize.value): Promise<void> {
           : sortMode.value === "oldestAdded" ? "oldest"
           : sortMode.value === "nameDesc" ? "titleDesc" : "title",
       });
+      if (!isLibraryPageResponse(xml)) throw new Error("Song page request failed");
       const page = parseXmlAttrs(xml, "song").map(mapSongRow);
       if (request !== songLoadRequest) return;
       allSongs.value.push(...page);
@@ -634,6 +636,10 @@ function loadMoreSongs(count: number = pageSize.value): Promise<void> {
   const wrapped = promise.finally(() => { if (songLoadPromise === wrapped) songLoadPromise = null; });
   songLoadPromise = wrapped;
   return wrapped;
+}
+
+function isLibraryPageResponse(xml: string): boolean {
+  return !!xml.trim() && !searchProtocolError(xml);
 }
 
 async function ensureSongItems(target: number) {
@@ -760,7 +766,13 @@ let searchRequest = 0;
 let searchController: AbortController | null = null;
 
 function searchProtocolError(xml: string): { code: string; message: string } | null {
-  if (!xml || !/(?:status=["']failed["']|<error\b)/i.test(xml)) return null;
+  if (!xml.trim()) return null;
+  const document = new DOMParser().parseFromString(xml, "application/xml");
+  const root = document.documentElement;
+  if (root.localName !== "subsonic-response" || document.querySelector("parsererror")) {
+    return { code: "", message: "Invalid Subsonic response" };
+  }
+  if (root.getAttribute("status") !== "failed" && !root.querySelector("error")) return null;
   const error = parseXmlAttrs(xml, "error")[0];
   return { code: error?.code || "", message: error?.message || xml };
 }
