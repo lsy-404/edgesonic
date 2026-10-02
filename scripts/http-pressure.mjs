@@ -6,12 +6,25 @@ import { pathToFileURL } from 'node:url';
 const STAGES = [1, 5, 10, 20, 40];
 const MAX_REQUESTS = 2500;
 const MAX_TIMEOUT_MS = 30000;
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const PATHS = {
   stats: () => '/edgesonic/stats/library',
-  search20: () => '/rest/search3.view?query=pressure-probe&songCount=20',
-  search100: () => '/rest/search3.view?query=pressure-probe&songCount=100',
-  search500: () => '/rest/search3.view?query=pressure-probe&songCount=500',
 };
+
+function searchPath({ searchQuery, apiKey, username }, songCount, songSort) {
+  const params = new URLSearchParams({
+    query: searchQuery,
+    artistCount: '0',
+    albumCount: '0',
+    songCount: String(songCount),
+    songOffset: '0',
+    songSort,
+    f: 'json',
+  });
+  if (apiKey) params.set('apiKey', apiKey);
+  if (username) params.set('u', username);
+  return `/rest/search3.view?${params}`;
+}
 
 export function parseOptions(env = process.env, argv = process.argv.slice(2)) {
   const args = Object.fromEntries(argv.map((arg) => {
@@ -21,7 +34,8 @@ export function parseOptions(env = process.env, argv = process.argv.slice(2)) {
   }));
   const base = args['base-url'] ?? env.PRESSURE_BASE_URL;
   if (!base) throw new Error('Set --base-url or PRESSURE_BASE_URL.');
-  const baseUrl = new URL(base);
+  let baseUrl;
+  try { baseUrl = new URL(base); } catch { throw new Error('Invalid base URL.'); }
   if (!['http:', 'https:'].includes(baseUrl.protocol) || baseUrl.username || baseUrl.password || baseUrl.search || baseUrl.hash) {
     throw new Error('Base URL must be http(s) and contain no credentials, query, or fragment.');
   }
@@ -35,7 +49,7 @@ export function parseOptions(env = process.env, argv = process.argv.slice(2)) {
   const requests = integer('requests', env.PRESSURE_REQUESTS ?? 20, 1, MAX_REQUESTS / STAGES.length);
   let headers = {};
   if (env.PRESSURE_HEADERS_JSON) {
-    headers = JSON.parse(env.PRESSURE_HEADERS_JSON);
+    try { headers = JSON.parse(env.PRESSURE_HEADERS_JSON); } catch { throw new Error('PRESSURE_HEADERS_JSON must be valid JSON.'); }
     if (!headers || Array.isArray(headers) || typeof headers !== 'object') throw new Error('PRESSURE_HEADERS_JSON must be an object.');
   }
   for (const [name, value] of Object.entries(headers)) {
@@ -46,6 +60,9 @@ export function parseOptions(env = process.env, argv = process.argv.slice(2)) {
     baseUrl,
     scenario,
     requests,
+    searchQuery: env.PRESSURE_QUERY ?? '',
+    apiKey: env.PRESSURE_API_KEY ?? '',
+    username: env.PRESSURE_USERNAME ?? '',
     timeoutMs: integer('timeout-ms', env.PRESSURE_TIMEOUT_MS ?? 10000, 100, MAX_TIMEOUT_MS),
     errorThreshold: integer('error-threshold', env.PRESSURE_ERROR_THRESHOLD ?? 3, 1, 100),
     p95AbortMs: integer('p95-abort-ms', env.PRESSURE_P95_ABORT_MS ?? 3000, 1, 120000),
@@ -59,33 +76,85 @@ function percentile(values, fraction) {
   return Math.round(sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * fraction) - 1)]);
 }
 
-function routeFor(scenario, index) {
-  if (scenario === 'stats') return ['stats', PATHS.stats()];
-  if (scenario === 'search3') {
-    const key = ['search20', 'search100', 'search500'][index % 3];
-    return [key, PATHS[key]()];
-  }
-  const mixed = [['stats', PATHS.stats()], ['search20', PATHS.search20()], ['search100', PATHS.search100()], ['search500', PATHS.search500()]];
-  return mixed[index % mixed.length];
+function httpErrorClass(status) {
+  if (status === 429) return 'rate_limit';
+  if (status === 401 || status === 403) return 'auth_error';
+  if (status >= 500) return 'http_5xx';
+  if (status >= 400) return 'http_4xx';
+  return null;
 }
 
-async function oneRequest(baseUrl, headers, path, timeoutMs) {
+function routeFor(scenario, index, config) {
+  if (scenario === 'stats') return ['stats', PATHS.stats()];
+  const pages = [20, 100, 500].flatMap((count) => ['oldest', 'newest'].map((sort) => ({ count, sort })));
+  if (scenario === 'search3') {
+    const page = pages[index % pages.length];
+    const key = `search${page.count}_${page.sort}`;
+    return [key, searchPath(config, page.count, page.sort)];
+  }
+  const routeIndex = index % 7;
+  if (routeIndex === 0) return ['stats', PATHS.stats()];
+  const page = pages[routeIndex - 1];
+  return [`search${page.count}_${page.sort}`, searchPath(config, page.count, page.sort)];
+}
+
+async function readBoundedBody(response) {
+  if (!response.body) return new Uint8Array();
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_BODY_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
+  return body;
+}
+
+async function oneRequest(baseUrl, headers, path, timeoutMs, endpoint) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const started = performance.now();
+  let receivedStatus = null;
+  let ttfbMs = null;
+  let serverTiming = false;
+  let colo = null;
   try {
     const response = await fetch(new URL(path, baseUrl), { method: 'GET', headers, signal: controller.signal, redirect: 'error' });
-    const elapsed = Math.round(performance.now() - started);
-    const serverTiming = response.headers.get('server-timing');
+    receivedStatus = response.status;
+    ttfbMs = Math.round(performance.now() - started);
+    serverTiming = Boolean(response.headers.get('server-timing'));
     const cfRay = response.headers.get('cf-ray');
-    await response.body?.cancel();
-    let errorClass = null;
-    if (response.status === 429) errorClass = 'rate_limit';
-    else if (response.status >= 500) errorClass = 'http_5xx';
-    else if (!response.ok) errorClass = 'http_4xx';
-    return { elapsed, status: response.status, errorClass, serverTiming: Boolean(serverTiming), colo: cfRay?.split('-').at(-1) ?? null };
+    colo = cfRay?.split('-').at(-1) ?? null;
+    const body = await readBoundedBody(response);
+    const elapsedMs = Math.round(performance.now() - started);
+    let errorClass = httpErrorClass(response.status);
+    if (!errorClass && !response.ok) errorClass = 'http_4xx';
+    else if (body === null) errorClass = 'response_too_large';
+    else if (!response.headers.get('content-type')?.toLowerCase().includes('application/json')) errorClass = 'protocol_error';
+    else {
+      try {
+        const payload = JSON.parse(new TextDecoder().decode(body));
+        if (endpoint === 'stats' ? payload?.ok !== true : payload?.['subsonic-response']?.status !== 'ok') errorClass = 'protocol_error';
+      } catch {
+        errorClass = 'protocol_error';
+      }
+    }
+    return { elapsedMs, ttfbMs, status: receivedStatus, errorClass, serverTiming, colo };
   } catch (error) {
-    return { elapsed: Math.round(performance.now() - started), status: null, errorClass: error?.name === 'AbortError' ? 'timeout' : 'transport', serverTiming: false, colo: null };
+    return { elapsedMs: Math.round(performance.now() - started), ttfbMs, status: receivedStatus, errorClass: httpErrorClass(receivedStatus) ?? (error?.name === 'AbortError' ? 'timeout' : 'transport'), serverTiming, colo };
   } finally {
     clearTimeout(timer);
   }
@@ -101,13 +170,13 @@ export async function runPressure(options, { onStage = () => {}, fetcher = oneRe
     const workers = Array.from({ length: concurrency }, async () => {
       while (!stopped && next < options.requests) {
         const index = next++;
-        const [endpoint, path] = routeFor(options.scenario, index);
-        const result = await fetcher(options.baseUrl, options.headers, path, options.timeoutMs);
+        const [endpoint, path] = routeFor(options.scenario, stageStart + index, options);
+        const result = await fetcher(options.baseUrl, options.headers, path, options.timeoutMs, endpoint);
         results.push({ endpoint, ...result });
         const stageResults = results.slice(stageStart);
-        const errors = stageResults.filter((item) => ['rate_limit', 'http_5xx', 'transport', 'timeout'].includes(item.errorClass)).length;
-        const p95 = percentile(stageResults.map((item) => item.elapsed), 0.95);
-        if (errors >= options.errorThreshold || (p95 !== null && p95 >= options.p95AbortMs)) stopped = true;
+        const errors = stageResults.filter((item) => ['rate_limit', 'http_5xx', 'http_4xx', 'auth_error', 'transport', 'timeout', 'protocol_error', 'response_too_large'].includes(item.errorClass)).length;
+        const p95 = percentile(stageResults.map((item) => item.elapsedMs), 0.95);
+        if (result.errorClass === 'auth_error' || errors >= options.errorThreshold || (p95 !== null && p95 >= options.p95AbortMs)) stopped = true;
       }
     });
     await Promise.all(workers);
@@ -131,11 +200,12 @@ export function summarize(items, concurrency, options) {
     }
     endpoints[name] = {
       requests: values.length,
-      successes: values.filter((item) => item.status >= 200 && item.status < 400).length,
+      successes: values.filter((item) => item.status >= 200 && item.status < 400 && item.errorClass === null).length,
       statuses,
       errors,
       rateLimited: errors.rate_limit ?? 0,
-      latencyMs: { median: percentile(values.map((item) => item.elapsed), 0.5), p95: percentile(values.map((item) => item.elapsed), 0.95), p99: percentile(values.map((item) => item.elapsed), 0.99) },
+      endToEndMs: { median: percentile(values.map((item) => item.elapsedMs), 0.5), p95: percentile(values.map((item) => item.elapsedMs), 0.95), p99: percentile(values.map((item) => item.elapsedMs), 0.99) },
+      ttfbMs: { median: percentile(values.map((item) => item.ttfbMs).filter(Number.isFinite), 0.5), p95: percentile(values.map((item) => item.ttfbMs).filter(Number.isFinite), 0.95), p99: percentile(values.map((item) => item.ttfbMs).filter(Number.isFinite), 0.99) },
       serverTimingResponses: values.filter((item) => item.serverTiming).length,
       cfColos: [...new Set(values.map((item) => item.colo).filter(Boolean))],
     };
