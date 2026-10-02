@@ -791,10 +791,25 @@
     "tabClone": "克隆（上游 → 本地）",
     "tabPush": "推送（本地 → 上游）",
     "sections": {
+      "libraryStats": "曲库数据修复",
       "migrate": "Subsonic 迁移工具",
       "peerSync": "对端同步",
       "storage": "存储与 R2 费用",
       "orphanSongs": "孤儿歌曲清理"
+    },
+    "libraryStats": {
+      "description": "重新计算曲目、专辑和艺人数量。",
+      "loading": "正在读取已保存的统计…",
+      "notReady": "统计数据尚未就绪。",
+      "noData": "无法读取统计数据。",
+      "neverUpdated": "尚未计算",
+      "updatedAt": "更新时间：{date}",
+      "stale": "已保存的数量可能不是最新数据。",
+      "rebuild": "重新计算统计",
+      "rebuilding": "处理中…",
+      "refresh": "刷新已保存统计",
+      "rebuildDone": "曲库统计已重新计算。",
+      "failed": "无法更新曲库统计：{error}"
     },
     "migrate": {
       "upstream": "上游服务器",

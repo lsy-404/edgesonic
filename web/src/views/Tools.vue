@@ -5,11 +5,49 @@ import { ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
+import { canRebuildLibraryStats, type LibraryStatsResponse } from "../lib/libraryStats";
 import Icon from "../components/Icon.vue";
 import { normalizeForMatch } from "../lib/trackMatch";
 
 const { t } = useI18n();
 const { isSuperAdmin, isAdmin, isUser, isGuest, hasPerm, username: currentUsername, edgesonicPost, edgesonicFetch, rescanSongs, md5, signedParams, restUrl } = useAuth();
+const canRepairLibraryStats = computed(() => canRebuildLibraryStats(isAdmin.value, hasPerm("maintenance_reclaim")));
+const libraryStats = ref<LibraryStatsResponse | null>(null);
+const libraryStatsLoading = ref(false);
+const libraryStatsRebuilding = ref(false);
+const libraryStatsUpdatedAt = computed(() => {
+  const updatedAt = libraryStats.value?.updatedAt;
+  return updatedAt ? new Date(updatedAt * 1000).toLocaleString() : t("tools.libraryStats.neverUpdated");
+});
+
+async function loadLibraryStats(showError = false) {
+  if (libraryStatsLoading.value) return;
+  libraryStatsLoading.value = true;
+  try {
+    const data = JSON.parse(await edgesonicFetch("stats/library")) as LibraryStatsResponse & { error?: string };
+    if (!data.ok) throw new Error(data.error || "stats unavailable");
+    libraryStats.value = data;
+  } catch (error) {
+    if (showError) showToast(t("tools.libraryStats.failed", { error: error instanceof Error ? error.message : String(error) }), "error");
+  } finally {
+    libraryStatsLoading.value = false;
+  }
+}
+
+async function rebuildLibraryStats() {
+  if (libraryStatsRebuilding.value || !canRepairLibraryStats.value) return;
+  libraryStatsRebuilding.value = true;
+  try {
+    const data = JSON.parse(await edgesonicPost("stats/library/rebuild", {})) as LibraryStatsResponse & { error?: string };
+    if (!data.ok) throw new Error(data.error || "stats rebuild failed");
+    libraryStats.value = data;
+    showToast(t("tools.libraryStats.rebuildDone"));
+  } catch (error) {
+    showToast(t("tools.libraryStats.failed", { error: error instanceof Error ? error.message : String(error) }), "error");
+  } finally {
+    libraryStatsRebuilding.value = false;
+  }
+}
 interface StorageRow { source_type: string; count: number; bytes: number }
 interface StorageStats { breakdown: StorageRow[]; r2CoverCount: number; r2CoverBytes: number; freeAllocationGb: number }
 const storageStats = ref<StorageStats | null>(null);
@@ -173,6 +211,7 @@ async function saveSyncConfig(nextEnabled?: boolean) {
 onMounted(() => {
   void loadStorageStats();
   void loadOrphanSongs();
+  void loadLibraryStats();
   if (!isGuest.value) void loadSyncConfig();
 });
 
@@ -182,8 +221,8 @@ function showToast(msg: string, type = "success") {
   setTimeout(() => { toast.value.show = false; }, 3000);
 }
 
-type SectionKey = "migrate" | "peerSync" | "storage" | "orphanSongs";
-const open = ref<Record<SectionKey, boolean>>({ migrate: false, peerSync: false, storage: false, orphanSongs: false });
+type SectionKey = "libraryStats" | "migrate" | "peerSync" | "storage" | "orphanSongs";
+const open = ref<Record<SectionKey, boolean>>({ libraryStats: false, migrate: false, peerSync: false, storage: false, orphanSongs: false });
 function toggleSection(key: SectionKey) { open.value[key] = !open.value[key]; }
 const migrateMode = ref<"clone" | "push">("clone");
 
@@ -1544,6 +1583,37 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
           <span aria-hidden="true">→</span>
         </RouterLink>
       </section>
+
+      <section v-if="canRepairLibraryStats" class="settings-section card" :class="{ open: open.libraryStats }">
+        <button class="section-header" @click="toggleSection('libraryStats')">
+          <span class="section-title">{{ t("tools.sections.libraryStats") }}</span>
+          <span class="section-caret">{{ open.libraryStats ? "−" : "+" }}</span>
+        </button>
+        <div v-show="open.libraryStats" class="section-body">
+          <div class="sub-block library-stats-card">
+            <p class="feature-desc tc-desc">{{ t("tools.libraryStats.description") }}</p>
+            <div v-if="libraryStatsLoading && !libraryStats" class="storage-loading">{{ t("tools.libraryStats.loading") }}</div>
+            <div v-else-if="libraryStats && !libraryStats.ready" class="storage-loading muted">{{ t("tools.libraryStats.notReady") }}</div>
+            <template v-else-if="libraryStats?.ready">
+              <div class="library-stats-grid">
+                <div><span class="mono-label">{{ t("dashboard.songs") }}</span><strong>{{ libraryStats.songs.toLocaleString() }}</strong></div>
+                <div><span class="mono-label">{{ t("dashboard.albums") }}</span><strong>{{ libraryStats.albums.toLocaleString() }}</strong></div>
+                <div><span class="mono-label">{{ t("dashboard.artists") }}</span><strong>{{ libraryStats.artists.toLocaleString() }}</strong></div>
+              </div>
+              <p class="feature-desc library-stats-updated">{{ t("tools.libraryStats.updatedAt", { date: libraryStatsUpdatedAt }) }}</p>
+              <p v-if="libraryStats.stale" class="feature-desc library-stats-stale">{{ t("tools.libraryStats.stale") }}</p>
+            </template>
+            <div v-else-if="libraryStatsLoading" class="storage-loading">{{ t("tools.libraryStats.loading") }}</div>
+            <div v-else class="storage-loading muted">{{ t("tools.libraryStats.noData") }}</div>
+            <div class="tc-actions">
+              <button class="btn-primary" :disabled="libraryStatsRebuilding || libraryStatsLoading" @click="rebuildLibraryStats">
+                {{ libraryStatsRebuilding ? t("tools.libraryStats.rebuilding") : t("tools.libraryStats.rebuild") }}
+              </button>
+              <button class="btn-secondary btn-sm" :disabled="libraryStatsLoading" @click="loadLibraryStats(true)">{{ t("tools.libraryStats.refresh") }}</button>
+            </div>
+          </div>
+        </div>
+      </section>
       <!-- Sections mirror Settings.vue's .settings-section pattern
            (button header + v-show body, no transition) instead of the
            bespoke .tools-accordion this page used to have. -->
@@ -1929,6 +1999,9 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
       </section>
       </template>
     </template>
+    <Transition name="toast">
+      <div v-if="toast.show" class="tools-toast" :class="toast.type">{{ toast.msg }}</div>
+    </Transition>
   </div>
 </template>
 
@@ -2095,6 +2168,11 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 .toast-enter-from, .toast-leave-to { opacity: 0; }
 
 .tools-storage-card { padding: 1rem 1.2rem; margin-top: 0; }
+.library-stats-card { margin-top: 0; }
+.library-stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+.library-stats-grid > div { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.75rem; background: var(--color-bg-primary); border: 1px solid var(--color-border-subtle); }
+.library-stats-grid strong { font-size: var(--fs-lg); color: var(--color-text-primary); }
+.library-stats-updated, .library-stats-stale { margin: 0.7rem 0 0; }
 .wp-refresh { background: none; border: 1px solid var(--color-border-subtle); border-radius: 4px; color: var(--color-text-secondary); cursor: pointer; font-size: var(--fs-sm); padding: 0.2rem 0.6rem; }
 .wp-refresh:hover { border-color: var(--color-accent-dim); color: var(--color-text-primary); }
 .wp-refresh:disabled { opacity: 0.5; cursor: default; }

@@ -794,10 +794,25 @@
     "tabClone": "Clone (upstream → local)",
     "tabPush": "Push (local → upstream)",
     "sections": {
+      "libraryStats": "Library Data Repair",
       "migrate": "Subsonic Migrate Tool",
       "peerSync": "Peer Sync",
       "storage": "Storage & R2 Cost",
       "orphanSongs": "Orphan Song Cleanup"
+    },
+    "libraryStats": {
+      "description": "Recalculate the library's song, album, and artist counts.",
+      "loading": "Loading saved counts…",
+      "notReady": "Counts are not available yet.",
+      "noData": "Counts could not be loaded.",
+      "neverUpdated": "Not yet calculated",
+      "updatedAt": "Updated {date}",
+      "stale": "The saved counts may be out of date.",
+      "rebuild": "Recalculate statistics",
+      "rebuilding": "Processing…",
+      "refresh": "Refresh saved counts",
+      "rebuildDone": "Library statistics recalculated.",
+      "failed": "Could not update library statistics: {error}"
     },
     "migrate": {
       "upstream": "Upstream Server",

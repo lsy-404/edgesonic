@@ -6,12 +6,14 @@ import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs } from "../api";
 import { activationDisplay } from "../lib/activation";
 import Icon from "../components/Icon.vue";
+import { refreshLibraryStatsWhileStale, type LibraryStatsResponse } from "../lib/libraryStats";
 import { isNewerStableRelease } from "../../../shared/autoupdate";
 
 const { t } = useI18n();
 const { isLoggedIn, username, isSuperAdmin, level, hasPerm, activation, storageFetch, edgesonicFetch, edgesonicPost, handleAuthError } = useAuth();
 const loading = ref(true);
-const stats = ref({ artists: 0, albums: 0, songs: 0, sources: 0, users: 0 });
+const stats = ref({ artists: null as number | null, albums: null as number | null, songs: null as number | null, sources: 0, users: 0 });
+let dashboardActive = true;
 const canManageSources = computed(() => hasPerm("manage_sources"));
 const canManageUsers = computed(() => hasPerm("manage_users"));
 
@@ -310,23 +312,31 @@ async function onReclaimStaleWork() {
   }
 }
 
+function applyLibraryStats(snapshot: LibraryStatsResponse) {
+  if (!snapshot.ok || !snapshot.ready) return;
+  stats.value.artists = snapshot.artists;
+  stats.value.albums = snapshot.albums;
+  stats.value.songs = snapshot.songs;
+}
+
+async function readLibraryStats(): Promise<LibraryStatsResponse> {
+  const parsed = JSON.parse(await edgesonicFetch("stats/library")) as LibraryStatsResponse;
+  if (!parsed.ok) throw new Error("Library stats unavailable");
+  return parsed;
+}
+
 onMounted(async () => {
   if (!isLoggedIn.value) return;
   try {
-    const libraryJson = await edgesonicFetch("stats/library");
-
-    // A single real COUNT(*) endpoint for the library stats — exact
-    // regardless of size (the earlier search3-based counts capped at 500).
-    try {
-      const parsed = JSON.parse(libraryJson) as { ok?: boolean; artists?: number; albums?: number; songs?: number };
-      if (parsed.ok) {
-        stats.value.artists = parsed.artists ?? 0;
-        stats.value.albums = parsed.albums ?? 0;
-        stats.value.songs = parsed.songs ?? 0;
+    const snapshot = await readLibraryStats();
+    if (dashboardActive) {
+      applyLibraryStats(snapshot);
+      if (!snapshot.ready || snapshot.stale) {
+        void refreshLibraryStatsWhileStale(readLibraryStats, applyLibraryStats, () => dashboardActive);
       }
-    } catch { /* leave stats at 0 on parse failure */ }
+    }
   } catch {
-    // Network error or auth failure — leave stats at 0, UI shows skeleton
+    // Keep counts unknown when the cached snapshot is unavailable.
   } finally {
     loading.value = false;
   }
@@ -363,6 +373,7 @@ whenPermitted(() => canManageUsers.value, async () => {
 whenPermitted(() => isSuperAdmin.value, () => { void loadVersionInfo(); });
 
 onUnmounted(() => {
+  dashboardActive = false;
 });
 </script>
 
@@ -449,7 +460,7 @@ onUnmounted(() => {
       <router-link to="/library?tab=artists" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
-          <span v-else>{{ stats.artists }}</span>
+          <span v-else>{{ stats.artists ?? "—" }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.artists") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
@@ -457,7 +468,7 @@ onUnmounted(() => {
       <router-link to="/library?tab=albums" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
-          <span v-else>{{ stats.albums }}</span>
+          <span v-else>{{ stats.albums ?? "—" }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.albums") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
@@ -465,7 +476,7 @@ onUnmounted(() => {
       <router-link to="/library?tab=songs" class="stat-card card hoverable">
         <div class="stat-num">
           <span v-if="loading" class="skeleton-text" style="width:3rem">　</span>
-          <span v-else>{{ stats.songs }}</span>
+          <span v-else>{{ stats.songs ?? "—" }}</span>
         </div>
         <div class="mono-label">{{ t("dashboard.songs") }}</div>
         <div class="corner corner-tr"></div><div class="corner corner-bl"></div>
