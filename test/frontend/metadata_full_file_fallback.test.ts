@@ -94,8 +94,8 @@ async function main() {
     assert(src.includes("isMetaEmpty(meta)"), "runMetadata checks isMetaEmpty(meta) before falling back");
     assert(/headAlreadyHadWholeFile/.test(src), "skips the fallback when the head fetch already had the whole file");
     assert(/FULL_FETCH_CAP_BYTES/.test(src), "full-file fetch is capped to avoid OOM on pathological files");
-    assert(/if \(fullMeta && !isMetaEmpty\(fullMeta\)\) meta = fullMeta;/.test(src),
-      "only replaces the original (possibly-empty) result when the full-file parse actually found something");
+    assert(/if \(fullMeta && \(!isMetaEmpty\(fullMeta\) \|\| \(fullMeta\.format\.duration && fullMeta\.format\.duration > 0\)\)\) meta = fullMeta;/.test(src),
+      "keeps a valid full-file duration even when the file has no text tags");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
