@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// 034 Playlists CRUD — unit tests for queries layer + permission semantics.
+// Playlist CRUD — unit tests for the queries layer and permission semantics.
 // Strategy: in-memory SQLite (node:sqlite) wrapped in a minimal D1 shim, then
 // drive worker/src/db/queries.ts and the playlist endpoint permission rules
 // directly. Avoids Workers runtime; covers the parts that have real bugs.
@@ -185,7 +185,8 @@ function seedFixtures(sqlite: DatabaseSync): void {
       ('s1', 'al-a1', 'One', 100),
       ('s2', 'al-a1', 'Two', 200),
       ('s3', 'al-a1', 'Three', 300),
-      ('s4', 'al-a1', 'Four', 400);
+      ('s4', 'al-a1', 'Four', 400),
+      ('s5', 'al-a1', 'No duration', NULL);
   `);
 }
 
@@ -315,6 +316,49 @@ async function main() {
     await queries.removeSongsFromPlaylist("pl-bob-pub", []);
     const after = await queries.getPlaylistSongs("pl-bob-pub");
     assert(before.length === after.length, "no-op removal preserves entries");
+  }
+
+  console.log("playlist entry changes and totals share one atomic batch:");
+  {
+    await queries.createPlaylist({ id: "pl-stats", name: "Stats", owner: "alice" });
+    await queries.addSongsToPlaylist("pl-stats", ["s1", "s1", "s5"]);
+    let playlist = await queries.getPlaylistById("pl-stats");
+    assert(playlist?.song_count === 3, "duplicate entries each contribute to song_count");
+    assert(playlist?.duration === 200, "null duration contributes zero to aggregate duration");
+
+    await queries.removeSongsFromPlaylist("pl-stats", [0, 1, 2]);
+    playlist = await queries.getPlaylistById("pl-stats");
+    assert(playlist?.song_count === 0, "removing all entries resets song_count");
+    assert(playlist?.duration === 0, "empty playlist aggregate duration is zero");
+
+    await queries.addSongsToPlaylist("pl-stats", ["s1", "s4"]);
+    sqlite.exec(`
+      CREATE TRIGGER reject_s2 BEFORE INSERT ON playlist_songs
+      WHEN NEW.song_master_id = 's2'
+      BEGIN SELECT RAISE(ABORT, 'test insert failure'); END;
+    `);
+    let addFailed = false;
+    try { await queries.addSongsToPlaylist("pl-stats", ["s2"]); } catch { addFailed = true; }
+    playlist = await queries.getPlaylistById("pl-stats");
+    let entries = await queries.getPlaylistSongs("pl-stats");
+    assert(addFailed, "failed add batch reports its insert error");
+    assert(entries.map((song) => song.id).join(",") === "s1,s4", "failed add batch rolls back inserted entries");
+    assert(playlist?.song_count === 2 && playlist.duration === 500, "failed add batch preserves playlist counts");
+    sqlite.exec("DROP TRIGGER reject_s2");
+
+    sqlite.exec(`
+      CREATE TRIGGER reject_s1 BEFORE INSERT ON playlist_songs
+      WHEN NEW.song_master_id = 's1'
+      BEGIN SELECT RAISE(ABORT, 'test insert failure'); END;
+    `);
+    let removeFailed = false;
+    try { await queries.removeSongsFromPlaylist("pl-stats", [1]); } catch { removeFailed = true; }
+    playlist = await queries.getPlaylistById("pl-stats");
+    entries = await queries.getPlaylistSongs("pl-stats");
+    assert(removeFailed, "failed remove batch reports its insert error");
+    assert(entries.map((song) => song.id).join(",") === "s1,s4", "failed remove batch rolls back deleted and reinserted entries");
+    assert(playlist?.song_count === 2 && playlist.duration === 500, "failed remove batch preserves playlist counts");
+    sqlite.exec("DROP TRIGGER reject_s1");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

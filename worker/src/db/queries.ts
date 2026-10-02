@@ -838,8 +838,8 @@ export function createQueries(db: D1Database) {
           "INSERT INTO playlist_songs (playlist_id, song_master_id, position, added_at) VALUES (?, ?, ?, ?)"
         ).bind(playlistId, sid, start + i, now)
       );
+      stmts.push(playlistStatsUpdate(db, playlistId, now));
       await db.batch(stmts);
-      await recalcPlaylistStats(db, playlistId, now);
     },
 
     async removeSongsFromPlaylist(playlistId: string, indices: number[]): Promise<void> {
@@ -864,8 +864,8 @@ export function createQueries(db: D1Database) {
           ).bind(playlistId, row.song_master_id, i, now)
         );
       });
+      stmts.push(playlistStatsUpdate(db, playlistId, now));
       await db.batch(stmts);
-      await recalcPlaylistStats(db, playlistId, now);
     },
 
     async deletePlaylist(id: string): Promise<void> {
@@ -1517,12 +1517,14 @@ async function computePlaylistTotals(db: D1Database, songIds: string[]): Promise
   };
 }
 
-async function recalcPlaylistStats(db: D1Database, playlistId: string, now: number): Promise<void> {
-  const row = await db.prepare(
-    `SELECT COUNT(*) AS count, COALESCE(SUM(sm.duration), 0) AS duration
-     FROM playlist_songs ps JOIN song_masters sm ON sm.id = ps.song_master_id
-     WHERE ps.playlist_id = ?`
-  ).bind(playlistId).first<{ count: number; duration: number }>();
-  await db.prepare("UPDATE playlists SET song_count = ?, duration = ?, updated_at = ? WHERE id = ?")
-    .bind(row?.count ?? 0, row?.duration ?? 0, now, playlistId).run();
+function playlistStatsUpdate(db: D1Database, playlistId: string, now: number): D1PreparedStatement {
+  return db.prepare(
+    `UPDATE playlists
+        SET (song_count, duration) = (
+          SELECT COUNT(*), COALESCE(SUM(sm.duration), 0)
+            FROM playlist_songs ps JOIN song_masters sm ON sm.id = ps.song_master_id
+           WHERE ps.playlist_id = ?
+        ), updated_at = ?
+      WHERE id = ?`
+  ).bind(playlistId, now, playlistId);
 }
