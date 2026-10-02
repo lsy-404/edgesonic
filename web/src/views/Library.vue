@@ -68,6 +68,7 @@ const tab = ref<Tab>(
 const sortMode = ref<SortMode>("newest");
 const pageSize = ref<LibraryPageSize>(50);
 const listPage = ref(1);
+let listPageRequest = 0;
 const searchPages = ref({ artists: 1, albums: 1, songs: 1 });
 const searchHasMore = ref({ artists: false, albums: false, songs: false });
 const searchAlbumRows = ref<Album[]>([]);
@@ -244,6 +245,7 @@ const HIDE_INSTRUMENTAL_KEY = "edgesonic_hide_instrumental";
 const hideInstrumental = ref(localStorage.getItem(HIDE_INSTRUMENTAL_KEY) === "1");
 watch(hideInstrumental, (on) => {
   localStorage.setItem(HIDE_INSTRUMENTAL_KEY, on ? "1" : "0");
+  listPageRequest++;
   listPage.value = 1;
   if (isSearchActive.value) {
     searchPages.value = { ...searchPages.value, songs: 1 };
@@ -279,6 +281,7 @@ function switchTab(next: Tab) {
   detailRequest++;
   groupDetailRequest++;
   tab.value = next;
+  listPageRequest++;
   listPage.value = 1;
   currentArtist.value = null;
   currentAlbum.value = null;
@@ -300,10 +303,12 @@ function switchTab(next: Tab) {
 }
 
 async function setListPage(page: number) {
+  const request = ++listPageRequest;
   const requested = Math.max(1, Math.floor(page));
   listPage.value = requested;
   if (!starredOnly && tab.value === "albums") await ensureAlbumItems(requested * pageSize.value + 1);
   if (!starredOnly && tab.value === "songs") await ensureSongItems(requested * pageSize.value + 1);
+  if (request !== listPageRequest) return;
   const available = tab.value === "artists" ? artistRows.value.length
     : tab.value === "albums" ? (starredOnly ? albumRows.value.length : albumDisplayCards.value.length)
     : songRows.value.length;
@@ -576,6 +581,7 @@ async function locateCurrentSong() {
 
 watch(sortMode, () => {
   if (props.embedded) return;
+  listPageRequest++;
   listPage.value = 1;
   resetSearchPages();
   if (starredOnly) return;
@@ -824,6 +830,7 @@ watch([searchQuery, lyricsQuery], ([q, lyricQ]) => {
 }, { immediate: true });
 
 watch(pageSize, () => {
+  listPageRequest++;
   listPage.value = 1;
   if (isSearchActive.value) {
     resetSearchPages();
