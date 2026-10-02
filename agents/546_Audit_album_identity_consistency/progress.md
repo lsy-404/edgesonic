@@ -8,3 +8,8 @@
 - `npm exec tsx -- test/internal/album_artist_roundtrip.test.ts`：ALL PASS，覆盖既有 compilation、source-folder和不同folder/codec edition断言。
 - `npm run typecheck -w worker`：通过。
 - `git diff --check`：通过。未触碰生产资源。
+
+- 首次定向测试 ALL PASS，worker typecheck通过；首个实现提交 `ea4940ed638066ff451175373fd1b4a36d184cef`。
+- 跟进修正 metadata worker：仅扫描/解析入口开启 scanIdentity；同 album 名（NFC、移除『』、忽略空白、大小写）采用当前规范名并保留当前专辑 ID，显式不同 album artist 与真实不同专辑名仍走原有重算逻辑。手动 tag/write 不变。
+- 在真实 SQLite fixture 中覆盖 metadata apply 和 `/tag/read` 两入口的引号/空白与 NFD 等价名、custom album ID、真实不同专辑名和显式不同专辑艺人；已有 compilation、source-folder、不同folder/codec版断言也通过。
+- 最新 `npm exec tsx -- test/internal/album_artist_roundtrip.test.ts`：ALL PASS。最新 `npm run typecheck -w worker` 和 `git diff --check`：通过。未触碰生产资源。

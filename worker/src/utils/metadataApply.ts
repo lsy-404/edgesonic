@@ -14,7 +14,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import { md5 } from "./md5";
-import { compilationMarkerStatement, retainCompilationAlbum, sourceFolderAlbumIdForScan } from "./albumIdentity";
+import {
+  compilationMarkerStatement,
+  normalizeScannedAlbumName,
+  retainCompilationAlbum,
+  retainScannedAlbumIdentity,
+  sourceFolderAlbumIdForScan,
+} from "./albumIdentity";
 import { deriveBitrate } from "./audioMetrics";
 import {
   artistInsertStatements,
@@ -75,6 +81,7 @@ export async function applyMetadataResult(
   instanceId: string,
   common: MetaCommon | undefined | null,
   format: MetaFormat | undefined | null,
+  options: { scanIdentity?: boolean } = {},
 ): Promise<ApplyResult> {
   if (!instanceId || typeof instanceId !== "string") {
     return { updated: false, reason: "missing instanceId" };
@@ -108,12 +115,15 @@ export async function applyMetadataResult(
     const currentAlbum = master.album_id === "pending-uploads" ? null
       : await db.prepare("SELECT name FROM albums WHERE id = ?")
         .bind(master.album_id).first<{ name: string }>();
+    if (options.scanIdentity && tags.album && currentAlbum?.name) {
+      tags.album = normalizeScannedAlbumName(tags.album, currentAlbum.name);
+    }
     const scanAlbumName = tags.album || currentAlbum?.name;
     const importAlbumId = scanAlbumName
       ? await sourceFolderAlbumIdForScan(db, instanceId, master.album_id,
         currentAlbum?.name ?? null, scanAlbumName, inst.suffix)
       : null;
-    await relinkArtistAlbum(db, master, tags, importAlbumId);
+    await relinkArtistAlbum(db, master, tags, importAlbumId, options.scanIdentity === true);
     masterId = master.id;
   } else {
     masterId = inst.master_id;
@@ -171,6 +181,7 @@ export async function relinkArtistAlbum(
   master: { id: string; album_id: string; artist_id: string; album_artist_id: string | null; title: string },
   tags: SubmittedMetadata,
   importAlbumId: string | null = null,
+  scanIdentity = false,
 ): Promise<{ albumId: string; artistId: string }> {
   const now = Math.floor(Date.now() / 1000);
 
@@ -192,9 +203,13 @@ export async function relinkArtistAlbum(
   const primaryArtist = artistCredits[0];
   const linkArtistName = albumArtist?.name || primaryArtist?.name || curArtist?.name || "Unknown Artist";
   const albumName = tags.album || curAlbum?.name || "Unknown Album";
+  const retainScannedIdentity = scanIdentity && retainScannedAlbumIdentity(
+    master.album_id, curAlbum?.name, albumName, currentAlbumArtist?.name, parseAlbumArtistCredit(tags.albumArtist)?.name,
+  );
   const artistId = primaryArtist?.id || master.artist_id;
   const albumIdentityChanged = artistChanged || tags.albumArtist !== undefined || tags.album !== undefined;
-  const albumId = importAlbumId ?? (albumIdentityChanged && !retainCompilationAlbum(curAlbum, albumName, tags.albumArtist, currentAlbumArtist?.name)
+  const albumId = importAlbumId ?? (retainScannedIdentity ? master.album_id
+    : albumIdentityChanged && !retainCompilationAlbum(curAlbum, albumName, tags.albumArtist, currentAlbumArtist?.name)
     ? "al-" + md5(linkArtistName + " " + albumName).substring(0, 10)
     : master.album_id);
   const oldAlbumId = master.album_id;

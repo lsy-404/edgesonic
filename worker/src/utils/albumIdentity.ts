@@ -13,6 +13,26 @@ export function retainCompilationAlbum(
     && (incomingAlbumArtist === undefined || incomingAlbumArtist === (currentAlbumArtist ?? undefined));
 }
 
+export function normalizeScannedAlbumName(incomingName: string, currentName: string | null | undefined): string {
+  if (currentName && albumNameKey(incomingName) === albumNameKey(currentName)) return currentName;
+  return incomingName;
+}
+
+export function retainScannedAlbumIdentity(
+  currentAlbumId: string | null | undefined,
+  currentAlbumName: string | null | undefined,
+  incomingAlbumName: string,
+  currentAlbumArtist: string | null | undefined,
+  incomingAlbumArtist: string | null | undefined,
+): boolean {
+  if (!currentAlbumId || !currentAlbumName || albumNameKey(incomingAlbumName) !== albumNameKey(currentAlbumName)) return false;
+  return !incomingAlbumArtist || incomingAlbumArtist === currentAlbumArtist;
+}
+
+function albumNameKey(name: string): string {
+  return name.normalize("NFC").replace(/[『』]/g, "").replace(/\s+/gu, "").toLowerCase();
+}
+
 export async function sourceFolderAlbumId(
   db: D1Database,
   instanceId: string,
