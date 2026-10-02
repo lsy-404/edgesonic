@@ -22,7 +22,7 @@ import { md5 } from "./utils/md5";
 import { getServerRelayPolicy, parseChain } from "./utils/features";
 import { hasPermission } from "./utils/permissions";
 import { resolveActivation, clampExpiryToActivation, clampTtlToActivation, isGuestAccessEnabled, type ActivationState } from "./utils/activation";
-import { ensureActivationSchema, ensureSsoSchema, ensureSubsonicMasterPasswordNoticeColumn } from "./utils/schema_patch";
+import { ensureActivationSchema, ensureSubsonicMasterPasswordNoticeColumn } from "./utils/schema_patch";
 import { resolveSsoPolicy } from "./utils/ssoPolicy";
 import { SERVER_TYPE, SERVER_VERSION } from "./utils/xml";
 import type { User } from "./types/entities";
@@ -66,21 +66,51 @@ export function buildSessionCookieHeader(token: string, maxAgeSec: number): stri
 async function findSessionByCookie(
   db: D1Database,
   cookieToken: string,
-): Promise<{ credential: string; id: string; kind: "session"; authSource: "local" | "sso"; streamProxyStrategy: string } | null> {
-  await ensureSsoSchema({ DB: db });
+): Promise<{
+  credential: string;
+  id: string;
+  kind: "session";
+  authSource: "local" | "sso";
+  streamProxyStrategy: string;
+  username: string;
+  expiresAt: number;
+  user: User;
+} | null> {
   const row = await db
-    .prepare("SELECT id, token, auth_source FROM sessions WHERE token = ? AND expires_at > ?")
+    .prepare(`SELECT
+      sessions.id AS session_id,
+      sessions.token AS session_token,
+      sessions.username AS session_username,
+      sessions.auth_source AS session_auth_source,
+      sessions.expires_at AS session_expires_at,
+      users.*
+    FROM sessions
+    JOIN users ON users.username = sessions.username
+    WHERE sessions.token = ? AND sessions.expires_at > ?`)
     .bind(cookieToken, Math.floor(Date.now() / 1000))
-    .first<{ id: string; token: string; auth_source: "local" | "sso" }>();
+    .first<Record<string, unknown> & {
+      session_id: string;
+      session_token: string;
+      session_username: string;
+      session_auth_source: "local" | "sso";
+      session_expires_at: number;
+    }>();
   if (!row) return null;
-  // Renewal happens later in authMiddleware, once the user row (and its
-  // activation state) is loaded, so the renewed expiry can be clamped.
+  const userFields = Object.fromEntries(
+    Object.entries(row).filter(([key]) => !key.startsWith("session_")),
+  );
   return {
-    credential: row.token,
-    id: row.id,
+    credential: row.session_token,
+    id: row.session_id,
     kind: "session",
-    authSource: row.auth_source === "sso" ? "sso" : "local",
+    authSource: row.session_auth_source === "sso" ? "sso" : "local",
     streamProxyStrategy: "always",
+    username: row.session_username,
+    expiresAt: row.session_expires_at,
+    user: {
+      ...userFields,
+      password: (row.master_password ?? row.password) as string,
+    } as unknown as User,
   };
 }
 
@@ -306,13 +336,15 @@ async function findSubsonicCredential(
   return null;
 }
 
-async function renewSessionIfNeeded(db: D1Database, token: string, activation?: ActivationState): Promise<void> {
+async function renewSessionIfNeeded(db: D1Database, token: string, expiresAt: number, activation?: ActivationState): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
+  if (expiresAt >= now + SESSION_RENEW_THRESHOLD_SEC) return;
   // The renewed expiry is clamped to the caller's activation window so a
   // sliding session never outlives the account's activation.
   const renewed = activation
     ? clampExpiryToActivation(activation, now + SESSION_TTL_SEC)
     : now + SESSION_TTL_SEC;
+  if (renewed <= expiresAt) return;
   await db
     .prepare("UPDATE sessions SET expires_at = ? WHERE token = ? AND expires_at < ? AND expires_at < ?")
     .bind(renewed, token, now + SESSION_RENEW_THRESHOLD_SEC, renewed)
@@ -469,16 +501,12 @@ export const authMiddleware = createMiddleware<{
   // D1 round-trip for requests that actually came from the SPA — and it's
   // skipped entirely when an apiKey path is in play.
   const cookieToken = parseSessionCookie(c.req.header("Cookie") || "");
-  let cookieSession: { credential: string; id: string; kind: "session"; authSource: "local" | "sso"; streamProxyStrategy: string } | null = null;
+  let cookieSession: Awaited<ReturnType<typeof findSessionByCookie>> = null;
   let cookieUsername: string | null = null;
   if (cookieToken && !apiKey) {
     cookieSession = await findSessionByCookie(db, cookieToken);
     if (cookieSession) {
-      const sessUser = await db
-        .prepare("SELECT username FROM sessions WHERE token = ?")
-        .bind(cookieToken)
-        .first<{ username: string }>();
-      if (sessUser) cookieUsername = sessUser.username;
+      cookieUsername = cookieSession.username;
       // Only fill username from the cookie when the request didn't claim
       // one already; the cross-user mismatch case is rejected below in the
       // auth-method chain (cookieSession && cookieUsername !== username
@@ -491,7 +519,9 @@ export const authMiddleware = createMiddleware<{
     return authFail(40, "Missing username", 401);
   }
 
-  const user = await lookupUser(db, username);
+  const user = cookieSession && cookieUsername === username
+    ? cookieSession.user
+    : await lookupUser(db, username);
   if (!user || !user.enabled) {
     return authFail(40, "Wrong username or password", 401);
   }
@@ -648,7 +678,7 @@ export const authMiddleware = createMiddleware<{
   // → the SPA logs out. A post-deploy reload surfacing as "lost login" was
   // the symptom that exposed the gap.
   if (authMethod === "session" && authSource === "cookie" && cookieToken) {
-    await renewSessionIfNeeded(db, cookieToken, activation);
+    await renewSessionIfNeeded(db, cookieToken, cookieSession?.expiresAt ?? 0, activation);
     const isHttps = new URL(c.req.url).protocol === "https:";
     // The cookie's Max-Age is clamped to the activation window so the
     // browser-side lifetime never exceeds the server-side session's.

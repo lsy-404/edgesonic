@@ -89,7 +89,8 @@ function buildDb(): DatabaseSync {
     );
     CREATE TABLE sessions (
       id TEXT PRIMARY KEY, username TEXT NOT NULL, token TEXT NOT NULL,
-      user_agent TEXT, expires_at INTEGER NOT NULL, created_at INTEGER DEFAULT 0
+      auth_source TEXT NOT NULL DEFAULT 'local', user_agent TEXT,
+      expires_at INTEGER NOT NULL, created_at INTEGER DEFAULT 0
     );
     CREATE TABLE user_permissions (
       level INTEGER NOT NULL, permission TEXT NOT NULL, enabled INTEGER DEFAULT 0, max_rph INTEGER DEFAULT 0,

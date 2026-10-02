@@ -48,8 +48,9 @@ function assert(cond: unknown, msg: string) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeD1(sqlite: DatabaseSync): any {
+function makeD1(sqlite: DatabaseSync, statements: string[] = []): any {
   function prepare(query: string) {
+    statements.push(query);
     const stmt = sqlite.prepare(query);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let boundArgs: any[] = [];
@@ -85,7 +86,8 @@ function buildDb(): DatabaseSync {
     );
     CREATE TABLE sessions (
       id TEXT PRIMARY KEY, username TEXT NOT NULL, token TEXT NOT NULL,
-      user_agent TEXT, expires_at INTEGER NOT NULL, created_at INTEGER DEFAULT 0
+      auth_source TEXT NOT NULL DEFAULT 'local', user_agent TEXT,
+      expires_at INTEGER NOT NULL, created_at INTEGER DEFAULT 0
     );
     CREATE TABLE user_permissions (
       level INTEGER NOT NULL, permission TEXT NOT NULL, enabled INTEGER DEFAULT 0, max_rph INTEGER DEFAULT 0,
@@ -109,7 +111,7 @@ function insertSession(sqlite: DatabaseSync, token: string, username: string, ex
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeApp(sqlite: DatabaseSync, envOverrides: Record<string, unknown> = {}): any {
+function makeApp(sqlite: DatabaseSync, envOverrides: Record<string, unknown> = {}, statements: string[] = []): any {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.route("/", webLoginRoutes);
@@ -123,7 +125,8 @@ function makeApp(sqlite: DatabaseSync, envOverrides: Record<string, unknown> = {
   app.get("/tag/whoami", ok);
   app.get("/storage/whoami", ok);
   app.get("/edgesonic/whoami", ok);
-  const env = { DB: makeD1(sqlite), INSTANCE_ID: "test", ...envOverrides };
+  app.get("/edgesonic/user-snapshot", (c) => c.json(c.get("user")));
+  const env = { DB: makeD1(sqlite, statements), INSTANCE_ID: "test", ...envOverrides };
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async get(path: string, qs: string, cookie?: string): Promise<any> {
@@ -171,6 +174,25 @@ function makeApp(sqlite: DatabaseSync, envOverrides: Record<string, unknown> = {
 async function main() {
   const now = Math.floor(Date.now() / 1000);
 
+  console.log("Cookie auth resolves session and user in one read and avoids far-expiry writes:");
+  {
+    const sqlite = buildDb();
+    const token = "single-read-cookie";
+    insertSession(sqlite, token, "alice", now + 4 * 86400);
+    const statements: string[] = [];
+    const { get } = makeApp(sqlite, {}, statements);
+    const r = await get("/tag/whoami", "", `edgesonic_session=${token}`);
+    assert(r.status === 200, `cookie request succeeds (got ${r.status})`);
+    const sessionReads = statements.filter((sql) => /\bFROM\s+sessions\b/i.test(sql));
+    assert(sessionReads.length === 1 && /\bJOIN\s+users\b/i.test(sessionReads[0]), "session and user are loaded by one joined query");
+    assert(!statements.some((sql) => /^\s*ALTER\s+TABLE/i.test(sql)), "cookie auth performs no schema DDL");
+    assert(!statements.some((sql) => /^\s*UPDATE\s+sessions\b/i.test(sql)), "far-expiry cookie auth skips the renewal write");
+    const userResponse = await get("/edgesonic/user-snapshot", "", `edgesonic_session=${token}`);
+    const userObject = await userResponse.json() as Record<string, unknown>;
+    assert(!Object.keys(userObject).some((key) => key.startsWith("session_") || key === "auth_source"), "joined session metadata is excluded from the user object");
+    assert(!JSON.stringify(userObject).includes(token), "session token is not serialized as user data");
+  }
+
   console.log("Cookie-only (no query auth) on management prefixes → 200, authMethod=session:");
   {
     const sqlite = buildDb();
@@ -197,6 +219,18 @@ async function main() {
     assert(r.status === 200, `/tag/whoami 200 (got ${r.status})`);
   }
 
+  console.log("\nInvalid explicit credentials are not rescued by a valid cookie:");
+  {
+    const sqlite = buildDb();
+    const token = "valid-cookie-explicit-fail";
+    insertSession(sqlite, token, "alice", now + 4 * 86400);
+    const { get } = makeApp(sqlite);
+    const cookie = `edgesonic_session=${token}`;
+    assert((await get("/rest/ping", "apiKey=invalid", cookie)).status === 401, "invalid apiKey remains rejected");
+    assert((await get("/rest/ping", "u=alice&t=invalid&s=salt", cookie)).status === 401, "invalid token/salt remains rejected");
+    assert((await get("/rest/ping", "u=alice&p=invalid", cookie)).status === 401, "invalid password remains rejected");
+  }
+
   console.log("\nCookie + mismatched `u` (u=bob, cookie=alice with both users real) → 401 (anti-spoof):");
   {
     const sqlite = buildDb();
@@ -219,6 +253,17 @@ async function main() {
     const { get } = makeApp(sqlite);
     const r = await get("/tag/whoami", "", `edgesonic_session=${token}`);
     assert(r.status === 401, `/tag/whoami 401 (got ${r.status})`);
+  }
+
+  console.log("\nDisabled account cookie → 401:");
+  {
+    const sqlite = buildDb();
+    const token = "cookie-disabled-user";
+    insertSession(sqlite, token, "alice", now + 86400);
+    sqlite.prepare("UPDATE users SET enabled = 0 WHERE username = 'alice'").run();
+    const { get } = makeApp(sqlite);
+    const r = await get("/tag/whoami", "", `edgesonic_session=${token}`);
+    assert(r.status === 401, `/tag/whoami rejects a disabled account (got ${r.status})`);
   }
 
   console.log("\nlogin endpoint sets HttpOnly + SameSite=Lax cookie:");
