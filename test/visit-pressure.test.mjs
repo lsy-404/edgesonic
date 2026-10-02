@@ -74,5 +74,6 @@ test('uses equivalent read graph in both modes and records overlapping intervals
   assert.equal(report.reads.endpoints.browse.requests, report.mixed.endpoints.browse.requests);
   assert.equal(report.reads.endpoints.star, undefined);
   assert(report.mixed.readWriteOverlappingReads > 0);
+    assert(report.mixed.overlappingReadsByEndpoint.browse > 0);
   assert.equal(report.matchedReadLatencyRatios.browse.readsP95Ratio, 1);
 });

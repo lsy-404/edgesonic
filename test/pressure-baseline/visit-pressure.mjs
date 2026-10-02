@@ -313,7 +313,14 @@ export async function runVisitPressure(options, { visitRunner = readVisit, write
       }
     });
     await Promise.all(workers);
-    const readWriteOverlaps = intervals.filter((a) => a.group === 'read').reduce((count, read) => count + intervals.some((write) => write.group === 'write' && read.startedAt < write.endedAt && write.startedAt < read.endedAt), 0);
+    const writes = intervals.filter((item) => item.group === 'write');
+    const overlappingReadsByEndpoint = {};
+    for (const read of intervals.filter((item) => item.group === 'read')) {
+      if (writes.some((write) => read.startedAt < write.endedAt && write.startedAt < read.endedAt)) {
+        overlappingReadsByEndpoint[read.endpoint] = (overlappingReadsByEndpoint[read.endpoint] ?? 0) + 1;
+      }
+    }
+    const readWriteOverlaps = Object.values(overlappingReadsByEndpoint).reduce((total, count) => total + count, 0);
     const requestEvents = intervals.flatMap((item) => [{ time: item.startedAt, delta: 1 }, { time: item.endedAt, delta: -1 }]).sort((a, b) => a.time - b.time || a.delta - b.delta);
     let activeRequests = 0;
     let peakRequestsInFlight = 0;
@@ -325,6 +332,7 @@ export async function runVisitPressure(options, { visitRunner = readVisit, write
       peakActiveVisits,
       peakRequestsInFlight,
       readWriteOverlappingReads: readWriteOverlaps,
+      overlappingReadsByEndpoint,
       intervals: intervals.length,
       ...(mode === 'mixed' ? { writeWorkload: { starItemsPerVisit: 1, playlistSongsAtReorder: 2, playlistMutationRequests: { create: 2, update: 1, delete: 1 }, deletesTemporaryPlaylist: true } } : {}),
     };
