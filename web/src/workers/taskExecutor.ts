@@ -143,6 +143,8 @@ function declaredPcmWavMetrics(bytes: Uint8Array, fileSize: number): { duration:
   let byteRate = 0;
   let blockAlign = 0;
   let formatTag = 0;
+  let channels = 0;
+  let bitsPerSample = 0;
   while (offset + 8 <= bytes.length && offset + 8 <= riffEnd) {
     const id = ascii(offset);
     const chunkSize = view.getUint32(offset + 4, true);
@@ -152,12 +154,18 @@ function declaredPcmWavMetrics(bytes: Uint8Array, fileSize: number): { duration:
     if (id === "fmt ") {
       if (chunkSize < 16 || chunkEnd > bytes.length) return undefined;
       formatTag = view.getUint16(body, true);
+      channels = view.getUint16(body + 2, true);
       sampleRate = view.getUint32(body + 4, true);
       byteRate = view.getUint32(body + 8, true);
       blockAlign = view.getUint16(body + 12, true);
+      bitsPerSample = view.getUint16(body + 14, true);
     } else if (id === "data") {
       if (formatTag !== 1 && formatTag !== 3) return undefined;
-      if (!sampleRate || !blockAlign || byteRate !== sampleRate * blockAlign || chunkSize % blockAlign !== 0) return undefined;
+      const validBits = formatTag === 1
+        ? bitsPerSample === 8 || bitsPerSample === 16 || bitsPerSample === 24 || bitsPerSample === 32
+        : bitsPerSample === 32 || bitsPerSample === 64;
+      if (!channels || !sampleRate || !validBits || blockAlign !== channels * bitsPerSample / 8 ||
+          !chunkSize || byteRate !== sampleRate * blockAlign || chunkSize % blockAlign !== 0) return undefined;
       return { duration: chunkSize / blockAlign / sampleRate, bitrate: byteRate * 8 };
     }
     offset = chunkEnd + (chunkSize & 1);
@@ -396,6 +404,9 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
         ? partialWavMetrics ? Math.round(partialWavMetrics.bitrate / 1000) : 0
         : meta.format.bitrate ? Math.round(meta.format.bitrate / 1000) : 0,
       sampleRate:  meta.format.sampleRate || 0,
+      ...(Number.isFinite(meta.format.bitsPerSample) && (meta.format.bitsPerSample ?? 0) > 0
+        ? { bitDepth: meta.format.bitsPerSample }
+        : {}),
       channels:    meta.format.numberOfChannels || 0,
       container:   meta.format.container || "",
       codec:       meta.format.codec || "",
