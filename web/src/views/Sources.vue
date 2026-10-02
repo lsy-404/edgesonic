@@ -6,7 +6,7 @@ import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
 import Icon from "../components/Icon.vue";
-import { FluentSelect } from "@lsypkg/fluent/vue";
+import { FluentSelect } from "@platform-kit/fluent/vue";
 
 const { t } = useI18n();
 const { isAdmin, isSuperAdmin, storageFetch, storagePost, crossCopy } = useAuth();

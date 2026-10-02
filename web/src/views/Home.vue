@@ -16,7 +16,7 @@ import {
 import { homeMessages } from "../locales/home";
 import { useDetailStore } from "../stores/detail";
 import { usePlayerStore } from "../stores/player";
-import { FluentButton, FluentProgressRing } from "@lsypkg/fluent/vue";
+import { FluentButton, FluentProgressRing } from "@platform-kit/fluent/vue";
 
 const { locale } = useI18n();
 const router = useRouter();

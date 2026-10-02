@@ -19,7 +19,7 @@ import { isScrollInsideElement, placeFloatingPoint } from "../lib/floatingPlacem
 import Icon from "../components/Icon.vue";
 import ShareDialog from "../components/ShareDialog.vue";
 import { usePlayerStore, type Track } from "../stores/player";
-import { FluentSelect } from "@lsypkg/fluent/vue";
+import { FluentSelect } from "@platform-kit/fluent/vue";
 
 const { t } = useI18n();
 const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, checkUploadConflicts, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitUploadedMetadata, queueUploadedMetadataFallback } = useAuth();

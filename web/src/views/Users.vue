@@ -7,7 +7,7 @@ import { useAuth } from "../api";
 import { activationDisplay, toDatetimeLocal, fromDatetimeLocal, type ActivationStatus } from "../lib/activation";
 import { defaultAvatarColor, defaultAvatarInitial } from "../../../shared/avatar";
 import Icon from "../components/Icon.vue";
-import { FluentSelect } from "@lsypkg/fluent/vue";
+import { FluentSelect } from "@platform-kit/fluent/vue";
 
 const { t, locale } = useI18n();
 const { username: currentUsername, isAdmin, isSuperAdmin, hasPerm, edgesonicFetch, edgesonicPost, restUrl } = useAuth();

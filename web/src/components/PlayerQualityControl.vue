@@ -2,7 +2,7 @@
 import { computed, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePlayerStore } from "../stores/player";
-import { FluentSelect, type FluentSelectOption } from "@lsypkg/fluent/vue";
+import { FluentSelect, type FluentSelectOption } from "@platform-kit/fluent/vue";
 
 const { t } = useI18n();
 const player = usePlayerStore();

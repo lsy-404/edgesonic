@@ -4,7 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { type MessageKind, type MessagePresentation, type UserMessage, useAuth } from "../api";
 import Icon from "./Icon.vue";
-import { FluentButton, FluentSelect } from "@lsypkg/fluent/vue";
+import { FluentButton, FluentSelect } from "@platform-kit/fluent/vue";
 
 const props = defineProps<{ isSuperAdmin: boolean; canManageUsers: boolean }>();
 const { t } = useI18n();
