@@ -7,3 +7,7 @@
 | 550 | [Feature] Library pagination | 媒体库列表与搜索分页、可选页大小、服务端分页上限 | 用户要求选择页长与页间切换 | ✅ 已完成 |
 | 551 | [Feature] Client navigation | 客户端独立页面、设置与工具布局 | 明确客户端指引与管理入口 | ✅ 已完成 |
 | 552 | [Feature] Viewer Fluent | Fluent 升级与查看器布局 | 改善主题与响应式显示 | ✅ 已完成 |
+| 556 | [Feature] Library modes and management interface | 集成分页/自动加载、可用总页数、客户端精简及默认折叠官网链接、设置工具折叠卡重设计 | 用户要求后续界面调整 | 🔄 进行中 |
+| 557 | [Feature] Library load modes | 媒体库分页与自动加载切换，依据真实已知信息显示总页数，覆盖过滤/搜索/收藏/分组及异步取消 | 用户要求后续界面调整 | 🔄 进行中 |
+| 558 | [Feature] Client simplification | 侧栏客户端简称，去掉权限等冗余描述，创建客户端密码，精简连接表单与默认折叠客户端官网链接 | 用户要求后续界面调整 | 🔄 进行中 |
+| 559 | [Feature] Management expanders | 重设计设置与工具的一二级折叠卡，使用现有 Fluent API/主题，改善键盘语义与响应式 | 用户要求后续界面调整 | 🔄 进行中 |
