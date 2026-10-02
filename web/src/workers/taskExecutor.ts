@@ -108,6 +108,13 @@ function firstMoofBoxStart(buf: Uint8Array): number {
   return -1;
 }
 
+function detectedMimeType(buf: Uint8Array, suffix: string, hinted?: string): string | undefined {
+  const isIsoBmff = buf.length >= 8 &&
+    buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70;
+  if (!isIsoBmff) return hinted;
+  return suffix === "mp4" ? "video/mp4" : "audio/mp4";
+}
+
 // True when a parsed result has no usable metadata at all — no text tags,
 // no embedded picture, no lyrics. Used to decide whether the last-resort
 // full-file fetch in runMetadata is worth attempting. Exported for direct
@@ -211,7 +218,7 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
   // and no defaultSampleDuration in track fragment header" when the moof
   // fragment is incomplete (we only fetched a head slice). Wrap in try/catch
   // and fallback to basic atom parsing for the title/artist/album tags.
-  const mimeType = headResp.headers.get("content-type") || undefined;
+  const mimeType = detectedMimeType(buf, suffix, headResp.headers.get("content-type") || undefined);
   let meta;
   try {
     meta = await parseBuffer(buf, {
@@ -260,7 +267,7 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
         const fullBuf = new Uint8Array(await fullResp.arrayBuffer());
         if (fullBuf.length === totalSize) {
           meta = await parseBuffer(fullBuf, {
-            mimeType: fullResp.headers.get("content-type") || mimeType,
+            mimeType: detectedMimeType(fullBuf, suffix, fullResp.headers.get("content-type") || mimeType),
             size: fullBuf.length,
           }, { duration: true, skipCovers: false });
           fullMp3DurationRead = true;
@@ -269,9 +276,8 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
     } catch { /* retain partial tags without a duration */ }
   }
 
-  // Last resort, ALL non-MP3 formats: if the head(+tail) window came back with
-  // literally nothing usable — no text tags, no picture, no lyrics — fetch
-  // the whole file and re-parse before concluding it truly has no metadata.
+  // If the head window has no usable metadata or an MP4 duration, fetch the
+  // complete object before accepting the partial parse as final.
   // A partial window can miss tags parked somewhere neither head nor tail
   // reaches (e.g. a WAV whose id3/LIST chunk sits mid-file rather than at
   // either end, or any format with an oversized header pushing tags past
@@ -282,19 +288,23 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
   // the tab.
   const headAlreadyHadWholeFile =
     headResp.status === 200 || (totalSize > 0 && totalSize <= HEAD_BYTES);
-  if (!isPartialMp3 && isMetaEmpty(meta) && !headAlreadyHadWholeFile && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
+  const needsMp4DurationRead = suffix === "mp4" && !(meta.format.duration && meta.format.duration > 0);
+  if (!isPartialMp3 && (isMetaEmpty(meta) || needsMp4DurationRead) &&
+      !headAlreadyHadWholeFile && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
     try {
       const fullResp = await fetch(streamUrl);
       if (fullResp.ok) {
         const fullBuf = new Uint8Array(await fullResp.arrayBuffer());
-        const fullMimeType = fullResp.headers.get("content-type") || undefined;
-        let fullMeta;
-        try {
-          fullMeta = await parseBuffer(fullBuf, { mimeType: fullMimeType }, { duration: true, skipCovers: false });
-        } catch {
-          fullMeta = await parseBuffer(fullBuf, { mimeType: fullMimeType }, { duration: false, skipCovers: false }).catch(() => undefined);
+        if (fullBuf.length === totalSize) {
+          const fullMimeType = detectedMimeType(fullBuf, suffix, fullResp.headers.get("content-type") || undefined);
+          let fullMeta;
+          try {
+            fullMeta = await parseBuffer(fullBuf, { mimeType: fullMimeType }, { duration: true, skipCovers: false });
+          } catch {
+            fullMeta = await parseBuffer(fullBuf, { mimeType: fullMimeType }, { duration: false, skipCovers: false }).catch(() => undefined);
+          }
+          if (fullMeta && (!isMetaEmpty(fullMeta) || (fullMeta.format.duration && fullMeta.format.duration > 0))) meta = fullMeta;
         }
-        if (fullMeta && !isMetaEmpty(fullMeta)) meta = fullMeta;
       }
     } catch { /* full-file fetch/parse failed — keep the original (empty) result */ }
   }

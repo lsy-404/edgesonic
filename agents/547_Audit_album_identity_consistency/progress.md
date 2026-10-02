@@ -13,3 +13,11 @@
 - 跟进修正 metadata worker：仅扫描/解析入口开启 scanIdentity；同 album 名（NFC、移除『』、忽略空白、大小写）采用当前规范名并保留当前专辑 ID，显式不同 album artist 与真实不同专辑名仍走原有重算逻辑。手动 tag/write 不变。
 - 在真实 SQLite fixture 中覆盖 metadata apply 和 `/tag/read` 两入口的引号/空白与 NFD 等价名、custom album ID、真实不同专辑名和显式不同专辑艺人；已有 compilation、source-folder、不同folder/codec版断言也通过。
 - 最新 `npm exec tsx -- test/internal/album_artist_roundtrip.test.ts`：ALL PASS。最新 `npm run typecheck -w worker` 和 `git diff --check`：通过。未触碰生产资源。
+- 核验消费者与全库snapshot聚合：专辑duration经Subsonic mapAlbum暴露；1,392/1,510 stored duration与masters实际SUM不一致。补metadataApply与tag/read聚合，并确保tag/read迁移旧album也纳入；duration-only metadata apply在master更新后刷新聚合。
+- 扩展实际SQLite回归：metadata apply 以format.duration=30回填NULL master时长，album从0修为40；tag/read真实route将album缓存0刷新为两曲duration和12。定向测试 ALL PASS，worker typecheck通过，diff check通过。
+- 对21个缺时长实例的当前R2对象执行只读下载/ffprobe；生成根545的remaining_metadata_audit.json、remaining_metadata_tracks.csv、duration_probe_plan.json。下载总393,811,386字节，20次probe有效、1个wav对象Invalid data；无上传、无生产写入。
+
+- 读取本地只读探测缓存并实际以music-metadata 11.15.0全文件parse：10个fragmented MP4对象完整读取仍抛sampleDuration异常；另1个常规MP4库未返回时长。对`.mp3`后缀但内容为MPEG-4的两个对象，复现audio/mpeg被库误识别为ADTS、时长变为零点几秒；`ftyp`签名纠正MIME后回到正确M4A时长。
+- 修复metadata worker：缺时长的`.mp4`允许按既有300MiB上限重读，full parse有duration即采纳（即使无文字标签）；识别ISO BMFF签名纠正与后缀不一致的MIME。没有自写时长解析器。
+- 生成可重复的ffmpeg视频+AAC fixture，经真实runMetadata route模拟Range/full-read验证MP4和错误MIME路径；duration、partial-MP3保护、WAV尾部与fragmented MP4现有断言都通过。真实20缓存对象重放：9个有时长且相对ffprobe误差均≤0.51秒，11个属于当前库无法恢复的分片/缺时长结果。
+- 异常WAV是全零字节（25,305,212字节，exit 1），所查同任务缓存没有有效同key副本；没有进行格式转换。根545新增duration_probe_task_executor.json和探测字段。
