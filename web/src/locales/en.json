@@ -310,7 +310,7 @@
     "starredTitle": "Liked",
     "starredBreadcrumb": "LIKED",
     "playAlbum": "PLAY ALBUM",
-    "loadFailed": "Failed to load artists",
+    "loadFailed": "Failed to load the library",
     "albumCount": "{n} ALBUMS",
     "albumEditionCount": "{n} editions",
     "backToAlbums": "Back to albums",
