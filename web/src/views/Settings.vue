@@ -13,7 +13,7 @@ import { getTheme, registeredThemeIds, externalThemeIds, loadExternalTheme, unre
 import { audioCacheStats, clearAudioCache, audioCacheMaxMb, setAudioCacheMaxMb } from "../lib/audioCache";
 import PermissionsMatrix from "../components/PermissionsMatrix.vue";
 import Icon from "../components/Icon.vue";
-import { FluentSelect } from "@lsypkg/fluent/vue";
+import { FluentSelect } from "@platform-kit/fluent/vue";
 import { useWorkSocket } from "../stores/workSocket";
 import {
   buildReleaseOptions,

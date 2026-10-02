@@ -31,7 +31,7 @@ import { useUpdateBanner } from "./stores/updateBanner";
 import { useDemoMode } from "./stores/demoMode";
 import { initNetDiag } from "./lib/netDiag";
 import { fetchTextWithTimeout } from "./lib/requestLifecycle";
-import { FluentSwitch } from "@lsypkg/fluent/vue";
+import { FluentSwitch } from "@platform-kit/fluent/vue";
 
 initNetDiag();
 const routes = [

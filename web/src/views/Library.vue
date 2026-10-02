@@ -20,7 +20,7 @@ import { isInstrumentalTitle } from "../lib/instrumental";
 import type { ScrapeResult } from "../lib/scrape";
 import { buildLibrarySearchParams, buildLibrarySearchRoute } from "../lib/librarySearch";
 import { foldAlbumDisplayCards, type AlbumDisplayGroupSummary, type AlbumDisplayCard } from "../lib/albumDisplayGroups";
-import { FluentSelect } from "@lsypkg/fluent/vue";
+import { FluentSelect } from "@platform-kit/fluent/vue";
 
 const { t } = useI18n();
 

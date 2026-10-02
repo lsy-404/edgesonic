@@ -12,7 +12,7 @@ import Icon from "./components/Icon.vue";
 import MobileNavigation from "./components/MobileNavigation.vue";
 import DetailHost from "./components/DetailHost.vue";
 import { useDetailStore } from "./stores/detail";
-import { FluentButton, FluentTheme } from "@lsypkg/fluent/vue";
+import { FluentButton, FluentTheme } from "@platform-kit/fluent/vue";
 import { usePlayerStore } from "./stores/player";
 import { useDemoMode } from "./stores/demoMode";
 import { activeTheme, resetTheme, restoreSavedTheme } from "./theme";
@@ -429,7 +429,7 @@ onBeforeUnmount(() => {
 <style>
 @import "./assets/palette.css";
 @import "./assets/decor.css";
-@import "@lsypkg/fluent/style.css";
+@import "@platform-kit/fluent/style.css";
 @import "./assets/fluent.css";
 
 /* === App shell === */
