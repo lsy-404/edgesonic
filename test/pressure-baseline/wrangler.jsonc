@@ -1,0 +1,24 @@
+{
+  "name": "edgesonic-pressure-baseline",
+  "main": "../../worker/src/index.ts",
+  "compatibility_date": "2025-05-24",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "vars": {
+    "INSTANCE_ID": "pressure-baseline-local",
+    "SSO_MODE": "disabled",
+    "WORKER_VERSION": "pressure-baseline-local",
+    "EDGESONIC_VERSION": "dev"
+  },
+  "assets": {
+    "directory": "./assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "edgesonic-pressure-baseline-local",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "observability": { "enabled": false }
+}
