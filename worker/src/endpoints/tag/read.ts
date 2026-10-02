@@ -22,6 +22,8 @@ import { recoverMetadataFromStoragePath, sourceFolderAlbumName, sourceFolderLogi
 import {
   compilationMarkerStatement,
   normalizeScannedAlbumName,
+  needsScannedSourceAlbumRecovery,
+  recoverScannedAlbumName,
   retainCompilationAlbum,
   retainScannedAlbumIdentity,
   retainScannedVariousArtistsAlbum,
@@ -90,6 +92,14 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
         if (tags && !tags.album && row.current_album_id === "pending-uploads") {
           databaseAttempted = true;
           tags.album = await sourceFolderAlbumName(db, row.id) ?? undefined;
+        }
+        if (tags && row.current_album_name && needsScannedSourceAlbumRecovery(row.current_album_name)) {
+          const sourceAlbumName = await sourceFolderAlbumName(db, row.id);
+          tags.album = recoverScannedAlbumName(
+            tags.album ?? row.current_album_name,
+            row.current_album_name,
+            sourceAlbumName,
+          );
         }
         if (tags && (tags.title || tags.artist || tags.album)) {
           // Album artist is separate from track artist when the file provides it.

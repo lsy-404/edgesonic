@@ -18,6 +18,21 @@ export function normalizeScannedAlbumName(incomingName: string, currentName: str
   return incomingName;
 }
 
+export function recoverScannedAlbumName(
+  incomingName: string,
+  currentName: string | null | undefined,
+  sourceAlbumName: string | null | undefined,
+): string {
+  if (!sourceAlbumName || !currentName) return incomingName;
+  if (!isGenericAlbumName(currentName) && !isCodecVariantOf(currentName, sourceAlbumName)) return incomingName;
+  if (isGenericAlbumName(incomingName) || isCodecVariantOf(incomingName, sourceAlbumName)) return sourceAlbumName;
+  return incomingName;
+}
+
+export function needsScannedSourceAlbumRecovery(currentName: string | null | undefined): boolean {
+  return !!currentName && (isGenericAlbumName(currentName) || hasCodecSuffix(currentName));
+}
+
 export function retainScannedAlbumIdentity(
   currentAlbumId: string | null | undefined,
   currentAlbumName: string | null | undefined,
@@ -78,10 +93,43 @@ export async function sourceFolderAlbumIdForScan(
   if (!folderAlbumId) return null;
   if (currentAlbumId === "pending-uploads") return folderAlbumId;
   if (!currentAlbumId || !currentAlbumName) return null;
+  if (isGenericAlbumName(currentAlbumName) || isCodecVariantOf(currentAlbumName, albumName) || isGenericAlbumName(albumName)) {
+    const entries = (await db.prepare(
+      "SELECT source_id, parent_id FROM storage_entries WHERE instance_id = ? AND kind = 'file' LIMIT 2",
+    ).bind(instanceId).all<{ source_id: string; parent_id: string | null }>()).results;
+    if (entries.length !== 1) return null;
+    const entry = entries[0];
+    const matchingAlbums = (await db.prepare(
+      `SELECT DISTINCT sm.album_id AS id
+         FROM storage_entries se
+         JOIN song_instances si ON si.id = se.instance_id
+         JOIN song_masters sm ON sm.id = si.master_id
+         JOIN albums a ON a.id = sm.album_id
+        WHERE se.source_id = ? AND se.parent_id IS ? AND se.kind = 'file'
+          AND sm.album_id != ? AND a.name = ?
+        LIMIT 2`,
+    ).bind(entry.source_id, entry.parent_id, currentAlbumId, albumName).all<{ id: string }>()).results;
+    if (matchingAlbums.length === 1) return matchingAlbums[0].id;
+    if (matchingAlbums.length > 1) return null;
+    if (isGenericAlbumName(currentAlbumName) || isCodecVariantOf(currentAlbumName, albumName)) return folderAlbumId;
+  }
   const currentFolderId = currentAlbumName === albumName
     ? folderAlbumId
     : await sourceFolderAlbumId(db, instanceId, currentAlbumName, suffix);
   return currentFolderId === currentAlbumId ? folderAlbumId : null;
+}
+
+function isGenericAlbumName(name: string): boolean {
+  return /^(?:unknown album|unknown|album|wav|flac|mp3|m4a|aac|ogg|opus|ape)$/i.test(name.trim());
+}
+
+function isCodecVariantOf(name: string, albumName: string): boolean {
+  const escaped = albumName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^${escaped}\\s*[（(［\\[]\\s*(?:wav|flac|mp3|m4a|aac|ape|ogg|opus)\\s*[）)］\\]]$`, "i").test(name.trim());
+}
+
+function hasCodecSuffix(name: string): boolean {
+  return /[（(［\[]\s*(?:wav|flac|mp3|m4a|aac|ape|ogg|opus)\s*[）)］\]]$/i.test(name.trim());
 }
 
 export function compilationMarkerStatement(db: D1Database, albumId: string): D1PreparedStatement {
