@@ -75,6 +75,11 @@ test('rejects mutation-shaped paths and unbounded settings at configuration time
   assert.throws(() => parseOptions({}, ['--base-url=https://example.invalid', '--scenario=mutate']), /Scenario/);
   assert.throws(() => parseOptions({}, ['--base-url=https://example.invalid/path?token=secret']), /Base URL/);
   assert.throws(() => parseOptions({}, ['--base-url=https://example.invalid', '--requests=501']), /requests/);
+  assert.equal(parseOptions({}, ['--base-url=https://example.invalid', '--concurrency=1']).concurrency, 1);
+  assert.equal(parseOptions({}, ['--base-url=https://example.invalid', '--concurrency=40']).concurrency, 40);
+  assert.throws(() => parseOptions({}, ['--base-url=https://example.invalid', '--concurrency=0']), /concurrency/);
+  assert.throws(() => parseOptions({}, ['--base-url=https://example.invalid', '--concurrency=41']), /concurrency/);
+  assert.equal(parseOptions({}, ['--base-url=https://example.invalid', '--concurrency=40', '--requests=2500']).requests, 2500);
   assert.throws(() => parseOptions({ PRESSURE_HEADERS_JSON: '{"authorization":"top-secret' }, ['--base-url=https://example.invalid']), (error) => !error.message.includes('top-secret'));
 });
 
@@ -134,4 +139,22 @@ test('reports and runs effective concurrency when the stage target exceeds reque
     assert.equal(report.stages.at(-1).total, 20);
     assert(report.stages.every((stage) => stage.concurrency <= stage.configuredConcurrency));
   });
+});
+
+test('runs a requested burst as one stage with the configured in-flight concurrency', async () => {
+  const options = parseOptions({}, ['--base-url=http://127.0.0.1', '--scenario=stats', '--concurrency=40', '--requests=120']);
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const report = await runPressure(options, { fetcher: async () => {
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    inFlight -= 1;
+    return { elapsedMs: 2, ttfbMs: 1, status: 200, errorClass: null, responseBytes: 12, returnedSongCount: null, serverTiming: false, colo: null };
+  } });
+  assert.equal(report.stages.length, 1);
+  assert.equal(report.stages[0].configuredConcurrency, 40);
+  assert.equal(report.stages[0].concurrency, 40);
+  assert.equal(report.stages[0].total, 120);
+  assert.equal(maxInFlight, 40);
 });

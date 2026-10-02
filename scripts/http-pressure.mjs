@@ -46,7 +46,9 @@ export function parseOptions(env = process.env, argv = process.argv.slice(2)) {
     if (!Number.isInteger(value) || value < min || value > max) throw new Error(`Invalid ${name}.`);
     return value;
   };
-  const requests = integer('requests', env.PRESSURE_REQUESTS ?? 20, 1, MAX_REQUESTS / STAGES.length);
+  const concurrency = args.concurrency === undefined ? undefined : integer('concurrency', 0, 1, 40);
+  const requestLimit = concurrency === undefined ? MAX_REQUESTS / STAGES.length : MAX_REQUESTS;
+  const requests = integer('requests', env.PRESSURE_REQUESTS ?? 20, 1, requestLimit);
   let headers = {};
   if (env.PRESSURE_HEADERS_JSON) {
     try { headers = JSON.parse(env.PRESSURE_HEADERS_JSON); } catch { throw new Error('PRESSURE_HEADERS_JSON must be valid JSON.'); }
@@ -60,6 +62,7 @@ export function parseOptions(env = process.env, argv = process.argv.slice(2)) {
     baseUrl,
     scenario,
     requests,
+    concurrency,
     searchQuery: env.PRESSURE_QUERY ?? '',
     apiKey: env.PRESSURE_API_KEY ?? '',
     username: env.PRESSURE_USERNAME ?? '',
@@ -171,7 +174,8 @@ export async function runPressure(options, { onStage = () => {}, fetcher = oneRe
   let stopped = false;
   const results = [];
   const stages = [];
-  for (const concurrency of STAGES) {
+  const stagesToRun = options.concurrency === undefined ? STAGES : [options.concurrency];
+  for (const concurrency of stagesToRun) {
     const activeConcurrency = Math.min(concurrency, options.requests);
     const stageStart = results.length;
     let next = 0;
