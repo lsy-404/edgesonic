@@ -18,7 +18,7 @@ test('runs bounded read-only endpoint scenarios and returns aggregate metrics on
     response.writeHead(200, { 'content-type': 'application/json', 'server-timing': 'db;dur=2', 'cf-ray': 'local-YYZ' });
     response.flushHeaders();
     const payload = request.url.startsWith('/rest/')
-      ? JSON.stringify({ 'subsonic-response': { status: 'ok', searchResult3: { song: [] } } })
+      ? JSON.stringify({ 'subsonic-response': { status: 'ok', searchResult3: { song: [{ id: 'private-id', title: 'private-title' }, { id: 'private-id-2', title: 'private-title-2' }] } } })
       : JSON.stringify({ ok: true, private: 'response-secret' });
     setTimeout(() => response.end(payload), 40);
   }, async (baseUrl) => {
@@ -43,12 +43,18 @@ test('runs bounded read-only endpoint scenarios and returns aggregate metrics on
     assert.equal(stages[0].endpoints.stats.serverTimingResponses, 1);
     assert.deepEqual(stages[0].endpoints.stats.cfColos, ['YYZ']);
     assert.equal(stages[0].endpoints.stats.successes, 1);
+    assert(stages[0].endpoints.stats.responseBytes.total > 0);
     assert(stages[0].endpoints.stats.endToEndMs.median >= 30);
     assert(stages[0].endpoints.stats.ttfbMs.median < stages[0].endpoints.stats.endToEndMs.median);
+    const searchStage = stages.find((stage) => stage.endpoints.search20_oldest);
+    assert.equal(searchStage.endpoints.search20_oldest.returnedSongCount.total, 2);
+    assert(searchStage.endpoints.search20_oldest.responseBytes.max > 0);
     assert.equal(JSON.stringify({ stages, report }).includes('response-secret'), false);
     assert.equal(JSON.stringify({ stages, report }).includes('Bearer secret'), false);
     assert.equal(JSON.stringify({ stages, report }).includes('api-secret'), false);
     assert.equal(JSON.stringify({ stages, report }).includes('real track'), false);
+    assert.equal(JSON.stringify({ stages, report }).includes('private-title'), false);
+    assert.equal(JSON.stringify({ stages, report }).includes('private-id'), false);
   });
 });
 
@@ -112,5 +118,20 @@ test('defaults to the full search and covers oldest/newest 20, 100, and 500 song
       return `${params.get('songCount')}:${params.get('songSort')}`;
     }));
     assert.deepEqual([...pages].sort(), ['100:newest', '100:oldest', '20:newest', '20:oldest', '500:newest', '500:oldest']);
+  });
+});
+
+test('reports and runs effective concurrency when the stage target exceeds requests', async () => {
+  await withServer((_request, response) => {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end('{"ok":true}');
+  }, async (baseUrl) => {
+    const options = parseOptions({}, ['--base-url=' + baseUrl, '--scenario=stats']);
+    assert.equal(options.requests, 20);
+    const report = await runPressure(options);
+    assert.equal(report.stages.at(-1).configuredConcurrency, 40);
+    assert.equal(report.stages.at(-1).concurrency, 20);
+    assert.equal(report.stages.at(-1).total, 20);
+    assert(report.stages.every((stage) => stage.concurrency <= stage.configuredConcurrency));
   });
 });

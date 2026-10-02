@@ -140,6 +140,7 @@ async function oneRequest(baseUrl, headers, path, timeoutMs, endpoint) {
     colo = cfRay?.split('-').at(-1) ?? null;
     const body = await readBoundedBody(response);
     const elapsedMs = Math.round(performance.now() - started);
+    let returnedSongCount = null;
     let errorClass = httpErrorClass(response.status);
     if (!errorClass) {
       if (!response.ok) errorClass = 'http_4xx';
@@ -149,14 +150,18 @@ async function oneRequest(baseUrl, headers, path, timeoutMs, endpoint) {
         try {
           const payload = JSON.parse(new TextDecoder().decode(body));
           if (endpoint === 'stats' ? payload?.ok !== true : payload?.['subsonic-response']?.status !== 'ok') errorClass = 'protocol_error';
+          else if (endpoint !== 'stats') {
+            const songs = payload['subsonic-response']?.searchResult3?.song;
+            returnedSongCount = Array.isArray(songs) ? songs.length : songs == null ? 0 : 1;
+          }
         } catch {
           errorClass = 'protocol_error';
         }
       }
     }
-    return { elapsedMs, ttfbMs, status: receivedStatus, errorClass, serverTiming, colo };
+    return { elapsedMs, ttfbMs, status: receivedStatus, errorClass, responseBytes: body?.byteLength ?? null, returnedSongCount, serverTiming, colo };
   } catch (error) {
-    return { elapsedMs: Math.round(performance.now() - started), ttfbMs, status: receivedStatus, errorClass: httpErrorClass(receivedStatus) ?? (error?.name === 'AbortError' ? 'timeout' : 'transport'), serverTiming, colo };
+    return { elapsedMs: Math.round(performance.now() - started), ttfbMs, status: receivedStatus, errorClass: httpErrorClass(receivedStatus) ?? (error?.name === 'AbortError' ? 'timeout' : 'transport'), responseBytes: null, returnedSongCount: null, serverTiming, colo };
   } finally {
     clearTimeout(timer);
   }
@@ -167,9 +172,10 @@ export async function runPressure(options, { onStage = () => {}, fetcher = oneRe
   const results = [];
   const stages = [];
   for (const concurrency of STAGES) {
+    const activeConcurrency = Math.min(concurrency, options.requests);
     const stageStart = results.length;
     let next = 0;
-    const workers = Array.from({ length: concurrency }, async () => {
+    const workers = Array.from({ length: activeConcurrency }, async () => {
       while (!stopped && next < options.requests) {
         const index = next++;
         const [endpoint, path] = routeFor(options.scenario, stageStart + index, options);
@@ -182,7 +188,7 @@ export async function runPressure(options, { onStage = () => {}, fetcher = oneRe
       }
     });
     await Promise.all(workers);
-    const stage = summarize(results.slice(stageStart), concurrency, options);
+    const stage = summarize(results.slice(stageStart), activeConcurrency, options, concurrency);
     stages.push(stage);
     onStage(stage);
     if (stopped) break;
@@ -190,7 +196,7 @@ export async function runPressure(options, { onStage = () => {}, fetcher = oneRe
   return { stoppedEarly: stopped, stages, results };
 }
 
-export function summarize(items, concurrency, options) {
+export function summarize(items, concurrency, options, configuredConcurrency = concurrency) {
   const groups = Object.groupBy(items, (item) => item.endpoint);
   const endpoints = {};
   for (const [name, values] of Object.entries(groups)) {
@@ -206,13 +212,24 @@ export function summarize(items, concurrency, options) {
       statuses,
       errors,
       rateLimited: errors.rate_limit ?? 0,
+      responseBytes: aggregate(values.map((item) => item.responseBytes)),
+      ...(name.startsWith('search') ? { returnedSongCount: aggregate(values.map((item) => item.returnedSongCount)) } : {}),
       endToEndMs: { median: percentile(values.map((item) => item.elapsedMs), 0.5), p95: percentile(values.map((item) => item.elapsedMs), 0.95), p99: percentile(values.map((item) => item.elapsedMs), 0.99) },
       ttfbMs: { median: percentile(values.map((item) => item.ttfbMs).filter(Number.isFinite), 0.5), p95: percentile(values.map((item) => item.ttfbMs).filter(Number.isFinite), 0.95), p99: percentile(values.map((item) => item.ttfbMs).filter(Number.isFinite), 0.99) },
       serverTimingResponses: values.filter((item) => item.serverTiming).length,
       cfColos: [...new Set(values.map((item) => item.colo).filter(Boolean))],
     };
   }
-  return { concurrency, requestedPerStage: options.requests, total: items.length, endpoints };
+  return { concurrency, configuredConcurrency, requestedPerStage: options.requests, total: items.length, endpoints };
+}
+
+function aggregate(values) {
+  const present = values.filter(Number.isFinite);
+  return {
+    total: present.reduce((sum, value) => sum + value, 0),
+    min: present.length ? Math.min(...present) : null,
+    max: present.length ? Math.max(...present) : null,
+  };
 }
 
 async function main() {
