@@ -112,6 +112,11 @@ async function main() {
   const empty = await queries.search("", { artistCount: 0, albumCount: 0, songCount: 0 });
   assert.deepEqual(empty, { artists: [], albums: [], songs: [] });
   assert.equal(calls.length, noRowsCalls, "zero counts issue no catalog queries");
+  const emptyLyrics = await queries.search("title", { lyricsQuery: "needle", songCount: 0 });
+  assert.deepEqual(emptyLyrics, { artists: [], albums: [], songs: [] });
+  assert.equal(calls.length, noRowsCalls, "zero song count bypasses lyrics index initialization and search");
+  await assert.rejects(queries.search("", { lyricsQuery: "a".repeat(513), songCount: 0 }), /too-long/u);
+  assert.equal(calls.length, noRowsCalls, "lyrics validation still runs before the zero-count short circuit");
 
   const baselineCounts = {
     artists: Number(sqlite.prepare(`SELECT COUNT(*) AS n FROM artists ar
