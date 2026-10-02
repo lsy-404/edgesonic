@@ -3,6 +3,33 @@ export type LibrarySearchSort = "newest" | "oldestAdded" | "nameAsc" | "nameDesc
 export const LIBRARY_PAGE_SIZES = [20, 50, 100, 200, 500] as const;
 export type LibraryPageSize = typeof LIBRARY_PAGE_SIZES[number];
 
+export type LibraryLoadMode = "manual" | "automatic";
+
+export function exactPageCount(total: number | null, pageSize: number): number | null {
+  if (total === null || !Number.isFinite(total) || total < 0) return null;
+  const safePageSize = Number.isFinite(pageSize) ? Math.max(1, Math.floor(pageSize)) : 20;
+  return Math.max(1, Math.ceil(total / safePageSize));
+}
+
+export function validPageTarget(target: number, currentPage: number, exactPageCount: number | null): number | null {
+  if (!Number.isFinite(target) || target < 1) return null;
+  const page = Math.floor(target);
+  if (page < 1) return null;
+  if (exactPageCount !== null && page > exactPageCount) return null;
+  const current = Number.isFinite(currentPage) ? Math.max(1, Math.floor(currentPage)) : 1;
+  if (exactPageCount === null && page > current + 1) return null;
+  return page;
+}
+
+export function visibleLibraryItems<T>(items: T[], page: number, pageSize: number, mode: LibraryLoadMode): T[] {
+  if (mode === "automatic") {
+    const safePageSize = Number.isFinite(pageSize) ? Math.max(1, Math.floor(pageSize)) : 20;
+    const safePage = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
+    return items.slice(0, safePage * safePageSize);
+  }
+  return paginateLibraryItems(items, page, pageSize).items;
+}
+
 export function paginateLibraryItems<T>(items: T[], page: number, pageSize: number): {
   items: T[];
   page: number;
