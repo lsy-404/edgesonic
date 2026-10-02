@@ -138,6 +138,7 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           ];
           await db.batch(stmts);
           touchedAlbums.add(albumId);
+          if (row.current_album_id && row.current_album_id !== albumId) touchedAlbums.add(row.current_album_id);
           scanned = 1;
           tagged++;
         }
@@ -152,11 +153,12 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
     await db.prepare(
       `UPDATE albums SET
          song_count = (SELECT COUNT(*) FROM song_masters WHERE album_id = ?),
+         duration = (SELECT COALESCE(SUM(duration), 0) FROM song_masters WHERE album_id = ?),
          size = (SELECT COALESCE(SUM(si.size), 0) FROM song_instances si
                  JOIN song_masters sm ON sm.id = si.master_id WHERE sm.album_id = ?),
          updated_at = ?
        WHERE id = ?`
-    ).bind(albumId, albumId, now, albumId).run();
+    ).bind(albumId, albumId, albumId, now, albumId).run();
   }
   if (touchedAlbums.size > 0) {
     await db.prepare("DELETE FROM albums WHERE NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = albums.id)").run();

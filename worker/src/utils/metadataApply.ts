@@ -154,6 +154,11 @@ export async function applyMetadataResult(
     await db.prepare(`UPDATE song_masters SET ${masterSets.join(", ")} WHERE id = ?`)
       .bind(...masterBinds).run();
   }
+  if (!hasLogical && typeof tags.duration === "number" && tags.duration > 0 && inst.album_id) {
+    await db.prepare(
+      "UPDATE albums SET duration = (SELECT COALESCE(SUM(duration), 0) FROM song_masters WHERE album_id = ?) WHERE id = ?",
+    ).bind(inst.album_id, inst.album_id).run();
+  }
 
   // Mark parsed instances even when no physical parameter was available.
   const sets: string[] = [];
@@ -258,11 +263,12 @@ export async function relinkArtistAlbum(
     await db.prepare(
       `UPDATE albums SET
          song_count = (SELECT COUNT(*) FROM song_masters WHERE album_id = ?),
+         duration = (SELECT COALESCE(SUM(duration), 0) FROM song_masters WHERE album_id = ?),
          size = (SELECT COALESCE(SUM(si.size), 0) FROM song_instances si
                  JOIN song_masters sm ON sm.id = si.master_id WHERE sm.album_id = ?),
          updated_at = ?
        WHERE id = ?`,
-    ).bind(aid, aid, now, aid).run();
+    ).bind(aid, aid, aid, now, aid).run();
   }
   if (oldAlbumId !== albumId) {
     await db.prepare(

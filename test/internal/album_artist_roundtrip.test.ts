@@ -177,6 +177,10 @@ async function main() {
   assert(artistOnlyRow.album_artist_id === null, "artist-only edit leaves album artist empty");
 
   const scannedDb = buildDb();
+  scannedDb.exec("UPDATE song_masters SET duration=NULL WHERE id='sg-a'; UPDATE albums SET duration=0 WHERE id='al-old';");
+  await applyMetadataResult(d1(scannedDb), "inst-a", {}, { duration: 30 });
+  const repairedAlbumDuration = scannedDb.prepare("SELECT duration FROM albums WHERE id='al-old'").get() as { duration: number };
+  assert(repairedAlbumDuration.duration === 40, "metadata scan fills a missing track duration and refreshes its album total");
   const scan = await applyMetadataResult(d1(scannedDb), "inst-a", {
     artist: "Singer A, Singer B", albumArtist: "Singer A, Singer B, Singer C", album: "Shared Album",
   }, {});
@@ -241,11 +245,14 @@ async function main() {
   compilationDb.close();
 
   const readDb = buildDb();
+  readDb.exec("UPDATE song_masters SET duration=5 WHERE id='sg-a'; UPDATE song_masters SET duration=7 WHERE id='sg-b'; UPDATE albums SET duration=0 WHERE id='al-old';");
   readDb.exec("UPDATE albums SET compilation = 1 WHERE id = 'al-old'; UPDATE song_instances SET tag_scanned = 1 WHERE id = 'inst-a'; UPDATE song_instances SET storage_uri = 'r2://music/compilation-read.mp3', tag_scanned = 0 WHERE id = 'inst-b'");
   const readResult = await appFor(readDb)("/tag/read?batch=1");
   const readRow = readDb.prepare("SELECT sm.album_id, ar.name AS artist_name, si.tag_scanned FROM song_masters sm JOIN artists ar ON ar.id = sm.artist_id JOIN song_instances si ON si.master_id = sm.id WHERE sm.id = 'sg-b'").get() as { album_id: string; artist_name: string; tag_scanned: number };
   assert(readResult.status === 200 && readRow.tag_scanned === 1, `Read Tags processes an imported compilation track (${readResult.status}, ${JSON.stringify(readRow)}, ${await readResult.text()})`);
   assert(readRow.album_id === "al-old" && readRow.artist_name === "Guest Singer", `Read Tags preserves compilation grouping while updating track artist (${JSON.stringify(readRow)})`);
+  const readDuration = readDb.prepare("SELECT duration FROM albums WHERE id='al-old'").get() as { duration: number };
+  assert(readDuration.duration === 12, "Read Tags refreshes album duration from stored track durations");
   readDb.close();
 
   const missingAlbumArtistDb = buildDb();

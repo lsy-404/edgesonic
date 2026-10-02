@@ -13,3 +13,6 @@
 - 跟进修正 metadata worker：仅扫描/解析入口开启 scanIdentity；同 album 名（NFC、移除『』、忽略空白、大小写）采用当前规范名并保留当前专辑 ID，显式不同 album artist 与真实不同专辑名仍走原有重算逻辑。手动 tag/write 不变。
 - 在真实 SQLite fixture 中覆盖 metadata apply 和 `/tag/read` 两入口的引号/空白与 NFD 等价名、custom album ID、真实不同专辑名和显式不同专辑艺人；已有 compilation、source-folder、不同folder/codec版断言也通过。
 - 最新 `npm exec tsx -- test/internal/album_artist_roundtrip.test.ts`：ALL PASS。最新 `npm run typecheck -w worker` 和 `git diff --check`：通过。未触碰生产资源。
+- 核验消费者与全库snapshot聚合：专辑duration经Subsonic mapAlbum暴露；1,392/1,510 stored duration与masters实际SUM不一致。补metadataApply与tag/read聚合，并确保tag/read迁移旧album也纳入；duration-only metadata apply在master更新后刷新聚合。
+- 扩展实际SQLite回归：metadata apply 以format.duration=30回填NULL master时长，album从0修为40；tag/read真实route将album缓存0刷新为两曲duration和12。定向测试 ALL PASS，worker typecheck通过，diff check通过。
+- 对21个缺时长实例的当前R2对象执行只读下载/ffprobe；生成根545的remaining_metadata_audit.json、remaining_metadata_tracks.csv、duration_probe_plan.json。下载总393,811,386字节，20次probe有效、1个wav对象Invalid data；无上传、无生产写入。
