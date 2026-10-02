@@ -14,6 +14,7 @@ export function retainCompilationAlbum(
 }
 
 export function normalizeScannedAlbumName(incomingName: string, currentName: string | null | undefined): string {
+  if (currentName && !isGenericAlbumName(currentName) && isGenericAlbumName(incomingName)) return currentName;
   if (currentName && albumNameKey(incomingName) === albumNameKey(currentName)) return currentName;
   return incomingName;
 }
