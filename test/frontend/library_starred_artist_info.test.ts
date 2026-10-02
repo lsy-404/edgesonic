@@ -36,11 +36,11 @@ assert(/authFetch\("getStarred2"\)/.test(source), "liked data uses getStarred2")
 assert(/parseXmlAttrs\(xml, "artist"\)/.test(source), "liked artists are parsed");
 assert(/parseXmlAttrs\(xml, "album"\)/.test(source), "liked albums are parsed");
 assert(/parseXmlAttrs\(xml, "song"\)\.map\(mapSongRow\)/.test(source), "liked songs are parsed");
-assert(/function playFromStarred\(i: number\)[\s\S]*?player\.setQueue\(displaySongs\.value, i\)/.test(source), "liked songs can be played as a queue");
+assert(/function playFromStarred\(i: number\)[\s\S]*?player\.setQueue\(songRows\.value, \(listPage\.value - 1\) \* pageSize\.value \+ i\)/.test(source), "liked playback uses the selected row across page boundaries");
 assert(/sortMode = ref<SortMode>\("newest"\)/.test(source), "library and liked share a default sort mode");
 assert(/"oldestStarred"/.test(source), "liked supports oldest-liked sorting");
 assert(/"newestAdded"/.test(source) && /"oldestAdded"/.test(source), "library supports newest/oldest-added sorting");
-assert(/value="oldestStarred"/.test(source) && /value="oldestAdded"/.test(source), "sort selector exposes the time-order options");
+assert(/<FluentSelect[^>]*:options="[^\n]*value: 'oldestStarred'[^\n]*value: 'oldestAdded'/.test(source), "Fluent sort selector exposes the time-order options");
 assert(/<StarButton/.test(source) && /kind="artist"/.test(source) && /kind="album"/.test(source) && /kind="song"/.test(source), "all liked entity types expose a star button");
 assert(/v-if="currentArtist && !currentAlbum"[\s\S]*?kind="artist"/.test(source), "artist detail keeps its favorite action");
 assert(/v-if="currentAlbum"[\s\S]*?kind="album"/.test(source), "album detail keeps its favorite action");
