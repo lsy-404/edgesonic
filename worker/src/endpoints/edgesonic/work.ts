@@ -102,7 +102,7 @@ async function applyQueuedMetadata(
     );
     if (!lease) return { updated: false, reason: "upload generation is being changed or applied" };
     try {
-      const result = await applyMetadataResult(db, instanceId, tags, tags);
+      const result = await applyMetadataResult(db, instanceId, tags, tags, { scanIdentity: true });
       if (!result.updated) {
         await releaseUploadMetadataLease(db, lease, false);
         return result;
@@ -113,7 +113,7 @@ async function applyQueuedMetadata(
       throw error;
     }
   }
-  return applyMetadataResult(db, instanceId, tags, tags);
+  return applyMetadataResult(db, instanceId, tags, tags, { scanIdentity: true });
 }
 
 const APPLY_PENDING = "metadata_apply:pending";

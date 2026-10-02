@@ -92,7 +92,7 @@ metadataRoutes.post("/submit", permissionMiddleware("edit_tags"), async (c) => {
 
   // applyMetadataResult re-coerces internally but our pre-scrub is already
   // type-clean so the second pass is effectively a no-op.
-  const res = await applyMetadataResult(db, body.instanceId, tags, tags);
+  const res = await applyMetadataResult(db, body.instanceId, tags, tags, { scanIdentity: true });
   if (!res.updated) {
     const code = res.reason === "instance not found" ? 400
                : res.reason === "master not found"   ? 500
@@ -154,7 +154,7 @@ metadataRoutes.post("/submit-upload", permissionMiddleware("upload"), async (c) 
   if (!lease) return c.json({ ok: false, error: "Upload metadata generation is being changed or applied" }, 409);
   let applied;
   try {
-    applied = await applyMetadataResult(env.DB, body.instanceId, tags, tags);
+    applied = await applyMetadataResult(env.DB, body.instanceId, tags, tags, { scanIdentity: true });
   } catch (error) {
     await releaseUploadMetadataLease(env.DB, lease, false);
     throw error;

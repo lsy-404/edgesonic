@@ -19,7 +19,13 @@ import { md5 } from "../../utils/md5";
 import { parseTags, type SongTags } from "../../utils/tags";
 import { fetchSlices, type SourceRow } from "../../utils/slices";
 import { recoverMetadataFromStoragePath, sourceFolderAlbumName, sourceFolderLogicalPath } from "../../utils/storageMetadata";
-import { compilationMarkerStatement, retainCompilationAlbum, sourceFolderAlbumIdForScan } from "../../utils/albumIdentity";
+import {
+  compilationMarkerStatement,
+  normalizeScannedAlbumName,
+  retainCompilationAlbum,
+  retainScannedAlbumIdentity,
+  sourceFolderAlbumIdForScan,
+} from "../../utils/albumIdentity";
 import {
   artistInsertStatements,
   parseAlbumArtistCredit,
@@ -91,17 +97,20 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           const albumArtist = parseAlbumArtistCredit(tags.albumArtist);
           const albumArtistCredits = albumArtist ? [albumArtist] : [];
           const primaryArtist = artistCredits[0];
-          const linkArtistName = albumArtist?.name || primaryArtist.name;
-          const albumName = tags.album || row.current_album_name || "Unknown Album";
+          const linkArtistName = albumArtist?.name || row.current_album_artist_name || primaryArtist.name;
+          const albumName = normalizeScannedAlbumName(tags.album || row.current_album_name || "Unknown Album", row.current_album_name);
           const artistId = primaryArtist.id;
           databaseAttempted = true;
           const importAlbumId = await sourceFolderAlbumIdForScan(
             db, row.id, row.current_album_id, row.current_album_name, albumName, row.suffix,
           );
-          const albumId = importAlbumId ?? (row.current_album_id && retainCompilationAlbum(
+          const keepStoredIdentity = !!row.current_album_id && (retainScannedAlbumIdentity(
+            row.current_album_id, row.current_album_name, albumName, row.current_album_artist_name, albumArtist?.name,
+          ) || retainCompilationAlbum(
             { name: row.current_album_name, compilation: row.current_album_compilation },
             albumName, tags.albumArtist, row.current_album_artist_name,
-          )
+          ));
+          const albumId = importAlbumId ?? (keepStoredIdentity && row.current_album_id
             ? row.current_album_id
             : "al-" + md5(linkArtistName + " " + albumName).substring(0, 10));
           const albumArtistId = albumArtist?.id ?? null;

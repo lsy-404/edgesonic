@@ -79,7 +79,14 @@ function appFor(sqlite: DatabaseSync) {
     DB: d1(sqlite),
     MUSIC_BUCKET: {
       async get(key: string) {
-        const bytes = key === "music/compilation-read.mp3" ? id3Compilation() : new Uint8Array([0x41, 0x55, 0x44, 0x49]);
+        const readTags: Record<string, Uint8Array> = {
+          "music/compilation-read.mp3": id3Compilation(),
+          "music/quoted-read.mp3": id3Compilation("『 Old  Album 』"),
+          "music/nfd-read.mp3": id3Compilation("Cafe\u0301"),
+          "music/different-album-read.mp3": id3Compilation("Other Album"),
+          "music/different-artist-read.mp3": id3Compilation("Old Album", "Guest Singer", "Different Ensemble"),
+        };
+        const bytes = readTags[key] ?? new Uint8Array([0x41, 0x55, 0x44, 0x49]);
         return { arrayBuffer: async () => bytes.buffer };
       },
       async put() {},
@@ -88,7 +95,7 @@ function appFor(sqlite: DatabaseSync) {
   });
 }
 
-function id3Compilation(): Uint8Array {
+function id3Compilation(album = "Old Album", artist = "Guest Singer", albumArtist?: string): Uint8Array {
   const encoder = new TextEncoder();
   const frame = (id: string, value: string) => {
     const body = Uint8Array.from([3, ...encoder.encode(value)]);
@@ -97,7 +104,8 @@ function id3Compilation(): Uint8Array {
     new DataView(header.buffer).setUint32(4, body.length);
     return Uint8Array.from([...header, ...body]);
   };
-  const frames = [frame("TIT2", "Same Title"), frame("TPE1", "Guest Singer"), frame("TALB", "Old Album")];
+  const frames = [frame("TIT2", "Same Title"), frame("TPE1", artist), frame("TALB", album)];
+  if (albumArtist) frames.push(frame("TPE2", albumArtist));
   const size = frames.reduce((total, item) => total + item.length, 0);
   const header = Uint8Array.from([73, 68, 51, 3, 0, 0, (size >> 21) & 127, (size >> 14) & 127, (size >> 7) & 127, size & 127]);
   return Uint8Array.from([...header, ...frames.flatMap((item) => [...item])]);
@@ -183,6 +191,28 @@ async function main() {
   const newArtist = await createQueries(d1(scannedDb)).getSongMaster("sg-b");
   assert(newArtist?.album_id === `al-${md5("New Singer Old Album").substring(0, 10)}`, "metadata artist-only update uses the new artist for album identity");
 
+  for (const [currentName, incomingName] of [["Old Album", "『 Old  Album 』"], ["Café", "Cafe\u0301"]]) {
+    const normalizedApplyDb = buildDb();
+    normalizedApplyDb.exec("INSERT INTO artists(id,name,sort_name) VALUES ('ar-album','Album Ensemble','album ensemble'); UPDATE song_masters SET album_artist_id='ar-album' WHERE id='sg-a';");
+    normalizedApplyDb.prepare("UPDATE albums SET name=? WHERE id='al-old'").run(currentName);
+    await applyMetadataResult(d1(normalizedApplyDb), "inst-a", { artist: "Guest Singer", album: incomingName }, {}, { scanIdentity: true });
+    const normalizedApply = normalizedApplyDb.prepare("SELECT sm.album_id, al.name FROM song_masters sm JOIN albums al ON al.id=sm.album_id WHERE sm.id='sg-a'").get() as { album_id: string; name: string };
+    assert(normalizedApply.album_id === "al-old" && normalizedApply.name === currentName, `Metadata worker keeps canonical album name and custom identity for ${currentName}`);
+    normalizedApplyDb.close();
+  }
+  const changedApplyDb = buildDb();
+  changedApplyDb.exec("INSERT INTO artists(id,name,sort_name) VALUES ('ar-album','Album Ensemble','album ensemble'); UPDATE song_masters SET album_artist_id='ar-album' WHERE id='sg-a';");
+  await applyMetadataResult(d1(changedApplyDb), "inst-a", { album: "Other Album" }, {}, { scanIdentity: true });
+  const changedApply = changedApplyDb.prepare("SELECT album_id FROM song_masters WHERE id='sg-a'").get() as { album_id: string };
+  assert(changedApply.album_id !== "al-old", "Metadata worker still splits a genuinely different album name");
+  changedApplyDb.close();
+  const changedArtistApplyDb = buildDb();
+  changedArtistApplyDb.exec("INSERT INTO artists(id,name,sort_name) VALUES ('ar-album','Album Ensemble','album ensemble'); UPDATE song_masters SET album_artist_id='ar-album' WHERE id='sg-a';");
+  await applyMetadataResult(d1(changedArtistApplyDb), "inst-a", { album: "Old Album", albumArtist: "Different Ensemble" }, {}, { scanIdentity: true });
+  const changedArtistApply = changedArtistApplyDb.prepare("SELECT album_id FROM song_masters WHERE id='sg-a'").get() as { album_id: string };
+  assert(changedArtistApply.album_id !== "al-old", "Metadata worker still splits an explicitly different album artist");
+  changedArtistApplyDb.close();
+
   const compilationDb = buildDb();
   compilationDb.exec("UPDATE albums SET compilation = 1 WHERE id = 'al-old'");
   const compilationCall = appFor(compilationDb);
@@ -217,6 +247,42 @@ async function main() {
   assert(readResult.status === 200 && readRow.tag_scanned === 1, `Read Tags processes an imported compilation track (${readResult.status}, ${JSON.stringify(readRow)}, ${await readResult.text()})`);
   assert(readRow.album_id === "al-old" && readRow.artist_name === "Guest Singer", `Read Tags preserves compilation grouping while updating track artist (${JSON.stringify(readRow)})`);
   readDb.close();
+
+  const missingAlbumArtistDb = buildDb();
+  missingAlbumArtistDb.exec(`
+    INSERT INTO artists(id,name,sort_name) VALUES ('ar-album','Album Ensemble','album ensemble');
+    UPDATE song_masters SET album_artist_id='ar-album' WHERE id='sg-b';
+    UPDATE song_instances SET tag_scanned=1 WHERE id='inst-a';
+    UPDATE song_instances SET storage_uri='r2://music/compilation-read.mp3', tag_scanned=0 WHERE id='inst-b';
+  `);
+  const missingAlbumArtistRead = await appFor(missingAlbumArtistDb)("/tag/read?batch=1");
+  const missingAlbumArtistRow = missingAlbumArtistDb.prepare(
+    "SELECT sm.album_id, sm.album_artist_id, ar.name AS artist_name FROM song_masters sm JOIN artists ar ON ar.id=sm.artist_id WHERE sm.id='sg-b'",
+  ).get() as { album_id: string; album_artist_id: string | null; artist_name: string };
+  assert(missingAlbumArtistRead.status === 200, "Read Tags accepts a track with no embedded album artist");
+  assert(missingAlbumArtistRow.album_id === "al-old", "Read Tags retains existing album identity when the embedded album artist is absent");
+  assert(missingAlbumArtistRow.album_artist_id === "ar-album" && missingAlbumArtistRow.artist_name === "Guest Singer", "Read Tags preserves album artist while updating track artist");
+  missingAlbumArtistDb.close();
+
+  for (const [key, currentName] of [["quoted-read.mp3", "Old Album"], ["nfd-read.mp3", "Café"]]) {
+    const normalizedAlbumDb = buildDb();
+    normalizedAlbumDb.exec("INSERT INTO artists(id,name,sort_name) VALUES ('ar-album','Album Ensemble','album ensemble'); UPDATE song_masters SET album_artist_id='ar-album' WHERE id='sg-b'; UPDATE song_instances SET tag_scanned=1 WHERE id='inst-a';");
+    normalizedAlbumDb.prepare("UPDATE albums SET name=? WHERE id='al-old'").run(currentName);
+    normalizedAlbumDb.prepare("UPDATE song_instances SET storage_uri=?, tag_scanned=0 WHERE id='inst-b'").run(`r2://music/${key}`);
+    await appFor(normalizedAlbumDb)("/tag/read?batch=1");
+    const normalizedAlbum = normalizedAlbumDb.prepare("SELECT sm.album_id, al.name FROM song_masters sm JOIN albums al ON al.id=sm.album_id WHERE sm.id='sg-b'").get() as { album_id: string; name: string };
+    assert(normalizedAlbum.album_id === "al-old" && normalizedAlbum.name === currentName, `Read Tags keeps canonical album name and custom identity for ${key}`);
+    normalizedAlbumDb.close();
+  }
+  for (const key of ["different-album-read.mp3", "different-artist-read.mp3"]) {
+    const changedAlbumDb = buildDb();
+    changedAlbumDb.exec("INSERT INTO artists(id,name,sort_name) VALUES ('ar-album','Album Ensemble','album ensemble'); UPDATE song_masters SET album_artist_id='ar-album' WHERE id='sg-b'; UPDATE song_instances SET tag_scanned=1 WHERE id='inst-a';");
+    changedAlbumDb.prepare("UPDATE song_instances SET storage_uri=?, tag_scanned=0 WHERE id='inst-b'").run(`r2://music/${key}`);
+    await appFor(changedAlbumDb)("/tag/read?batch=1");
+    const changedAlbum = changedAlbumDb.prepare("SELECT album_id FROM song_masters WHERE id='sg-b'").get() as { album_id: string };
+    assert(changedAlbum.album_id !== "al-old", `Read Tags preserves existing behavior for ${key}`);
+    changedAlbumDb.close();
+  }
 
   const importDb = buildDb();
   assert(albumNameFromSourcePath("Dream Radio/wav/01 Opening.wav") === "Dream Radio", "format folders resolve to their album parent");
