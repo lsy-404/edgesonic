@@ -6,15 +6,18 @@ export interface StorageMetadata {
 }
 
 export function recoverMetadataFromStoragePath<T extends StorageMetadata>(
-  storageUri: string,
+  storageUriOrPath: string | null,
   metadata: T,
 ): T {
   const result = { ...metadata } as T;
-  const path = storagePath(storageUri);
+  const path = storagePath(storageUriOrPath);
   if (!path) return result;
 
   const segments = path.split("/").map(decodeSegment);
   const filename = segments.at(-1) || "";
+  if (segments[0]?.toLowerCase() === "objects" || /^obj_[0-9a-f]{16,64}(?:\.[^./]+)?$/i.test(filename)) {
+    return result;
+  }
   const albumAt = segments.indexOf("专辑");
   const album = albumAt >= 0
     ? cleanAlbumName(segments[albumAt + 1] || "")
@@ -48,16 +51,24 @@ function isQualityFolder(name: string): boolean {
   return /^(?:wav|flac|mp3|m4a|aac|ogg|opus|ape|音频|歌词|lyrics|歌曲|歌曲本体|cd级无损wav|母带(?:版|级)无损(?:音乐|wav|flac|伴奏)|音频(?:wav|flac|mp3)|(?:【[^】]+】)?cd音频|(?:wav|mp3)[（(](?:无损|有损)[）)])$/i.test(name);
 }
 
-export async function sourceFolderAlbumName(db: D1Database, instanceId: string): Promise<string | null> {
+export async function sourceFolderLogicalPath(db: D1Database, instanceId: string): Promise<string | null> {
   const entries = (await db.prepare(
     "SELECT path FROM storage_entries WHERE instance_id = ? AND kind = 'file' LIMIT 2",
   ).bind(instanceId).all<{ path: string }>()).results;
-  return entries.length === 1 ? albumNameFromSourcePath(entries[0].path) : null;
+  return entries.length === 1 ? entries[0].path : null;
 }
 
-function storagePath(uri: string): string | null {
-  const match = /^[a-z][a-z0-9+.-]*:\/\/(.+)$/i.exec(uri);
-  return match?.[1] || null;
+export async function sourceFolderAlbumName(db: D1Database, instanceId: string): Promise<string | null> {
+  const path = await sourceFolderLogicalPath(db, instanceId);
+  return path ? albumNameFromSourcePath(path) : null;
+}
+
+function storagePath(uriOrPath: string | null): string | null {
+  if (!uriOrPath) return null;
+  const match = /^[a-z][a-z0-9+.-]*:\/\/(.+)$/i.exec(uriOrPath);
+  if (match) return match[1];
+  if (uriOrPath.includes("://")) return null;
+  return uriOrPath.replace(/^\/+/, "");
 }
 
 function decodeSegment(segment: string): string {

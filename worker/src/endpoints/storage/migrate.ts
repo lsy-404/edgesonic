@@ -164,6 +164,9 @@ async function migrateInstance(env: Env, instance: InstanceCandidate): Promise<M
     ).bind(legacyKey).first<{ id: string; physical_key: string }>();
     const objectId = known?.id || createStableObjectId(`legacy:${legacyKey}`);
     const physicalKey = known?.physical_key || createStableObjectKey(objectId, suffix);
+    const existingEntry = await env.DB.prepare(
+      "SELECT path FROM storage_entries WHERE instance_id = ? AND kind = 'file' ORDER BY id LIMIT 1",
+    ).bind(instance.id).first<{ path: string }>();
     let target = await env.MUSIC_BUCKET.head(physicalKey);
     let copied = 0;
 
@@ -184,7 +187,7 @@ async function migrateInstance(env: Env, instance: InstanceCandidate): Promise<M
       objectId,
       physicalKey,
       legacyKey,
-      logicalPath: legacyKey,
+      logicalPath: existingEntry?.path || legacyKey,
       suffix,
       contentType: source.httpMetadata?.contentType || instance.content_type,
       size: source.size,

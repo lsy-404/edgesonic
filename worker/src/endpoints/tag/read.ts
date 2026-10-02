@@ -18,7 +18,7 @@ import { permissionMiddleware } from "../../auth";
 import { md5 } from "../../utils/md5";
 import { parseTags, type SongTags } from "../../utils/tags";
 import { fetchSlices, type SourceRow } from "../../utils/slices";
-import { recoverMetadataFromStoragePath, sourceFolderAlbumName } from "../../utils/storageMetadata";
+import { recoverMetadataFromStoragePath, sourceFolderAlbumName, sourceFolderLogicalPath } from "../../utils/storageMetadata";
 import { compilationMarkerStatement, retainCompilationAlbum, sourceFolderAlbumIdForScan } from "../../utils/albumIdentity";
 import {
   artistInsertStatements,
@@ -75,9 +75,11 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
       const slices = await fetchSlices(env, sources, row.storage_uri, row.suffix);
       if (slices) {
         const parsed = parseTags(slices.head, slices.tail);
-        const tags: SongTags | null = parsed
-          ? recoverMetadataFromStoragePath(row.storage_uri, parsed)
-          : row.current_album_id === "pending-uploads" ? {} : null;
+        const logicalPath = await sourceFolderLogicalPath(db, row.id);
+        const fallbackTags = parsed ?? (row.current_album_id === "pending-uploads" ? {} : null);
+        const tags: SongTags | null = fallbackTags
+          ? recoverMetadataFromStoragePath(logicalPath, fallbackTags)
+          : null;
         if (tags && !tags.album && row.current_album_id === "pending-uploads") {
           databaseAttempted = true;
           tags.album = await sourceFolderAlbumName(db, row.id) ?? undefined;

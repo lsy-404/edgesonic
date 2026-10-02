@@ -22,7 +22,7 @@ import {
   parseArtistCredits,
   songArtistStatements,
 } from "./artistCredits";
-import { recoverMetadataFromStoragePath, sourceFolderAlbumName } from "./storageMetadata";
+import { recoverMetadataFromStoragePath, sourceFolderAlbumName, sourceFolderLogicalPath } from "./storageMetadata";
 
 export interface SubmittedMetadata {
   title?: string;
@@ -88,7 +88,8 @@ export async function applyMetadataResult(
      FROM song_instances si LEFT JOIN song_masters sm ON sm.id = si.master_id WHERE si.id = ?`,
   ).bind(instanceId).first<{ id: string; master_id: string; size: number | null; storage_uri: string; suffix: string; album_id: string | null }>();
   if (!inst) return { updated: false, reason: "instance not found" };
-  tags = recoverMetadataFromStoragePath(inst.storage_uri, tags);
+  const logicalPath = await sourceFolderLogicalPath(db, instanceId);
+  tags = recoverMetadataFromStoragePath(logicalPath, tags);
   if (!tags.album && inst.album_id === "pending-uploads") {
     tags.album = await sourceFolderAlbumName(db, instanceId) ?? undefined;
   }
