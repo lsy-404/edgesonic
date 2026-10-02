@@ -13,6 +13,7 @@ function assert(condition: unknown, message: string) {
 const dir = mkdtempSync(join(tmpdir(), "edgesonic-metadata-duration-"));
 const fixture = join(dir, "partial-duration.mp3");
 const wavFixture = join(dir, "short-tail.wav");
+const flacFixture = join(dir, "bit-depth.flac");
 const mp4Fixture = join(dir, "duration-only.mp4");
 
 async function main() {
@@ -113,6 +114,119 @@ try {
     assert(tailRequests === 1, "requests the complete remaining WAV tail");
     assert(wavFullRequests === 0, "does not rely on the metadata-empty full-file fallback");
     assert(wav.tags.duration === 20, "submits the complete 20-second WAV duration");
+    assert(wav.tags.title === "Range fixture", "preserves tags from a WAV whose data and trailing metadata fit the requested ranges");
+    assert(wav.tags.bitDepth === 16, "includes the parsed PCM WAV bit depth in the metadata wire result");
+
+    const sampleCount = 36_462_468;
+    const dataSize = sampleCount * 4;
+    const virtualFileSize = 76 + dataSize;
+    const largeWavHead = new Uint8Array(headBytes);
+    largeWavHead.set(new TextEncoder().encode("RIFF"), 0);
+    new DataView(largeWavHead.buffer).setUint32(4, virtualFileSize - 8, true);
+    largeWavHead.set(new TextEncoder().encode("WAVEfmt "), 8);
+    const largeView = new DataView(largeWavHead.buffer);
+    largeView.setUint32(16, 16, true);
+    largeView.setUint16(20, 1, true);
+    largeView.setUint16(22, 2, true);
+    largeView.setUint32(24, 44_100, true);
+    largeView.setUint32(28, 176_400, true);
+    largeView.setUint16(32, 4, true);
+    largeView.setUint16(34, 16, true);
+    largeWavHead.set(new TextEncoder().encode("LIST"), 36);
+    largeView.setUint32(40, 24, true);
+    largeWavHead.set(new TextEncoder().encode("INFOINAM"), 44);
+    largeView.setUint32(52, 12, true);
+    largeWavHead.set(new TextEncoder().encode("range title\0"), 56);
+    largeWavHead.set(new TextEncoder().encode("data"), 68);
+    largeView.setUint32(72, dataSize, true);
+    const clampedLargeWav = await parseBuffer(largeWavHead, { path: "large.wav" }, { duration: true });
+    let largeTailRequests = 0;
+    let largeUnrangedRequests = 0;
+    globalThis.fetch = async (_input, init) => {
+      const range = new Headers(init?.headers).get("Range");
+      if (range === `bytes=0-${headBytes - 1}`) {
+        return new Response(largeWavHead, {
+          status: 206,
+          headers: { "Content-Range": `bytes 0-${headBytes - 1}/${virtualFileSize}`, "Content-Type": "audio/wav" },
+        });
+      }
+      if (range === `bytes=${virtualFileSize - 2 * 1024 * 1024}-${virtualFileSize - 1}`) {
+        largeTailRequests++;
+        return new Response(new Uint8Array(2 * 1024 * 1024), {
+          status: 206,
+          headers: { "Content-Range": `bytes ${virtualFileSize - 2 * 1024 * 1024}-${virtualFileSize - 1}/${virtualFileSize}`, "Content-Type": "audio/wav" },
+        });
+      }
+      largeUnrangedRequests++;
+      throw new Error("large WAV must not be fetched in full");
+    };
+    const largeWav = await runMetadata({ instanceId: "instance-large-wav", sourceUri: "r2://music/large.wav", streamUrl: "https://test/stream", suffix: "wav", size: virtualFileSize }) as { tags: Record<string, unknown> };
+    console.log("\nE. Large WAV declared PCM duration uses validated RIFF frame count:");
+    assert(virtualFileSize > 145_000_000, "simulated object is over 145 MB while only two ranges are materialized");
+    assert(Math.round(clampedLargeWav.format.duration ?? 0) === 12, "music-metadata alone clamps the 145 MB RIFF data length to its 2 MiB input buffer");
+    assert(largeTailRequests === 1 && largeUnrangedRequests === 0, "reads only head and tail ranges, never the full 145 MiB object");
+    assert(largeWav.tags.duration === 827, "uses declared PCM frame count (826.81 seconds), not the 2 MiB buffer clamp");
+    assert(largeWav.tags.bitrate === 1411, "reports the validated PCM byte rate");
+    assert(largeWav.tags.bitDepth === 16, "includes bit depth for a partial PCM WAV");
+
+    const invalidWavHead = largeWavHead.slice();
+    new DataView(invalidWavHead.buffer).setUint32(72, dataSize + 4, true);
+    globalThis.fetch = async (_input, init) => {
+      if (new Headers(init?.headers).get("Range") === `bytes=0-${headBytes - 1}`) {
+        return new Response(invalidWavHead, {
+          status: 206,
+          headers: { "Content-Range": `bytes 0-${headBytes - 1}/${virtualFileSize}`, "Content-Type": "audio/wav" },
+        });
+      }
+      return new Response(new Uint8Array(2 * 1024 * 1024), { status: 206, headers: { "Content-Type": "audio/wav" } });
+    };
+    const invalidWav = await runMetadata({ instanceId: "instance-invalid-wav", sourceUri: "r2://music/invalid.wav", streamUrl: "https://test/stream", suffix: "wav", size: virtualFileSize }) as { tags: Record<string, unknown> };
+    assert(!Object.hasOwn(invalidWav.tags, "duration"), "omits duration when declared data exceeds the RIFF/file boundary");
+    assert(invalidWav.tags.bitrate === 0, "does not retain a bitrate from an invalid partial WAV header");
+
+    async function parsePartialWavHeader(head: Uint8Array, id: string) {
+      globalThis.fetch = async (_input, init) => {
+        if (new Headers(init?.headers).get("Range") === `bytes=0-${headBytes - 1}`) {
+          return new Response(head, {
+            status: 206,
+            headers: { "Content-Range": `bytes 0-${headBytes - 1}/${virtualFileSize}`, "Content-Type": "audio/wav" },
+          });
+        }
+        return new Response(new Uint8Array(2 * 1024 * 1024), { status: 206, headers: { "Content-Type": "audio/wav" } });
+      };
+      return await runMetadata({ instanceId: id, sourceUri: `r2://music/${id}.wav`, streamUrl: "https://test/stream", suffix: "wav", size: virtualFileSize }) as { tags: Record<string, unknown> };
+    }
+
+    const invalidChannelsHead = largeWavHead.slice();
+    const invalidChannelsView = new DataView(invalidChannelsHead.buffer);
+    invalidChannelsView.setUint16(22, 0, true);
+    invalidChannelsView.setUint32(28, 0, true);
+    invalidChannelsView.setUint16(32, 0, true);
+    const invalidChannels = await parsePartialWavHeader(invalidChannelsHead, "invalid-channels");
+    assert(!Object.hasOwn(invalidChannels.tags, "duration"), "rejects zero channels even when byte rate matches zero alignment");
+
+    const invalidBitsHead = largeWavHead.slice();
+    const invalidBitsView = new DataView(invalidBitsHead.buffer);
+    invalidBitsView.setUint32(28, 132_300, true);
+    invalidBitsView.setUint16(32, 3, true);
+    invalidBitsView.setUint16(34, 12, true);
+    const invalidBits = await parsePartialWavHeader(invalidBitsHead, "invalid-bits");
+    assert(!Object.hasOwn(invalidBits.tags, "duration"), "rejects unsupported 12-bit PCM despite a self-consistent byte rate and block alignment");
+
+    const emptyDataHead = largeWavHead.slice();
+    new DataView(emptyDataHead.buffer).setUint32(72, 0, true);
+    const emptyData = await parsePartialWavHeader(emptyDataHead, "empty-data");
+    assert(!Object.hasOwn(emptyData.tags, "duration"), "rejects a zero-length data chunk");
+
+    execFileSync("ffmpeg", [
+      "-hide_banner", "-loglevel", "error",
+      "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=44100:duration=2",
+      "-c:a", "flac", "-sample_fmt", "s16", flacFixture, "-y",
+    ]);
+    const flacBytes = new Uint8Array(readFileSync(flacFixture));
+    globalThis.fetch = async () => new Response(flacBytes, { status: 200, headers: { "Content-Type": "audio/flac" } });
+    const flac = await runMetadata({ instanceId: "instance-flac-depth", sourceUri: "r2://music/bit-depth.flac", streamUrl: "https://test/stream", suffix: "flac", size: flacBytes.length }) as { tags: Record<string, unknown> };
+    assert(flac.tags.bitDepth === 16, "includes music-metadata FLAC bitsPerSample in the metadata wire result");
 
     execFileSync("ffmpeg", [
       "-hide_banner", "-loglevel", "error",

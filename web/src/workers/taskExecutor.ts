@@ -130,6 +130,49 @@ export function isMetaEmpty(m: Awaited<ReturnType<typeof parseBuffer>>): boolean
   return !hasText && !hasPicture && !hasLyrics;
 }
 
+function declaredPcmWavMetrics(bytes: Uint8Array, fileSize: number): { duration: number; bitrate: number } | undefined {
+  if (fileSize <= bytes.length || bytes.length < 12) return undefined;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const ascii = (offset: number) => String.fromCharCode(...bytes.subarray(offset, offset + 4));
+  if (ascii(0) !== "RIFF" || ascii(8) !== "WAVE") return undefined;
+  const riffEnd = 8 + view.getUint32(4, true);
+  if (riffEnd > fileSize || riffEnd < 12) return undefined;
+
+  let offset = 12;
+  let sampleRate = 0;
+  let byteRate = 0;
+  let blockAlign = 0;
+  let formatTag = 0;
+  let channels = 0;
+  let bitsPerSample = 0;
+  while (offset + 8 <= bytes.length && offset + 8 <= riffEnd) {
+    const id = ascii(offset);
+    const chunkSize = view.getUint32(offset + 4, true);
+    const body = offset + 8;
+    const chunkEnd = body + chunkSize;
+    if (chunkEnd > riffEnd || chunkEnd > fileSize) return undefined;
+    if (id === "fmt ") {
+      if (chunkSize < 16 || chunkEnd > bytes.length) return undefined;
+      formatTag = view.getUint16(body, true);
+      channels = view.getUint16(body + 2, true);
+      sampleRate = view.getUint32(body + 4, true);
+      byteRate = view.getUint32(body + 8, true);
+      blockAlign = view.getUint16(body + 12, true);
+      bitsPerSample = view.getUint16(body + 14, true);
+    } else if (id === "data") {
+      if (formatTag !== 1 && formatTag !== 3) return undefined;
+      const validBits = formatTag === 1
+        ? bitsPerSample === 8 || bitsPerSample === 16 || bitsPerSample === 24 || bitsPerSample === 32
+        : bitsPerSample === 32 || bitsPerSample === 64;
+      if (!channels || !sampleRate || !validBits || blockAlign !== channels * bitsPerSample / 8 ||
+          !chunkSize || byteRate !== sampleRate * blockAlign || chunkSize % blockAlign !== 0) return undefined;
+      return { duration: chunkSize / blockAlign / sampleRate, bitrate: byteRate * 8 };
+    }
+    offset = chunkEnd + (chunkSize & 1);
+  }
+  return undefined;
+}
+
 // ---------------------------------------------------------------------------
 // metadata — fetch the first 512KB of the source URI, parseBuffer it, return
 // the compact tag set that endpoints/tag/submit.ts expects.
@@ -219,6 +262,9 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
   // fragment is incomplete (we only fetched a head slice). Wrap in try/catch
   // and fallback to basic atom parsing for the title/artist/album tags.
   const mimeType = detectedMimeType(buf, suffix, headResp.headers.get("content-type") || undefined);
+  const partialWavMetrics = isWav && totalSize > buf.length
+    ? declaredPcmWavMetrics(buf, totalSize)
+    : undefined;
   let meta;
   try {
     meta = await parseBuffer(buf, {
@@ -333,8 +379,10 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
   // We strip the giant common.picture / native.* fields — they'd inflate the
   // result_json column past the 100KB cap in /work/submit. The cover goes in
   // a separate `cover` field (base64) so the worker can write it to R2.
-  const duration = fullMp3DurationRead && meta.format.duration
-    ? Math.round(meta.format.duration)
+  const duration = isWav && totalSize > buf.length
+    ? partialWavMetrics?.duration ? Math.round(partialWavMetrics.duration) : undefined
+    : fullMp3DurationRead && meta.format.duration
+      ? Math.round(meta.format.duration)
     : undefined;
   return {
     instanceId,
@@ -352,8 +400,13 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
       // shared with the local-scan path (web/src/lib/metadata.ts).
       lyrics:      lyricsTagsToText(meta.common.lyrics) || nativeLyricsFallback(meta.native) || "",
       ...(duration ? { duration } : {}),
-      bitrate:     meta.format.bitrate ? Math.round(meta.format.bitrate / 1000) : 0,
+      bitrate:     isWav && totalSize > buf.length
+        ? partialWavMetrics ? Math.round(partialWavMetrics.bitrate / 1000) : 0
+        : meta.format.bitrate ? Math.round(meta.format.bitrate / 1000) : 0,
       sampleRate:  meta.format.sampleRate || 0,
+      ...(Number.isFinite(meta.format.bitsPerSample) && (meta.format.bitsPerSample ?? 0) > 0
+        ? { bitDepth: meta.format.bitsPerSample }
+        : {}),
       channels:    meta.format.numberOfChannels || 0,
       container:   meta.format.container || "",
       codec:       meta.format.codec || "",
