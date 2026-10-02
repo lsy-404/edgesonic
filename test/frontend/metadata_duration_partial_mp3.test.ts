@@ -13,6 +13,7 @@ function assert(condition: unknown, message: string) {
 const dir = mkdtempSync(join(tmpdir(), "edgesonic-metadata-duration-"));
 const fixture = join(dir, "partial-duration.mp3");
 const wavFixture = join(dir, "short-tail.wav");
+const mp4Fixture = join(dir, "duration-only.mp4");
 
 async function main() {
 try {
@@ -112,6 +113,35 @@ try {
     assert(tailRequests === 1, "requests the complete remaining WAV tail");
     assert(wavFullRequests === 0, "does not rely on the metadata-empty full-file fallback");
     assert(wav.tags.duration === 20, "submits the complete 20-second WAV duration");
+
+    execFileSync("ffmpeg", [
+      "-hide_banner", "-loglevel", "error",
+      "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24:duration=12",
+      "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=44100:duration=12",
+      "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-preset", "ultrafast", "-b:v", "4000k",
+      "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", mp4Fixture, "-y",
+    ]);
+    const mp4Bytes = new Uint8Array(readFileSync(mp4Fixture));
+    let mp4FullRequests = 0;
+    globalThis.fetch = async (_input, init) => {
+      if (new Headers(init?.headers).get("Range")) {
+        return new Response(mp4Bytes.subarray(0, headBytes), {
+          status: 206,
+          headers: { "Content-Range": `bytes 0-${headBytes - 1}/${mp4Bytes.length}`, "Content-Type": "audio/mpeg" },
+        });
+      }
+      mp4FullRequests++;
+      return new Response(mp4Bytes, { status: 200, headers: { "Content-Type": "audio/mpeg" } });
+    };
+    const mp4 = await runMetadata({ instanceId: "instance-mp4", sourceUri: "r2://music/test.mp4", streamUrl: "https://test/stream", suffix: "mp4", size: mp4Bytes.length }) as { tags: Record<string, unknown> };
+    assert(mp4Bytes.length > headBytes, "MP4 fixture exceeds the metadata Range window");
+    assert(mp4FullRequests === 1, "reads the complete MP4 when the head slice has no duration");
+    assert(mp4.tags.duration === 12, "keeps duration from a full MP4 parse even without text tags");
+
+    mp4FullRequests = 0;
+    const mislabeledMp4 = await runMetadata({ instanceId: "instance-mp3-container", sourceUri: "r2://music/upload.mp3", streamUrl: "https://test/stream", suffix: "mp3", size: mp4Bytes.length }) as { tags: Record<string, unknown> };
+    assert(mp4FullRequests === 1, "uses the required full read for a mislabeled MPEG-4 audio path");
+    assert(mislabeledMp4.tags.duration === 12, "uses the MPEG-4 container signature when the source MIME is audio/mpeg");
   } finally {
     globalThis.fetch = originalFetch;
   }

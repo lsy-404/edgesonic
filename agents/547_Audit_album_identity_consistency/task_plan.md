@@ -15,3 +15,8 @@
 - [ ] Correct cross-format duration emission while retaining guarded partial-MP3 and fragmented-MP4 behavior.
 - [ ] Identify the invalid WAV payload from magic bytes and available local cache/source evidence; do not transform it.
 - [ ] Run focused parser and route tests, worker/web typechecks, and commit the parser fix separately.
+
+- [x] Investigate the metadata executor duration output gate with real local fixtures and cached audit samples.
+- [x] Correct duration retention for full-file MP4 reads and MP4 signature/MIME mismatches without implementing a container parser.
+- [x] Identify the invalid WAV payload from magic bytes and available local cache/source evidence; do not transform it.
+- [x] Run focused parser and route tests, worker/web typechecks, and commit the parser fix separately.
