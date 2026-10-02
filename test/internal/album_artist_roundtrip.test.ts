@@ -237,6 +237,11 @@ async function main() {
   const usableAlbumRow = usableAlbumDb.prepare("SELECT al.name FROM song_masters sm JOIN albums al ON al.id=sm.album_id WHERE sm.id='sg-a'").get() as { name: string };
   assert(usableAlbumRow.name === "Another Real Album", "metadata scan preserves a real incoming album title");
   usableAlbumDb.close();
+  const usableCurrentAlbumDb = buildDb();
+  await applyMetadataResult(d1(usableCurrentAlbumDb), "inst-a", { album: "Unknown Album" }, {}, { scanIdentity: true });
+  const usableCurrentAlbum = usableCurrentAlbumDb.prepare("SELECT sm.album_id, al.name FROM song_masters sm JOIN albums al ON al.id=sm.album_id WHERE sm.id='sg-a'").get() as { album_id: string; name: string };
+  assert(usableCurrentAlbum.album_id === "al-old" && usableCurrentAlbum.name === "Old Album", "metadata scan does not replace a usable album with a placeholder tag");
+  usableCurrentAlbumDb.close();
   const existingFolderAlbumDb = buildDb();
   existingFolderAlbumDb.exec("UPDATE albums SET name='梦境电台' WHERE id='al-old'; INSERT INTO albums(id,name,sort_name) VALUES ('al-unknown','Unknown Album','unknown album'); UPDATE song_masters SET album_id='al-unknown' WHERE id='sg-a';");
   existingFolderAlbumDb.exec("INSERT INTO storage_entries(id,source_id,parent_id,path,kind,instance_id) VALUES ('entry-a','r2-local','album-parent','梦境电台/wav/01 Track.mp3','file','inst-a'),('entry-b','r2-local','album-parent','梦境电台/wav/02 Track.mp3','file','inst-b');");
@@ -339,6 +344,12 @@ async function main() {
   const genericReadSourceId = await sourceFolderAlbumId(d1(genericReadDb), "inst-a", "梦境电台", "mp3");
   assert(genericRead.album_id === genericReadSourceId && genericRead.name === "梦境电台", "tag/read scan recovers a placeholder album using the unique source path");
   genericReadDb.close();
+  const usableReadDb = buildDb();
+  usableReadDb.exec("UPDATE song_instances SET tag_scanned=1 WHERE id='inst-b'; UPDATE song_instances SET storage_uri='r2://music/unknown-read.mp3', tag_scanned=0 WHERE id='inst-a';");
+  await appFor(usableReadDb)("/tag/read?batch=1");
+  const usableRead = usableReadDb.prepare("SELECT sm.album_id, al.name FROM song_masters sm JOIN albums al ON al.id=sm.album_id WHERE sm.id='sg-a'").get() as { album_id: string; name: string };
+  assert(usableRead.album_id === "al-old" && usableRead.name === "Old Album", "tag/read keeps a usable album when the native album tag is a placeholder");
+  usableReadDb.close();
   for (const key of ["different-album-read.mp3", "different-artist-read.mp3"]) {
     const changedAlbumDb = buildDb();
     changedAlbumDb.exec("INSERT INTO artists(id,name,sort_name) VALUES ('ar-album','Album Ensemble','album ensemble'); UPDATE song_masters SET album_artist_id='ar-album' WHERE id='sg-b'; UPDATE song_instances SET tag_scanned=1 WHERE id='inst-a';");
