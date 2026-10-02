@@ -21,3 +21,6 @@
 - 修复metadata worker：缺时长的`.mp4`允许按既有300MiB上限重读，full parse有duration即采纳（即使无文字标签）；识别ISO BMFF签名纠正与后缀不一致的MIME。没有自写时长解析器。
 - 生成可重复的ffmpeg视频+AAC fixture，经真实runMetadata route模拟Range/full-read验证MP4和错误MIME路径；duration、partial-MP3保护、WAV尾部与fragmented MP4现有断言都通过。真实20缓存对象重放：9个有时长且相对ffprobe误差均≤0.51秒，11个属于当前库无法恢复的分片/缺时长结果。
 - 异常WAV是全零字节（25,305,212字节，exit 1），所查同任务缓存没有有效同key副本；没有进行格式转换。根545新增duration_probe_task_executor.json和探测字段。
+
+- 追加扫描稳定性修复：只在 `scanIdentity`/`/tag/read` 扫描入口，当现有 album `compilation=1`、现 AA 为 Various Artists、输入专辑名按既有 NFC/引号/空白键等价时，保留专辑 ID 与 Various Artists AA；逐曲 artist 仍取新标签。手动 tag/write 不走该保留规则。
+- 扩展物理 ID3 与 SQLite route 回归：两轨各有不同 TPE2 AA 且一轨 album tag 使用等价引号/空白格式，扫描后仍在同一自定义 album ID、专辑 AA 仍为 Various Artists、track artist 各自更新。`test/internal/album_artist_roundtrip.test.ts` ALL PASS；worker typecheck、`git diff --check` 通过。

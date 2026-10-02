@@ -18,6 +18,7 @@ import {
   compilationMarkerStatement,
   normalizeScannedAlbumName,
   retainCompilationAlbum,
+  retainScannedVariousArtistsAlbum,
   retainScannedAlbumIdentity,
   sourceFolderAlbumIdForScan,
 } from "./albumIdentity";
@@ -202,7 +203,8 @@ export async function relinkArtistAlbum(
   const currentAlbumArtist = master.album_artist_id
     ? await db.prepare("SELECT name FROM artists WHERE id = ?").bind(master.album_artist_id).first<{ name: string }>()
     : null;
-  const albumArtistName = tags.albumArtist === undefined ? currentAlbumArtist?.name : tags.albumArtist;
+  const retainScannedVA = scanIdentity && retainScannedVariousArtistsAlbum(curAlbum, currentAlbumArtist?.name, tags.album || curAlbum?.name || "Unknown Album");
+  const albumArtistName = retainScannedVA || tags.albumArtist === undefined ? currentAlbumArtist?.name : tags.albumArtist;
   const albumArtist = parseAlbumArtistCredit(albumArtistName);
   const albumArtistCredits = albumArtist ? [albumArtist] : [];
   const primaryArtist = artistCredits[0];
@@ -214,7 +216,7 @@ export async function relinkArtistAlbum(
   const artistId = primaryArtist?.id || master.artist_id;
   const albumIdentityChanged = artistChanged || tags.albumArtist !== undefined || tags.album !== undefined;
   const albumId = importAlbumId ?? (retainScannedIdentity ? master.album_id
-    : albumIdentityChanged && !retainCompilationAlbum(curAlbum, albumName, tags.albumArtist, currentAlbumArtist?.name)
+    : albumIdentityChanged && !retainScannedVA && !retainCompilationAlbum(curAlbum, albumName, tags.albumArtist, currentAlbumArtist?.name)
     ? "al-" + md5(linkArtistName + " " + albumName).substring(0, 10)
     : master.album_id);
   const oldAlbumId = master.album_id;

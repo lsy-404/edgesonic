@@ -85,6 +85,8 @@ function appFor(sqlite: DatabaseSync) {
           "music/nfd-read.mp3": id3Compilation("Cafe\u0301"),
           "music/different-album-read.mp3": id3Compilation("Other Album"),
           "music/different-artist-read.mp3": id3Compilation("Old Album", "Guest Singer", "Different Ensemble"),
+          "music/va-track-a.mp3": id3Compilation("『 Old  Album 』", "Singer A", "Singer A"),
+          "music/va-track-b.mp3": id3Compilation("Old Album", "Singer B", "Singer B"),
         };
         const bytes = readTags[key] ?? new Uint8Array([0x41, 0x55, 0x44, 0x49]);
         return { arrayBuffer: async () => bytes.buffer };
@@ -217,6 +219,16 @@ async function main() {
   assert(changedArtistApply.album_id !== "al-old", "Metadata worker still splits an explicitly different album artist");
   changedArtistApplyDb.close();
 
+  const vaApplyDb = buildDb();
+  const vaId = `ar-${md5("Various Artists").substring(0, 10)}`;
+  vaApplyDb.prepare("INSERT INTO artists(id,name,sort_name) VALUES (?, 'Various Artists', 'various artists')").run(vaId);
+  vaApplyDb.exec("UPDATE albums SET compilation=1 WHERE id='al-old'; UPDATE song_masters SET album_artist_id='"+vaId+"'");
+  await applyMetadataResult(d1(vaApplyDb), "inst-a", { artist: "Singer A", albumArtist: "Singer A", album: "『 Old  Album 』" }, {}, { scanIdentity: true });
+  await applyMetadataResult(d1(vaApplyDb), "inst-b", { artist: "Singer B", albumArtist: "Singer B", album: "Old Album" }, {}, { scanIdentity: true });
+  const vaApplyRows=vaApplyDb.prepare("SELECT album_id,album_artist_id FROM song_masters ORDER BY id").all() as Array<{album_id:string;album_artist_id:string}>;
+  assert(vaApplyRows.every((row)=>row.album_id==="al-old"&&row.album_artist_id===vaId),"scan metadata keeps the normalized Various Artists album identity across differing incoming album artists");
+  vaApplyDb.close();
+
   const compilationDb = buildDb();
   compilationDb.exec("UPDATE albums SET compilation = 1 WHERE id = 'al-old'");
   const compilationCall = appFor(compilationDb);
@@ -254,6 +266,17 @@ async function main() {
   const readDuration = readDb.prepare("SELECT duration FROM albums WHERE id='al-old'").get() as { duration: number };
   assert(readDuration.duration === 12, "Read Tags refreshes album duration from stored track durations");
   readDb.close();
+
+  const vaReadDb=buildDb();
+  const vaReadId=`ar-${md5("Various Artists").substring(0,10)}`;
+  vaReadDb.prepare("INSERT INTO artists(id,name,sort_name) VALUES (?, 'Various Artists', 'various artists')").run(vaReadId);
+  vaReadDb.exec(`UPDATE albums SET compilation=1 WHERE id='al-old'; UPDATE song_masters SET album_artist_id='${vaReadId}';`);
+  vaReadDb.exec("UPDATE song_instances SET storage_uri=CASE id WHEN 'inst-a' THEN 'r2://music/va-track-a.mp3' ELSE 'r2://music/va-track-b.mp3' END, tag_scanned=0");
+  const vaReadResult=await appFor(vaReadDb)("/tag/read?batch=2");
+  const vaReadRows=vaReadDb.prepare("SELECT sm.album_id,sm.album_artist_id,ar.name AS album_artist_name,sm.artist_id FROM song_masters sm JOIN artists ar ON ar.id=sm.album_artist_id ORDER BY sm.id").all() as Array<{album_id:string;album_artist_id:string;album_artist_name:string;artist_id:string}>;
+  assert(vaReadResult.status===200&&vaReadRows.length===2&&vaReadRows.every((row)=>row.album_id==="al-old"&&row.album_artist_id===vaReadId&&row.album_artist_name==="Various Artists"),"native ID3 scan preserves Various Artists identity when tracks contain different TPE2 values");
+  assert(vaReadRows[0].artist_id!==vaReadRows[1].artist_id,"native ID3 scan still stores each track's distinct performer");
+  vaReadDb.close();
 
   const missingAlbumArtistDb = buildDb();
   missingAlbumArtistDb.exec(`

@@ -24,6 +24,7 @@ import {
   normalizeScannedAlbumName,
   retainCompilationAlbum,
   retainScannedAlbumIdentity,
+  retainScannedVariousArtistsAlbum,
   sourceFolderAlbumIdForScan,
 } from "../../utils/albumIdentity";
 import {
@@ -94,7 +95,12 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           // Album artist is separate from track artist when the file provides it.
           const artistName = tags.artist || row.current_artist_name || "Unknown Artist";
           const artistCredits = parseArtistCredits(artistName);
-          const albumArtist = parseAlbumArtistCredit(tags.albumArtist);
+          const retainScannedVA = retainScannedVariousArtistsAlbum(
+            { name: row.current_album_name, compilation: row.current_album_compilation },
+            row.current_album_artist_name,
+            normalizeScannedAlbumName(tags.album || row.current_album_name || "Unknown Album", row.current_album_name),
+          );
+          const albumArtist = parseAlbumArtistCredit(retainScannedVA ? row.current_album_artist_name : tags.albumArtist);
           const albumArtistCredits = albumArtist ? [albumArtist] : [];
           const primaryArtist = artistCredits[0];
           const linkArtistName = albumArtist?.name || row.current_album_artist_name || primaryArtist.name;
@@ -106,7 +112,7 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           );
           const keepStoredIdentity = !!row.current_album_id && (retainScannedAlbumIdentity(
             row.current_album_id, row.current_album_name, albumName, row.current_album_artist_name, albumArtist?.name,
-          ) || retainCompilationAlbum(
+          ) || retainScannedVA || retainCompilationAlbum(
             { name: row.current_album_name, compilation: row.current_album_compilation },
             albumName, tags.albumArtist, row.current_album_artist_name,
           ));

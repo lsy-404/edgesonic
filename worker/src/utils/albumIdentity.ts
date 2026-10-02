@@ -29,6 +29,17 @@ export function retainScannedAlbumIdentity(
   return !incomingAlbumArtist || incomingAlbumArtist === currentAlbumArtist;
 }
 
+export function retainScannedVariousArtistsAlbum(
+  currentAlbum: { name: string | null; compilation: number | null } | null,
+  currentAlbumArtist: string | null | undefined,
+  incomingAlbumName: string,
+): boolean {
+  return currentAlbum?.compilation === 1
+    && currentAlbumArtist?.trim().toLowerCase() === "various artists"
+    && !!currentAlbum.name
+    && albumNameKey(incomingAlbumName) === albumNameKey(currentAlbum.name);
+}
+
 function albumNameKey(name: string): string {
   return name.normalize("NFC").replace(/[『』]/g, "").replace(/\s+/gu, "").toLowerCase();
 }
