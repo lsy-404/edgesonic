@@ -65,10 +65,12 @@ async function run() {
     assert(artist.at(-2) === MAX_PAGE_SIZE && artist.at(-1) === MAX_PAGE_OFFSET, "search3 artist limit and offset are bounded");
     assert(album.at(-2) === 20, "search3 invalid albumCount uses protocol default");
     assert(song.at(-2) === MAX_PAGE_SIZE && song.at(-1) === 0, "search3 song limit is bounded and negative offset resets");
-    await hit("/rest/search3?query=x&artistCount=0&albumCount=0&songCount=0");
-    assert(lastBind(db.calls, "FROM artists").at(-2) === 0, "search can omit artists with zero count");
-    assert(lastBind(db.calls, "FROM albums").at(-2) === 0, "search can omit albums with zero count");
-    assert(lastBind(db.calls, "FROM song_masters").at(-2) === 0, "search can omit songs with zero count");
+    db.calls.length = 0;
+    const empty = await hit("/rest/search3?query=x&artistCount=0&albumCount=0&songCount=0");
+    const emptyBody = await empty.text();
+    assert(empty.status === 200 && emptyBody.includes('status="ok"'), "zero-count search succeeds");
+    assert(!/<(?:artist|album|song)\s/.test(emptyBody), "zero-count search returns no catalog items");
+    assert(db.calls.length === 0, "zero-count search skips catalog queries");
   }
 
   console.log("browse routes clamp list and genre pages before D1:");
