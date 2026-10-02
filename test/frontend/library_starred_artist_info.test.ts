@@ -36,7 +36,7 @@ assert(/authFetch\("getStarred2"\)/.test(source), "liked data uses getStarred2")
 assert(/parseXmlAttrs\(xml, "artist"\)/.test(source), "liked artists are parsed");
 assert(/parseXmlAttrs\(xml, "album"\)/.test(source), "liked albums are parsed");
 assert(/parseXmlAttrs\(xml, "song"\)\.map\(mapSongRow\)/.test(source), "liked songs are parsed");
-assert(/function playFromStarred\(i: number\)[\s\S]*?player\.setQueue\(songRows\.value, \(listPage\.value - 1\) \* pageSize\.value \+ i\)/.test(source), "liked playback uses the selected row across page boundaries");
+assert(/function playFromStarred\(i: number\)[\s\S]*?player\.setQueue\(songRows\.value, \(loadMode\.value === "automatic" \? 0 : \(listPage\.value - 1\) \* pageSize\.value\) \+ i\)/.test(source), "liked playback uses the selected row across manual and appended pages");
 assert(/sortMode = ref<SortMode>\("newest"\)/.test(source), "library and liked share a default sort mode");
 assert(/"oldestStarred"/.test(source), "liked supports oldest-liked sorting");
 assert(/"newestAdded"/.test(source) && /"oldestAdded"/.test(source), "library supports newest/oldest-added sorting");

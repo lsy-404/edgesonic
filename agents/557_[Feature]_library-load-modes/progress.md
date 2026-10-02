@@ -6,3 +6,4 @@
 - 2026-10-02：增加 `test/web/library_load_modes.test.ts`，覆盖分页前缀、精确页数与跳页边界。
 - 2026-10-02：运行 `npx tsx --test test/web/library_load_modes.test.ts`，三项通过；运行 `npm run typecheck -w web`，通过；解析两份 locale JSON，通过。
 - 2026-10-02：提交实现与审计文件到 `codex/library-load-modes`，提交 `550db7f`；未推送。桌面滚动与集成浏览器检查留给集成任务。
+- 2026-10-02：集成浏览器复验发现普通歌曲分页把 HTTP 503 文本当作成功空页，导致 EOF 被提前确认且不显示重试。为普通专辑/歌曲分页及搜索增加合法 Subsonic XML 根与成功状态校验，并更新收藏队列映射的源码断言；未改动全局 `authFetch`。
