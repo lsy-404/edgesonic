@@ -92,6 +92,7 @@ UPDATE sessions SET expires_at = unixepoch() + 86400 WHERE token LIKE 'pressure-
 UPDATE artists SET image_r2_key = 'pressure/cover.png', biography = 'Synthetic pressure fixture biography.', biography_source = 'fixture' WHERE id LIKE 'pressure-artist-%';
 UPDATE albums SET cover_r2_key = 'pressure/cover.png' WHERE id LIKE 'pressure-album-%';
 UPDATE song_masters SET cover_r2_key = 'pressure/cover.png', duration = 5 WHERE id LIKE 'pressure-song-%';
+UPDATE song_masters SET lyrics_rich = '{"tracks":[{"kind":"main","lang":"en","synced":true,"line":[{"start":0,"value":"Synthetic"}],"cueLine":[{"index":0,"start":0,"end":5000,"value":"Synthetic","cue":[{"start":0,"end":5000,"value":"Synthetic","byteStart":0,"byteEnd":9}]}],"agents":[]}]}' WHERE id LIKE 'pressure-song-%';
 UPDATE song_instances SET storage_uri = 'r2://pressure/audio.wav', suffix = 'wav', content_type = 'audio/wav', bit_rate = 706, sample_rate = 44100, channels = 1, duration = 5, size = 441044 WHERE id LIKE 'pressure-instance-%';
 
 WITH RECURSIVE visitor(value) AS (

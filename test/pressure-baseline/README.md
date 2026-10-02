@@ -1,6 +1,6 @@
 # Local workerd pressure baseline
 
-This fixture runs the built frontend and real EdgeSonic Worker on local workerd. It seeds 200 artists, 500 albums, 6,000 songs, synthetic visitor sessions and a local R2 bucket containing a small cover and five seconds of silent WAV audio. It does not copy production resources. External artist lookups are disabled in the fixture.
+This fixture runs the built frontend and real EdgeSonic Worker on local workerd. It seeds 200 artists, 500 albums, 6,000 songs, synthetic visitor sessions and a local R2 bucket containing a small cover and five seconds of silent WAV audio. It does not copy production resources. External artist lookups are disabled and rich lyrics are populated so enhanced-lyrics requests do not fall through to an external provider.
 
 From the repository root, prepare the isolated local database:
 
