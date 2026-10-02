@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { usePlayerStore } from "../stores/player";
 import Icon from "./Icon.vue";
 import { volumePercent, toggledVolume } from "./PlayerVolumeControl";
-import { FluentButton, FluentSlider } from "@lsypkg/fluent/vue";
+import { FluentButton, FluentSlider } from "@platform-kit/fluent/vue";
 
 const { t } = useI18n();
 const player = usePlayerStore();

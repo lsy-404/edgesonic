@@ -8,6 +8,7 @@ import { mapConcurrent } from "../lib/concurrency";
 import { canRebuildLibraryStats, type LibraryStatsResponse } from "../lib/libraryStats";
 import Icon from "../components/Icon.vue";
 import { normalizeForMatch } from "../lib/trackMatch";
+import { FluentSwitch } from "@platform-kit/fluent/vue";
 
 const { t } = useI18n();
 const { isSuperAdmin, isAdmin, isUser, isGuest, hasPerm, username: currentUsername, edgesonicPost, edgesonicFetch, rescanSongs, md5, signedParams, restUrl } = useAuth();
@@ -1563,6 +1564,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
       <div>
         <div class="mono-label">{{ t("tools.label") }}</div>
         <h1 class="page-title">{{ t("tools.title") }}</h1>
+        <p class="page-description">{{ t("tools.intro") }}</p>
       </div>
       <RouterLink v-if="hasPerm('participate_work')" to="/work" class="btn-primary btn-sm">
         {{ t("tools.workMode") }}
@@ -2007,6 +2009,9 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 </template>
 
 <style scoped>
+.tools { max-width: 1120px; min-width: 0; margin: 0 auto; padding-bottom: 2rem; }
+.tools .page-header { align-items: flex-start; }
+.page-description { max-width: 72ch; margin: 0.45rem 0 0; color: var(--color-text-secondary); line-height: 1.5; }
 /* Sections mirror Settings.vue's .settings-section exactly (same
    markup shape: button.section-header + v-show'd .section-body, no
    collapse transition) so Tools and Settings share one design language
@@ -2196,5 +2201,15 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
 .free-alloc-input-row { display: flex; align-items: center; gap: 0.4rem; }
 .free-alloc-input { width: 60px; }
 .storage-loading { padding: 1rem; color: var(--color-text-muted); font-size: var(--fs-sm); }
+
+@media (max-width: 760px) {
+  .settings-section { margin-bottom: 0.75rem; }
+  .section-header { padding: 0.8rem 0.9rem; }
+  .section-body { padding: 0.9rem; }
+  .tc-row { align-items: stretch; flex-direction: column; gap: 0.4rem; }
+  .tc-key { min-width: 0; }
+  .tc-row .form-input { min-width: 0; width: 100%; }
+  .tc-desc { margin-left: 0; }
+  .clone-options { padding: 0.7rem; }
+}
 </style>
-)

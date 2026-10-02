@@ -1,4 +1,4 @@
-@import "@lsypkg/fluent/style.css";
+@import "@platform-kit/fluent/style.css";
 
 /* WinUI 3 material bridge. Explicit application themes decide all colors;
    this file never follows the operating system's color preference. */
@@ -118,6 +118,7 @@
   --control-alt-fill-color-quarternary: light-dark(rgba(0, 0, 0, .09), rgba(255, 255, 255, .12));
 }
 
+:root,
 .edgesonic-fluent-theme {
   --fluent-bg: var(--app-bg);
   --fluent-surface: var(--card-bg);
@@ -126,6 +127,8 @@
   --fluent-text: var(--text-primary);
   --fluent-muted: var(--text-secondary);
   --fluent-accent: var(--accent-base);
+  --fluent-accent-hover: var(--accent-hover);
+  --fluent-accent-pressed: var(--accent-pressed);
   --fluent-accent-text: var(--accent-text);
   --fluent-control: var(--ctrl-fill-default);
   --fluent-control-hover: var(--ctrl-fill-secondary);
@@ -133,8 +136,22 @@
   --fluent-border: var(--ctrl-border);
   --fluent-selection: var(--navigation-selection-fill);
   --fluent-danger: var(--SystemFillColorCriticalBrush);
+  --fluent-danger-hover: color-mix(in srgb, var(--SystemFillColorCriticalBrush) 88%, var(--text-primary));
+  --fluent-danger-pressed: color-mix(in srgb, var(--SystemFillColorCriticalBrush) 80%, var(--app-bg));
+  --fluent-input-invalid: var(--SystemFillColorCriticalBrush);
   --fluent-success: var(--SystemFillColorSuccessBrush);
   --fluent-warning: var(--SystemFillColorCautionBrush);
+  --fluent-radius: var(--ControlCornerRadius);
+  --fluent-panel-radius: var(--ContentDialogCornerRadius);
+  --fluent-font: var(--ContentControlThemeFontFamily);
+  --fluent-shadow: 0 8px 28px rgb(0 0 0 / 0.2);
+  --fluent-fast: var(--fast-duration, 160ms);
+  --fluent-ease: var(--fast-out-slow-in, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  .edgesonic-fluent-theme { --fluent-fast: 0ms; }
 }
 
 body { background: var(--app-bg); color: var(--text-primary); font-family: var(--ContentControlThemeFontFamily); }

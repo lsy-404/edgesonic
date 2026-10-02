@@ -23,7 +23,7 @@
   "subsonicPasswordNotice": {
     "title": "Subsonic 登录已阻止",
     "createClientPasswordPrefix": "出于安全考虑，网站不允许将主账户密码用于 Subsonic 客户端。请在",
-    "clientsLink": "“设置 → Subsonic 客户端”中创建独立的客户端密码。",
+    "clientsLink": "打开 Subsonic 客户端页面创建独立的客户端密码。",
     "clientsNotEnabled": "由于网站管理员策略，SUBSONIC 客户端未在你的账号上启用。",
     "openClients": "打开 Subsonic 客户端"
   },
@@ -65,7 +65,7 @@
     "groups": {
       "library": "音乐",
       "starred": "我喜欢",
-      "management": "管理与帮助"
+      "management": "管理"
     },
     "menu": {
       "dashboard": "仪表盘",
@@ -75,6 +75,7 @@
       "sources": "存储源",
       "users": "用户",
       "settings": "设置",
+      "subsonicClients": "Subsonic 客户端",
       "tools": "工具",
       "work": "工作模式",
       "radio": "电台",
@@ -117,6 +118,7 @@
     "Files": "文件",
     "Users": "用户",
     "Settings": "设置",
+    "Subsonic Clients": "Subsonic 客户端",
     "Tools": "工具",
     "Radio": "电台",
     "Podcasts": "播客",
@@ -327,6 +329,10 @@
     "noStarred": "暂无我喜欢的内容",
     "starredLoadFailed": "加载我喜欢失败",
     "sortLabel": "排序方式",
+      "pageSize": "每页条数",
+      "pageNumber": "第 {page} 页",
+      "previousPage": "上一页",
+      "nextPage": "下一页",
     "sortNewest": "最新喜欢",
     "sortOldestStarred": "最早喜欢",
     "sortNewestAdded": "最新入库",
@@ -784,6 +790,7 @@
   "tools": {
     "label": "系统 / 工具",
     "title": "工具",
+    "intro": "导入、同步并维护你的音乐库。",
     "workMode": "工作模式",
     "workModeDesc": "参与后台解析与信息补全任务",
     "superAdminOnly": "此页面需要超级管理员（等级 3）",
@@ -862,6 +869,7 @@
   "settings": {
     "label": "系统 / 设置",
     "title": "设置",
+    "intro": "管理账户、外观、播放与服务偏好。",
     "readOnly": "只读 — 需要等级 3",
     "account": {
       "title": "账户",
@@ -1366,6 +1374,17 @@
     "clients": {
       "title": "Subsonic 客户端",
       "desc": "为原生 Subsonic 客户端（DSub、Symfonium 等）签发持久凭据。此类凭据可播放与浏览，但永远无法访问文件与管理功能。",
+      "connectTitle": "连接音乐客户端",
+      "setupServer": "在音乐客户端中填写本页显示的服务器地址，只填写站点基础地址，不要添加 /rest。",
+      "setupUsername": "用户名填写 EdgeSonic 用户名：{username}。",
+      "setupPassword": "在下方创建独立的客户端密码并填入客户端。主账户密码不能用于客户端登录。",
+      "setupConnect": "在客户端保存连接后即可浏览或播放音乐。你可以随时在此撤销该设备凭据。",
+      "oneTimeHint": "现在将这些连接信息复制到音乐客户端。生成的密码只会显示一次。",
+      "credentialsTitle": "已签发的凭据",
+      "credentialsDesc": "可重命名凭据、选择音频传输策略，或撤销设备访问权限。",
+      "permissionRequired": "需要 manage_credentials 权限才能访问此页面。",
+      "revokeConfirm": "撤销此客户端凭据？连接的音乐客户端将无法继续使用。",
+      "revoke": "撤销",
       "labelPlaceholder": "设备备注（如 Pixel-DSub）",
       "create": "签发凭据",
       "createdTitle": "凭据已签发 — 仅显示一次",

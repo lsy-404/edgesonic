@@ -4,6 +4,7 @@ import { computed, nextTick, onBeforeUnmount, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useDetailStore } from "../stores/detail";
 import { usePlayerStore } from "../stores/player";
+import { FluentButton } from "@platform-kit/fluent/vue";
 import Icon from "./Icon.vue";
 import NowPlaying from "../views/NowPlaying.vue";
 import Library from "../views/Library.vue";
@@ -70,15 +71,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
         :aria-label="title"
       >
         <header class="detail-host__header">
-          <span class="detail-host__eyebrow">{{ title }}</span>
-          <button
+          <h2 class="detail-host__title">{{ title }}</h2>
+          <FluentButton
             class="detail-host__close"
             type="button"
+            tone="subtle"
+            icon-only
             :aria-label="t('common.close')"
+            :title="t('common.close')"
             @click="close"
           >
             <Icon name="cross" :size="18" />
-          </button>
+          </FluentButton>
         </header>
         <div class="detail-host__body">
           <NowPlaying v-if="detail.kind === 'now-playing' && player.hasTrack" />
@@ -105,47 +109,41 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
   display: flex;
   flex-direction: column;
   background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid var(--card-stroke);
   border-bottom: 0;
-  border-radius: 8px 8px 0 0;
-  box-shadow: 0 -12px 40px rgb(0 0 0 / 0.3);
+  border-radius: var(--ContentDialogCornerRadius) var(--ContentDialogCornerRadius) 0 0;
+  box-shadow: var(--ElevationControlFlyoutShadow, 0 -12px 40px rgb(0 0 0 / 0.3));
   overflow: hidden;
 }
 .detail-host__header {
-  height: 48px;
+  min-height: 52px;
   flex-shrink: 0;
-  padding: 0 16px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--color-border-subtle);
-  background: var(--color-bg-tertiary);
+  gap: 16px;
+  border-bottom: 1px solid var(--card-stroke);
+  background: var(--layer-default);
 }
-.detail-host__eyebrow {
-  font-size: var(--fs-sm);
+.detail-host__title {
+  margin: 0;
+  min-width: 0;
+  font-size: 15px;
   color: var(--color-text-secondary);
   font-weight: 600;
 }
 .detail-host__close {
-  width: 32px;
-  height: 32px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--color-text-primary);
-  line-height: 1;
-  cursor: pointer;
-}
-.detail-host__close:hover,
-.detail-host__close:focus-visible {
-  background: var(--color-bg-elevated);
-  outline: 2px solid var(--color-accent-primary);
-  outline-offset: 1px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
 }
 .detail-host__body {
   min-height: 0;
   flex: 1;
   overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--ctrl-border-accent) transparent;
 }
 .detail-host__body :deep(.page) {
   padding: 24px;
@@ -172,6 +170,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
   }
 }
 @media (max-width: 600px) {
+  .detail-host__header { min-height: 48px; padding: 0 12px; }
   .detail-host__body :deep(.page) {
     padding: 16px;
   }

@@ -18,9 +18,9 @@ import BudgetedImage from "../components/BudgetedImage.vue";
 import { showInfo } from "../stores/toast";
 import { isInstrumentalTitle } from "../lib/instrumental";
 import type { ScrapeResult } from "../lib/scrape";
-import { buildLibrarySearchParams, buildLibrarySearchRoute } from "../lib/librarySearch";
+import { buildLibrarySearchParams, buildLibrarySearchRoute, LIBRARY_PAGE_SIZES, paginateLibraryItems, type LibraryPageSize } from "../lib/librarySearch";
 import { foldAlbumDisplayCards, type AlbumDisplayGroupSummary, type AlbumDisplayCard } from "../lib/albumDisplayGroups";
-import { FluentSelect } from "@lsypkg/fluent/vue";
+import { FluentSelect } from "@platform-kit/fluent/vue";
 
 const { t } = useI18n();
 
@@ -66,6 +66,18 @@ const tab = ref<Tab>(
     : "songs",
 );
 const sortMode = ref<SortMode>("newest");
+const pageSize = ref<LibraryPageSize>(50);
+const listPage = ref(1);
+let listPageRequest = 0;
+const searchPages = ref({ artists: 1, albums: 1, songs: 1 });
+const searchHasMore = ref({ artists: false, albums: false, songs: false });
+const searchAlbumRows = ref<Album[]>([]);
+const searchAlbumOffset = ref(0);
+const searchAlbumsDone = ref(false);
+const searchSongRows = ref<Track[]>([]);
+const searchSongOffset = ref(0);
+const searchSongsDone = ref(false);
+let searchDataRequest = 0;
 
 const artists = ref<Artist[]>([]);
 const albums = ref<Album[]>([]);
@@ -177,11 +189,11 @@ const error = ref("");
 let detailRequest = 0;
 let detailController: AbortController | null = null;
 
-const ALBUM_PAGE = 100;
 const allAlbums = ref<Album[]>([]);
 const albumOffset = ref(0);
 const albumsDone = ref(false);
 let albumLoadRequest = 0;
+let albumLoadPromise: Promise<void> | null = null;
 
 const WATERFALL_COL_TARGET = 190; // matches the old minmax() card width
 const WATERFALL_GAP = 16; // px, mirrors the 1rem gap in CSS below
@@ -211,14 +223,14 @@ watch(albumWaterfallEl, (el) => {
 const albumDisplayCards = computed<AlbumDisplayCard<Album>[]>(() =>
   foldAlbumDisplayCards(allAlbums.value, displayGroups.value)
 );
+const pagedAlbumDisplayCards = computed(() => albumDisplayCards.value.slice((listPage.value - 1) * pageSize.value, listPage.value * pageSize.value));
 const albumWaterfallCols = computed<AlbumDisplayCard<Album>[][]>(() => {
   const n = waterfallColCount.value;
   const cols: AlbumDisplayCard<Album>[][] = Array.from({ length: n }, () => []);
-  albumDisplayCards.value.forEach((item, i) => cols[i % n].push(item));
+  pagedAlbumDisplayCards.value.forEach((item, i) => cols[i % n].push(item));
   return cols;
 });
 
-const SONG_PAGE = 1000;
 const allSongs = ref<Track[]>([]);
 const songOffset = ref(0);
 const songsDone = ref(false);
@@ -231,61 +243,46 @@ const locatingCurrent = ref(false);
 // runs client-side over whatever pages have been fetched.
 const HIDE_INSTRUMENTAL_KEY = "edgesonic_hide_instrumental";
 const hideInstrumental = ref(localStorage.getItem(HIDE_INSTRUMENTAL_KEY) === "1");
-watch(hideInstrumental, (on) => localStorage.setItem(HIDE_INSTRUMENTAL_KEY, on ? "1" : "0"));
+watch(hideInstrumental, (on) => {
+  localStorage.setItem(HIDE_INSTRUMENTAL_KEY, on ? "1" : "0");
+  listPageRequest++;
+  listPage.value = 1;
+  if (isSearchActive.value) {
+    searchPages.value = { ...searchPages.value, songs: 1 };
+    searchSongRows.value = [];
+    searchSongOffset.value = 0;
+    searchSongsDone.value = false;
+    searchDataRequest++;
+    void runSearch(searchQuery.value.trim(), lyricsQuery.value.trim());
+  } else if (!starredOnly && tab.value === "songs") {
+    void ensureSongItems(pageSize.value + 1);
+  }
+});
 
 function dropInstrumentals(items: Track[]): Track[] {
   return hideInstrumental.value ? items.filter((s) => !isInstrumentalTitle(s.title)) : items;
 }
 
-const displayArtists = computed(() => sortArtists(starredOnly ? starredLists.value.artists : artists.value));
-const displayAlbums = computed(() => starredOnly ? sortAlbums(starredLists.value.albums) : allAlbums.value);
-const displaySongs = computed(() => dropInstrumentals(starredOnly ? sortSongs(starredLists.value.songs) : allSongs.value));
+const artistRows = computed(() => sortArtists(starredOnly ? starredLists.value.artists : artists.value));
+const albumRows = computed(() => starredOnly ? sortAlbums(starredLists.value.albums) : allAlbums.value);
+const songRows = computed(() => dropInstrumentals(starredOnly ? sortSongs(starredLists.value.songs) : allSongs.value));
+const displayArtists = computed(() => paginateLibraryItems(artistRows.value, listPage.value, pageSize.value).items);
+const displayAlbums = computed(() => paginateLibraryItems(albumRows.value, listPage.value, pageSize.value).items);
+const displaySongs = computed(() => songRows.value.slice((listPage.value - 1) * pageSize.value, listPage.value * pageSize.value));
 const albumSongs = computed(() => dropInstrumentals(songs.value));
-
-const songListEnd = ref<HTMLElement | null>(null);
-const albumListEnd = ref<HTMLElement | null>(null);
-let io: IntersectionObserver | null = null;
-function guardLoad(kind: "songs" | "albums"): void {
-  if (loading.value) return;
-  if (kind === "songs") {
-    if (songsDone.value) return;
-    void loadMoreSongs();
-  } else {
-    if (albumsDone.value) return;
-    void loadMoreAlbums();
-  }
-}
-function setupObserver(): void {
-  if (io || typeof IntersectionObserver === "undefined") return;
-  io = new IntersectionObserver((entries) => {
-    for (const ent of entries) {
-      if (!ent.isIntersecting) continue;
-      const el = ent.target as HTMLElement;
-      const kind = el.dataset.kind as "songs" | "albums" | undefined;
-      if (kind) guardLoad(kind);
-    }
-  // rootMargin order is (top, right, bottom, left) — this was expanding
-  // the *top* of the intersection root, which only matters for content
-  // scrolled above the viewport. The sentinel sits below the list, so the
-  // "preload before the user hits the literal last pixel" buffer needs to
-  // be on the *bottom* instead; as written this sentinel only ever fired
-  // once it was pixel-exact inside the visible viewport.
-  }, { rootMargin: "0px 0px 600px 0px" });
-  if (songListEnd.value) io.observe(songListEnd.value);
-  if (albumListEnd.value) io.observe(albumListEnd.value);
-}
-function refreshTargets(): void {
-  if (!io) return;
-  // observe() on an already-observed element is a no-op, so this is safe to
-  // call from watch(tab) — the sentinel only exists when its tab is active.
-  if (songListEnd.value) io.observe(songListEnd.value);
-  if (albumListEnd.value) io.observe(albumListEnd.value);
-}
+const listHasNext = computed(() => tab.value === "artists"
+  ? artistRows.value.length > listPage.value * pageSize.value
+  : tab.value === "albums"
+    ? (starredOnly ? albumRows.value.length : albumDisplayCards.value.length) > listPage.value * pageSize.value
+    : songRows.value.length > listPage.value * pageSize.value);
+const pageSizeOptions = LIBRARY_PAGE_SIZES.map((value) => ({ value: String(value), label: String(value) }));
 
 function switchTab(next: Tab) {
   detailRequest++;
   groupDetailRequest++;
   tab.value = next;
+  listPageRequest++;
+  listPage.value = 1;
   currentArtist.value = null;
   currentAlbum.value = null;
   currentDisplayGroup.value = null;
@@ -300,9 +297,25 @@ function switchTab(next: Tab) {
     void loadStarred();
   } else {
     if (next === "artists" && !artists.value.length) loadArtists();
-    if (next === "albums" && !allAlbums.value.length) loadMoreAlbums();
-    if (next === "songs" && !allSongs.value.length) loadMoreSongs();
+    if (next === "albums") void ensureAlbumItems(pageSize.value + 1);
+    if (next === "songs") void ensureSongItems(pageSize.value + 1);
   }
+}
+
+async function setListPage(page: number) {
+  const request = ++listPageRequest;
+  const requested = Math.max(1, Math.floor(page));
+  listPage.value = requested;
+  if (!starredOnly && tab.value === "albums") await ensureAlbumItems(requested * pageSize.value + 1);
+  if (!starredOnly && tab.value === "songs") await ensureSongItems(requested * pageSize.value + 1);
+  if (request !== listPageRequest) return;
+  const available = tab.value === "artists" ? artistRows.value.length
+    : tab.value === "albums" ? (starredOnly ? albumRows.value.length : albumDisplayCards.value.length)
+    : songRows.value.length;
+  if (starredOnly || tab.value === "artists" || (tab.value === "albums" && albumsDone.value) || (tab.value === "songs" && songsDone.value)) {
+    listPage.value = Math.min(requested, Math.max(1, Math.ceil(available / pageSize.value)));
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 async function loadArtists() {
@@ -363,31 +376,46 @@ async function loadStarred(force = false) {
   }
 }
 
-async function loadMoreAlbums() {
+function loadMoreAlbums(count: number = pageSize.value): Promise<void> {
+  if (albumLoadPromise) return albumLoadPromise;
   const request = albumLoadRequest;
-  loading.value = true;
-  try {
-    const [xml] = await Promise.all([authFetch("getAlbumList2", {
-      type: sortMode.value === "newest"
-        ? "newest"
-        : sortMode.value === "newestAdded" ? "newest"
-        : sortMode.value === "oldestAdded" ? "oldest"
-        : sortMode.value === "nameDesc" ? "alphabeticalByNameDesc" : "alphabeticalByName",
-      size: String(ALBUM_PAGE), offset: String(albumOffset.value),
-    }), ensureAlbumDisplayGroups()]);
-    const page = parseXmlAttrs(xml, "album").map((a) => ({
-      id: a.id || "", name: a.name || "", artist: a.artist || "",
-      year: a.year || "", coverArt: a.coverArt || "", songCount: a.songCount || "",
-      starred: !!a.starred, starredAt: a.starred || undefined, createdAt: a.created || undefined,
-    }));
-    if (request !== albumLoadRequest) return;
-    allAlbums.value.push(...page);
-    albumOffset.value += page.length;
-    if (page.length < ALBUM_PAGE) albumsDone.value = true;
-  } catch {
-    if (request === albumLoadRequest) error.value = t("library.loadFailed");
-  } finally {
-    if (request === albumLoadRequest) loading.value = false;
+  const promise = (async () => {
+    loading.value = true;
+    try {
+      const [xml] = await Promise.all([authFetch("getAlbumList2", {
+        type: sortMode.value === "newest" || sortMode.value === "newestAdded"
+          ? "newest"
+          : sortMode.value === "oldestAdded" ? "oldest"
+          : sortMode.value === "nameDesc" ? "alphabeticalByNameDesc" : "alphabeticalByName",
+        size: String(Math.min(500, Math.max(1, count))), offset: String(albumOffset.value),
+      }), ensureAlbumDisplayGroups()]);
+      const page = parseXmlAttrs(xml, "album").map((a) => ({
+        id: a.id || "", name: a.name || "", artist: a.artist || "",
+        year: a.year || "", coverArt: a.coverArt || "", songCount: a.songCount || "",
+        starred: !!a.starred, starredAt: a.starred || undefined, createdAt: a.created || undefined,
+      }));
+      if (request !== albumLoadRequest) return;
+      allAlbums.value.push(...page);
+      albumOffset.value += page.length;
+      if (page.length < count) albumsDone.value = true;
+    } catch {
+      if (request === albumLoadRequest) error.value = t("library.loadFailed");
+    } finally {
+      if (request === albumLoadRequest) loading.value = false;
+    }
+  })();
+  const wrapped = promise.finally(() => { if (albumLoadPromise === wrapped) albumLoadPromise = null; });
+  albumLoadPromise = wrapped;
+  return wrapped;
+}
+
+async function ensureAlbumItems(target: number) {
+  while (!albumsDone.value && albumDisplayCards.value.length < target) {
+    const missing = Math.max(1, target - albumDisplayCards.value.length);
+    const before = albumOffset.value;
+    await loadMoreAlbums(Math.min(200, Math.max(pageSize.value, missing)));
+    if (albumOffset.value === before && albumsDone.value) break;
+    if (albumOffset.value === before && error.value) break;
   }
 }
 
@@ -457,15 +485,15 @@ function mapSongRow(s: Record<string, string>): Track {
   };
 }
 
-function loadMoreSongs(): Promise<void> {
+function loadMoreSongs(count: number = pageSize.value): Promise<void> {
   if (songLoadPromise) return songLoadPromise;
   const request = songLoadRequest;
-  songLoadPromise = (async () => {
+  const promise = (async () => {
     loading.value = true;
     try {
       const xml = await authFetch("search3", {
         query: "", artistCount: "0", albumCount: "0",
-        songCount: String(SONG_PAGE), songOffset: String(songOffset.value),
+        songCount: String(Math.min(500, Math.max(1, count))), songOffset: String(songOffset.value),
         songSort: sortMode.value === "newest" || sortMode.value === "newestAdded"
           ? "newest"
           : sortMode.value === "oldestAdded" ? "oldest"
@@ -475,14 +503,26 @@ function loadMoreSongs(): Promise<void> {
       if (request !== songLoadRequest) return;
       allSongs.value.push(...page);
       songOffset.value += page.length;
-      if (page.length < SONG_PAGE) songsDone.value = true;
+      if (page.length < count) songsDone.value = true;
     } catch {
       if (request === songLoadRequest) error.value = t("library.loadFailed");
     } finally {
       if (request === songLoadRequest) loading.value = false;
     }
-  })().finally(() => { songLoadPromise = null; });
-  return songLoadPromise;
+  })();
+  const wrapped = promise.finally(() => { if (songLoadPromise === wrapped) songLoadPromise = null; });
+  songLoadPromise = wrapped;
+  return wrapped;
+}
+
+async function ensureSongItems(target: number) {
+  while (!songsDone.value && songRows.value.length < target) {
+    const missing = Math.max(1, target - songRows.value.length);
+    const before = songOffset.value;
+    await loadMoreSongs(Math.min(200, Math.max(pageSize.value, missing)));
+    if (songOffset.value === before && songsDone.value) break;
+    if (songOffset.value === before && error.value) break;
+  }
 }
 
 async function scrollToCurrentSong(id: string): Promise<boolean> {
@@ -503,6 +543,11 @@ async function locateCurrentSong() {
   }
   if (tab.value !== "songs") switchTab("songs");
   await nextTick();
+  const loadedIndex = songRows.value.findIndex((song) => song.id === id);
+  if (loadedIndex >= 0) {
+    listPage.value = Math.floor(loadedIndex / pageSize.value) + 1;
+    await nextTick();
+  }
   if (await scrollToCurrentSong(id)) {
     locateRetryId = null;
     return;
@@ -519,8 +564,13 @@ async function locateCurrentSong() {
       await loadStarred(true);
     } else {
       while (!songsDone.value && !allSongs.value.some((song) => song.id === id)) {
-        await loadMoreSongs();
+        await loadMoreSongs(pageSize.value);
       }
+    }
+    const index = songRows.value.findIndex((song) => song.id === id);
+    if (index >= 0) {
+      listPage.value = Math.floor(index / pageSize.value) + 1;
+      await nextTick();
     }
     if (await scrollToCurrentSong(id)) locateRetryId = null;
     else showInfo(t(starredOnly ? "library.locateNotLiked" : "library.locateNotFound"));
@@ -531,6 +581,9 @@ async function locateCurrentSong() {
 
 watch(sortMode, () => {
   if (props.embedded) return;
+  listPageRequest++;
+  listPage.value = 1;
+  resetSearchPages();
   if (starredOnly) return;
   if (isSearchActive.value) {
     if (searchTimer) clearTimeout(searchTimer);
@@ -538,15 +591,17 @@ watch(sortMode, () => {
     return;
   }
   albumLoadRequest++;
+  albumLoadPromise = null;
   songLoadRequest++;
+  songLoadPromise = null;
   allAlbums.value = [];
   albumOffset.value = 0;
   albumsDone.value = false;
   allSongs.value = [];
   songOffset.value = 0;
   songsDone.value = false;
-  if (tab.value === "albums") void loadMoreAlbums();
-  if (tab.value === "songs") void loadMoreSongs();
+  if (tab.value === "albums") void ensureAlbumItems(pageSize.value + 1);
+  if (tab.value === "songs") void ensureSongItems(pageSize.value + 1);
 });
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -556,8 +611,10 @@ const extendedSearchOpen = ref(!!lyricsQuery.value);
 const searching = ref(false);
 const searchResults = ref<{ artists: Artist[]; albums: Album[]; songs: Track[] } | null>(null);
 const searchAlbumDisplayCards = computed<AlbumDisplayCard<Album>[]>(() =>
-  foldAlbumDisplayCards(searchResults.value?.albums ?? [], displayGroups.value)
+  foldAlbumDisplayCards(searchAlbumRows.value, displayGroups.value)
 );
+const pagedSearchAlbumDisplayCards = computed(() => searchAlbumDisplayCards.value.slice((searchPages.value.albums - 1) * pageSize.value, searchPages.value.albums * pageSize.value));
+const pagedSearchSongs = computed(() => searchSongRows.value.slice((searchPages.value.songs - 1) * pageSize.value, searchPages.value.songs * pageSize.value));
 const searchError = ref("");
 const isSearchActive = computed(() => !!searchQuery.value.trim() || !!lyricsQuery.value.trim());
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
@@ -574,12 +631,68 @@ function lyricsSearchIsPreparing(error: { code: string; message: string }): bool
   return /edgeSonicLyricsSearchInitializing/i.test(`${error.code} ${error.message}`);
 }
 
+function resetSearchPages() {
+  searchDataRequest++;
+  searchAlbumRows.value = [];
+  searchAlbumOffset.value = 0;
+  searchAlbumsDone.value = false;
+  searchSongRows.value = [];
+  searchSongOffset.value = 0;
+  searchSongsDone.value = false;
+  searchPages.value = { artists: 1, albums: 1, songs: 1 };
+  searchHasMore.value = { artists: false, albums: false, songs: false };
+}
+
+async function ensureSearchAlbums(target: number, query: string, lyricQuery: string, signal: AbortSignal, request: number) {
+  if (lyricQuery) { searchAlbumsDone.value = true; return; }
+  while (!searchAlbumsDone.value && searchAlbumDisplayCards.value.length < target) {
+    const count = Math.min(200, Math.max(pageSize.value, target - searchAlbumDisplayCards.value.length));
+    const params = buildLibrarySearchParams(query, lyricQuery, sortMode.value, pageSize.value, searchPages.value);
+    params.artistCount = "0";
+    params.albumCount = String(count);
+    params.albumOffset = String(searchAlbumOffset.value);
+    params.songCount = "0";
+    const xml = await authFetch("search3", params, signal);
+    if (request !== searchDataRequest || signal.aborted) return;
+    const protocolError = searchProtocolError(xml);
+    if (protocolError) throw new Error(protocolError.message);
+    const page = parseXmlAttrs(xml, "album").map((a) => ({
+      id: a.id || "", name: a.name || "", artist: a.artist || "", year: a.year || "",
+      coverArt: a.coverArt || "", songCount: a.songCount || "", starred: !!a.starred,
+      starredAt: a.starred || undefined, createdAt: a.created || undefined,
+    }));
+    searchAlbumRows.value.push(...page);
+    searchAlbumOffset.value += page.length;
+    if (page.length < count) searchAlbumsDone.value = true;
+  }
+}
+
+async function ensureSearchSongs(target: number, query: string, lyricQuery: string, signal: AbortSignal, request: number) {
+  while (!searchSongsDone.value && searchSongRows.value.length < target) {
+    const count = Math.min(200, Math.max(pageSize.value, target - searchSongRows.value.length));
+    const params = buildLibrarySearchParams(query, lyricQuery, sortMode.value, pageSize.value, searchPages.value);
+    params.artistCount = "0";
+    params.albumCount = "0";
+    params.songCount = String(count);
+    params.songOffset = String(searchSongOffset.value);
+    const xml = await authFetch("search3", params, signal);
+    if (request !== searchDataRequest || signal.aborted) return;
+    const protocolError = searchProtocolError(xml);
+    if (protocolError) throw new Error(protocolError.message);
+    const page = parseXmlAttrs(xml, "song").map(mapSongRow);
+    searchSongRows.value.push(...(hideInstrumental.value ? page.filter((song) => !isInstrumentalTitle(song.title)) : page));
+    searchSongOffset.value += page.length;
+    if (page.length < count) searchSongsDone.value = true;
+  }
+}
+
 async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
   if (props.embedded) return;
   const request = ++searchRequest;
   searchController?.abort();
   const controller = new AbortController();
   searchController = controller;
+  const dataRequest = ++searchDataRequest;
   searching.value = true;
   searchError.value = "";
   // Drop any drilldown so the page-header title/breadcrumb don't show stale
@@ -589,8 +702,12 @@ async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
   currentAlbum.value = null;
   currentDisplayGroup.value = null;
   try {
+    const pages = searchPages.value;
+    const params = buildLibrarySearchParams(query, lyricQuery, sortMode.value, pageSize.value, pages);
+    params.albumCount = "0";
+    params.songCount = "0";
     const [xml] = await Promise.all([
-      authFetch("search3", buildLibrarySearchParams(query, lyricQuery, sortMode.value), controller.signal),
+      authFetch("search3", params, controller.signal),
       ensureAlbumDisplayGroups(),
     ]);
     if (request !== searchRequest) return;
@@ -603,17 +720,48 @@ async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
       searching.value = false;
       return;
     }
-    searchResults.value = {
-      artists: parseXmlAttrs(xml, "artist").map((a) => ({
+    const artists = parseXmlAttrs(xml, "artist").map((a) => ({
         id: a.id || "", name: a.name || "", albumCount: a.albumCount || "",
         starred: !!a.starred, starredAt: a.starred || undefined, createdAt: a.created || undefined,
-      })),
-      albums: parseXmlAttrs(xml, "album").map((a) => ({
-        id: a.id || "", name: a.name || "", artist: a.artist || "",
-        year: a.year || "", coverArt: a.coverArt || "", songCount: a.songCount || "",
-        starred: !!a.starred, starredAt: a.starred || undefined, createdAt: a.created || undefined,
-      })),
-      songs: parseXmlAttrs(xml, "song").map(mapSongRow),
+      }));
+    const hasMore = {
+      artists: artists.length > pageSize.value,
+      albums: false,
+      songs: false,
+    };
+    if (pageSize.value === 500) {
+      const lookAheadArtists = async () => {
+        const params = buildLibrarySearchParams(query, lyricQuery, sortMode.value, pageSize.value, pages);
+        params.artistCount = "1";
+        params.albumCount = "0";
+        params.songCount = "0";
+        params.artistOffset = String(pages.artists * pageSize.value);
+        const response = await authFetch("search3", params, controller.signal);
+        if (searchProtocolError(response)) throw new Error("Search page lookahead failed");
+        return parseXmlAttrs(response, "artist").length > 0;
+      };
+      if (artists.length === pageSize.value && !lyricQuery) hasMore.artists = await lookAheadArtists();
+    }
+    if (request !== searchRequest) return;
+    searchResults.value = {
+      artists: artists.slice(0, pageSize.value),
+      albums: searchAlbumRows.value,
+      songs: searchSongRows.value,
+    };
+    await Promise.all([
+      ensureSearchAlbums(searchPages.value.albums * pageSize.value + 1, query, lyricQuery, controller.signal, dataRequest),
+      ensureSearchSongs(searchPages.value.songs * pageSize.value + 1, query, lyricQuery, controller.signal, dataRequest),
+    ]);
+    if (request !== searchRequest || controller.signal.aborted) return;
+    searchResults.value.albums = searchAlbumRows.value;
+    searchResults.value.songs = searchSongRows.value;
+    hasMore.albums = searchAlbumDisplayCards.value.length > searchPages.value.albums * pageSize.value;
+    hasMore.songs = searchSongRows.value.length > searchPages.value.songs * pageSize.value;
+    searchHasMore.value = hasMore;
+    searchResults.value = {
+      artists: artists.slice(0, pageSize.value),
+      albums: searchAlbumRows.value,
+      songs: searchSongRows.value,
     };
   } catch {
     if (controller.signal.aborted) return;
@@ -622,6 +770,20 @@ async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
     searchError.value = t("library.searchFailed");
   }
   if (request === searchRequest) searching.value = false;
+}
+
+async function setSearchPage(kind: "artists" | "albums" | "songs", page: number) {
+  const target = Math.max(1, Math.floor(page));
+  if (target === searchPages.value[kind] || (target > searchPages.value[kind] && !searchHasMore.value[kind])) return;
+  searchPages.value = { ...searchPages.value, [kind]: target };
+  await runSearch(searchQuery.value.trim(), lyricsQuery.value.trim());
+  const results = kind === "albums" ? pagedSearchAlbumDisplayCards.value
+    : kind === "songs" ? pagedSearchSongs.value
+    : searchResults.value?.artists ?? [];
+  if (!searching.value && !results.length && target > 1) {
+    searchPages.value = { ...searchPages.value, [kind]: target - 1 };
+    await runSearch(searchQuery.value.trim(), lyricsQuery.value.trim());
+  }
 }
 
 function updateSearchRoute(query: string, lyricQuery: string) {
@@ -650,6 +812,7 @@ watch([searchQuery, lyricsQuery], ([q, lyricQ]) => {
   if (searchTimer) clearTimeout(searchTimer);
   const query = q.trim();
   const lyricQuery = lyricQ.trim();
+  resetSearchPages();
   searchRequest++;
   searchController?.abort();
   searchController = null;
@@ -665,6 +828,27 @@ watch([searchQuery, lyricsQuery], ([q, lyricQ]) => {
   searchError.value = "";
   searchTimer = setTimeout(() => void runSearch(query, lyricQuery), SEARCH_DEBOUNCE_MS);
 }, { immediate: true });
+
+watch(pageSize, () => {
+  listPageRequest++;
+  listPage.value = 1;
+  if (isSearchActive.value) {
+    resetSearchPages();
+    void runSearch(searchQuery.value.trim(), lyricsQuery.value.trim());
+  } else if (!starredOnly && tab.value === "albums") {
+    void ensureAlbumItems(pageSize.value + 1);
+  } else if (!starredOnly && tab.value === "songs") {
+    void ensureSongItems(pageSize.value + 1);
+  }
+});
+
+watch(() => starredOnly
+  ? tab.value === "artists" ? artistRows.value.length
+  : tab.value === "albums" ? albumRows.value.length : songRows.value.length
+  : null, (length) => {
+  if (length === null) return;
+  listPage.value = Math.min(listPage.value, Math.max(1, Math.ceil(length / pageSize.value)));
+});
 
 function clearSearch() {
   searchQuery.value = "";
@@ -688,7 +872,7 @@ function retrySearch() {
 }
 
 function playFromSearch(i: number) {
-  if (searchResults.value) player.setQueue(searchResults.value.songs, i);
+  player.setQueue(searchSongRows.value, (searchPages.value.songs - 1) * pageSize.value + i);
 }
 
 async function openArtist(artist: Artist) {
@@ -810,11 +994,11 @@ function playSong(i: number) {
 }
 
 function playFromAll(i: number) {
-  player.setQueue(displaySongs.value, i);
+  player.setQueue(songRows.value, (listPage.value - 1) * pageSize.value + i);
 }
 
 function playFromStarred(i: number) {
-  player.setQueue(displaySongs.value, i);
+  player.setQueue(songRows.value, (listPage.value - 1) * pageSize.value + i);
 }
 
 function playAlbumFromStart() {
@@ -865,6 +1049,7 @@ function parseArtists(artistStr: string): string[] {
 async function searchAndOpenArtist(artistName: string) {
   const query = artistName.trim();
   if (!query) return;
+  resetSearchPages();
   await runSearch(query, "");
   const matches = searchResults.value?.artists || [];
   if (matches.length > 0) {
@@ -1139,20 +1324,10 @@ onMounted(() => {
   }
   if (starredOnly) void loadStarred();
   else if (tab.value === "artists") loadArtists();
-  else if (tab.value === "albums") loadMoreAlbums();
-  else loadMoreSongs();
+  else if (tab.value === "albums") void ensureAlbumItems(pageSize.value + 1);
+  else void ensureSongItems(pageSize.value + 1);
   setTimeout(() => { songsHintFaded.value = true; }, 5000);
-  // set up the infinite-scroll observer now that the first sentinel
-  // (songs tab, the default) is in the DOM. switchTab's watch below
-  // re-observes whichever sentinel becomes live when the user picks a
-  // different tab.
-  setupObserver();
 });
-
-watch(() => tab.value, () => {
-  if (props.embedded) return;
-  refreshTargets();
-}, { flush: "post" });
 
 watch(() => player.starred, () => {
   const currentId = player.current?.id;
@@ -1171,7 +1346,6 @@ watch(() => player.current?.id, () => { locateRetryId = null; });
 
 onUnmounted(() => {
   detailController?.abort();
-  if (io) { io.disconnect(); io = null; }
   if (waterfallRO) { waterfallRO.disconnect(); waterfallRO = null; }
   if (searchTimer) clearTimeout(searchTimer);
   searchController?.abort();
@@ -1440,6 +1614,10 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         <span class="mono-label">{{ t("library.sortLabel") }}</span>
         <FluentSelect :model-value="sortMode" class="form-input sort-select" :aria-label="t('library.sortLabel')" :options="[{ value: 'newest', label: t(starredOnly ? 'library.sortNewest' : 'library.sortNewestAdded') }, ...(starredOnly ? [{ value: 'oldestStarred', label: t('library.sortOldestStarred') }, { value: 'newestAdded', label: t('library.sortNewestAdded') }] : []), { value: 'oldestAdded', label: t('library.sortOldestAdded') }, { value: 'nameAsc', label: t('library.sortNameAsc') }, { value: 'nameDesc', label: t('library.sortNameDesc') }]" @update:model-value="sortMode = $event as SortMode" />
       </label>
+      <label class="page-size-control">
+        <span class="mono-label">{{ t("library.pageSize") }}</span>
+        <FluentSelect :model-value="String(pageSize)" class="form-input page-size-select" :aria-label="t('library.pageSize')" :options="pageSizeOptions" @update:model-value="pageSize = Number($event) as LibraryPageSize" />
+      </label>
       <button class="btn-secondary btn-sm locate-current-btn" :disabled="locatingCurrent" @click="locateCurrentSong">
         {{ locatingCurrent ? t("library.locatingCurrent") : t("library.locateCurrent") }}
       </button>
@@ -1653,7 +1831,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           :class="{ playing: player.current?.id === s.id }"
           @click="playFromStarred(i)"
         >
-          <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
+          <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ (listPage - 1) * pageSize + i + 1 }}</template></span>
           <span class="song-title">{{ s.title }}</span>
           <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
           <span class="song-artist-group" :data-album="s.album">
@@ -1740,14 +1918,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         <div class="empty-state-icon"><Icon name="empty" /></div>
         <div>{{ t("library.noAlbums") }}</div>
       </div>
-      <div class="load-more">
-        <span v-if="loading" class="mono-label">{{ t("common.loading") }}</span>
-        <!-- invisible IntersectionObserver sentinel replaces the
-             manual "加载更多" button. Pulled into the viewport by the
-             album grid's natural flow when the user scrolls near the end;
-             the observer fires loadMoreAlbums automatically. -->
-        <div ref="albumListEnd" class="scroll-sentinel" data-kind="albums" aria-hidden="true"></div>
-      </div>
+      <div v-if="loading" class="load-more mono-label">{{ t("common.loading") }}</div>
     </div>
 
     <!-- Tab: all songs -->
@@ -1822,7 +1993,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
             :title="t('library.select')"
             @click.stop="toggleSelected(s.id)"
           />
-          <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
+          <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ (listPage - 1) * pageSize + i + 1 }}</template></span>
           <span class="song-title">{{ s.title }}</span>
           <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
             <span class="song-artist-group" :data-album="s.album">
@@ -1860,16 +2031,21 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         </div>
          <div v-if="!displaySongs.length && !loading" class="empty-state">{{ t("library.noTracks") }}</div>
       </div>
-      <div class="load-more">
-        <span v-if="loading" class="mono-label">{{ t("common.loading") }}</span>
-        <!-- infinite-scroll sentinel (see album tab sibling). -->
-        <div ref="songListEnd" class="scroll-sentinel" data-kind="songs" aria-hidden="true"></div>
-      </div>
+      <div v-if="loading" class="load-more mono-label">{{ t("common.loading") }}</div>
+    </div>
+    <div v-if="!currentArtist && !currentAlbum && !currentDisplayGroup && !embedded" class="library-pagination">
+      <span class="mono-label">{{ t("library.pageNumber", { page: listPage }) }}</span>
+      <button class="btn-secondary btn-sm" :disabled="loading || listPage <= 1" @click="setListPage(listPage - 1)">{{ t("library.previousPage") }}</button>
+      <button class="btn-secondary btn-sm" :disabled="loading || !listHasNext" @click="setListPage(listPage + 1)">{{ t("library.nextPage") }}</button>
     </div>
     </template>
 
     <!-- Library-wide search results: replaces tabs/drilldown while a query is active. -->
     <div v-else class="search-results" aria-live="polite">
+      <label class="page-size-control search-page-size-control">
+        <span class="mono-label">{{ t("library.pageSize") }}</span>
+        <FluentSelect :model-value="String(pageSize)" class="form-input page-size-select" :aria-label="t('library.pageSize')" :options="pageSizeOptions" @update:model-value="pageSize = Number($event) as LibraryPageSize" />
+      </label>
       <div v-if="searching" class="empty-state">{{ t("common.loading") }}</div>
       <div v-else-if="searchError" class="empty-state search-error">
         <div>{{ searchError }}</div>
@@ -1904,13 +2080,18 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               <div class="corner corner-bl"></div>
             </div>
           </div>
+          <div class="library-pagination">
+            <span class="mono-label">{{ t("library.pageNumber", { page: searchPages.artists }) }}</span>
+            <button class="btn-secondary btn-sm" :disabled="searching || searchPages.artists <= 1" @click="setSearchPage('artists', searchPages.artists - 1)">{{ t("library.previousPage") }}</button>
+            <button class="btn-secondary btn-sm" :disabled="searching || !searchHasMore.artists" @click="setSearchPage('artists', searchPages.artists + 1)">{{ t("library.nextPage") }}</button>
+          </div>
         </div>
 
         <div v-if="searchAlbumDisplayCards.length" class="search-section">
           <div class="search-section-title">{{ t("library.tabAlbums") }}</div>
           <div class="album-grid">
             <div
-              v-for="item in searchAlbumDisplayCards"
+              v-for="item in pagedSearchAlbumDisplayCards"
               :key="item.key"
               class="card hoverable album-card"
               @click="item.kind === 'group' ? openDisplayGroup(item.group) : openAlbum(item.album)"
@@ -1938,6 +2119,11 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               <div class="corner corner-bl"></div>
             </div>
           </div>
+          <div class="library-pagination">
+            <span class="mono-label">{{ t("library.pageNumber", { page: searchPages.albums }) }}</span>
+            <button class="btn-secondary btn-sm" :disabled="searching || searchPages.albums <= 1" @click="setSearchPage('albums', searchPages.albums - 1)">{{ t("library.previousPage") }}</button>
+            <button class="btn-secondary btn-sm" :disabled="searching || !searchHasMore.albums" @click="setSearchPage('albums', searchPages.albums + 1)">{{ t("library.nextPage") }}</button>
+          </div>
         </div>
 
         <div v-if="searchResults.songs.length" class="search-section">
@@ -1947,13 +2133,13 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               <span>#</span><span>{{ t("library.colTitle") }}</span><span>{{ t("library.colAlbum") }}</span><span>{{ t("library.colArtist") }}</span><span>{{ t("library.colTime") }}</span><span></span><span></span>
             </div>
             <div
-              v-for="(s, i) in searchResults.songs"
+              v-for="(s, i) in pagedSearchSongs"
               :key="s.id"
               class="table-row song-row"
               :class="{ playing: player.current?.id === s.id }"
               @click="playFromSearch(i)"
             >
-              <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ i + 1 }}</template></span>
+              <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ (searchPages.songs - 1) * pageSize + i + 1 }}</template></span>
               <span class="song-title">{{ s.title }}</span>
               <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
                <span class="song-artist-group" :data-album="s.album">
@@ -1989,6 +2175,11 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
              @error="onStarError"
           />
             </div>
+          </div>
+          <div class="library-pagination">
+            <span class="mono-label">{{ t("library.pageNumber", { page: searchPages.songs }) }}</span>
+            <button class="btn-secondary btn-sm" :disabled="searching || searchPages.songs <= 1" @click="setSearchPage('songs', searchPages.songs - 1)">{{ t("library.previousPage") }}</button>
+            <button class="btn-secondary btn-sm" :disabled="searching || !searchHasMore.songs" @click="setSearchPage('songs', searchPages.songs + 1)">{{ t("library.nextPage") }}</button>
           </div>
         </div>
       </template>
@@ -2116,15 +2307,19 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1.25rem;
 }
-.sort-control {
+.sort-control, .page-size-control {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
 }
 .sort-select { min-width: 150px; padding-top: 0.45rem; padding-bottom: 0.45rem; }
+.page-size-select { min-width: 76px; padding-top: 0.45rem; padding-bottom: 0.45rem; }
+.search-page-size-control { justify-content: flex-end; margin-bottom: 1rem; }
+.library-pagination { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.55rem; padding: 1rem 0; }
 .locate-current-btn { margin-left: auto; }
 .view-tab {
   padding: 0.55rem 1.3rem;
