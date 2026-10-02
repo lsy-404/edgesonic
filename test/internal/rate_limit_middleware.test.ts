@@ -3,6 +3,7 @@
 import { Hono } from "hono";
 import {
   apiRateLimitMiddleware,
+  apiRateLimitBucket,
   authenticatedRateLimitKey,
   authenticationRateLimitKey,
   rateLimitDeviceId,
@@ -65,7 +66,15 @@ async function main() {
   const firstApiKey = authenticatedRateLimitKey("Alice", sessionDeviceId);
   const secondApiKey = authenticatedRateLimitKey("Alice", apiKeyDeviceId);
   assert(firstApiKey !== secondApiKey, "authenticated user keys isolate distinct devices");
+  assert(authenticatedRateLimitKey("Alice", sessionDeviceId, "subsonic-read") !== authenticatedRateLimitKey("Alice", sessionDeviceId, "subsonic-write"), "Subsonic reads and writes have independent keys for the same identity");
+  assert(authenticatedRateLimitKey("Alice", sessionDeviceId, "management") !== authenticatedRateLimitKey("Alice", sessionDeviceId, "subsonic-read"), "management has an independent key for the same identity");
   assert(!secondApiKey.includes("api-key-secret-a"), "authenticated key does not expose API credentials");
+
+  assert(apiRateLimitBucket("/rest/star") === "subsonic-write", "GET-capable annotation mutations use the write bucket");
+  assert(apiRateLimitBucket("/rest/createPlaylist.view/") === "subsonic-write", ".view aliases and trailing slashes normalize to the write bucket");
+  assert(apiRateLimitBucket("/rest/search3") === "subsonic-read", "POST-capable search remains in the read bucket");
+  assert(apiRateLimitBucket("/rest/notRegistered.view") === "management", "unknown REST operations remain rate limited in management");
+  assert(apiRateLimitBucket("/tag/write") === "management", "management API routes use the management bucket");
 
   const missingBindingAllowed = await rateLimitAllowed(undefined, "anything");
   assert(missingBindingAllowed, "missing optional binding keeps local and legacy deployments running");
@@ -123,6 +132,42 @@ async function main() {
 
   const allowed = await app.request("https://example.test/rest/ping", undefined, {});
   assert(allowed.status === 200, "authenticated API request remains available without the optional binding");
+
+  const counts = new Map<string, number>();
+  const perBucketLimiter: RateLimiter = {
+    async limit({ key }) {
+      const count = (counts.get(key) ?? 0) + 1;
+      counts.set(key, count);
+      return { success: count <= 1 };
+    },
+  };
+  const isolatedApp = new Hono<{ Bindings: { API_RATE_LIMITER?: RateLimiter }; Variables: { user: { username: string }; rateLimitDeviceId?: string } }>();
+  isolatedApp.use("/*", async (c, next) => {
+    c.set("user", { username: "alice" });
+    c.set("rateLimitDeviceId", sessionDeviceId);
+    await next();
+  });
+  isolatedApp.use("/rest/*", apiRateLimitMiddleware);
+  isolatedApp.use("/tag/*", apiRateLimitMiddleware);
+  isolatedApp.get("/rest/star", (c) => c.text("ok"));
+  isolatedApp.get("/rest/search3", (c) => c.text("ok"));
+  isolatedApp.post("/rest/search3", (c) => c.text("ok"));
+  isolatedApp.get("/tag/write", (c) => c.text("ok"));
+  const isolatedBindings = { API_RATE_LIMITER: perBucketLimiter };
+  assert((await isolatedApp.request("https://example.test/tag/write", undefined, isolatedBindings)).status === 200, "management request can use its own quota");
+  assert((await isolatedApp.request("https://example.test/tag/write", undefined, isolatedBindings)).status === 429, "same management bucket still enforces its limit");
+  assert((await isolatedApp.request("https://example.test/rest/star", undefined, isolatedBindings)).status === 200, "management exhaustion does not block a Subsonic write");
+  assert((await isolatedApp.request("https://example.test/rest/star", undefined, isolatedBindings)).status === 429, "same Subsonic write bucket still enforces its limit");
+  assert((await isolatedApp.request("https://example.test/rest/search3", { method: "POST" }, isolatedBindings)).status === 200, "write exhaustion does not block a POST Subsonic read");
+  const otherDeviceApp = new Hono<{ Bindings: { API_RATE_LIMITER?: RateLimiter }; Variables: { user: { username: string }; rateLimitDeviceId?: string } }>();
+  otherDeviceApp.use("/rest/*", async (c, next) => {
+    c.set("user", { username: "alice" });
+    c.set("rateLimitDeviceId", apiKeyDeviceId);
+    await next();
+  });
+  otherDeviceApp.use("/rest/*", apiRateLimitMiddleware);
+  otherDeviceApp.get("/rest/star", (c) => c.text("ok"));
+  assert((await otherDeviceApp.request("https://example.test/rest/star", undefined, isolatedBindings)).status === 200, "the same username on a distinct device keeps a separate write quota");
 
   const noPrincipalApp = new Hono<{ Bindings: { API_RATE_LIMITER?: RateLimiter }; Variables: { user: { username: string }; rateLimitDeviceId?: string } }>();
   noPrincipalApp.use("/rest/*", async (c, next) => {

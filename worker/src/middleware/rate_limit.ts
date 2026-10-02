@@ -4,11 +4,48 @@ import { createMiddleware } from "hono/factory";
 import type { User } from "../types/entities";
 
 export type RateLimiter = Pick<RateLimit, "limit">;
+export type ApiRateLimitBucket = "subsonic-read" | "subsonic-write" | "management";
 
 const RETRY_AFTER_SECONDS = 60;
 const DEVICE_ID_BYTES = 12;
 const DEVICE_HEADER = "X-EdgeSonic-Device";
 const DEVICE_ID_RE = /^[A-Za-z0-9_-]{16,128}$/;
+
+const SUBSONIC_WRITE_OPERATIONS = new Set([
+  "star", "unstar", "setRating", "scrobble",
+  "createPlaylist", "updatePlaylist", "deletePlaylist",
+  "createBookmark", "deleteBookmark", "savePlayQueue",
+  "createShare", "updateShare", "deleteShare",
+  "createInternetRadioStation", "updateInternetRadioStation", "deleteInternetRadioStation",
+  "refreshPodcasts", "createPodcastChannel", "deletePodcastChannel", "deletePodcastEpisode", "downloadPodcastEpisode",
+]);
+
+const MANAGEMENT_OPERATIONS = new Set([
+  "createUser", "updateUser", "deleteUser", "startScan", "changePassword",
+]);
+
+const SUBSONIC_READ_OPERATIONS = new Set([
+  "ping", "getLicense", "getArtists", "getArtist", "getAlbum", "getSong", "getIndexes", "getMusicFolders",
+  "getAlbumList2", "getAlbumList", "getGenres", "getSongsByGenre", "getMusicDirectory",
+  "search3", "search2", "search", "stream", "getCoverArt", "getStarred", "getStarred2", "getRandomSongs",
+  "getPlaylists", "getPlaylist", "getBookmarks", "getPlayQueue", "getShares", "getInternetRadioStations",
+  "getPodcasts", "getNewestPodcasts", "getPodcastEpisode", "getArtistInfo", "getArtistInfo2", "getAlbumInfo",
+  "getAlbumInfo2", "getSimilarSongs", "getSimilarSongs2", "getTopSongs", "getOpenSubsonicExtensions", "tokenInfo",
+  "getNowPlaying", "getLyrics", "getLyricsBySongId", "getAvatar", "download", "downloadMultiple", "getUser",
+  "getUsers", "getScanStatus",
+]);
+
+export function apiRateLimitBucket(path: string): ApiRateLimitBucket {
+  const normalizedPath = path.replace(/\/+$/, "").replace(/\.view$/i, "");
+  const restPrefix = "/rest/";
+  if (!normalizedPath.startsWith(restPrefix)) return "management";
+
+  const operation = normalizedPath.slice(restPrefix.length);
+  if (MANAGEMENT_OPERATIONS.has(operation)) return "management";
+  if (SUBSONIC_WRITE_OPERATIONS.has(operation)) return "subsonic-write";
+  if (SUBSONIC_READ_OPERATIONS.has(operation)) return "subsonic-read";
+  return "management";
+}
 
 function normalizeUsername(username: string): string {
   return username.trim().toLowerCase();
@@ -43,8 +80,12 @@ export async function authenticationRateLimitKey(
   return `auth:${route}:${normalizedUsername}:${deviceId}`;
 }
 
-export function authenticatedRateLimitKey(username: string, deviceId: string): string {
-  return `api:${normalizeUsername(username)}:${deviceId}`;
+export function authenticatedRateLimitKey(
+  username: string,
+  deviceId: string,
+  bucket: ApiRateLimitBucket = "subsonic-read",
+): string {
+  return `api:${normalizeUsername(username)}:${deviceId}:${bucket}`;
 }
 
 export async function rateLimitAllowed(limiter: RateLimiter | undefined, key: string): Promise<boolean> {
@@ -62,7 +103,8 @@ export const apiRateLimitMiddleware = createMiddleware<{
   if (!deviceId) {
     return c.json({ ok: false, error: "Rate limit identity unavailable" }, 500);
   }
-  if (!(await rateLimitAllowed(c.env.API_RATE_LIMITER, authenticatedRateLimitKey(user.username, deviceId)))) {
+  const bucket = apiRateLimitBucket(c.req.path);
+  if (!(await rateLimitAllowed(c.env.API_RATE_LIMITER, authenticatedRateLimitKey(user.username, deviceId, bucket)))) {
     return c.json({ ok: false, error: "Too many requests" }, 429, {
       "Retry-After": String(RETRY_AFTER_SECONDS),
     });
