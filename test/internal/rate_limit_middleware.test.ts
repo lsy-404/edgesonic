@@ -63,8 +63,8 @@ async function main() {
 
   const sessionDeviceId = await rateLimitDeviceId("session", "session-id-a");
   const apiKeyDeviceId = await rateLimitDeviceId("apikey", "api-key-secret-a");
-  const firstApiKey = authenticatedRateLimitKey("Alice", sessionDeviceId);
-  const secondApiKey = authenticatedRateLimitKey("Alice", apiKeyDeviceId);
+  const firstApiKey = authenticatedRateLimitKey("Alice", sessionDeviceId, "subsonic-read");
+  const secondApiKey = authenticatedRateLimitKey("Alice", apiKeyDeviceId, "subsonic-read");
   assert(firstApiKey !== secondApiKey, "authenticated user keys isolate distinct devices");
   assert(authenticatedRateLimitKey("Alice", sessionDeviceId, "subsonic-read") !== authenticatedRateLimitKey("Alice", sessionDeviceId, "subsonic-write"), "Subsonic reads and writes have independent keys for the same identity");
   assert(authenticatedRateLimitKey("Alice", sessionDeviceId, "management") !== authenticatedRateLimitKey("Alice", sessionDeviceId, "subsonic-read"), "management has an independent key for the same identity");
@@ -150,6 +150,7 @@ async function main() {
   isolatedApp.use("/rest/*", apiRateLimitMiddleware);
   isolatedApp.use("/tag/*", apiRateLimitMiddleware);
   isolatedApp.get("/rest/star", (c) => c.text("ok"));
+  isolatedApp.get("/rest/star.view", (c) => c.text("ok"));
   isolatedApp.get("/rest/search3", (c) => c.text("ok"));
   isolatedApp.post("/rest/search3", (c) => c.text("ok"));
   isolatedApp.get("/tag/write", (c) => c.text("ok"));
@@ -158,7 +159,9 @@ async function main() {
   assert((await isolatedApp.request("https://example.test/tag/write", undefined, isolatedBindings)).status === 429, "same management bucket still enforces its limit");
   assert((await isolatedApp.request("https://example.test/rest/star", undefined, isolatedBindings)).status === 200, "management exhaustion does not block a Subsonic write");
   assert((await isolatedApp.request("https://example.test/rest/star", undefined, isolatedBindings)).status === 429, "same Subsonic write bucket still enforces its limit");
+  assert((await isolatedApp.request("https://example.test/rest/star.view", undefined, isolatedBindings)).status === 429, "registered .view mutation alias consumes the same write quota");
   assert((await isolatedApp.request("https://example.test/rest/search3", { method: "POST" }, isolatedBindings)).status === 200, "write exhaustion does not block a POST Subsonic read");
+  assert((await isolatedApp.request("https://example.test/rest/search3", undefined, isolatedBindings)).status === 429, "same Subsonic read bucket still enforces its limit");
   const otherDeviceApp = new Hono<{ Bindings: { API_RATE_LIMITER?: RateLimiter }; Variables: { user: { username: string }; rateLimitDeviceId?: string } }>();
   otherDeviceApp.use("/rest/*", async (c, next) => {
     c.set("user", { username: "alice" });

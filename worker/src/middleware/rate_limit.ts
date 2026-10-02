@@ -83,7 +83,7 @@ export async function authenticationRateLimitKey(
 export function authenticatedRateLimitKey(
   username: string,
   deviceId: string,
-  bucket: ApiRateLimitBucket = "subsonic-read",
+  bucket: ApiRateLimitBucket,
 ): string {
   return `api:${normalizeUsername(username)}:${deviceId}:${bucket}`;
 }
