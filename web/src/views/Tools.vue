@@ -21,7 +21,7 @@ const libraryStatsUpdatedAt = computed(() => {
 });
 
 async function loadLibraryStats(showError = false) {
-  if (libraryStatsLoading.value) return;
+  if (libraryStatsLoading.value || libraryStatsRebuilding.value) return;
   libraryStatsLoading.value = true;
   try {
     const data = JSON.parse(await edgesonicFetch("stats/library")) as LibraryStatsResponse & { error?: string };
@@ -35,11 +35,12 @@ async function loadLibraryStats(showError = false) {
 }
 
 async function rebuildLibraryStats() {
-  if (libraryStatsRebuilding.value || !canRepairLibraryStats.value) return;
+  if (libraryStatsRebuilding.value || libraryStatsLoading.value || !canRepairLibraryStats.value) return;
   libraryStatsRebuilding.value = true;
   try {
     const data = JSON.parse(await edgesonicPost("stats/library/rebuild", {})) as LibraryStatsResponse & { error?: string };
     if (!data.ok) throw new Error(data.error || "stats rebuild failed");
+    if (!data.ready) throw new Error(t("tools.libraryStats.notReady"));
     libraryStats.value = data;
     showToast(t("tools.libraryStats.rebuildDone"));
   } catch (error) {
@@ -1609,7 +1610,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
               <button class="btn-primary" :disabled="libraryStatsRebuilding || libraryStatsLoading" @click="rebuildLibraryStats">
                 {{ libraryStatsRebuilding ? t("tools.libraryStats.rebuilding") : t("tools.libraryStats.rebuild") }}
               </button>
-              <button class="btn-secondary btn-sm" :disabled="libraryStatsLoading" @click="loadLibraryStats(true)">{{ t("tools.libraryStats.refresh") }}</button>
+              <button class="btn-secondary btn-sm" :disabled="libraryStatsLoading || libraryStatsRebuilding" @click="loadLibraryStats(true)">{{ t("tools.libraryStats.refresh") }}</button>
             </div>
           </div>
         </div>
