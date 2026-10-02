@@ -311,7 +311,7 @@
     "starredTitle": "我喜欢",
     "starredBreadcrumb": "我喜欢",
     "playAlbum": "播放专辑",
-    "loadFailed": "加载艺术家失败",
+    "loadFailed": "媒体库加载失败",
     "albumCount": "{n} 张专辑",
     "albumEditionCount": "{n} 个版本",
     "backToAlbums": "返回专辑列表",
