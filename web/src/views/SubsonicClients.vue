@@ -166,7 +166,6 @@ onBeforeUnmount(() => {
   <div class="clients-page">
     <div class="page-header">
       <div>
-        <div class="mono-label">{{ t("app.groups.management") }}</div>
         <h1 class="page-title">{{ t("settings.clients.title") }}</h1>
       </div>
     </div>
@@ -176,16 +175,9 @@ onBeforeUnmount(() => {
         <header class="clients-card-header">
           <div>
             <h2 class="section-title">{{ t("settings.clients.connectTitle") }}</h2>
-            <p class="feature-desc">{{ t("settings.clients.desc") }}</p>
+            <p class="feature-desc connect-hint">{{ t("settings.clients.connectHint") }}</p>
           </div>
         </header>
-
-        <ol class="setup-steps">
-          <li>{{ t("settings.clients.setupServer") }}</li>
-          <li>{{ t("settings.clients.setupUsername", { username }) }}</li>
-          <li>{{ t("settings.clients.setupPassword") }}</li>
-          <li>{{ t("settings.clients.setupConnect") }}</li>
-        </ol>
 
         <div class="connection-details-grid">
           <div class="connection-detail">
@@ -205,12 +197,11 @@ onBeforeUnmount(() => {
             <span class="mono-label">{{ t("settings.clients.labelPlaceholder") }}</span>
             <input v-model="credLabel" class="form-input" maxlength="200" autocomplete="off" />
           </label>
-          <FluentButton type="submit" tone="primary" class="btn-primary" :disabled="credBusy">{{ t("settings.clients.create") }}</FluentButton>
+          <FluentButton type="submit" tone="primary" class="btn-primary" :disabled="credBusy">{{ t("settings.clients.createPassword") }}</FluentButton>
         </form>
 
         <div v-if="issued" class="issued-panel" role="status" aria-live="polite">
           <div class="issued-title">{{ t("settings.clients.createdTitle") }}</div>
-          <p class="feature-desc">{{ t("settings.clients.oneTimeHint") }}</p>
           <div class="issued-row issued-password-row">
             <span class="mono-label">{{ t("settings.clients.password") }}</span>
             <code class="issued-value">{{ issued.password }}</code>
@@ -219,11 +210,20 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
+      <details class="clients-card recommended-clients card">
+        <summary class="section-title">{{ t("settings.clients.recommendedTitle") }}</summary>
+        <ul>
+          <li><a href="https://music.aqzscn.cn/docs/intro/" target="_blank" rel="noopener noreferrer">{{ t("settings.clients.streamMusic") }}</a></li>
+          <li><a href="https://www.symfonium.app/" target="_blank" rel="noopener noreferrer">Symfonium</a></li>
+          <li><a href="https://ultrasonic.gitlab.io/" target="_blank" rel="noopener noreferrer">Ultrasonic</a></li>
+          <li><a href="https://github.com/supersonic-app/supersonic" target="_blank" rel="noopener noreferrer">Supersonic</a></li>
+        </ul>
+      </details>
+
       <section class="clients-card card">
         <header class="clients-card-header">
           <div>
             <h2 class="section-title">{{ t("settings.clients.credentialsTitle") }}</h2>
-            <p class="feature-desc">{{ t("settings.clients.credentialsDesc") }}</p>
           </div>
         </header>
 
@@ -286,8 +286,7 @@ onBeforeUnmount(() => {
 .clients-card { padding: 1.2rem; margin: 0 0 1rem; }
 .clients-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .clients-card-header .feature-desc { margin: 0.45rem 0 0; max-width: 70ch; }
-.setup-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem 1.5rem; margin: 0 0 1.2rem; padding-left: 1.7rem; color: var(--color-text-secondary); line-height: 1.5; }
-.setup-steps li { padding-left: 0.25rem; }
+.clients-card-header .connect-hint { margin-top: 0.25rem; }
 .connection-details-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; margin: 0 0 1.1rem; }
 .connection-detail { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.45rem 0.6rem; padding: 0.7rem; border: 1px solid var(--color-border-subtle); background: var(--color-bg-primary); min-width: 0; }
 .connection-detail .mono-label { grid-column: 1 / -1; }
@@ -308,6 +307,10 @@ onBeforeUnmount(() => {
 .cred-label-edit { width: 100%; padding: 0.35rem 0.5rem; }
 .cred-strategy-select { width: 100%; min-height: 2.25rem; }
 .credential-revoke { justify-self: end; }
+.recommended-clients { padding: 0.9rem 1.2rem; }
+.recommended-clients summary { cursor: pointer; }
+.recommended-clients ul { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; margin: 0.8rem 0 0; padding-left: 1.2rem; }
+.recommended-clients a { color: var(--color-accent-primary); }
 .error-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; }
 .error-text { color: var(--color-text-secondary); }
 .toast { position: fixed; right: 1.5rem; bottom: 5.5rem; z-index: 60; padding: 0.65rem 1rem; background: var(--color-bg-secondary); border: 1px solid var(--color-accent-primary); color: var(--color-text-primary); font-size: var(--fs-sm); }
@@ -315,7 +318,6 @@ onBeforeUnmount(() => {
 
 @media (max-width: 760px) {
   .clients-card { padding: 0.9rem; }
-  .setup-steps { grid-template-columns: 1fr; }
   .connection-details-grid { grid-template-columns: 1fr; }
   .credential-card { grid-template-columns: 1fr; }
   .credential-detail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
