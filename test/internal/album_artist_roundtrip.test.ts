@@ -11,6 +11,7 @@ import { createQueries } from "../../worker/src/db/queries";
 import { applyMetadataResult } from "../../worker/src/utils/metadataApply";
 import { md5 } from "../../worker/src/utils/md5";
 import { albumNameFromSourcePath } from "../../worker/src/utils/storageMetadata";
+import { sourceFolderAlbumId } from "../../worker/src/utils/albumIdentity";
 
 let failures = 0;
 function assert(value: unknown, message: string) {
@@ -85,6 +86,7 @@ function appFor(sqlite: DatabaseSync) {
           "music/nfd-read.mp3": id3Compilation("Cafe\u0301"),
           "music/different-album-read.mp3": id3Compilation("Other Album"),
           "music/different-artist-read.mp3": id3Compilation("Old Album", "Guest Singer", "Different Ensemble"),
+          "music/unknown-read.mp3": id3Compilation("Unknown Album", "Guest Singer"),
           "music/va-track-a.mp3": id3Compilation("『 Old  Album 』", "Singer A", "Singer A"),
           "music/va-track-b.mp3": id3Compilation("Old Album", "Singer B", "Singer B"),
         };
@@ -219,6 +221,23 @@ async function main() {
   assert(changedArtistApply.album_id !== "al-old", "Metadata worker still splits an explicitly different album artist");
   changedArtistApplyDb.close();
 
+  for (const [storedName, incomingName] of [["Unknown Album", "Unknown Album"], ["梦境电台（WAV）", "梦境电台（WAV）"]]) {
+    const sourceAlbumDb = buildDb();
+    sourceAlbumDb.prepare("UPDATE albums SET name=? WHERE id='al-old'").run(storedName);
+    sourceAlbumDb.prepare("INSERT INTO storage_entries(id,source_id,parent_id,path,kind,instance_id) VALUES ('entry-a','r2-local','album-parent','梦境电台/wav/01 Track.mp3','file','inst-a')").run();
+    await applyMetadataResult(d1(sourceAlbumDb), "inst-a", { album: incomingName }, {}, { scanIdentity: true });
+    const sourceAlbumId = await sourceFolderAlbumId(d1(sourceAlbumDb), "inst-a", "梦境电台", "mp3");
+    const recovered = sourceAlbumDb.prepare("SELECT sm.album_id, al.name FROM song_masters sm JOIN albums al ON al.id=sm.album_id WHERE sm.id='sg-a'").get() as { album_id: string; name: string };
+    assert(recovered.album_id === sourceAlbumId && recovered.name === "梦境电台", `metadata scan recovers source album from ${storedName}`);
+    sourceAlbumDb.close();
+  }
+  const usableAlbumDb = buildDb();
+  usableAlbumDb.prepare("INSERT INTO storage_entries(id,source_id,parent_id,path,kind,instance_id) VALUES ('entry-a','r2-local','album-parent','梦境电台/wav/01 Track.mp3','file','inst-a')").run();
+  await applyMetadataResult(d1(usableAlbumDb), "inst-a", { album: "Another Real Album" }, {}, { scanIdentity: true });
+  const usableAlbumRow = usableAlbumDb.prepare("SELECT al.name FROM song_masters sm JOIN albums al ON al.id=sm.album_id WHERE sm.id='sg-a'").get() as { name: string };
+  assert(usableAlbumRow.name === "Another Real Album", "metadata scan preserves a real incoming album title");
+  usableAlbumDb.close();
+
   const vaApplyDb = buildDb();
   const vaId = `ar-${md5("Various Artists").substring(0, 10)}`;
   vaApplyDb.prepare("INSERT INTO artists(id,name,sort_name) VALUES (?, 'Various Artists', 'various artists')").run(vaId);
@@ -304,6 +323,15 @@ async function main() {
     assert(normalizedAlbum.album_id === "al-old" && normalizedAlbum.name === currentName, `Read Tags keeps canonical album name and custom identity for ${key}`);
     normalizedAlbumDb.close();
   }
+  const genericReadDb = buildDb();
+  genericReadDb.prepare("UPDATE albums SET name='Unknown Album' WHERE id='al-old'").run();
+  genericReadDb.exec("UPDATE song_instances SET tag_scanned=1 WHERE id='inst-b'; UPDATE song_instances SET storage_uri='r2://music/unknown-read.mp3', tag_scanned=0 WHERE id='inst-a';");
+  genericReadDb.prepare("INSERT INTO storage_entries(id,source_id,parent_id,path,kind,instance_id) VALUES ('entry-a','r2-local','album-parent','梦境电台/wav/01 Track.mp3','file','inst-a')").run();
+  await appFor(genericReadDb)("/tag/read?batch=1");
+  const genericRead = genericReadDb.prepare("SELECT sm.album_id, al.name FROM song_masters sm JOIN albums al ON al.id=sm.album_id WHERE sm.id='sg-a'").get() as { album_id: string; name: string };
+  const genericReadSourceId = await sourceFolderAlbumId(d1(genericReadDb), "inst-a", "梦境电台", "mp3");
+  assert(genericRead.album_id === genericReadSourceId && genericRead.name === "梦境电台", "tag/read scan recovers a placeholder album using the unique source path");
+  genericReadDb.close();
   for (const key of ["different-album-read.mp3", "different-artist-read.mp3"]) {
     const changedAlbumDb = buildDb();
     changedAlbumDb.exec("INSERT INTO artists(id,name,sort_name) VALUES ('ar-album','Album Ensemble','album ensemble'); UPDATE song_masters SET album_artist_id='ar-album' WHERE id='sg-b'; UPDATE song_instances SET tag_scanned=1 WHERE id='inst-a';");

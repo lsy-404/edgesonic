@@ -18,6 +18,17 @@ export function normalizeScannedAlbumName(incomingName: string, currentName: str
   return incomingName;
 }
 
+export function recoverScannedAlbumName(
+  incomingName: string,
+  currentName: string | null | undefined,
+  sourceAlbumName: string | null | undefined,
+): string {
+  if (!sourceAlbumName || !currentName) return incomingName;
+  if (!isGenericAlbumName(currentName) && !isCodecVariantOf(currentName, sourceAlbumName)) return incomingName;
+  if (isGenericAlbumName(incomingName) || isCodecVariantOf(incomingName, sourceAlbumName)) return sourceAlbumName;
+  return incomingName;
+}
+
 export function retainScannedAlbumIdentity(
   currentAlbumId: string | null | undefined,
   currentAlbumName: string | null | undefined,
@@ -78,10 +89,20 @@ export async function sourceFolderAlbumIdForScan(
   if (!folderAlbumId) return null;
   if (currentAlbumId === "pending-uploads") return folderAlbumId;
   if (!currentAlbumId || !currentAlbumName) return null;
+  if (isGenericAlbumName(currentAlbumName) || isCodecVariantOf(currentAlbumName, albumName)) return folderAlbumId;
   const currentFolderId = currentAlbumName === albumName
     ? folderAlbumId
     : await sourceFolderAlbumId(db, instanceId, currentAlbumName, suffix);
   return currentFolderId === currentAlbumId ? folderAlbumId : null;
+}
+
+function isGenericAlbumName(name: string): boolean {
+  return /^(?:unknown album|unknown|album|wav|flac|mp3|m4a|aac|ogg|opus|ape)$/i.test(name.trim());
+}
+
+function isCodecVariantOf(name: string, albumName: string): boolean {
+  const escaped = albumName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^${escaped}\\s*[（(［\\[]\\s*(?:wav|flac|mp3|m4a|aac|ape|ogg|opus)\\s*[）)］\\]]$`, "i").test(name.trim());
 }
 
 export function compilationMarkerStatement(db: D1Database, albumId: string): D1PreparedStatement {
