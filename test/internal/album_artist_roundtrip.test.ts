@@ -218,6 +218,22 @@ async function main() {
   assert(readRow.album_id === "al-old" && readRow.artist_name === "Guest Singer", `Read Tags preserves compilation grouping while updating track artist (${JSON.stringify(readRow)})`);
   readDb.close();
 
+  const missingAlbumArtistDb = buildDb();
+  missingAlbumArtistDb.exec(`
+    INSERT INTO artists(id,name,sort_name) VALUES ('ar-album','Album Ensemble','album ensemble');
+    UPDATE song_masters SET album_artist_id='ar-album' WHERE id='sg-b';
+    UPDATE song_instances SET tag_scanned=1 WHERE id='inst-a';
+    UPDATE song_instances SET storage_uri='r2://music/compilation-read.mp3', tag_scanned=0 WHERE id='inst-b';
+  `);
+  const missingAlbumArtistRead = await appFor(missingAlbumArtistDb)("/tag/read?batch=1");
+  const missingAlbumArtistRow = missingAlbumArtistDb.prepare(
+    "SELECT sm.album_id, sm.album_artist_id, ar.name AS artist_name FROM song_masters sm JOIN artists ar ON ar.id=sm.artist_id WHERE sm.id='sg-b'",
+  ).get() as { album_id: string; album_artist_id: string | null; artist_name: string };
+  assert(missingAlbumArtistRead.status === 200, "Read Tags accepts a track with no embedded album artist");
+  assert(missingAlbumArtistRow.album_id === "al-old", "Read Tags retains existing album identity when the embedded album artist is absent");
+  assert(missingAlbumArtistRow.album_artist_id === "ar-album" && missingAlbumArtistRow.artist_name === "Guest Singer", "Read Tags preserves album artist while updating track artist");
+  missingAlbumArtistDb.close();
+
   const importDb = buildDb();
   assert(albumNameFromSourcePath("Dream Radio/wav/01 Opening.wav") === "Dream Radio", "format folders resolve to their album parent");
   for (const format of ["MP3(有损)", "音频WAV", "【星遇】CD音频", "母带级无损WAV", "母带版无损伴奏"]) {

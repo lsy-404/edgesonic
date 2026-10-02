@@ -91,17 +91,20 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           const albumArtist = parseAlbumArtistCredit(tags.albumArtist);
           const albumArtistCredits = albumArtist ? [albumArtist] : [];
           const primaryArtist = artistCredits[0];
-          const linkArtistName = albumArtist?.name || primaryArtist.name;
+          const linkArtistName = albumArtist?.name || row.current_album_artist_name || primaryArtist.name;
           const albumName = tags.album || row.current_album_name || "Unknown Album";
           const artistId = primaryArtist.id;
           databaseAttempted = true;
           const importAlbumId = await sourceFolderAlbumIdForScan(
             db, row.id, row.current_album_id, row.current_album_name, albumName, row.suffix,
           );
-          const albumId = importAlbumId ?? (row.current_album_id && retainCompilationAlbum(
-            { name: row.current_album_name, compilation: row.current_album_compilation },
-            albumName, tags.albumArtist, row.current_album_artist_name,
-          )
+          const keepStoredIdentity = !!row.current_album_id && row.current_album_name === albumName
+            && ((!!row.current_album_artist_name && !albumArtist)
+              || retainCompilationAlbum(
+                { name: row.current_album_name, compilation: row.current_album_compilation },
+                albumName, tags.albumArtist, row.current_album_artist_name,
+              ));
+          const albumId = importAlbumId ?? (keepStoredIdentity && row.current_album_id
             ? row.current_album_id
             : "al-" + md5(linkArtistName + " " + albumName).substring(0, 10));
           const albumArtistId = albumArtist?.id ?? null;
