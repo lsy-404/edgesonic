@@ -13,4 +13,4 @@ When a scan sees only a placeholder or codec-suffixed album name, recover the al
 - [x] Add scan-only source album recovery for placeholders and exact codec-suffixed folder names.
 - [x] Add SQLite regressions for metadataApply, tag/read, and usable incoming album preservation.
 - [x] Run targeted regression, worker typecheck, and diff checks.
-- [ ] Commit the isolated change.
+- [x] Commit the isolated change.
