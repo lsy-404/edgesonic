@@ -1,7 +1,7 @@
 
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { ref, computed, nextTick, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, nextTick, onMounted, onUnmounted, watch, type ComponentPublicInstance } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, parseXmlInner, formatDuration } from "../api";
@@ -18,7 +18,7 @@ import BudgetedImage from "../components/BudgetedImage.vue";
 import { showInfo } from "../stores/toast";
 import { isInstrumentalTitle } from "../lib/instrumental";
 import type { ScrapeResult } from "../lib/scrape";
-import { buildLibrarySearchParams, buildLibrarySearchRoute, LIBRARY_PAGE_SIZES, paginateLibraryItems, type LibraryPageSize } from "../lib/librarySearch";
+import { buildLibrarySearchParams, buildLibrarySearchRoute, exactPageCount, LIBRARY_PAGE_SIZES, validPageTarget, visibleLibraryItems, type LibraryLoadMode, type LibraryPageSize } from "../lib/librarySearch";
 import { foldAlbumDisplayCards, type AlbumDisplayGroupSummary, type AlbumDisplayCard } from "../lib/albumDisplayGroups";
 import { FluentSelect } from "@platform-kit/fluent/vue";
 
@@ -67,10 +67,25 @@ const tab = ref<Tab>(
 );
 const sortMode = ref<SortMode>("newest");
 const pageSize = ref<LibraryPageSize>(50);
+const LOAD_MODE_KEY = "edgesonic_library_load_mode";
+const loadMode = ref<LibraryLoadMode>(localStorage.getItem(LOAD_MODE_KEY) === "automatic" ? "automatic" : "manual");
+const cachedSongCount = ref<number | null>(null);
+const pageJump = ref(1);
+const failedPage = ref<number | null>(null);
+const paginationEl = ref<HTMLElement | null>(null);
+let paginationObserver: IntersectionObserver | null = null;
+let paginationArmed = true;
 const listPage = ref(1);
 let listPageRequest = 0;
 const searchPages = ref({ artists: 1, albums: 1, songs: 1 });
+const displaySearchPages = ref({ artists: 1, albums: 1, songs: 1 });
 const searchHasMore = ref({ artists: false, albums: false, songs: false });
+const searchArtistTotal = ref<number | null>(null);
+const searchPageJumps = ref({ artists: 1, albums: 1, songs: 1 });
+const searchArtistPages = ref<Record<number, Artist[]>>({});
+const searchPagerObservers = new Map<string, IntersectionObserver>();
+const searchPagerElements = new Map<string, HTMLElement>();
+const searchPagerArmed = new Set<string>();
 const searchAlbumRows = ref<Album[]>([]);
 const searchAlbumOffset = ref(0);
 const searchAlbumsDone = ref(false);
@@ -80,6 +95,7 @@ const searchSongsDone = ref(false);
 let searchDataRequest = 0;
 
 const artists = ref<Artist[]>([]);
+const artistsLoaded = ref(false);
 const albums = ref<Album[]>([]);
 const songs = ref<Track[]>([]);
 
@@ -180,7 +196,7 @@ const currentArtist = ref<Artist | null>(null);
 const currentAlbum = ref<Album | null>(null);
 const currentDisplayGroup = ref<AlbumDisplayGroupDetail | null>(null);
 const displayGroups = ref<AlbumDisplayGroupSummary[]>([]);
-let displayGroupsLoaded = false;
+const displayGroupsLoaded = ref(false);
 let displayGroupsPromise: Promise<void> | null = null;
 const groupDetailLoading = ref(false);
 let groupDetailRequest = 0;
@@ -223,7 +239,9 @@ watch(albumWaterfallEl, (el) => {
 const albumDisplayCards = computed<AlbumDisplayCard<Album>[]>(() =>
   foldAlbumDisplayCards(allAlbums.value, displayGroups.value)
 );
-const pagedAlbumDisplayCards = computed(() => albumDisplayCards.value.slice((listPage.value - 1) * pageSize.value, listPage.value * pageSize.value));
+const pagedAlbumDisplayCards = computed(() => loadMode.value === "automatic"
+  ? visibleLibraryItems(albumDisplayCards.value, listPage.value, pageSize.value, loadMode.value)
+  : albumDisplayCards.value.slice((listPage.value - 1) * pageSize.value, listPage.value * pageSize.value));
 const albumWaterfallCols = computed<AlbumDisplayCard<Album>[][]>(() => {
   const n = waterfallColCount.value;
   const cols: AlbumDisplayCard<Album>[][] = Array.from({ length: n }, () => []);
@@ -259,6 +277,15 @@ watch(hideInstrumental, (on) => {
   }
 });
 
+watch([tab, sortMode, pageSize, hideInstrumental], () => {
+  paginationArmed = true;
+  void nextTick(() => {
+    if (!paginationEl.value || !paginationObserver) return;
+    paginationObserver.unobserve(paginationEl.value);
+    paginationObserver.observe(paginationEl.value);
+  });
+});
+
 function dropInstrumentals(items: Track[]): Track[] {
   return hideInstrumental.value ? items.filter((s) => !isInstrumentalTitle(s.title)) : items;
 }
@@ -266,16 +293,77 @@ function dropInstrumentals(items: Track[]): Track[] {
 const artistRows = computed(() => sortArtists(starredOnly ? starredLists.value.artists : artists.value));
 const albumRows = computed(() => starredOnly ? sortAlbums(starredLists.value.albums) : allAlbums.value);
 const songRows = computed(() => dropInstrumentals(starredOnly ? sortSongs(starredLists.value.songs) : allSongs.value));
-const displayArtists = computed(() => paginateLibraryItems(artistRows.value, listPage.value, pageSize.value).items);
-const displayAlbums = computed(() => paginateLibraryItems(albumRows.value, listPage.value, pageSize.value).items);
-const displaySongs = computed(() => songRows.value.slice((listPage.value - 1) * pageSize.value, listPage.value * pageSize.value));
+const displayArtists = computed(() => visibleLibraryItems(artistRows.value, listPage.value, pageSize.value, loadMode.value));
+const displayAlbums = computed(() => visibleLibraryItems(albumRows.value, listPage.value, pageSize.value, loadMode.value));
+const displaySongs = computed(() => visibleLibraryItems(songRows.value, listPage.value, pageSize.value, loadMode.value));
 const albumSongs = computed(() => dropInstrumentals(songs.value));
 const listHasNext = computed(() => tab.value === "artists"
   ? artistRows.value.length > listPage.value * pageSize.value
   : tab.value === "albums"
     ? (starredOnly ? albumRows.value.length : albumDisplayCards.value.length) > listPage.value * pageSize.value
     : songRows.value.length > listPage.value * pageSize.value);
+const listExactTotal = computed<number | null>(() => {
+  if (tab.value === "artists") return starredOnly ? starredLoaded.value ? artistRows.value.length : null : artistsLoaded.value ? artistRows.value.length : null;
+  if (tab.value === "albums") {
+    if (starredOnly) return starredLoaded.value ? albumRows.value.length : null;
+    return albumsDone.value && displayGroupsLoaded.value ? albumDisplayCards.value.length : null;
+  }
+  if (starredOnly) return starredLoaded.value ? songRows.value.length : null;
+  if (songsDone.value) return songRows.value.length;
+  if (!hideInstrumental.value && !starredOnly && cachedSongCount.value !== null) return cachedSongCount.value;
+  return null;
+});
+const listExactPageCount = computed(() => exactPageCount(listExactTotal.value, pageSize.value));
+const listPageLabel = computed(() => listExactPageCount.value === null
+  ? t("library.pageAtLeast", { page: listPage.value, total: listHasNext.value ? listPage.value + 1 : listPage.value })
+  : t("library.pageOf", { page: listPage.value, total: listExactPageCount.value }));
 const pageSizeOptions = LIBRARY_PAGE_SIZES.map((value) => ({ value: String(value), label: String(value) }));
+const loadModeSelectOptions = computed(() => [
+  { value: "manual", label: t("library.loadModeManual") },
+  { value: "automatic", label: t("library.loadModeAutomatic") },
+]);
+
+watch(loadMode, (mode) => {
+  localStorage.setItem(LOAD_MODE_KEY, mode);
+  paginationArmed = true;
+  for (const kind of ["artists", "albums", "songs"] as const) searchPagerArmed.add(kind);
+  void nextTick(() => {
+    if (paginationEl.value && paginationObserver) {
+      paginationObserver.unobserve(paginationEl.value);
+      paginationObserver.observe(paginationEl.value);
+    }
+    for (const [kind, observer] of searchPagerObservers) {
+      const el = searchPagerElements.get(kind);
+      if (!el) continue;
+      observer.unobserve(el);
+      observer.observe(el);
+    }
+  });
+});
+
+watch(paginationEl, (el) => {
+  paginationObserver?.disconnect();
+  paginationObserver = null;
+  if (!el || typeof IntersectionObserver === "undefined") return;
+  paginationObserver = new IntersectionObserver((entries) => {
+    if (!entries[0]?.isIntersecting) {
+      paginationArmed = true;
+      return;
+    }
+    if (loadMode.value !== "automatic" || !paginationArmed || loading.value || !listHasNext.value || isSearchActive.value) return;
+    paginationArmed = false;
+    void setListPage(listPage.value + 1).finally(() => {
+      void nextTick(() => {
+        if (loadMode.value !== "automatic" || failedPage.value !== null || !paginationEl.value || !paginationObserver) return;
+        paginationObserver.unobserve(paginationEl.value);
+        paginationObserver.observe(paginationEl.value);
+      });
+    });
+  }, { root: document.querySelector<HTMLElement>(".main"), rootMargin: "160px" });
+  paginationObserver.observe(el);
+});
+
+watch(listPage, (page) => { pageJump.value = page; });
 
 function switchTab(next: Tab) {
   detailRequest++;
@@ -303,19 +391,50 @@ function switchTab(next: Tab) {
 }
 
 async function setListPage(page: number) {
+  const requestedExactPages = listExactPageCount.value;
+  const requested = validPageTarget(page, listPage.value, requestedExactPages);
+  if (requested === null) return;
   const request = ++listPageRequest;
-  const requested = Math.max(1, Math.floor(page));
-  listPage.value = requested;
+  const requestedMode = loadMode.value;
+  failedPage.value = null;
+  error.value = "";
   if (!starredOnly && tab.value === "albums") await ensureAlbumItems(requested * pageSize.value + 1);
   if (!starredOnly && tab.value === "songs") await ensureSongItems(requested * pageSize.value + 1);
   if (request !== listPageRequest) return;
   const available = tab.value === "artists" ? artistRows.value.length
     : tab.value === "albums" ? (starredOnly ? albumRows.value.length : albumDisplayCards.value.length)
     : songRows.value.length;
+  const requestDone = tab.value === "albums" ? albumsDone.value : tab.value === "songs" ? songsDone.value : true;
+  if (error.value && !requestDone) {
+    failedPage.value = available < requested * pageSize.value
+      ? requested
+      : requestedExactPages !== null && requested >= requestedExactPages ? requested : requested + 1;
+    if (available >= requested * pageSize.value) listPage.value = requested;
+    paginationArmed = false;
+    return;
+  }
+  listPage.value = requested;
   if (starredOnly || tab.value === "artists" || (tab.value === "albums" && albumsDone.value) || (tab.value === "songs" && songsDone.value)) {
     listPage.value = Math.min(requested, Math.max(1, Math.ceil(available / pageSize.value)));
   }
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (requestedMode === "manual" && loadMode.value === "manual") {
+    document.querySelector<HTMLElement>(".main")?.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
+function retryFailedListPage() {
+  const target = failedPage.value;
+  if (target === null) return;
+  failedPage.value = null;
+  error.value = "";
+  paginationArmed = true;
+  void setListPage(target).finally(() => {
+    void nextTick(() => {
+      if (failedPage.value !== null || loadMode.value !== "automatic" || !paginationEl.value || !paginationObserver) return;
+      paginationObserver.unobserve(paginationEl.value);
+      paginationObserver.observe(paginationEl.value);
+    });
+  });
 }
 
 async function loadArtists() {
@@ -327,9 +446,11 @@ async function loadArtists() {
       id: a.id || "", name: a.name || "", albumCount: a.albumCount || "",
       starred: !!a.starred, starredAt: a.starred || undefined, createdAt: a.created || undefined,
     }));
+    artistsLoaded.value = true;
   } catch {
     error.value = t("library.loadFailed");
     artists.value = [];
+    artistsLoaded.value = false;
   }
   loading.value = false;
 }
@@ -420,7 +541,7 @@ async function ensureAlbumItems(target: number) {
 }
 
 async function ensureAlbumDisplayGroups(): Promise<void> {
-  if (displayGroupsLoaded) return;
+  if (displayGroupsLoaded.value) return;
   if (displayGroupsPromise) return displayGroupsPromise;
   displayGroupsPromise = (async () => {
     try {
@@ -432,7 +553,7 @@ async function ensureAlbumDisplayGroups(): Promise<void> {
     } catch {
       displayGroups.value = [];
     } finally {
-      displayGroupsLoaded = true;
+      displayGroupsLoaded.value = true;
       displayGroupsPromise = null;
     }
   })();
@@ -613,9 +734,26 @@ const searchResults = ref<{ artists: Artist[]; albums: Album[]; songs: Track[] }
 const searchAlbumDisplayCards = computed<AlbumDisplayCard<Album>[]>(() =>
   foldAlbumDisplayCards(searchAlbumRows.value, displayGroups.value)
 );
-const pagedSearchAlbumDisplayCards = computed(() => searchAlbumDisplayCards.value.slice((searchPages.value.albums - 1) * pageSize.value, searchPages.value.albums * pageSize.value));
-const pagedSearchSongs = computed(() => searchSongRows.value.slice((searchPages.value.songs - 1) * pageSize.value, searchPages.value.songs * pageSize.value));
+const pagedSearchAlbumDisplayCards = computed(() => searchAlbumDisplayCards.value.slice((displaySearchPages.value.albums - 1) * pageSize.value, displaySearchPages.value.albums * pageSize.value));
+const visibleSearchAlbumDisplayCards = computed(() => visibleLibraryItems(searchAlbumDisplayCards.value, displaySearchPages.value.albums, pageSize.value, loadMode.value));
+const pagedSearchSongs = computed(() => visibleLibraryItems(searchSongRows.value, displaySearchPages.value.songs, pageSize.value, loadMode.value));
+const displaySearchArtists = computed(() => loadMode.value === "automatic"
+  ? Object.keys(searchArtistPages.value).map(Number).filter((page) => page <= displaySearchPages.value.artists).sort((a, b) => a - b).flatMap((page) => searchArtistPages.value[page])
+  : searchArtistPages.value[displaySearchPages.value.artists] ?? []);
+function searchExactTotal(kind: "artists" | "albums" | "songs"): number | null {
+  if (kind === "artists") {
+    return searchArtistTotal.value;
+  }
+  if (kind === "albums") return searchAlbumsDone.value ? searchAlbumDisplayCards.value.length : null;
+  return searchSongsDone.value ? searchSongRows.value.length : null;
+}
+function searchPageLabel(kind: "artists" | "albums" | "songs"): string {
+  const page = displaySearchPages.value[kind];
+  const count = exactPageCount(searchExactTotal(kind), pageSize.value);
+  return count === null ? t("library.pageAtLeast", { page, total: searchHasMore.value[kind] ? page + 1 : page }) : t("library.pageOf", { page, total: count });
+}
 const searchError = ref("");
+const failedSearchPage = ref<{ kind: "artists" | "albums" | "songs"; page: number } | null>(null);
 const isSearchActive = computed(() => !!searchQuery.value.trim() || !!lyricsQuery.value.trim());
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let searchRequest = 0;
@@ -640,7 +778,11 @@ function resetSearchPages() {
   searchSongOffset.value = 0;
   searchSongsDone.value = false;
   searchPages.value = { artists: 1, albums: 1, songs: 1 };
+  displaySearchPages.value = { artists: 1, albums: 1, songs: 1 };
+  searchPageJumps.value = { artists: 1, albums: 1, songs: 1 };
+  searchArtistPages.value = {};
   searchHasMore.value = { artists: false, albums: false, songs: false };
+  searchArtistTotal.value = null;
 }
 
 async function ensureSearchAlbums(target: number, query: string, lyricQuery: string, signal: AbortSignal, request: number) {
@@ -713,7 +855,6 @@ async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
     if (request !== searchRequest) return;
     const protocolError = searchProtocolError(xml);
     if (protocolError) {
-      searchResults.value = null;
       searchError.value = lyricQuery && lyricsSearchIsPreparing(protocolError)
         ? t("library.lyricsSearchPreparing")
         : t("library.searchFailed");
@@ -743,8 +884,12 @@ async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
       if (artists.length === pageSize.value && !lyricQuery) hasMore.artists = await lookAheadArtists();
     }
     if (request !== searchRequest) return;
+    if (!hasMore.artists) {
+      searchArtistTotal.value = (searchPages.value.artists - 1) * pageSize.value + Math.min(artists.length, pageSize.value);
+    }
+    searchArtistPages.value = { ...searchArtistPages.value, [searchPages.value.artists]: artists.slice(0, pageSize.value) };
     searchResults.value = {
-      artists: artists.slice(0, pageSize.value),
+      artists: displaySearchArtists.value,
       albums: searchAlbumRows.value,
       songs: searchSongRows.value,
     };
@@ -758,25 +903,37 @@ async function runSearch(query: string, lyricQuery = lyricsQuery.value.trim()) {
     hasMore.albums = searchAlbumDisplayCards.value.length > searchPages.value.albums * pageSize.value;
     hasMore.songs = searchSongRows.value.length > searchPages.value.songs * pageSize.value;
     searchHasMore.value = hasMore;
+    displaySearchPages.value = { ...searchPages.value };
     searchResults.value = {
-      artists: artists.slice(0, pageSize.value),
+      artists: displaySearchArtists.value,
       albums: searchAlbumRows.value,
       songs: searchSongRows.value,
     };
   } catch {
     if (controller.signal.aborted) return;
     if (request !== searchRequest) return;
-    searchResults.value = null;
     searchError.value = t("library.searchFailed");
   }
   if (request === searchRequest) searching.value = false;
 }
 
 async function setSearchPage(kind: "artists" | "albums" | "songs", page: number) {
-  const target = Math.max(1, Math.floor(page));
-  if (target === searchPages.value[kind] || (target > searchPages.value[kind] && !searchHasMore.value[kind])) return;
+  const requestedMode = loadMode.value;
+  const exactCount = exactPageCount(searchExactTotal(kind), pageSize.value);
+  const target = validPageTarget(page, searchPages.value[kind], exactCount);
+  if (target === null) return;
+  if (target === searchPages.value[kind] || (exactCount === null && target > searchPages.value[kind] && !searchHasMore.value[kind])) return;
+  const previousPage = searchPages.value[kind];
+  failedSearchPage.value = null;
+  searchPageJumps.value = { ...searchPageJumps.value, [kind]: target };
   searchPages.value = { ...searchPages.value, [kind]: target };
   await runSearch(searchQuery.value.trim(), lyricsQuery.value.trim());
+  if (searchError.value) {
+    failedSearchPage.value = { kind, page: target };
+    searchPages.value = { ...searchPages.value, [kind]: previousPage };
+    searchPageJumps.value = { ...searchPageJumps.value, [kind]: previousPage };
+    return;
+  }
   const results = kind === "albums" ? pagedSearchAlbumDisplayCards.value
     : kind === "songs" ? pagedSearchSongs.value
     : searchResults.value?.artists ?? [];
@@ -784,6 +941,71 @@ async function setSearchPage(kind: "artists" | "albums" | "songs", page: number)
     searchPages.value = { ...searchPages.value, [kind]: target - 1 };
     await runSearch(searchQuery.value.trim(), lyricsQuery.value.trim());
   }
+  if (requestedMode === "manual" && loadMode.value === "manual") {
+    document.querySelector<HTMLElement>(".search-results")?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+}
+
+function retryFailedSearchPage() {
+  const failed = failedSearchPage.value;
+  if (!failed) return retrySearch();
+  failedSearchPage.value = null;
+  searchError.value = "";
+  searchPagerArmed.add(failed.kind);
+  void setSearchPage(failed.kind, failed.page).finally(() => {
+    void nextTick(() => {
+      if (searchError.value || loadMode.value !== "automatic") return;
+      const observer = searchPagerObservers.get(failed.kind);
+      const el = searchPagerElements.get(failed.kind);
+      if (!observer || !el) return;
+      observer.unobserve(el);
+      observer.observe(el);
+    });
+  });
+}
+
+function observeSearchPager(el: Element | null, kind: "artists" | "albums" | "songs") {
+  const existingEl = searchPagerElements.get(kind);
+  if (existingEl === el) return;
+  searchPagerObservers.get(kind)?.disconnect();
+  searchPagerObservers.delete(kind);
+  searchPagerElements.delete(kind);
+  if (!(el instanceof HTMLElement) || typeof IntersectionObserver === "undefined") return;
+  searchPagerElements.set(kind, el);
+  searchPagerArmed.add(kind);
+  const observer = new IntersectionObserver((entries) => {
+    if (!entries[0]?.isIntersecting) {
+      searchPagerArmed.add(kind);
+      return;
+    }
+    if (loadMode.value !== "automatic" || !searchPagerArmed.has(kind) || searching.value || !searchHasMore.value[kind]) return;
+    searchPagerArmed.delete(kind);
+    void queueAutomaticSearchPage(kind).finally(() => {
+      void nextTick(() => {
+        const currentObserver = searchPagerObservers.get(kind);
+        const currentEl = searchPagerElements.get(kind);
+        if (loadMode.value !== "automatic" || searchError.value || !currentObserver || !currentEl) return;
+        currentObserver.unobserve(currentEl);
+        currentObserver.observe(currentEl);
+      });
+    });
+  }, { root: document.querySelector<HTMLElement>(".main"), rootMargin: "160px" });
+  observer.observe(el);
+  searchPagerObservers.set(kind, observer);
+}
+
+const searchArtistPagerRef = (el: Element | ComponentPublicInstance | null) => observeSearchPager(el instanceof Element ? el : null, "artists");
+const searchAlbumPagerRef = (el: Element | ComponentPublicInstance | null) => observeSearchPager(el instanceof Element ? el : null, "albums");
+const searchSongPagerRef = (el: Element | ComponentPublicInstance | null) => observeSearchPager(el instanceof Element ? el : null, "songs");
+
+let automaticSearchQueue: Promise<void> = Promise.resolve();
+function queueAutomaticSearchPage(kind: "artists" | "albums" | "songs"): Promise<void> {
+  const queued = automaticSearchQueue.then(async () => {
+    if (loadMode.value !== "automatic" || !searchHasMore.value[kind]) return;
+    await setSearchPage(kind, searchPages.value[kind] + 1);
+  });
+  automaticSearchQueue = queued.catch(() => {});
+  return queued;
 }
 
 function updateSearchRoute(query: string, lyricQuery: string) {
@@ -812,6 +1034,8 @@ watch([searchQuery, lyricsQuery], ([q, lyricQ]) => {
   if (searchTimer) clearTimeout(searchTimer);
   const query = q.trim();
   const lyricQuery = lyricQ.trim();
+  searchResults.value = null;
+  failedSearchPage.value = null;
   resetSearchPages();
   searchRequest++;
   searchController?.abort();
@@ -872,7 +1096,7 @@ function retrySearch() {
 }
 
 function playFromSearch(i: number) {
-  player.setQueue(searchSongRows.value, (searchPages.value.songs - 1) * pageSize.value + i);
+  player.setQueue(searchSongRows.value, (loadMode.value === "automatic" ? 0 : (displaySearchPages.value.songs - 1) * pageSize.value) + i);
 }
 
 async function openArtist(artist: Artist) {
@@ -994,11 +1218,11 @@ function playSong(i: number) {
 }
 
 function playFromAll(i: number) {
-  player.setQueue(songRows.value, (listPage.value - 1) * pageSize.value + i);
+  player.setQueue(songRows.value, (loadMode.value === "automatic" ? 0 : (listPage.value - 1) * pageSize.value) + i);
 }
 
 function playFromStarred(i: number) {
-  player.setQueue(songRows.value, (listPage.value - 1) * pageSize.value + i);
+  player.setQueue(songRows.value, (loadMode.value === "automatic" ? 0 : (listPage.value - 1) * pageSize.value) + i);
 }
 
 function playAlbumFromStart() {
@@ -1314,6 +1538,14 @@ function retryDetail() {
 const songsHintFaded = ref(false);
 
 onMounted(() => {
+  if (!props.embedded && !starredOnly) {
+    void edgesonicFetch("stats/library").then((raw) => {
+      const stats = JSON.parse(raw) as { ok?: boolean; ready?: boolean; stale?: boolean; songs?: number };
+      if (stats.ok && stats.ready && !stats.stale && Number.isInteger(stats.songs) && (stats.songs ?? -1) >= 0) {
+        cachedSongCount.value = stats.songs!;
+      }
+    }).catch(() => { cachedSongCount.value = null; });
+  }
   if (props.detailTarget) {
     if (props.detailTarget.kind === "artist") {
       void openArtist({ id: props.detailTarget.id, name: "", albumCount: "", starred: false });
@@ -1345,11 +1577,16 @@ watch(() => player.starred, () => {
 watch(() => player.current?.id, () => { locateRetryId = null; });
 
 onUnmounted(() => {
+  listPageRequest++;
   detailController?.abort();
   if (waterfallRO) { waterfallRO.disconnect(); waterfallRO = null; }
   if (searchTimer) clearTimeout(searchTimer);
   searchController?.abort();
   searchController = null;
+  paginationObserver?.disconnect();
+  for (const observer of searchPagerObservers.values()) observer.disconnect();
+  searchPagerObservers.clear();
+  searchPagerElements.clear();
 });
 
 const shareOpen = ref(false);
@@ -1618,6 +1855,10 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         <span class="mono-label">{{ t("library.pageSize") }}</span>
         <FluentSelect :model-value="String(pageSize)" class="form-input page-size-select" :aria-label="t('library.pageSize')" :options="pageSizeOptions" @update:model-value="pageSize = Number($event) as LibraryPageSize" />
       </label>
+      <label class="page-size-control">
+        <span class="mono-label">{{ t("library.loadMode") }}</span>
+        <FluentSelect :model-value="loadMode" class="form-input page-size-select" :aria-label="t('library.loadMode')" :options="loadModeSelectOptions" @update:model-value="loadMode = $event as LibraryLoadMode" />
+      </label>
       <button class="btn-secondary btn-sm locate-current-btn" :disabled="locatingCurrent" @click="locateCurrentSong">
         {{ locatingCurrent ? t("library.locatingCurrent") : t("library.locateCurrent") }}
       </button>
@@ -1630,7 +1871,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       />
     </div>
 
-    <div v-if="error" class="status-badge error" role="alert">{{ error }}<button v-if="embedded" type="button" class="btn-secondary btn-sm" @click="retryDetail"><Icon name="refresh" />{{ t("common.retry") }}</button></div>
+    <div v-if="error" class="status-badge error" role="alert">{{ error }}<button v-if="embedded" type="button" class="btn-secondary btn-sm" @click="retryDetail"><Icon name="refresh" />{{ t("common.retry") }}</button><button v-if="failedPage !== null" type="button" class="btn-secondary btn-sm" @click="retryFailedListPage"><Icon name="refresh" />{{ t("common.retry") }}</button></div>
 
     <!-- Drill-down: songs of an album (any tab) -->
     <!-- The trailing 32px track holds the per-row "⋮" menu (SongRowMenu) —
@@ -1831,7 +2072,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           :class="{ playing: player.current?.id === s.id }"
           @click="playFromStarred(i)"
         >
-          <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ (listPage - 1) * pageSize + i + 1 }}</template></span>
+          <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ (loadMode === 'automatic' ? i : (listPage - 1) * pageSize + i) + 1 }}</template></span>
           <span class="song-title">{{ s.title }}</span>
           <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
           <span class="song-artist-group" :data-album="s.album">
@@ -1993,7 +2234,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
             :title="t('library.select')"
             @click.stop="toggleSelected(s.id)"
           />
-          <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ (listPage - 1) * pageSize + i + 1 }}</template></span>
+          <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ (loadMode === 'automatic' ? i : (listPage - 1) * pageSize + i) + 1 }}</template></span>
           <span class="song-title">{{ s.title }}</span>
           <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
             <span class="song-artist-group" :data-album="s.album">
@@ -2033,9 +2274,15 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       </div>
       <div v-if="loading" class="load-more mono-label">{{ t("common.loading") }}</div>
     </div>
-    <div v-if="!currentArtist && !currentAlbum && !currentDisplayGroup && !embedded" class="library-pagination">
-      <span class="mono-label">{{ t("library.pageNumber", { page: listPage }) }}</span>
-      <button class="btn-secondary btn-sm" :disabled="loading || listPage <= 1" @click="setListPage(listPage - 1)">{{ t("library.previousPage") }}</button>
+    <div v-if="!currentArtist && !currentAlbum && !currentDisplayGroup && !embedded" ref="paginationEl" class="library-pagination">
+      <span class="mono-label">{{ listPageLabel }}</span>
+      <button v-if="loadMode === 'manual'" class="btn-secondary btn-sm" :disabled="loading || listPage <= 1" @click="setListPage(listPage - 1)">{{ t("library.previousPage") }}</button>
+      <label v-if="loadMode === 'manual' && listExactPageCount !== null" class="page-jump-control">
+        <span class="sr-only">{{ t("library.jumpToPage") }}</span>
+        <input v-model.number="pageJump" class="form-input page-jump-input" type="number" min="1" :max="listExactPageCount" @keydown.enter="setListPage(pageJump)" />
+        <span class="mono-label">/ {{ listExactPageCount }}</span>
+      </label>
+      <button v-if="loadMode === 'manual' && listExactPageCount !== null" class="btn-secondary btn-sm" :disabled="loading || pageJump < 1 || pageJump > listExactPageCount" @click="setListPage(pageJump)">{{ t("library.jump") }}</button>
       <button class="btn-secondary btn-sm" :disabled="loading || !listHasNext" @click="setListPage(listPage + 1)">{{ t("library.nextPage") }}</button>
     </div>
     </template>
@@ -2046,21 +2293,26 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         <span class="mono-label">{{ t("library.pageSize") }}</span>
         <FluentSelect :model-value="String(pageSize)" class="form-input page-size-select" :aria-label="t('library.pageSize')" :options="pageSizeOptions" @update:model-value="pageSize = Number($event) as LibraryPageSize" />
       </label>
-      <div v-if="searching" class="empty-state">{{ t("common.loading") }}</div>
-      <div v-else-if="searchError" class="empty-state search-error">
+      <label class="page-size-control search-page-size-control">
+        <span class="mono-label">{{ t("library.loadMode") }}</span>
+        <FluentSelect :model-value="loadMode" class="form-input page-size-select" :aria-label="t('library.loadMode')" :options="loadModeSelectOptions" @update:model-value="loadMode = $event as LibraryLoadMode" />
+      </label>
+      <span v-if="searching && searchResults" class="mono-label search-loading-inline" role="status">{{ t("common.loading") }}</span>
+      <div v-if="searching && !searchResults" class="empty-state">{{ t("common.loading") }}</div>
+      <div v-if="searchError" class="empty-state search-error">
         <div>{{ searchError }}</div>
-        <button type="button" class="btn-secondary btn-sm" @click="retrySearch">{{ t("common.retry") }}</button>
+        <button type="button" class="btn-secondary btn-sm" @click="retryFailedSearchPage">{{ t("common.retry") }}</button>
       </div>
       <div
-        v-else-if="searchResults && !searchResults.artists.length && !searchResults.albums.length && !searchResults.songs.length"
+        v-if="!searching && searchResults && !displaySearchArtists.length && !searchResults.albums.length && !searchResults.songs.length"
         class="empty-state"
       >{{ t("library.searchNoResults") }}</div>
-      <template v-else-if="searchResults">
-        <div v-if="searchResults.artists.length" class="search-section">
+      <template v-if="searchResults">
+        <div v-if="displaySearchArtists.length" class="search-section">
           <div class="search-section-title">{{ t("library.tabArtists") }}</div>
           <div class="artist-grid">
             <div
-              v-for="a in searchResults.artists"
+              v-for="a in displaySearchArtists"
               :key="a.id"
               class="card hoverable artist-card"
               @click="openArtist(a)"
@@ -2080,9 +2332,11 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               <div class="corner corner-bl"></div>
             </div>
           </div>
-          <div class="library-pagination">
-            <span class="mono-label">{{ t("library.pageNumber", { page: searchPages.artists }) }}</span>
-            <button class="btn-secondary btn-sm" :disabled="searching || searchPages.artists <= 1" @click="setSearchPage('artists', searchPages.artists - 1)">{{ t("library.previousPage") }}</button>
+          <div :ref="searchArtistPagerRef" class="library-pagination">
+            <span class="mono-label">{{ searchPageLabel('artists') }}</span>
+            <button v-if="loadMode === 'manual'" class="btn-secondary btn-sm" :disabled="searching || searchPages.artists <= 1" @click="setSearchPage('artists', searchPages.artists - 1)">{{ t("library.previousPage") }}</button>
+            <input v-if="loadMode === 'manual' && searchExactTotal('artists') !== null" v-model.number="searchPageJumps.artists" class="form-input page-jump-input" type="number" min="1" :max="exactPageCount(searchExactTotal('artists'), pageSize) || undefined" :aria-label="t('library.jumpToPage')" @keydown.enter="setSearchPage('artists', searchPageJumps.artists)" />
+            <button v-if="loadMode === 'manual' && searchExactTotal('artists') !== null" class="btn-secondary btn-sm" :disabled="searching || searchPageJumps.artists < 1 || searchPageJumps.artists > (exactPageCount(searchExactTotal('artists'), pageSize) || 1)" @click="setSearchPage('artists', searchPageJumps.artists)">{{ t("library.jump") }}</button>
             <button class="btn-secondary btn-sm" :disabled="searching || !searchHasMore.artists" @click="setSearchPage('artists', searchPages.artists + 1)">{{ t("library.nextPage") }}</button>
           </div>
         </div>
@@ -2091,7 +2345,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           <div class="search-section-title">{{ t("library.tabAlbums") }}</div>
           <div class="album-grid">
             <div
-              v-for="item in pagedSearchAlbumDisplayCards"
+              v-for="item in visibleSearchAlbumDisplayCards"
               :key="item.key"
               class="card hoverable album-card"
               @click="item.kind === 'group' ? openDisplayGroup(item.group) : openAlbum(item.album)"
@@ -2119,9 +2373,11 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               <div class="corner corner-bl"></div>
             </div>
           </div>
-          <div class="library-pagination">
-            <span class="mono-label">{{ t("library.pageNumber", { page: searchPages.albums }) }}</span>
-            <button class="btn-secondary btn-sm" :disabled="searching || searchPages.albums <= 1" @click="setSearchPage('albums', searchPages.albums - 1)">{{ t("library.previousPage") }}</button>
+          <div :ref="searchAlbumPagerRef" class="library-pagination">
+            <span class="mono-label">{{ searchPageLabel('albums') }}</span>
+            <button v-if="loadMode === 'manual'" class="btn-secondary btn-sm" :disabled="searching || searchPages.albums <= 1" @click="setSearchPage('albums', searchPages.albums - 1)">{{ t("library.previousPage") }}</button>
+            <input v-if="loadMode === 'manual' && searchExactTotal('albums') !== null" v-model.number="searchPageJumps.albums" class="form-input page-jump-input" type="number" min="1" :max="exactPageCount(searchExactTotal('albums'), pageSize) || undefined" :aria-label="t('library.jumpToPage')" @keydown.enter="setSearchPage('albums', searchPageJumps.albums)" />
+            <button v-if="loadMode === 'manual' && searchExactTotal('albums') !== null" class="btn-secondary btn-sm" :disabled="searching || searchPageJumps.albums < 1 || searchPageJumps.albums > (exactPageCount(searchExactTotal('albums'), pageSize) || 1)" @click="setSearchPage('albums', searchPageJumps.albums)">{{ t("library.jump") }}</button>
             <button class="btn-secondary btn-sm" :disabled="searching || !searchHasMore.albums" @click="setSearchPage('albums', searchPages.albums + 1)">{{ t("library.nextPage") }}</button>
           </div>
         </div>
@@ -2139,7 +2395,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
               :class="{ playing: player.current?.id === s.id }"
               @click="playFromSearch(i)"
             >
-              <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ (searchPages.songs - 1) * pageSize + i + 1 }}</template></span>
+              <span class="song-no"><Icon v-if="player.current?.id === s.id && player.playing" name="play" /><template v-else>{{ (loadMode === 'automatic' ? i : (displaySearchPages.songs - 1) * pageSize + i) + 1 }}</template></span>
               <span class="song-title">{{ s.title }}</span>
               <span class="song-album" :class="{ clickable: s.albumId }" @click.stop="s.albumId && openAlbumById(s.albumId, s.album)">{{ s.album }}</span>
                <span class="song-artist-group" :data-album="s.album">
@@ -2176,9 +2432,11 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
           />
             </div>
           </div>
-          <div class="library-pagination">
-            <span class="mono-label">{{ t("library.pageNumber", { page: searchPages.songs }) }}</span>
-            <button class="btn-secondary btn-sm" :disabled="searching || searchPages.songs <= 1" @click="setSearchPage('songs', searchPages.songs - 1)">{{ t("library.previousPage") }}</button>
+          <div :ref="searchSongPagerRef" class="library-pagination">
+            <span class="mono-label">{{ searchPageLabel('songs') }}</span>
+            <button v-if="loadMode === 'manual'" class="btn-secondary btn-sm" :disabled="searching || searchPages.songs <= 1" @click="setSearchPage('songs', searchPages.songs - 1)">{{ t("library.previousPage") }}</button>
+            <input v-if="loadMode === 'manual' && searchExactTotal('songs') !== null" v-model.number="searchPageJumps.songs" class="form-input page-jump-input" type="number" min="1" :max="exactPageCount(searchExactTotal('songs'), pageSize) || undefined" :aria-label="t('library.jumpToPage')" @keydown.enter="setSearchPage('songs', searchPageJumps.songs)" />
+            <button v-if="loadMode === 'manual' && searchExactTotal('songs') !== null" class="btn-secondary btn-sm" :disabled="searching || searchPageJumps.songs < 1 || searchPageJumps.songs > (exactPageCount(searchExactTotal('songs'), pageSize) || 1)" @click="setSearchPage('songs', searchPageJumps.songs)">{{ t("library.jump") }}</button>
             <button class="btn-secondary btn-sm" :disabled="searching || !searchHasMore.songs" @click="setSearchPage('songs', searchPages.songs + 1)">{{ t("library.nextPage") }}</button>
           </div>
         </div>
@@ -2320,6 +2578,8 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
 .page-size-select { min-width: 76px; padding-top: 0.45rem; padding-bottom: 0.45rem; }
 .search-page-size-control { justify-content: flex-end; margin-bottom: 1rem; }
 .library-pagination { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.55rem; padding: 1rem 0; }
+.page-jump-control { display: inline-flex; align-items: center; gap: 0.35rem; }
+.page-jump-input { width: 4.5rem; min-width: 4.5rem; padding: 0.35rem 0.45rem; }
 .locate-current-btn { margin-left: auto; }
 .view-tab {
   padding: 0.55rem 1.3rem;
