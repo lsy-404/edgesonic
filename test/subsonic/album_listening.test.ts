@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Run: npx tsx test/subsonic/album_listening.test.ts
 
 import { createQueries } from "../../worker/src/db/queries";
 import { createDb, makeD1 } from "../helpers/albumListeningDb";

@@ -9,3 +9,5 @@
 - Committed as `fix: rank album lists from song listening history` on the isolated task branch.
 - Follow-up: gated the cross-song aggregation CTE and join to `frequent`/`recent`, preserving album-annotation metadata and list ordering for all other types; compressed the SQL rationale comment to one sentence.
 - Follow-up verification passed: `npx tsx test/subsonic/album_listening.test.ts`, `npx tsx test/subsonic/album_list_filters.test.ts`, and `npm run typecheck -w worker`.
+
+- 根集成真实浏览器音频与 production Hono+完整 schema SQLite 联调通过：开始空榜，歌曲达到实际收听门槛后写入，当前首页立即更新，两次同曲提高热度、最近顺序独立，预载不计数、暂停不重复、刷新读取持久记录、503 不阻断播放且不更新榜单、禁用注释权限不上报。
