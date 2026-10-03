@@ -22,7 +22,7 @@ import { setPlaybackActive } from "../lib/requestBudget";
 import { beginAudioRequest, beginRequest, describeAudio, endAudioRequest } from "../lib/netDiag";
 import { repairFlacPictureMime } from "../lib/flacRepair";
 import { extractEmbeddedCover } from "../lib/embeddedCover";
-import { ListeningProgress } from "../lib/listeningProgress";
+import { ListeningProgress, listeningReportId } from "../lib/listeningProgress";
 import { notifyListeningRecorded } from "../lib/listeningRevision";
 import { i18n } from "../i18n";
 import { showError } from "./toast";
@@ -190,15 +190,14 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   function catalogId(track: Track): string {
-    const id = track.libraryId || track.id;
-    return id && !id.startsWith("file:") ? id : "";
+    return track.libraryId || track.id;
   }
 
   const listeningProgress = new ListeningProgress();
   watch(() => current.value?.id, () => listeningProgress.reset());
 
   async function reportListening(track: Track) {
-    const id = catalogId(track);
+    const id = listeningReportId(track);
     if (!id) return;
     try {
       const { authFetch, hasPerm } = useAuth();
@@ -365,6 +364,7 @@ export const usePlayerStore = defineStore("player", () => {
   const cachedBlobKeyByElement = new WeakMap<HTMLAudioElement, string>();
   const fallbackInFlight = new WeakSet<HTMLAudioElement>();
   const internalPauseCountByElement = new WeakMap<HTMLAudioElement, number>();
+  const playbackTrackIdByElement = new WeakMap<HTMLAudioElement, string>();
 
   window.addEventListener("pagehide", () => {
     _isUnloading = true;
@@ -919,6 +919,7 @@ export const usePlayerStore = defineStore("player", () => {
     el.volume = volume.value;
     el.addEventListener("timeupdate", () => {
       if (el !== active) return;
+      if (playbackTrackIdByElement.get(el) !== current.value?.id) return;
       currentTime.value = el.currentTime;
       const dur = el.duration;
       if (el.seeking) listeningProgress.anchor(el.currentTime);
@@ -1124,12 +1125,14 @@ export const usePlayerStore = defineStore("player", () => {
       active!.removeAttribute("src");
       active!.load();
       active = next;
+      playbackTrackIdByElement.set(next, track.id);
       syncBuffered(active);
     } else {
       invalidatePreload();
       pauseInternally(active!);
       resetFallbackState(active!);
       const targetEl = active!;
+      playbackTrackIdByElement.set(targetEl, track.id);
       const trackId = track.id;
       targetEl.removeAttribute("src");
       targetEl.load();

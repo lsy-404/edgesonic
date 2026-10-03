@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import { ListeningProgress } from "../../web/src/lib/listeningProgress";
+import { ListeningProgress, listeningReportId } from "../../web/src/lib/listeningProgress";
+
+assert.equal(listeningReportId({ id: "song-1" }), "song-1", "catalog tracks without a custom URL are reportable");
+assert.equal(listeningReportId({ id: "file:/source/song.wav", streamUrl: "/streamFile" }), "", "unindexed direct files are not reportable");
+assert.equal(listeningReportId({ id: "station-1", streamUrl: "https://radio.example/stream" }), "", "external stream tracks are not reportable");
+assert.equal(listeningReportId({ id: "file:/source/song.wav", libraryId: "song-2", streamUrl: "/streamFile" }), "song-2", "indexed direct files use their catalog ID");
 
 const progress = new ListeningProgress();
 const update = (currentTime: number, options: { playing?: boolean; duration?: number } = {}) =>
