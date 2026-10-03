@@ -1,3 +1,10 @@
-# 调研
-- 网页 player 未调用 scrobble。
-- scrobbleSong 只写 song annotations；listAlbums frequent/recent 过滤 album annotations，因此历史歌曲记录不进入榜单。
+# Findings
+
+- `scrobbleSong` writes `item_type='song'` annotations only.
+- `listAlbums` currently qualifies and sorts `frequent`/`recent` using `item_type='album'`, so normal scrobbles cannot populate either list.
+- `getTopSongsByArtist` already aggregates song annotation play counts across all users, confirming catalog-level ranking semantics.
+- `albumList2Handler` continues fetching the current user's album annotations for Subsonic per-user metadata; computed catalog ranking fields are independent of that mapping.
+- `song_masters.album_id` links logical songs to albums; song annotations are unique per user/song/type and include play_count and play_date.
+- A single `listening` CTE aggregates song annotations once per album, then drives both qualification and result fields; folder filters remain on album membership and do not scope the global totals.
+- `getTopSongsByArtist` already uses all-user song annotation counts, so its existing ranking is consistent and needs no change.
+- A test helper initializes Node SQLite from the complete `worker/migrations/Schema.sql`, allowing the list queries and scrobble upsert to run against the production schema.

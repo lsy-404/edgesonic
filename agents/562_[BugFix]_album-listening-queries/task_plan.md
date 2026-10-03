@@ -1,6 +1,8 @@
-# 从实际歌曲播放记录派生专辑热门和最近排序
+# Task plan
 
-- [ ] 核实读取与写入链路及现有测试。
-- [ ] 完成归属模块修复并添加有效行为测试。
-- [ ] 集成验证实际播放记录和首页展示。
-- [ ] 提交并交付。
+- [x] Inspect clean worktree, required skills, project instructions, and current query/test behavior.
+- [x] Update `/agents` tracking and record findings before implementation.
+- [x] Change frequent/recent album filters and statistics to aggregate song annotations across all users.
+- [x] Add real SQLite integration coverage for empty history, scrobbling, multi-user aggregation, multiple tracks, sorting, pagination, and folder filtering.
+- [x] Run targeted tests and relevant type checks; inspect the final diff.
+- [x] Commit the isolated change without signing or AI/task attribution.
