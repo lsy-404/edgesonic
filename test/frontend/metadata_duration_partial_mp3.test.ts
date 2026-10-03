@@ -294,6 +294,7 @@ try {
       const familyResult = await runMetadata({ instanceId: `instance-${suffix}`, sourceUri: `r2://music/test.${suffix}`, streamUrl: "https://test/stream", suffix, size: m4aBytes.length }) as { tags: Record<string, unknown> };
       assert(fullFamilyRequests === 1, `${suffix} performs a complete read despite a positive ranged duration`);
       assert(familyResult.tags.duration === 152, `${suffix} submits only the complete-file duration`);
+      assert(typeof familyResult.tags.bitrate === "number" && familyResult.tags.bitrate > 0, `${suffix} submits bitrate from the complete-file parse`);
     }
 
     let failedM4aFullRequests = 0;
@@ -310,6 +311,7 @@ try {
     const failedM4a = await runMetadata({ instanceId: "instance-m4a-failed", sourceUri: "r2://music/failed.m4a", streamUrl: "https://test/stream", suffix: "m4a", size: m4aBytes.length }) as { tags: Record<string, unknown> };
     assert(failedM4aFullRequests === 1, "attempts the bounded M4A full read once");
     assert(!Object.hasOwn(failedM4a.tags, "duration"), "omits a positive partial M4A duration when full read fails");
+    assert(!Object.hasOwn(failedM4a.tags, "bitrate"), "omits partial M4A bitrate when full read fails");
     assert(failedM4a.tags.title === "Fixture M4A", "keeps ranged tags when the full M4A body is unavailable");
 
     let shortM4aFullRequests = 0;
@@ -326,6 +328,7 @@ try {
     const shortM4a = await runMetadata({ instanceId: "instance-m4a-short", sourceUri: "r2://music/short.m4a", streamUrl: "https://test/stream", suffix: "m4a", size: m4aBytes.length }) as { tags: Record<string, unknown> };
     assert(shortM4aFullRequests === 1, "attempts a complete M4A read after a short 200 response");
     assert(!Object.hasOwn(shortM4a.tags, "duration"), "rejects a short 200 M4A body as a complete read");
+    assert(!Object.hasOwn(shortM4a.tags, "bitrate"), "omits partial M4A bitrate after a short full response");
     assert(shortM4a.tags.title === "Fixture M4A", "retains tags from the ranged M4A after a short full response");
 
     const overCapSize = 300 * 1024 * 1024 + 1;
@@ -343,6 +346,7 @@ try {
     const overCap = await runMetadata({ instanceId: "instance-m4a-over-cap", sourceUri: "r2://music/over-cap.m4a", streamUrl: "https://test/stream", suffix: "m4a", size: overCapSize }) as { tags: Record<string, unknown> };
     assert(overCapFullRequests === 0, "does not allocate a second read for an over-cap M4A");
     assert(!Object.hasOwn(overCap.tags, "duration"), "omits positive ranged duration above the complete-read cap");
+    assert(!Object.hasOwn(overCap.tags, "bitrate"), "omits ranged M4A bitrate above the complete-read cap");
   } finally {
     globalThis.fetch = originalFetch;
   }

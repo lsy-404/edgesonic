@@ -308,8 +308,7 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
     }
   }
 
-  // Ranged MP3 and MP4-family parses may report a positive but truncated duration.
-  // Accept duration only after a complete object read; tags from the range remain usable.
+  // Partial MP4-family reads can misreport physical metrics, so accept them only after a full read.
   const needsCompleteDurationRead = isPartialMp3 || (isMp4Family && !headAlreadyHadWholeFile);
   if (needsCompleteDurationRead && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
     try {
@@ -397,9 +396,11 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
       // shared with the local-scan path (web/src/lib/metadata.ts).
       lyrics:      lyricsTagsToText(meta.common.lyrics) || nativeLyricsFallback(meta.native) || "",
       ...(duration ? { duration } : {}),
-      bitrate:     isWav && totalSize > buf.length
-        ? partialWavMetrics ? Math.round(partialWavMetrics.bitrate / 1000) : 0
-        : meta.format.bitrate ? Math.round(meta.format.bitrate / 1000) : 0,
+      ...((isMp4Family && !durationReadFromCompleteFile) ? {} : {
+        bitrate: isWav && totalSize > buf.length
+          ? partialWavMetrics ? Math.round(partialWavMetrics.bitrate / 1000) : 0
+          : meta.format.bitrate ? Math.round(meta.format.bitrate / 1000) : 0,
+      }),
       sampleRate:  meta.format.sampleRate || 0,
       ...(Number.isFinite(meta.format.bitsPerSample) && (meta.format.bitsPerSample ?? 0) > 0
         ? { bitDepth: meta.format.bitsPerSample }
