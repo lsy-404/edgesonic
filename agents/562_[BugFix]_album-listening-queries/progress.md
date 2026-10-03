@@ -9,3 +9,4 @@
 - Committed as `fix: rank album lists from song listening history` on the isolated task branch.
 - Follow-up: gated the cross-song aggregation CTE and join to `frequent`/`recent`, preserving album-annotation metadata and list ordering for all other types; compressed the SQL rationale comment to one sentence.
 - Follow-up verification passed: `npx tsx test/subsonic/album_listening.test.ts`, `npx tsx test/subsonic/album_list_filters.test.ts`, and `npm run typecheck -w worker`.
+- Added `test/subsonic/album_listening_auth.test.ts` using the full schema fixture, real `authMiddleware`, and mounted Subsonic routes; verified t+s/p credentials, repeatable ids/times, submission behavior, auth failures, and returned frequent/recent album order.
