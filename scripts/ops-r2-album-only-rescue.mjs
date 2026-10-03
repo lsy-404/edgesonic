@@ -35,14 +35,14 @@ function psQuote(s) {
 
 function wrangler(args) {
   if (process.platform === "win32") {
-    const command = `& npx wrangler ${args.map(psQuote).join(" ")}`;
+    const command = `& wrangler ${args.map(psQuote).join(" ")}`;
     return execFileSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command], {
       cwd: workerDir,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
   }
-  return execFileSync("npx", ["wrangler", ...args], {
+  return execFileSync("wrangler", args, {
     cwd: workerDir,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],

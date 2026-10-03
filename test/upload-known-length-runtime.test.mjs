@@ -7,11 +7,16 @@ const root = new URL("../", import.meta.url);
 const port = 8797;
 const state = fileURLToPath(new URL(".tmp-upload-known-length-runtime", import.meta.url));
 rmSync(state, { recursive: true, force: true });
-const child = spawn("npx", [
-  "--no-install", "wrangler", "dev",
+const cli = process.platform === "win32" ? "wrangler.cmd" : "wrangler";
+const child = spawn(cli, [
+  "dev",
   "--config", "test/upload-known-length-runtime/wrangler.toml",
   "--local", "--ip", "127.0.0.1", "--port", String(port), "--persist-to", state,
-], { cwd: fileURLToPath(root), stdio: ["ignore", "pipe", "pipe"] });
+], {
+  cwd: fileURLToPath(root),
+  stdio: ["ignore", "pipe", "pipe"],
+  shell: process.platform === "win32",
+});
 
 let output = "";
 child.stdout.on("data", (chunk) => { output += chunk; });

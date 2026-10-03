@@ -13,7 +13,7 @@ set -euo pipefail
 # 前置：
 #   - 本地存在 worker/wrangler.toml（含私有资源 id，已被 .gitignore 排除，不入库）。
 #     首次： cp worker/wrangler.toml.example worker/wrangler.toml 并填入你的资源 id。
-#   - 机密用 `cd worker && npx wrangler secret put <NAME>`，见 worker/SECRETS.md，
+#   - 机密用 `cd worker && wrangler secret put <NAME>`，见 worker/SECRETS.md，
 #     绝不写进 wrangler.toml 或脚本。
 # ===========================================================================
 
@@ -68,17 +68,17 @@ fi
 
 if [ -n "$MIGRATE_FILE" ]; then
   echo "▶ [D1] 应用迁移到远端数据库 ${DB}: $MIGRATE_FILE"
-  npx wrangler d1 execute "$DB" --remote --config "$CONFIG" --file "$MIGRATE_FILE"
+  wrangler d1 execute "$DB" --remote --config "$CONFIG" --file "$MIGRATE_FILE"
 fi
 
 if [ "$VERSION_ONLY" -eq 1 ]; then
   echo "▶ [版本] 上传新版本（不切生产流量）…"
-  npx wrangler versions upload --config "$CONFIG" --var WORKER_VERSION:"$VERSION" --var EDGESONIC_VERSION:"$VERSION" --var EDGESONIC_BUILD_TIME:"$BUILD_TIME"
+  wrangler versions upload --config "$CONFIG" --var WORKER_VERSION:"$VERSION" --var EDGESONIC_VERSION:"$VERSION" --var EDGESONIC_BUILD_TIME:"$BUILD_TIME"
   echo ""
   echo "✓ 完成。WORKER_VERSION=$VERSION（版本上传，未切生产，cron 未受影响）"
 else
   echo "▶ [部署] wrangler deploy（含 web/dist 静态资源）…"
-  npx wrangler deploy --config "$CONFIG" $CONTAINERS_FLAG --keep-vars --var WORKER_VERSION:"$VERSION" --var EDGESONIC_VERSION:"$VERSION" --var EDGESONIC_BUILD_TIME:"$BUILD_TIME"
+  wrangler deploy --config "$CONFIG" $CONTAINERS_FLAG --keep-vars --var WORKER_VERSION:"$VERSION" --var EDGESONIC_VERSION:"$VERSION" --var EDGESONIC_BUILD_TIME:"$BUILD_TIME"
   echo ""
   echo "✓ 完成。WORKER_VERSION=$VERSION"
 fi

@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 
 const workerDirectory = fileURLToPath(new URL("..", import.meta.url));
 const query = "SELECT COUNT(*) AS identity_table FROM sqlite_master WHERE type = 'table' AND name = 'identity_accounts'";
-const result = spawnSync("npx", [
-  "wrangler",
+const cli = process.platform === "win32" ? "wrangler.cmd" : "wrangler";
+const result = spawnSync(cli, [
   "d1",
   "execute",
   "edgesonic-db",
@@ -12,7 +12,12 @@ const result = spawnSync("npx", [
   "--json",
   "--command",
   query,
-], { cwd: workerDirectory, encoding: "utf8", env: process.env });
+], {
+  cwd: workerDirectory,
+  encoding: "utf8",
+  env: process.env,
+  shell: process.platform === "win32",
+});
 
 if (result.status !== 0) {
   process.stderr.write(result.stderr || "Unable to inspect the EdgeSonic database.\n");

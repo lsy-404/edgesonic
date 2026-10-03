@@ -55,6 +55,9 @@ jobs:
       - name: Install monorepo dependencies
         run: npm ci
 
+      - name: Install Wrangler CLI
+        run: npm install --global wrangler@4.142.0
+
       - name: Build frontend
         run: npm run build -w installer
 
@@ -74,4 +77,4 @@ jobs:
         working-directory: installer
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: npx wrangler deploy
+        run: wrangler deploy

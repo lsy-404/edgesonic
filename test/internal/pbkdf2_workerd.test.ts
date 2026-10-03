@@ -1,13 +1,13 @@
 import { spawn } from "node:child_process";
 
 const port = 8792;
-const command = process.platform === "win32" ? "npx.cmd" : "npx";
+const command = process.platform === "win32" ? "wrangler.cmd" : "wrangler";
 const child = spawn(command, [
-  "wrangler", "dev",
+  "dev",
   "--config", "test/internal/pbkdf2_workerd_probe.wrangler.toml",
   "--port", String(port),
   "--ip", "127.0.0.1",
-], { stdio: ["ignore", "pipe", "pipe"] });
+], { stdio: ["ignore", "pipe", "pipe"], shell: process.platform === "win32" });
 
 let output = "";
 child.stdout.on("data", (chunk) => { output += String(chunk); });

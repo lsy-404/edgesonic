@@ -14,7 +14,7 @@ if (Test-Path -LiteralPath $runtime) {
 
 function Invoke-D1([string]$state,[string[]]$operation,[switch]$failure) {
   $persist = Join-Path $runtime $state
-  $outputLines = & npx wrangler d1 execute pending-radio-a-rehearsal --local --config $config --persist-to $persist @operation --json 2>&1
+  $outputLines = & wrangler d1 execute pending-radio-a-rehearsal --local --config $config --persist-to $persist @operation --json 2>&1
   $code = $LASTEXITCODE
   $output = $outputLines -join [Environment]::NewLine
   if ($failure) { if ($code -eq 0) { throw "Expected D1 failure: $state" }; return $output }

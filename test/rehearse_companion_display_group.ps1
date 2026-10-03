@@ -10,7 +10,7 @@ $sourceAlbum = 'al-369dc39c99e3a1a27dc05b84aa30d1e1'
 function Invoke-D1File([string]$persist,[string]$file) {
   Push-Location $worker
   try {
-    $output = & npx.cmd wrangler d1 execute DB --config $config --local --persist-to $persist --file $file --json 2>$null | Out-String
+    $output = & wrangler d1 execute DB --config $config --local --persist-to $persist --file $file --json 2>$null | Out-String
     $code = $LASTEXITCODE
     return @{ Code=$code; Output=$output }
   } finally { Pop-Location }
@@ -18,7 +18,7 @@ function Invoke-D1File([string]$persist,[string]$file) {
 function Invoke-D1Query([string]$persist,[string]$sql) {
   Push-Location $worker
   try {
-    $output = & npx.cmd wrangler d1 execute DB --config $config --local --persist-to $persist --command $sql --json 2>$null | Out-String
+    $output = & wrangler d1 execute DB --config $config --local --persist-to $persist --command $sql --json 2>$null | Out-String
     if ($LASTEXITCODE -ne 0) { throw 'local D1 query failed' }
     $parsed = ConvertFrom-Json -AsHashtable -InputObject $output
     if ($parsed -is [System.Collections.IDictionary]) { return $parsed.results[0] }
@@ -32,7 +32,7 @@ function Get-DbFingerprint([string]$persist) {
   foreach($table in $tables) {
     Push-Location $worker
     try {
-      $output=& npx.cmd wrangler d1 execute DB --config $config --local --persist-to $persist --command "SELECT * FROM $table ORDER BY rowid;" --json 2>$null | Out-String
+      $output=& wrangler d1 execute DB --config $config --local --persist-to $persist --command "SELECT * FROM $table ORDER BY rowid;" --json 2>$null | Out-String
       if($LASTEXITCODE -ne 0) { throw "could not fingerprint $table" }
       $parsed=ConvertFrom-Json -AsHashtable -InputObject $output
       if($parsed -is [System.Collections.IDictionary]) { $snapshot[$table]=@($parsed.results[0]) }

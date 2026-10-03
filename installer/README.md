@@ -16,14 +16,14 @@ This is a single Cloudflare Worker with two halves:
 
 ## Local development
 
-Two processes, both from `installer/`:
+Install Wrangler globally (`npm install --global wrangler`), then run both processes from `installer/`:
 
 ```bash
 cp wrangler.toml.example wrangler.toml
 # edit wrangler.toml: set account_id, and ALLOWED_ORIGINS if you need cross-origin access
 npm install
 
-npx wrangler dev      # backend, port 8787
+wrangler dev      # backend, port 8787
 npm run dev           # frontend, port 5174 — proxies /cf and /r2 to :8787 (see vite.config.ts)
 ```
 
@@ -33,7 +33,7 @@ Open `http://localhost:5174`.
 
 ```bash
 npm run build          # -> dist/
-npx wrangler deploy
+wrangler deploy
 ```
 
 This is project infrastructure, deployed once on the project's own Cloudflare account — an end user

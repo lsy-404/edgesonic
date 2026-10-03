@@ -10,10 +10,15 @@ const scratch = "test/extended-search/.wrangler";
 await mkdir(scratch, { recursive: true });
 
 function wrangler(...args) {
-  const result = spawnSync(process.execPath, [
-    "node_modules/wrangler/bin/wrangler.js", ...args,
+  const cli = process.platform === "win32" ? "wrangler.cmd" : "wrangler";
+  const result = spawnSync(cli, [
+    ...args,
     "--config", config, "--local", "--persist-to", state,
-  ], { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
+  ], {
+    encoding: "utf8",
+    maxBuffer: 4 * 1024 * 1024,
+    shell: process.platform === "win32",
+  });
   if (result.status !== 0) throw new Error(`Local fixture command failed: ${result.status}\n${result.stdout}\n${result.stderr}`);
   console.log(`Local ${args.slice(0, 3).join(" ")}: ready`);
 }

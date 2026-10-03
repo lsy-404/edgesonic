@@ -72,7 +72,7 @@ EdgeSonic 同时承担两个角色：
 ### 前置条件
 
 - Node.js 20+
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)（`npm i -g wrangler`）
+- 全局安装 [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)（`npm i -g wrangler`）；项目依赖安装不会提供 Wrangler。
 - 一个 Cloudflare 账号，并已开通：
   - **D1** 数据库（`edgesonic-db`）
   - **R2** 存储桶（`edgesonic-storage`）
@@ -93,10 +93,10 @@ cp worker/wrangler.toml.example worker/wrangler.toml
 ```bash
 # 创建数据库（仅首次需要）
 cd worker
-npx wrangler d1 create edgesonic-db
+wrangler d1 create edgesonic-db
 
 # 应用 schema
-npx wrangler d1 execute edgesonic-db --remote --file migrations/Schema.sql
+wrangler d1 execute edgesonic-db --remote --file migrations/Schema.sql
 ```
 
 ### 3. 推送 Secrets
@@ -105,7 +105,7 @@ npx wrangler d1 execute edgesonic-db --remote --file migrations/Schema.sql
 
 ```bash
 cd worker
-npx wrangler secret put WORK_UPLOAD_HMAC_KEY  # 随机生成的 48 字节 base64
+wrangler secret put WORK_UPLOAD_HMAC_KEY  # 随机生成的 48 字节 base64
 ```
 
 可选 —— 一个 Custom Token 同时勾选 Workers（Account scope）和 R2 Object Read（Bucket scope）
@@ -114,10 +114,10 @@ npx wrangler secret put WORK_UPLOAD_HMAC_KEY  # 随机生成的 48 字节 base64
 （封面按需缩略）：
 
 ```bash
-npx wrangler secret put CF_API_TOKEN          # token value（Bearer 字符串）
-npx wrangler secret put R2_ACCESS_KEY_ID      # Access Key ID = token id
-npx wrangler secret put R2_SECRET_ACCESS_KEY  # Secret Access Key = SHA-256(token value)
-npx wrangler secret put CF_ACCOUNT_ID
+wrangler secret put CF_API_TOKEN          # token value（Bearer 字符串）
+wrangler secret put R2_ACCESS_KEY_ID      # Access Key ID = token id
+wrangler secret put R2_SECRET_ACCESS_KEY  # Secret Access Key = SHA-256(token value)
+wrangler secret put CF_ACCOUNT_ID
 ```
 
 推送 `CF_API_TOKEN` 之后，还需在 zone 上启用 Images Transformations
@@ -137,7 +137,7 @@ npx wrangler secret put CF_ACCOUNT_ID
 首次登录前需要先创建管理员账号：
 
 ```bash
-npx wrangler d1 execute edgesonic-db --remote --command \
+wrangler d1 execute edgesonic-db --remote --command \
   "INSERT INTO users (username, master_password, level) VALUES ('admin', hex(sha256('yourpassword')), 3)"
 ```
 

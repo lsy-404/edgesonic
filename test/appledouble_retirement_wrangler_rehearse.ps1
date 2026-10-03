@@ -8,8 +8,8 @@ $run = Join-Path $PSScriptRoot ('.appledouble-wrangler-' + [guid]::NewGuid().ToS
 New-Item -ItemType Directory -Force -Path $run | Out-Null
 
 function Invoke-D1([string] $persist, [string] $kind, [string] $value, [bool] $expectFailure = $false) {
-  $args = @('wrangler', 'd1', 'execute', 'edgesonic-db', '--config', $config, '--local', '--persist-to', $persist, "--$kind", $value, '--json')
-  $out = & npx.cmd @args 2>&1
+  $args = @('d1', 'execute', 'edgesonic-db', '--config', $config, '--local', '--persist-to', $persist, "--$kind", $value, '--json')
+  $out = & wrangler @args 2>&1
   if ($expectFailure) {
     if ($LASTEXITCODE -eq 0) { throw "expected local D1 failure for $kind" }
     return $out

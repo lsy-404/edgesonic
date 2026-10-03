@@ -105,7 +105,7 @@ jobs:
           node-version: "24"
 
       - name: Install wrangler
-        run: npm install -g wrangler@4.94.0
+        run: npm install -g wrangler@4.142.0
 
       - name: Resolve release tag
         id: tag

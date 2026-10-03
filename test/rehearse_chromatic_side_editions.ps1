@@ -10,7 +10,7 @@ $groupId = 'ag-chromatic-audio-versions-20260926'
 function Invoke-D1File([string]$persist, [string]$file) {
   Push-Location $worker
   try {
-    $output = & npx.cmd wrangler d1 execute DB --config $config --local --persist-to $persist --file $file --json 2>$null | Out-String
+    $output = & wrangler d1 execute DB --config $config --local --persist-to $persist --file $file --json 2>$null | Out-String
     $code = $LASTEXITCODE
     return @{ Code = $code; Output = $output }
   } finally { Pop-Location }
@@ -18,7 +18,7 @@ function Invoke-D1File([string]$persist, [string]$file) {
 function Invoke-D1Query([string]$persist, [string]$sql) {
   Push-Location $worker
   try {
-    $output = & npx.cmd wrangler d1 execute DB --config $config --local --persist-to $persist --command $sql --json 2>$null | Out-String
+    $output = & wrangler d1 execute DB --config $config --local --persist-to $persist --command $sql --json 2>$null | Out-String
     if ($LASTEXITCODE -ne 0) { throw 'local D1 query failed' }
     $parsed = ConvertFrom-Json -AsHashtable -InputObject $output
     if ($parsed -is [System.Collections.IDictionary]) { return $parsed.results[0] }

@@ -11,7 +11,7 @@
 # 前置：
 #   - 本地存在 worker/wrangler.toml（含私有资源 id，已被 .gitignore 排除，不入库）。
 #     首次： Copy-Item worker/wrangler.toml.example worker/wrangler.toml 并填入你的资源 id。
-#   - 机密用 `cd worker; npx wrangler secret put <NAME>`，见 worker/SECRETS.md，
+#   - 机密用 `cd worker; wrangler secret put <NAME>`，见 worker/SECRETS.md，
 #     绝不写进 wrangler.toml 或脚本。
 #   - 需要 CLOUDFLARE_API_TOKEN 环境变量才能自动恢复 cron（见末尾逻辑）。
 # ===========================================================================
@@ -75,17 +75,17 @@ if ($Migrate) {
     exit 1
   }
   Write-Host "▶ [D1] 应用迁移到远端数据库 $DB`: $Migrate"
-  npx wrangler d1 execute $DB --remote --config $Config --file $Migrate
+  wrangler d1 execute $DB --remote --config $Config --file $Migrate
 }
 
 if ($VersionOnly) {
   Write-Host "▶ [版本] 上传新版本（不切生产流量）…"
-  npx wrangler versions upload --config $Config --var "WORKER_VERSION:$Version" --var "EDGESONIC_VERSION:$Version" --var "EDGESONIC_BUILD_TIME:$BuildTime"
+  wrangler versions upload --config $Config --var "WORKER_VERSION:$Version" --var "EDGESONIC_VERSION:$Version" --var "EDGESONIC_BUILD_TIME:$BuildTime"
   Write-Host ""
   Write-Host "✓ 完成。WORKER_VERSION=$Version（版本上传，未切生产，cron 未受影响）"
 } else {
   Write-Host "▶ [部署] wrangler deploy（含 web/dist 静态资源）…"
-  npx wrangler deploy --config $Config $ContainersFlag --keep-vars --var "WORKER_VERSION:$Version" --var "EDGESONIC_VERSION:$Version" --var "EDGESONIC_BUILD_TIME:$BuildTime"
+  wrangler deploy --config $Config $ContainersFlag --keep-vars --var "WORKER_VERSION:$Version" --var "EDGESONIC_VERSION:$Version" --var "EDGESONIC_BUILD_TIME:$BuildTime"
 
   # wrangler deploy 会清空 Cloudflare 上的所有 cron 触发器。
   # 部署完毕后立即通过 CF API 恢复默认时间表。

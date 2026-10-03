@@ -60,7 +60,12 @@ function runWrangler(outdir) {
     "--var",
     `EDGESONIC_BUILD_TIME:${buildTime}`,
   ];
-  const result = spawnSync("npx", args, { cwd: root, stdio: "inherit" });
+  const cli = process.platform === "win32" ? "wrangler.cmd" : "wrangler";
+  const result = spawnSync(cli, args, {
+    cwd: root,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
   if (result.status !== 0) throw new Error(`wrangler bundle failed with exit code ${result.status}`);
 }
 

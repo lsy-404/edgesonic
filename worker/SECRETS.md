@@ -142,8 +142,8 @@ frontend bundle.
 
 ```bash
 cd worker
-npx wrangler secret put SSO_CLIENT_SECRET
-npx wrangler secret put SSO_JAR_PRIVATE_JWK  # optional
+wrangler secret put SSO_CLIENT_SECRET
+wrangler secret put SSO_JAR_PRIVATE_JWK  # optional
 ```
 
 The device-authorization helper endpoints are intended for native clients:
@@ -237,7 +237,7 @@ After pushing the two R2 secrets (and `CF_ACCOUNT_ID`), flip the flag:
 ```bash
 # Via the Settings UI → Presigned URL Direct Stream → enable R2 presign → Save
 # Or via D1 directly:
-npx wrangler d1 execute edgesonic-db --remote --command \
+wrangler d1 execute edgesonic-db --remote --command \
   "UPDATE feature_strings SET value='1', updated_at=unixepoch() WHERE key='enable_r2_presign'"
 ```
 

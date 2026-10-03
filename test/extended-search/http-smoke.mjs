@@ -3,11 +3,16 @@ import { spawnSync } from "node:child_process";
 
 process.chdir(new URL("../..", import.meta.url).pathname);
 function localSql(sql) {
-  const result = spawnSync(process.execPath, [
-    "node_modules/wrangler/bin/wrangler.js", "d1", "execute", "edgesonic-search-local",
+  const cli = process.platform === "win32" ? "wrangler.cmd" : "wrangler";
+  const result = spawnSync(cli, [
+    "d1", "execute", "edgesonic-search-local",
     "--config", "test/extended-search/wrangler.jsonc", "--local",
     "--persist-to", "test/extended-search/.wrangler/state", "--command", sql,
-  ], { encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
+  ], {
+    encoding: "utf8",
+    maxBuffer: 4 * 1024 * 1024,
+    shell: process.platform === "win32",
+  });
   assert.equal(result.status, 0, result.stderr);
 }
 

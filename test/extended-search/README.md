@@ -6,7 +6,7 @@ and an eight-second synthesized audio sample.
 ```sh
 npm run build:web
 node test/extended-search/seed.mjs
-npx wrangler dev --config test/extended-search/wrangler.jsonc --local --ip 127.0.0.1 --port 8798 --persist-to test/extended-search/.wrangler/state
+wrangler dev --config test/extended-search/wrangler.jsonc --local --ip 127.0.0.1 --port 8798 --persist-to test/extended-search/.wrangler/state
 ```
 
 Sign in at `http://127.0.0.1:8798` with `search-test` / `lyrics-preview`.

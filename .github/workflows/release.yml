@@ -94,6 +94,9 @@ jobs:
       - name: Install monorepo dependencies (build tooling)
         run: npm ci
 
+      - name: Install Wrangler CLI
+        run: npm install --global wrangler@4.142.0
+
       - name: Build frontend
         run: |
           npm run build:web
@@ -143,15 +146,11 @@ jobs:
           # (worker/package-lock.json is a stale standalone lock that predates
           # @cloudflare/sandbox, so the root lock is the only trustworthy source.)
           #
-          # --legacy-peer-deps: worker/package.json's *dev* deps (wrangler vs
-          # @cloudflare/workers-types) have a peer-range conflict; --omit=dev
-          # skips installing them, but a fresh resolve still evaluates the tree
-          # and would ERESOLVE without this. --no-save keeps the shipped
-          # worker/package.json byte-identical to source.
+          # --no-save keeps the shipped worker/package.json byte-identical to source.
           HONO_VERSION=$(node -p "require('./package-lock.json').packages['node_modules/hono'].version")
           SANDBOX_VERSION=$(node -p "require('./package-lock.json').packages['node_modules/@cloudflare/sandbox'].version")
           echo "Pinning worker runtime deps: hono@${HONO_VERSION}, @cloudflare/sandbox@${SANDBOX_VERSION}"
-          ( cd "$STAGE/worker" && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund --no-save \
+          ( cd "$STAGE/worker" && npm install --omit=dev --no-audit --no-fund --no-save \
               "hono@${HONO_VERSION}" "@cloudflare/sandbox@${SANDBOX_VERSION}" )
           test -d "$STAGE/worker/node_modules/hono" || { echo "::error::worker runtime deps failed to install into the package"; exit 1; }
 
@@ -159,10 +158,10 @@ jobs:
           # The cp list above is hand-maintained, and a file it misses surfaces
           # only as an esbuild resolution error at deploy time. update-wrangler.toml
           # carries no account id, no resource ids and no container build, so a
-          # dry run needs no Cloudflare credentials. Run from the repo root, where
-          # `npm ci` installed wrangler; the staged node_modules omits dev deps.
+          # dry run needs no Cloudflare credentials. CI installs a pinned Wrangler
+          # CLI on PATH; the staged node_modules omits dev dependencies.
           cp worker/update-wrangler.toml "$STAGE/worker/verify-wrangler.toml"
-          npx wrangler deploy --dry-run \
+          wrangler deploy --dry-run \
             --config "$STAGE/worker/verify-wrangler.toml" \
             --outdir "${RUNNER_TEMP}/verify-out" \
             || { echo "::error::The assembled package does not bundle — the Worker imports a file the package does not ship."; exit 1; }

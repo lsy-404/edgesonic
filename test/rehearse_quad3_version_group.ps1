@@ -7,12 +7,12 @@ $candidate = Join-Path $root 'agents\527_[Operations]_quadimension_3_version_gro
 
 function Invoke-D1File([string]$persist, [string]$file) {
   Push-Location $worker
-  try { & npx.cmd wrangler d1 execute DB --config $config --local --persist-to $persist --file $file --json | Out-Null; return $LASTEXITCODE }
+  try { & wrangler d1 execute DB --config $config --local --persist-to $persist --file $file --json | Out-Null; return $LASTEXITCODE }
   finally { Pop-Location }
 }
 function Invoke-D1Query([string]$persist, [string]$sql) {
   Push-Location $worker
-  try { return & npx.cmd wrangler d1 execute DB --config $config --local --persist-to $persist --command $sql --json }
+  try { return & wrangler d1 execute DB --config $config --local --persist-to $persist --command $sql --json }
   finally { Pop-Location }
 }
 function New-RunDirectory { Join-Path ([System.IO.Path]::GetTempPath()) ('edgesonic-q3-' + [guid]::NewGuid().ToString('N')) }

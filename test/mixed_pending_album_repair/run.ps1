@@ -5,8 +5,8 @@ $apply = Join-Path $repo 'agents\525_[Operations]_mixed_pending_album_repair\app
 $rollback = Join-Path $repo 'agents\525_[Operations]_mixed_pending_album_repair\rollback_qichengzhuanhe.sql'
 $config = Join-Path $task 'wrangler.toml'
 $fixture = Join-Path $task 'fixture.sql'
-function Invoke-D1([string]$persist, [string]$file) { npx.cmd wrangler d1 execute edgesonic-mixed-album-fixture --local --persist-to $persist --config $config --file $file | Out-Null }
-function Query-D1([string]$persist, [string]$sql) { npx.cmd wrangler d1 execute edgesonic-mixed-album-fixture --local --persist-to $persist --config $config --command $sql --json }
+function Invoke-D1([string]$persist, [string]$file) { wrangler d1 execute edgesonic-mixed-album-fixture --local --persist-to $persist --config $config --file $file | Out-Null }
+function Query-D1([string]$persist, [string]$sql) { wrangler d1 execute edgesonic-mixed-album-fixture --local --persist-to $persist --config $config --command $sql --json }
 $success = Join-Path $task '.d1-success'
 $stale = Join-Path $task '.d1-stale'
 $late = Join-Path $task '.d1-late'
@@ -31,7 +31,7 @@ if (($blocked | ConvertFrom-Json)[0].results[0].unchanged -ne 1) { throw 'stale 
 Invoke-D1 $late $fixture
 Get-Content -LiteralPath $apply | Set-Content -LiteralPath $lateFile -NoNewline
 Add-Content -LiteralPath $lateFile "`nSELECT * FROM intentional_late_failure;"
-& npx.cmd wrangler d1 execute edgesonic-mixed-album-fixture --local --persist-to $late --config $config --file $lateFile | Out-Null
+& wrangler d1 execute edgesonic-mixed-album-fixture --local --persist-to $late --config $config --file $lateFile | Out-Null
 if ($LASTEXITCODE -eq 0) { throw 'late failure unexpectedly succeeded' }
 $lateState = Query-D1 $late "SELECT (SELECT count(*) FROM albums WHERE id='al-qichengzhuanhe-wav') AS album,(SELECT count(*) FROM song_masters WHERE id='sm-upload-05d63157-24d' AND album_id='pending-uploads' AND track IS NULL AND disc IS NULL) AS unchanged"
 if (($lateState | ConvertFrom-Json)[0].results[0].album -ne 0) { throw 'late failure committed album' }

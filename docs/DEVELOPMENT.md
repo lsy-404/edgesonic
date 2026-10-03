@@ -4,6 +4,8 @@ Local dev workflow, type-checking, running tests, and applying the database sche
 
 ## Commands
 
+Install Wrangler globally (`npm install --global wrangler`). Workspace dependencies do not include the CLI.
+
 ```bash
 npm install              # install all workspaces
 
@@ -41,5 +43,5 @@ Or without a full deploy:
 
 ```bash
 cd worker
-npx wrangler d1 execute edgesonic-db --remote --file migrations/Schema.sql
+wrangler d1 execute edgesonic-db --remote --file migrations/Schema.sql
 ```

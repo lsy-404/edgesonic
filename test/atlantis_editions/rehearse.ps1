@@ -28,13 +28,13 @@ function Get-JsonArray($text) {
 
 function Invoke-D1($scenario, $label, $filePath, $commandText) {
     $persistPath = Join-Path $tempRoot $scenario
-    $cliArgs = @('wrangler','d1','execute','edgesonic-db','--local','--config',$configPath,'--persist-to',$persistPath)
+    $cliArgs = @('d1','execute','edgesonic-db','--local','--config',$configPath,'--persist-to',$persistPath)
     if ($filePath) { $cliArgs += @('--file',$filePath) }
     if ($commandText) { $cliArgs += @('--command',$commandText) }
     $cliArgs += '--json'
     Push-Location $workerPath
     try {
-        $lines = & npx.cmd @cliArgs 2>&1
+        $lines = & wrangler @cliArgs 2>&1
         $code = $LASTEXITCODE
     } finally {
         Pop-Location

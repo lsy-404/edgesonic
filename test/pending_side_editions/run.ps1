@@ -29,8 +29,8 @@ for ($i=0; $i -lt $rows.Count; $i++) {
   $schema += "INSERT INTO song_instances VALUES ('$($m[2].Value)','$($m[1].Value)','$($m[3].Value)','r2://$($m[8].Value)',0,$($sizes[$i]));`n"
   $schema += "INSERT INTO storage_entries VALUES ('$($m[4].Value)','$($m[2].Value)','$($m[3].Value)','$($m[5].Value)');`n"
 }
-function Invoke-D1([string]$persist,[string]$file) { & npx.cmd wrangler d1 execute DB --local --persist-to $persist --config $config --file $file | Out-Null; return $LASTEXITCODE }
-function Query-D1([string]$persist,[string]$sql) { & npx.cmd wrangler d1 execute DB --local --persist-to $persist --config $config --command $sql --json }
+function Invoke-D1([string]$persist,[string]$file) { & wrangler d1 execute DB --local --persist-to $persist --config $config --file $file | Out-Null; return $LASTEXITCODE }
+function Query-D1([string]$persist,[string]$sql) { & wrangler d1 execute DB --local --persist-to $persist --config $config --command $sql --json }
 $fixture=Join-Path $task '.fixture.sql'; $lateFile=Join-Path $task '.late.sql'
 $success=Join-Path $task '.success'; $stale=Join-Path $task '.stale'; $late=Join-Path $task '.late'
 foreach ($path in @($fixture,$lateFile,$success,$stale,$late)) {

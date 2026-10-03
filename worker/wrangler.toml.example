@@ -9,7 +9,7 @@
 #   然后把下面的 <占位符> 替换为你自己的 Cloudflare 资源标识。
 #
 # 机密 (WORK_UPLOAD_HMAC_KEY / STORAGE_KEY / CF_* 等) 不放这里，用
-#   cd worker && npx wrangler secret put <NAME>
+#   cd worker && wrangler secret put <NAME>
 # 详见 worker/SECRETS.md。
 # ---------------------------------------------------------------------------
 name = "edgesonic"
@@ -49,9 +49,9 @@ SSO_SHARED_IDENTITY_MAPPING = "0"
 # SSO_USE_JARM = "0"
 # SSO_USE_DPOP = "0"
 # SSO_JAR_PRIVATE_JWK is a client signing key and must be stored as a secret:
-#   npx wrangler secret put SSO_JAR_PRIVATE_JWK
+#   wrangler secret put SSO_JAR_PRIVATE_JWK
 # Keep SSO_CLIENT_SECRET out of this file:
-#   npx wrangler secret put SSO_CLIENT_SECRET
+#   wrangler secret put SSO_CLIENT_SECRET
 # R2Bucket bindings don't expose their own bucket name at runtime, so this
 # must mirror the [[r2_buckets]] bucket_name below exactly — it drives the R2
 # detail card in Settings and is the bucket name signed into R2 presigned

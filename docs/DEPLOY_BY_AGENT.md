@@ -58,7 +58,7 @@ complete the checkout if not:
    R2 Plan** (no payment required for the free tier).
 2. Once subscribed, verify with:
    ```bash
-   npx wrangler r2 bucket list
+   wrangler r2 bucket list
    ```
    A successful (even if empty) response confirms R2 is active. A 403 / "R2 is not enabled" error
    means the operator hasn't completed checkout — stop and retry after they have.

@@ -8,10 +8,10 @@ $apply = Join-Path $task 'artifacts\apply_guarded.sql'
 $seed = Join-Path $testDir 'seed.sql'
 $finger = Join-Path $testDir 'fingerprint.sql'
 function Invoke-D1([string]$case,[string]$file,[string]$command) {
-  $cliArgs = @('wrangler','d1','execute','maple-nighttread-rehearsal','--local','--config',$config,'--persist-to',(Join-Path $testDir ('state\'+$runId+'-'+$case)),'--json')
+  $cliArgs = @('d1','execute','maple-nighttread-rehearsal','--local','--config',$config,'--persist-to',(Join-Path $testDir ('state\'+$runId+'-'+$case)),'--json')
   if ($file) { $cliArgs += @('--file',$file) } else { $cliArgs += @('--command',$command) }
-  $npxPath = (Get-Command npx).Path
-  $out = & $npxPath @cliArgs 2>&1
+  $wranglerPath = (Get-Command wrangler).Path
+  $out = & $wranglerPath @cliArgs 2>&1
   return @{ Exit=$LASTEXITCODE; Text=($out -join [Environment]::NewLine) }
 }
 function Fingerprint([string]$case) {

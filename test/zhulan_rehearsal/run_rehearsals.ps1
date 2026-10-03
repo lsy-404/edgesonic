@@ -6,8 +6,8 @@ $config = Join-Path $PSScriptRoot 'wrangler.toml'
 $runtime = Join-Path $PSScriptRoot '.runtime'
 
 function Invoke-LocalD1([string]$State, [string[]]$Operation, [switch]$ExpectFailure) {
-  $cliArgs = @('wrangler', 'd1', 'execute', 'zhulan-rehearsal', '--local', '--config', $config, '--persist-to', (Join-Path $runtime $State)) + $Operation + @('--json')
-  $output = & npx @cliArgs 2>&1 | Out-String
+  $cliArgs = @('d1', 'execute', 'zhulan-rehearsal', '--local', '--config', $config, '--persist-to', (Join-Path $runtime $State)) + $Operation + @('--json')
+  $output = & wrangler @cliArgs 2>&1 | Out-String
   $exitCode = $LASTEXITCODE
   if ($ExpectFailure) {
     if ($exitCode -eq 0) { throw "Expected local D1 failure for $State" }

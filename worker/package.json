@@ -31,8 +31,7 @@
   "homepage": "https://github.com/lsy-404/edgesonic#readme",
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260524.1",
-    "typescript": "^6.0.3",
-    "wrangler": "^4.94.0"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "@cloudflare/sandbox": "^0.12.1",

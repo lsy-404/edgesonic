@@ -8,7 +8,7 @@ $worker=Join-Path $repo 'worker'
 function Invoke-D1([string]$persist,[string[]]$sqlArgs,[bool]$expectFailure=$false){
   Push-Location $worker
   try{
-    $output=& npx.cmd wrangler d1 execute $database --local --config $config --persist-to $persist @sqlArgs --json 2>&1 | Out-String
+    $output=& wrangler d1 execute $database --local --config $config --persist-to $persist @sqlArgs --json 2>&1 | Out-String
     $code=$LASTEXITCODE
   }finally{Pop-Location}
   if($expectFailure){if($code -eq 0){throw 'Expected guarded SQL to fail.'};return $output}

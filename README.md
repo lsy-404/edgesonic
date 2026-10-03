@@ -74,7 +74,7 @@ Prefer to build and deploy from your own machine (e.g. while developing)? Use th
 ### Prerequisites
 
 - Node.js 20+
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (`npm i -g wrangler`)
+- Global [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (`npm i -g wrangler`); workspace installs do not provide it.
 - A Cloudflare account with:
   - **D1** database (`edgesonic-db`)
   - **R2** bucket (`edgesonic-storage`)
@@ -95,10 +95,10 @@ cp worker/wrangler.toml.example worker/wrangler.toml
 ```bash
 # Create the database (first time only)
 cd worker
-npx wrangler d1 create edgesonic-db
+wrangler d1 create edgesonic-db
 
 # Apply schema
-npx wrangler d1 execute edgesonic-db --remote --file migrations/Schema.sql
+wrangler d1 execute edgesonic-db --remote --file migrations/Schema.sql
 ```
 
 ### 3. Push secrets
@@ -107,7 +107,7 @@ See `worker/SECRETS.md` for details. At minimum:
 
 ```bash
 cd worker
-npx wrangler secret put WORK_UPLOAD_HMAC_KEY  # random 48-byte base64
+wrangler secret put WORK_UPLOAD_HMAC_KEY  # random 48-byte base64
 ```
 
 Optional — one Custom Token yields all three secrets at once (Workers + R2 Object Read permission
@@ -116,10 +116,10 @@ click-through). This enables R2 presigned direct streaming, the in-app Cloudflar
 Cloudflare Images Transformations (on-demand cover thumbnailing):
 
 ```bash
-npx wrangler secret put CF_API_TOKEN          # token value (Bearer string)
-npx wrangler secret put R2_ACCESS_KEY_ID      # Access Key ID = token id
-npx wrangler secret put R2_SECRET_ACCESS_KEY  # Secret Access Key = SHA-256(token value)
-npx wrangler secret put CF_ACCOUNT_ID
+wrangler secret put CF_API_TOKEN          # token value (Bearer string)
+wrangler secret put R2_ACCESS_KEY_ID      # Access Key ID = token id
+wrangler secret put R2_SECRET_ACCESS_KEY  # Secret Access Key = SHA-256(token value)
+wrangler secret put CF_ACCOUNT_ID
 ```
 
 After pushing `CF_API_TOKEN`, also enable Images Transformations on your zone
@@ -139,7 +139,7 @@ The script builds the Vue frontend and bundles it with the Worker via `[assets]`
 Create the first administrator before signing in:
 
 ```bash
-npx wrangler d1 execute edgesonic-db --remote --command \
+wrangler d1 execute edgesonic-db --remote --command \
   "INSERT INTO users (username, master_password, level) VALUES ('admin', hex(sha256('yourpassword')), 3)"
 ```
 

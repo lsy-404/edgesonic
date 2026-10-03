@@ -24,7 +24,6 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260524.1",
     "typescript": "^6.0.3",
-    "vue-tsc": "^3.3.4",
-    "wrangler": "^4.94.0"
+    "vue-tsc": "^3.3.4"
   }
 }
