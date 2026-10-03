@@ -1,0 +1,8 @@
+# Findings
+
+- The source archive helper previously resolved a source path before opening it. The delivered implementation validates lexical Z containment and opens that path directly; five drive-guard cases passed.
+- Guarded COP and Rushi rehearsals preserve exact SQL bytes, enable foreign keys after fixture commit, enforce expression depth 100 and per-statement SQL length 100000, compare independently expected rows and require exact rollback and atomic late-failure rejection.
+- COP registration passed seventeen fresh preconditions and thirteen postconditions. Independent primary readback verified sixteen masters, instances, entries and new objects, fifty-nine ordered credits, thirty-two new artists, unchanged existing artists and sixteen historical jobs. Independent receipt SHA-256: `4006fc06e54fb6b39164c9d11deca9a70b40bb79554fe1a146c43ad04e98a8a0`.
+- The current folder readback confirms the earlier forty-two path moves and seven folder deletions. Old candidate IDs are absent; they must not be replayed. Separate Days art directories have no complete body identity proof and remain distinct.
+- Latest primary job counts show no active or failed work-queue jobs or active scans. Fifty historical scan failures remain factual history: forty-six SQL-variable-limit failures, one network loss, one provider reset and two previously stale rows. Recent hourly scans completed successfully.
+- The remote main advanced with a pnpm migration while operations were running. That published change is integrated into the clean delivery branch; existing local audit modifications will be preserved separately.
