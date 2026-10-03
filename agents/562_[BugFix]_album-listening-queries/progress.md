@@ -7,3 +7,5 @@
 - Added `test/helpers/albumListeningDb.ts` backed by the full production schema plus `test/subsonic/album_listening.test.ts` with real SQLite behavior coverage.
 - Passed `npx tsx test/subsonic/album_listening.test.ts`, `album_list_filters.test.ts`, `annotation.test.ts`, `top_songs_local.test.ts`, and `npm run typecheck -w worker`.
 - Committed as `fix: rank album lists from song listening history` on the isolated task branch.
+- Follow-up: gated the cross-song aggregation CTE and join to `frequent`/`recent`, preserving album-annotation metadata and list ordering for all other types; compressed the SQL rationale comment to one sentence.
+- Follow-up verification passed: `npx tsx test/subsonic/album_listening.test.ts`, `npx tsx test/subsonic/album_list_filters.test.ts`, and `npm run typecheck -w worker`.

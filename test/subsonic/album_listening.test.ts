@@ -28,6 +28,8 @@ try {
       ('instance-a2', 'song-a2', 'source-b', 'r2://a2.flac', 'flac'),
       ('instance-b1', 'song-b1', 'source-b', 'r2://b1.flac', 'flac'),
       ('instance-c1', 'song-c1', 'source-a', 'r2://c1.flac', 'flac');
+    INSERT INTO annotations (user_id, item_id, item_type, play_count, play_date)
+      VALUES ('legacy', 'album-c', 'album', 7, 50);
   `);
 
   const queries = createQueries(makeD1(sqlite));
@@ -48,6 +50,9 @@ try {
   assert(recent.map((album) => album.id).join(",") === "album-b,album-a", "recent sorts by latest song play date");
   assert(recent[0].play_date === 3000, "recent timestamp is sourced from song annotation");
   assert((await queries.listAlbums("recent", 1, 1)).map((album) => album.id).join(",") === "album-a", "recent pagination applies after aggregate ordering");
+  const newest = await queries.listAlbums("newest", 10, 0);
+  assert(newest.map((album) => album.id).join(",") === "album-c,album-b,album-a", "newest sort is unchanged by song listening history");
+  assert(newest[0].play_count === 7, "non-listening album metadata retains its prior album annotation value");
 
   const sourceA = await queries.listAlbums("frequent", 10, 0, { musicFolderId: "source-a" });
   assert(sourceA.map((album) => album.id).join(",") === "album-a", "folder filtering applies while listening totals remain album-wide");

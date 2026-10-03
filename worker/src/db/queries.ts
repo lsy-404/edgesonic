@@ -330,8 +330,7 @@ export function createQueries(db: D1Database) {
         binds.push(folder);
       }
 
-      // starred requires an album annotation. Listening lists use song plays
-      // aggregated by album so scrobbles take effect without denormalized rows.
+      // Aggregate song scrobbles by album only for listening-ranked lists.
       if (type === "starred") {
         where.push(
           "EXISTS (SELECT 1 FROM annotations an WHERE an.item_id = a.id AND an.item_type = 'album' AND an.starred = 1)"
@@ -345,8 +344,8 @@ export function createQueries(db: D1Database) {
       }
 
       const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-
-      const sql = `
+      const needsListening = type === "frequent" || type === "recent";
+      const listeningCte = needsListening ? `
         WITH listening AS (
           SELECT sm.album_id,
                  SUM(COALESCE(an.play_count, 0)) AS play_count,
@@ -355,7 +354,17 @@ export function createQueries(db: D1Database) {
           JOIN song_masters sm ON sm.id = an.item_id
           WHERE an.item_type = 'song'
           GROUP BY sm.album_id
-        )
+        )` : "";
+      const listeningJoin = needsListening ? "LEFT JOIN listening ON listening.album_id = a.id" : "";
+      const listeningStats = needsListening
+        ? "COALESCE(listening.play_count, 0) AS play_count, listening.play_date AS play_date"
+        : `COALESCE((SELECT SUM(an.play_count) FROM annotations an
+                     WHERE an.item_id = a.id AND an.item_type = 'album'), 0) AS play_count,
+           (SELECT MAX(an.play_date) FROM annotations an
+            WHERE an.item_id = a.id AND an.item_type = 'album') AS play_date`;
+
+      const sql = `
+        ${listeningCte}
         SELECT a.*,
           (SELECT ar.name FROM song_masters sm JOIN artists ar ON ar.id = sm.artist_id
            WHERE sm.album_id = a.id LIMIT 1) AS artist_name,
@@ -370,12 +379,11 @@ export function createQueries(db: D1Database) {
            LIMIT 1) AS storage_uri,
           COALESCE((SELECT AVG(an.rating) FROM annotations an
                     WHERE an.item_id = a.id AND an.item_type = 'album' AND an.rating IS NOT NULL), 0) AS avg_rating,
-          COALESCE(listening.play_count, 0) AS play_count,
-          listening.play_date AS play_date,
+          ${listeningStats},
           (SELECT MAX(an.starred_at) FROM annotations an
             WHERE an.item_id = a.id AND an.item_type = 'album' AND an.starred = 1) AS starred_at
         FROM albums a
-        LEFT JOIN listening ON listening.album_id = a.id
+        ${listeningJoin}
         ${whereSql}
         ORDER BY ${order}
         LIMIT ? OFFSET ?
