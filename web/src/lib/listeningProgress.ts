@@ -3,6 +3,12 @@ export interface ListeningProgressUpdate {
   duration: number;
   playing: boolean;
 }
+
+export function listeningReportId(track: { id: string; libraryId?: string; streamUrl?: string }): string {
+  if (track.libraryId) return track.libraryId;
+  return !track.streamUrl && !track.id.startsWith("file:") ? track.id : "";
+}
+
 export class ListeningProgress {
   private lastTime: number | null = null;
   private listened = 0;

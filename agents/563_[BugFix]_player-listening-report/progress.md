@@ -4,3 +4,4 @@
 - 2026-10-02：新增 `ListeningProgress` 进度状态机和 Home revision 通知；播放器接入活动音频时间、权限校验与 best-effort scrobble；Home 对成功播放记录刷新 frequent/recent。
 - 2026-10-02：`npx tsx test/frontend/player_listening_progress.test.ts` 通过；`npm run typecheck -w web` 通过；`npm run build -w web` 通过。构建仅显示现有外部化和 chunk size 提示。
 - 2026-10-02：等待根任务进行真实浏览器端到端验证；本分支不推送、不部署。
+- 2026-10-02：集成审查发现共享 `catalogId` 用于收藏/getSong，恢复其既有返回语义；将非目录流过滤限定在 listening report，并将活动元素与 track ID 绑定以防切换事件错记。补充外部流/文件 track ID 行为断言。
