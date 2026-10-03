@@ -1,3 +1,7 @@
-# 调研
-- 网页 player 未调用 scrobble。
-- scrobbleSong 只写 song annotations；listAlbums frequent/recent 过滤 album annotations，因此历史歌曲记录不进入榜单。
+# 调研与行为契约
+
+- `/rest/scrobble` 的 `submission=true` 写歌曲播放注释；`time` 单位为毫秒。调用受 `edit_annotations` 权限保护。
+- 播放器只在活动 audio 的 `timeupdate` 累计真实 media-time 增量。首个时间点只建立基准；暂停不累计；seeking/seeked 重新建立基准；倒退或超过 5 秒的时间跳变不计入收听时长。
+- 达到 `min(duration / 2, 240 秒)` 后每轮播放至多提交一次，支持约 2 秒短曲。队列替换、显式切曲和单曲自然重播开始新轮次。没有目录 ID 的 `file:` 直播放不提交。
+- 只在收到成功的 Subsonic 响应后增加全局响应式 revision；已打开首页据此刷新热门与最近榜单。接口失败静默，不影响播放。
+- 行为测试通过暂停续播、长短跳转、短曲、重复轮次、长曲门槛；预载和播放失败通过“不产生活动推进”模拟确认不会触发上报。

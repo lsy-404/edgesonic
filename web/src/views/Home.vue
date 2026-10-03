@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { parseXmlAttrs, useAuth } from "../api";
@@ -16,6 +16,7 @@ import {
 import { homeMessages } from "../locales/home";
 import { useDetailStore } from "../stores/detail";
 import { usePlayerStore } from "../stores/player";
+import { listeningRevision } from "../lib/listeningRevision";
 import { FluentButton, FluentProgressRing } from "@platform-kit/fluent/vue";
 
 const { locale } = useI18n();
@@ -121,6 +122,10 @@ function loadAll() {
   const generation = ++loadGeneration;
   for (const section of sections) void loadSection(section, generation);
 }
+watch(listeningRevision, () => {
+  void loadSection("frequent", loadGeneration);
+  void loadSection("recent", loadGeneration);
+});
 function retry(section: HomeSection) {
   void loadSection(section, loadGeneration);
 }
