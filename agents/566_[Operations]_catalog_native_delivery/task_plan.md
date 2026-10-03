@@ -6,10 +6,13 @@ Deliver the verified native metadata staging and guarded catalog tools from the 
 
 ## Plan
 
-1. Preserve unrelated working changes and integrate the current remote main in a clean worktree.
-2. Deliver only owned portable test helpers and text audit records.
-3. Complete duplicate registration and source lineage checks under root-controlled production mutation.
-4. Reconcile final album statistics and publish the exact coverage and remaining evidence limits.
+- [x] Preserve unrelated working changes and integrate the current remote main in a clean worktree.
+- [x] Deliver only owned portable test helpers and text audit records.
+- [ ] Correct the duplicate package timestamp contract and independently reconcile its atomic failure.
+- [ ] Independently verify native album artist changes, then upload and register the guarded afterimages.
+- [ ] Complete duplicate registration and source lineage checks under root-controlled production mutation.
+- [ ] Prepare full-row album aggregate reconciliation from the Worker formula, with beforeimages and rollback.
+- [ ] Reconcile final album statistics and publish the exact coverage and remaining evidence limits.
 
 ## Delivery rules
 
