@@ -143,6 +143,30 @@ async function main() {
   assert(search.status === 200 && /albumArtist="Singer A, Singer B, Singer C"/.test(searchXml), "search3 returns album artist");
   assert((searchXml.match(/title="Same Title"/g) ?? []).length === 2, "search3 keeps both same-title songs");
 
+  const albumSearch = await call("/rest/search3?query=Old%20Album&songCount=0&artistCount=0");
+  const albumSearchXml = await albumSearch.text();
+  const taggedMaster = await createQueries(d1(sqlite)).getSongMaster("sg-a");
+  assert(
+    albumSearch.status === 200 && /<album\b[^>]*artist="Singer A, Singer B, Singer C"/.test(albumSearchXml),
+    "album search displays the persisted album artist",
+  );
+  assert(
+    taggedMaster?.album_artist_id != null && albumSearchXml.includes(`artistId="${taggedMaster.album_artist_id}"`),
+    "album search returns the persisted album artist id",
+  );
+  const albumDetail = await call(`/rest/getAlbum?id=${taggedMaster?.album_id}`);
+  const albumDetailXml = await albumDetail.text();
+  assert(
+    albumDetail.status === 200 && albumDetailXml.includes(`artistId="${taggedMaster?.album_artist_id}"`),
+    "album detail returns the persisted album artist id",
+  );
+  const search2 = await call("/rest/search2?query=Old%20Album&songCount=0&artistCount=0");
+  const search2Xml = await search2.text();
+  assert(search2.status === 200 && search2Xml.includes(`artistId="${taggedMaster?.album_artist_id}"`), "search2 returns the persisted album artist id");
+  const search1 = await call("/rest/search?album=Old%20Album&count=10");
+  const search1Xml = await search1.text();
+  assert(search1.status === 200 && search1Xml.includes(`artistId="${taggedMaster?.album_artist_id}"`), "search returns the persisted album artist id");
+
   const q = createQueries(d1(sqlite));
   const top = await q.getTopSongsByArtist("Singer A", 10);
   assert(top.length === 1 && top[0].album_artist_name === "Singer A, Singer B, Singer C", "getTopSongsByArtist includes album artist join");

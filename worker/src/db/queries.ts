@@ -191,7 +191,7 @@ export function createQueries(db: D1Database) {
       return { ...group, members: members.results };
     },
 
-    async getAlbumsByArtist(artistId: string): Promise<Album[]> {
+    async getAlbumsByArtist(artistId: string): Promise<Array<Album & { artist_name: string | null; artist_id: string | null }>> {
       const masters = await db.prepare(
         `SELECT DISTINCT sm.album_id FROM song_masters sm
          WHERE sm.artist_id = ? OR sm.album_artist_id = ?
@@ -204,13 +204,23 @@ export function createQueries(db: D1Database) {
       // in JS to preserve the same year DESC, sort_name ASC NULLS LAST semantics.
       const ids = Array.from(new Set(masters.results.map((r) => r.album_id)));
       const BATCH = 80;
-      const rows: Album[] = [];
+      const rows: Array<Album & { artist_name: string | null; artist_id: string | null }> = [];
       for (let i = 0; i < ids.length; i += BATCH) {
         const batch = ids.slice(i, i + BATCH);
         const placeholders = batch.map(() => "?").join(",");
         const result = await db.prepare(
-          `SELECT * FROM albums WHERE id IN (${placeholders})`
-        ).bind(...batch).all<Album>();
+          `SELECT al.*,
+             (SELECT ar.name FROM song_masters sm
+              LEFT JOIN artists ar ON ar.id = COALESCE(sm.album_artist_id, sm.artist_id)
+              WHERE sm.album_id = al.id
+              ORDER BY sm.disc IS NULL, sm.disc, sm.track IS NULL, sm.track, sm.id
+              LIMIT 1) AS artist_name,
+             (SELECT COALESCE(sm.album_artist_id, sm.artist_id) FROM song_masters sm
+              WHERE sm.album_id = al.id
+              ORDER BY sm.disc IS NULL, sm.disc, sm.track IS NULL, sm.track, sm.id
+              LIMIT 1) AS artist_id
+           FROM albums al WHERE al.id IN (${placeholders})`
+        ).bind(...batch).all<Album & { artist_name: string | null; artist_id: string | null }>();
         rows.push(...result.results);
       }
       rows.sort((a, b) => {

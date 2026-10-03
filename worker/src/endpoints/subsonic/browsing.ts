@@ -90,7 +90,10 @@ const getArtistHandler = async (c: Context) => {
           albumCount: albums.length,
         },
         album: albums.map((a) =>
-          attrs(mapAlbum(a, artist.name, liteOf(albumAnn.get(`album:${a.id}`))))
+          attrs({
+            ...mapAlbum(a, a.artist_name ?? undefined, liteOf(albumAnn.get(`album:${a.id}`))),
+            artistId: a.artist_id ?? undefined,
+          })
         ),
       },
     }),

@@ -109,7 +109,10 @@ const search23Handler = (tag: "searchResult2" | "searchResult3") =>
             _attributes: mapArtist(a, liteOf(artistAnn.get(`artist:${a.id}`))) as unknown as Record<string, string>,
           })),
           album: result.albums.map((a) => ({
-            _attributes: mapAlbum(a, a.artist_name ?? undefined, liteOf(albumAnn.get(`album:${a.id}`))) as unknown as Record<string, string>,
+            _attributes: {
+              ...(mapAlbum(a, a.artist_name ?? undefined, liteOf(albumAnn.get(`album:${a.id}`))) as unknown as Record<string, string>),
+              artistId: a.artist_id ?? undefined,
+            },
           })),
           song: result.songs.map((s) => ({
             _attributes: {
@@ -167,6 +170,7 @@ const search1Handler = async (c: Context): Promise<Response> => {
           ...result.albums.map((a) => ({
             _attributes: {
               ...(mapAlbum(a, a.artist_name ?? undefined, liteOf(albumAnn.get(`album:${a.id}`))) as unknown as Record<string, string>),
+              artistId: a.artist_id ?? undefined,
               type: "album",
             },
           })),
