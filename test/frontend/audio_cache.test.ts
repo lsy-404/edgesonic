@@ -15,7 +15,7 @@
 
 // LRU fallback + weighted (freq + recency + size/duration efficiency) eviction
 // core + no-IndexedDB degradation for the manual audio cache.
-// Run: npx tsx test/frontend/audio_cache.test.ts
+// Run: pnpm exec tsx test/frontend/audio_cache.test.ts
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {

@@ -5,13 +5,13 @@ Most tests are standalone TypeScript scripts grouped by the API or frontend area
 ## Run tests
 
 ```bash
-npm install
+pnpm install --frozen-lockfile
 
 # Run one test
-npx tsx test/subsonic/annotation.test.ts
+pnpm exec tsx test/subsonic/annotation.test.ts
 
 # Run all tests
-find test -name '*.test.ts' -exec npx tsx {} \;
+find test -name '*.test.ts' -exec pnpm exec tsx {} \;
 ```
 
 ## Layout

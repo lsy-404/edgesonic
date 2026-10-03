@@ -31,7 +31,7 @@
 //                  inherits the headers.
 //  6. KV cache hit — second call within TTL avoids a D1 round-trip.
 //
-// Run: npx tsx test/internal/cross_origin_isolation.test.ts
+// Run: pnpm exec tsx test/internal/cross_origin_isolation.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

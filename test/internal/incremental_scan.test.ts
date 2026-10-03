@@ -21,7 +21,7 @@
 //   4. new file            → INSERT chain
 //
 // Also asserts parseMultistatus picks up getetag + getlastmodified.
-// Run: npx tsx test/internal/incremental_scan.test.ts
+// Run: pnpm exec tsx test/internal/incremental_scan.test.ts
 
 import { asyncScanSource, parseMultistatus } from "../../worker/src/endpoints/storage/scan";
 

@@ -22,7 +22,7 @@
 //  5. NULL cover_r2_key rows are ignored (not "duplicates of NULL")
 //  6. R2 objects are NOT touched (we only mutate the D1 row)
 //
-// Run: npx tsx test/internal/cleanup_duplicate_covers.test.ts
+// Run: pnpm exec tsx test/internal/cleanup_duplicate_covers.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

@@ -18,7 +18,7 @@
 // checks pin the exposure surface (history / Referer / logs / capture), the
 // mitigations the feature depends on, and guard the source-level warnings and
 // the off-by-default switch against silent drift.
-// Run: npx tsx test/internal/webdav-security.test.ts
+// Run: pnpm exec tsx test/internal/webdav-security.test.ts
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

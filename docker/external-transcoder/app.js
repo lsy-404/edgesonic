@@ -157,9 +157,15 @@ app.post("/transcode", authGate, (req, res) => {
     }
   });
 
-  req.on("close", () => {
+  req.on("aborted", () => {
     if (!ff.killed) ff.kill("SIGKILL");
     if (jobs.get(jobId)?.status === "processing") reapJob(jobId, "failed", "client closed");
+  });
+  res.on("close", () => {
+    if (!res.writableEnded && !ff.killed) {
+      ff.kill("SIGKILL");
+      if (jobs.get(jobId)?.status === "processing") reapJob(jobId, "failed", "client closed");
+    }
   });
 });
 

@@ -7,7 +7,7 @@ $schema = Join-Path $repo 'worker\migrations\Schema.sql'
 $fixture = Join-Path $PSScriptRoot 'fixture.sql'
 
 if (-not (Test-Path -LiteralPath (Join-Path $repo 'web\dist\index.html'))) {
-  throw 'Build the web application first with npm run build:web.'
+  throw 'Build the web application first with pnpm run build:web.'
 }
 
 New-Item -ItemType Directory -Force -Path $state | Out-Null

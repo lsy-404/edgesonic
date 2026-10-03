@@ -26,7 +26,7 @@
 //    sorts before any real timestamp); stops as soon as it fits; never
 //    touches another origin source's cached rows even if over its own budget
 //
-// Run: npx tsx test/internal/cache_tiers.test.ts
+// Run: pnpm exec tsx test/internal/cache_tiers.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import {

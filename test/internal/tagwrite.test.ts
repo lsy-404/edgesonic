@@ -16,7 +16,7 @@
 // Round-trip tests for worker/src/utils/tagwrite.ts
 // Build synthetic mp3/flac files → rewrite tags → re-parse with the production
 // reader (tags.ts) → assert fields and byte-exact audio payload survival.
-// Run: npx tsx test/internal/tagwrite.test.ts
+// Run: pnpm exec tsx test/internal/tagwrite.test.ts
 
 import { requiredPrefixLen, rebuildTagPrefix } from "../../worker/src/utils/tagwrite";
 import { parseTags, locateEmbeddedPicture } from "../../worker/src/utils/tags";

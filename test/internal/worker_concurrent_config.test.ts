@@ -22,9 +22,9 @@
 //
 // Mirrors the maintenance_reclaim / reset_failed_work shim (node:sqlite + Hono
 // + handwritten D1 stub) so the suite stays self-contained and runs under
-// plain `npx tsx`.
+// plain `pnpm exec tsx`.
 //
-// Run: npx tsx test/internal/worker_concurrent_config.test.ts
+// Run: pnpm exec tsx test/internal/worker_concurrent_config.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

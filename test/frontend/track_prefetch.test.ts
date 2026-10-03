@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // Contract and cache checks for next-track lyrics, metadata, and cover preloading.
-// Run: npx tsx test/frontend/track_prefetch.test.ts
+// Run: pnpm exec tsx test/frontend/track_prefetch.test.ts
 
 import * as fs from "node:fs";
 import * as path from "node:path";

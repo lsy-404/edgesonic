@@ -26,7 +26,7 @@
 //  8. getAnalytics aggregates GraphQL buckets into requests/errors/cpuMs
 //  9. getAnalytics returns { available: false } on GraphQL errors
 //
-// Run: npx tsx test/internal/cf_integration.test.ts
+// Run: pnpm exec tsx test/internal/cf_integration.test.ts
 
 import { Hono } from "hono";
 import { cfRoutes, callCfApi } from "../../worker/src/endpoints/edgesonic/cf";

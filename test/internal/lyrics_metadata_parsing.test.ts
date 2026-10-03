@@ -22,7 +22,7 @@
 //  C. worker/src/endpoints/edgesonic/stats.ts — storage breakdown excludes
 //    missing=1 song_instances rows (the R2-cost-includes-WebDAV-size bug).
 //
-// Run: npx tsx test/internal/lyrics_metadata_parsing.test.ts
+// Run: pnpm exec tsx test/internal/lyrics_metadata_parsing.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

@@ -27,7 +27,7 @@
 // formatTaskError instead of importing it). A source-drift guard at the
 // bottom keeps this copy honest against the real file.
 //
-// Run: npx tsx test/frontend/worker_pool_adaptive_concurrency.test.ts
+// Run: pnpm exec tsx test/frontend/worker_pool_adaptive_concurrency.test.ts
 
 import * as fs from "node:fs";
 import * as path from "node:path";

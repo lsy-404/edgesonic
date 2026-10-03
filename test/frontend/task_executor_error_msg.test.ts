@@ -23,7 +23,7 @@
 // store module precisely so this test can exercise it without spinning up
 // Pinia / Vue / the Worker constructor.
 //
-// Run: npx tsx test/frontend/task_executor_error_msg.test.ts
+// Run: pnpm exec tsx test/frontend/task_executor_error_msg.test.ts
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {

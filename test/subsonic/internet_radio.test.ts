@@ -18,7 +18,7 @@
 // drive worker/src/db/queries.ts radio helpers and mirror the permissionMiddleware
 // policy without spinning up Hono.
 //
-// Run: npx tsx test/subsonic/internet_radio.test.ts
+// Run: pnpm exec tsx test/subsonic/internet_radio.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { createQueries } from "../../worker/src/db/queries";

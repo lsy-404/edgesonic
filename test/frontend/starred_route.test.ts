@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // Contract checks for the standalone liked-library route.
-// Run: npx tsx test/frontend/starred_route.test.ts
+// Run: pnpm exec tsx test/frontend/starred_route.test.ts
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

@@ -27,7 +27,7 @@
 // of truth and checking membership — this keeps the test honest if someone
 // later removes the entry from auth.ts.
 //
-// Run: npx tsx test/internal/version_endpoint.test.ts
+// Run: pnpm exec tsx test/internal/version_endpoint.test.ts
 
 import { Hono } from "hono";
 import { readFileSync } from "node:fs";

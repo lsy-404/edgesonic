@@ -24,7 +24,7 @@
 //  * envelope carries type/serverVersion/openSubsonic (XML + JSON)
 //  * mapSong emits album NAME (not id), albumId/artistId/type
 //
-// Run: npx tsx test/subsonic/format.test.ts
+// Run: pnpm exec tsx test/subsonic/format.test.ts
 
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";

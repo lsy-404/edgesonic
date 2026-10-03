@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Run: npx tsx test/frontend/locale_messages_compile.test.ts
+// Run: pnpm exec tsx test/frontend/locale_messages_compile.test.ts
 //
 // vue-i18n compiles a message the first time it is rendered, so a string
 // carrying its syntax by accident ("{{link}}", a bare "@" or "|") throws a

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Real SQLite-backed tag write and Subsonic read round-trip.
-// Run: npx tsx test/internal/album_artist_roundtrip.test.ts
+// Run: pnpm exec tsx test/internal/album_artist_roundtrip.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

@@ -30,7 +30,7 @@
 // touches the `music-metadata` package's `parseBlob` type, so it loads fine
 // under plain Node/tsx.
 //
-// Run: npx tsx test/frontend/browser_lyrics_native_fallback.test.ts
+// Run: pnpm exec tsx test/frontend/browser_lyrics_native_fallback.test.ts
 
 import * as fs from "node:fs";
 import * as path from "node:path";

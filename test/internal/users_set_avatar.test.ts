@@ -26,7 +26,7 @@
 //  • list returns { ok, users: [...] } JSON
 //  • get returns { ok, user } JSON; missing user → 404 JSON {ok:false,error}
 //
-// Run: npx tsx test/internal/users_set_avatar.test.ts
+// Run: pnpm exec tsx test/internal/users_set_avatar.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

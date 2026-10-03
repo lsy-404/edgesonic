@@ -21,7 +21,7 @@
 // — resolved to the unreachable "/edgesonic/edgesonic/artistScrape/bio" and
 // 404'd for every caller.
 //
-// Run: npx tsx test/internal/artist_scrape_routes.test.ts
+// Run: pnpm exec tsx test/internal/artist_scrape_routes.test.ts
 
 import { Hono } from "hono";
 import { artistScrapeRoutes } from "../../worker/src/endpoints/edgesonic/artistScrape";

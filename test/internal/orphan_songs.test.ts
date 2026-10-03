@@ -31,7 +31,7 @@
 // node:sqlite shim mirrors maintenance_reclaim.test.ts's harness; R2 mock
 // mirrors cross_copy.test.ts's makeR2Bucket.
 //
-// Run: npx tsx test/internal/orphan_songs.test.ts
+// Run: pnpm exec tsx test/internal/orphan_songs.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

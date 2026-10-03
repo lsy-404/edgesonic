@@ -17,7 +17,7 @@
 // stores. Service A acts as an upstream Subsonic server. Service B uses the
 // clone endpoints to call A and pull audio over HTTP.
 //
-// Run: npx tsx test/internal/two_local_subsonic_services.test.ts
+// Run: pnpm exec tsx test/internal/two_local_subsonic_services.test.ts
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";

@@ -32,7 +32,7 @@
 // (skipping the real authMiddleware), and stubs permissionMiddleware via a
 // permission row that grants manage_credentials at level 2.
 //
-// Run: npx tsx test/internal/credentials_update.test.ts
+// Run: pnpm exec tsx test/internal/credentials_update.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

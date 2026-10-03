@@ -23,7 +23,7 @@
 //         synthesize-if-missing default the manual scan/start handler uses)
 //  N > 1 → skipped when (now - last_scan_ts) < N*3600; ran otherwise
 //
-// Run: npx tsx test/internal/scheduled_scan.test.ts
+// Run: pnpm exec tsx test/internal/scheduled_scan.test.ts
 
 import { maybeRunScheduledScan } from "../../worker/src/utils/scheduledScan";
 

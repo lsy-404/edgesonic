@@ -42,6 +42,7 @@ function assetHash(bytes, rel) {
 
 function runWrangler(outdir) {
   const args = [
+    "exec",
     "wrangler",
     "deploy",
     "--dry-run",
@@ -60,7 +61,7 @@ function runWrangler(outdir) {
     "--var",
     `EDGESONIC_BUILD_TIME:${buildTime}`,
   ];
-  const cli = process.platform === "win32" ? "wrangler.cmd" : "wrangler";
+  const cli = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
   const result = spawnSync(cli, args, {
     cwd: root,
     stdio: "inherit",

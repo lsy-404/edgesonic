@@ -23,9 +23,9 @@ pass=0; fail=0; failed=()
 for f in $pattern; do
   [ -e "$f" ] || continue
   if needs_vite_node "$f"; then
-    out=$(npx vite-node -c test/frontend/vite-node.config.mts "$f" 2>&1)
+    out=$(pnpm exec vite-node -c test/frontend/vite-node.config.mts "$f" 2>&1)
   else
-    out=$(npx tsx "$f" 2>&1)
+    out=$(pnpm exec tsx "$f" 2>&1)
   fi
   if [ $? -eq 0 ]; then
     pass=$((pass + 1))

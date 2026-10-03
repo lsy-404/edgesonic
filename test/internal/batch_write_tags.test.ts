@@ -23,7 +23,7 @@
 //  * Hono harness injects a session-auth user so permissionMiddleware
 //   ("edit_tags") sees the seeded permission row.
 //
-// Run: npx tsx test/internal/batch_write_tags.test.ts
+// Run: pnpm exec tsx test/internal/batch_write_tags.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

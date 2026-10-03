@@ -2,23 +2,41 @@
   "name": "edgesonic-monorepo",
   "version": "1.4.0",
   "private": true,
-  "workspaces": [
-    "worker",
-    "web",
-    "installer"
-  ],
   "scripts": {
-    "dev:worker": "npm run dev -w worker",
-    "dev:web": "npm run dev -w web",
-    "build:web": "npm run build -w web",
+    "dev:worker": "pnpm --dir worker run dev",
+    "dev:web": "pnpm --dir web run dev",
+    "build:web": "pnpm --dir web run build",
     "test:sso": "tsx --test test/internal/oidc_flow.test.ts test/internal/sso_modes.test.ts test/internal/login_sso_behavior.test.ts test/internal/personal_sso_mapping.test.ts",
-    "typecheck": "npm run typecheck -w worker && npm run typecheck -w web && npm run typecheck -w installer",
-    "deploy": "npm run build:web && npm run deploy -w worker",
-    "deploy:personal-sso": "npm run build:web && npm run db:migrate:personal-sso -w worker && npm run deploy -w worker",
-    "postinstall": "patch-package"
+    "typecheck": "pnpm --dir worker run typecheck && pnpm --dir web run typecheck && pnpm --dir installer run typecheck",
+    "deploy": "pnpm run build:web && pnpm --dir worker run deploy",
+    "deploy:personal-sso": "pnpm run build:web && pnpm --dir worker run db:migrate:personal-sso && pnpm --dir worker run deploy"
   },
   "devDependencies": {
-    "patch-package": "^8.0.1",
-    "tsx": "^4.23.13"
+    "tsx": "^4.23.13",
+    "wrangler": "4.142.0",
+    "pinia": "3.0.4",
+    "hono": "4.13.5",
+    "esbuild": "0.28.1",
+    "vue": "3.5.42",
+    "@intlify/message-compiler": "11.4.10",
+    "vite": "8.2.2",
+    "@vitejs/plugin-vue": "6.0.8",
+    "music-metadata": "11.15.0",
+    "@vue/server-renderer": "3.5.42",
+    "@clamber_l/crypto": "0.1.12",
+    "jose": "6.2.12",
+    "openid-client": "6.8.8",
+    "@lsypkg/fluent": "https://github.com/lsy-404/platform-kit/releases/download/v0.6.4/platform-kit-fluent-0.2.3.tgz",
+    "vite-node": "6.0.0"
+  },
+  "packageManager": "pnpm@10.34.6",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd"
+    ],
+    "patchedDependencies": {
+      "music-metadata@11.15.0": "patches/music-metadata@11.15.0.patch"
+    }
   }
 }

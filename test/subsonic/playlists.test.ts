@@ -18,7 +18,7 @@
 // drive worker/src/db/queries.ts and the playlist endpoint permission rules
 // directly. Avoids Workers runtime; covers the parts that have real bugs.
 //
-// Run: npx tsx test/subsonic/playlists.test.ts
+// Run: pnpm exec tsx test/subsonic/playlists.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { createQueries } from "../../worker/src/db/queries";

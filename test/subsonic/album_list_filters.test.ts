@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // musicFolderId influence the prepared SQL/binds as expected without hitting D1.
-// Run: npx tsx test/subsonic/album_list_filters.test.ts
+// Run: pnpm exec tsx test/subsonic/album_list_filters.test.ts
 
 import { createQueries } from "../../worker/src/db/queries";
 

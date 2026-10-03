@@ -15,7 +15,7 @@
 
 // Rules behind the playback performance guards: worker-pool memory sampling,
 // cache TTL expiry, response-time throttling and cache hit statistics.
-// Run: npx tsx test/frontend/performance.test.ts
+// Run: pnpm exec tsx test/frontend/performance.test.ts
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {

@@ -22,7 +22,7 @@
 //  2. The subsonic adapter emits X-OpenSubsonic-Path (and X-EdgeSonic-Chain) with
 //     the full chronological chain incl. our own INSTANCE_ID appended.
 //
-// Run: npx tsx test/internal/s2s_relay_policy.test.ts
+// Run: pnpm exec tsx test/internal/s2s_relay_policy.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { getServerRelayPolicy } from "../../worker/src/utils/features";

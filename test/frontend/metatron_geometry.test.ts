@@ -25,7 +25,7 @@
 // metatron3d.ts has no DOM access at module top level (startMetatron only
 // touches window/canvas when called), so it imports fine under plain Node.
 //
-// Run: npx tsx test/frontend/metatron_geometry.test.ts
+// Run: pnpm exec tsx test/frontend/metatron_geometry.test.ts
 
 import { buildStarTetrahedron, makeRotation, cross, sub, dot } from "../../web/src/lib/metatron3d";
 import type { Vec3 } from "../../web/src/lib/metatron3d";

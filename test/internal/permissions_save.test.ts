@@ -24,7 +24,7 @@
 //    permissionMiddleware/hasPermission can skip the D1 round-trip on
 //    every subsequent request. A push failure must not fail the request.
 //
-// Run: npx tsx test/internal/permissions_save.test.ts
+// Run: pnpm exec tsx test/internal/permissions_save.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

@@ -26,7 +26,7 @@
 // Mirrors the style of test/cf_integration.test.ts so the two suites share
 // the fetch-mock harness shape exactly.
 //
-// Run: npx tsx test/internal/cf_ensure_default_cron.test.ts
+// Run: pnpm exec tsx test/internal/cf_ensure_default_cron.test.ts
 
 import { Hono } from "hono";
 import { cfRoutes } from "../../worker/src/endpoints/edgesonic/cf";

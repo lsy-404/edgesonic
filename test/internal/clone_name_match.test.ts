@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // Clone relationships must use entity metadata when remote and local ids differ.
-// Run: npx tsx test/internal/clone_name_match.test.ts
+// Run: pnpm exec tsx test/internal/clone_name_match.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

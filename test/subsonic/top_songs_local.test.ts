@@ -20,7 +20,7 @@
 //  * Stubbed global fetch so we control whether last.fm "answers" or 401s.
 //  * Hono route directly invoked.
 //
-// Run: npx tsx test/subsonic/top_songs_local.test.ts
+// Run: pnpm exec tsx test/subsonic/top_songs_local.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

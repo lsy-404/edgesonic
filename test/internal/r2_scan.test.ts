@@ -24,7 +24,7 @@
 // SQL actually executes instead of being pattern-matched by a hand-rolled
 // mock.
 //
-// Run: npx tsx test/internal/r2_scan.test.ts
+// Run: pnpm exec tsx test/internal/r2_scan.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { asyncScanR2Source } from "../../worker/src/endpoints/storage/scan";

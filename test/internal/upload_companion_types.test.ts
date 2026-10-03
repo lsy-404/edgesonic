@@ -29,7 +29,7 @@
 //  • the companion set covers every sidecar extension the lyrics reader looks
 //    for, so the two lists can't drift apart
 //
-// Run: npx tsx test/internal/upload_companion_types.test.ts
+// Run: pnpm exec tsx test/internal/upload_companion_types.test.ts
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

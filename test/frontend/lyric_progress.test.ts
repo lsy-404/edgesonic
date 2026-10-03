@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Run: npx tsx test/frontend/lyric_progress.test.ts
+// Run: pnpm exec tsx test/frontend/lyric_progress.test.ts
 
 import { cuePlaybackProgress } from "../../web/src/lib/lyricProgress";
 

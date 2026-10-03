@@ -1,5 +1,5 @@
 // Source-level contracts for page polling cancellation and single-flight behavior.
-// Run: npx tsx test/frontend/polling_cancellation_contract.test.ts
+// Run: pnpm exec tsx test/frontend/polling_cancellation_contract.test.ts
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

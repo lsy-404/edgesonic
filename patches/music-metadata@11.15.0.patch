@@ -1,22 +1,13 @@
-diff --git a/node_modules/music-metadata/lib/mp4/MP4Parser.js b/node_modules/music-metadata/lib/mp4/MP4Parser.js
+diff --git a/lib/mp4/MP4Parser.js b/lib/mp4/MP4Parser.js
 index 8296d9d..65e73fc 100644
---- a/node_modules/music-metadata/lib/mp4/MP4Parser.js
-+++ b/node_modules/music-metadata/lib/mp4/MP4Parser.js
-@@ -251,28 +251,42 @@ export class MP4Parser extends BasicParser {
+--- a/lib/mp4/MP4Parser.js
++++ b/lib/mp4/MP4Parser.js
+@@ -251,28 +251,30 @@ export class MP4Parser extends BasicParser {
                      audioTrack.samples = audioTrack.media.header.duration;
                      audioTrack.duration = audioTrack.samples / audioTrack.sampleRate;
                  }
 -                if (audioTrack.fragments.length > 0) {
-+                // EdgeSonic patch (patches/music-metadata+11.13.0.patch): only
-+                // attempt this when mdhd (above) didn't already give us a
-+                // duration. Some encoders emit fragments whose trun/tfhd carry
-+                // no sample duration at all, which made this unconditionally
-+                // throw and discard an otherwise-fully-parsed file (tags
-+                // included) even though a valid duration was already known.
-+                // Skipping the recomputation here mirrors how mutagen (used by
-+                // the music-tag-web project this behavior was cross-checked
-+                // against) never attempts per-sample fragment math and just
-+                // trusts the container-level duration field.
++                // Preserve the container duration when fragments omit sample timing.
 +                if (audioTrack.fragments.length > 0 && !audioTrack.duration) {
                      debug('Calculate duration defined in track fragments');
                      let totalTimeUnits = 0;
@@ -34,10 +25,7 @@ index 8296d9d..65e73fc 100644
 -                            if (size === 0) {
 -                                throw new Error("Missing sampleSize and no defaultSampleSize in track fragment header");
 +                            if (dur === 0 || size === 0) {
-+                                // Missing per-sample AND default duration/size —
-+                                // give up on this enrichment instead of failing
-+                                // the whole parse; tags gathered so far still
-+                                // return successfully.
++                                // Incomplete fragments must not discard already parsed tags.
 +                                incomplete = true;
 +                                break outer;
                              }

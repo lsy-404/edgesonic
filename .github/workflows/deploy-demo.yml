@@ -99,13 +99,16 @@ jobs:
           # 0 downloads only the commit's tree, not the full history.
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.6
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24"
 
       - name: Install wrangler
-        run: npm install -g wrangler@4.142.0
+        run: pnpm dlx wrangler@4.142.0 --version
 
       - name: Resolve release tag
         id: tag
@@ -166,17 +169,17 @@ jobs:
           # INSERT OR IGNORE, so merely reapplying it doesn't undo visitors'
           # storage sources, users, feature settings, or library metadata.
           # Recreating D1 gives the demo a real clean baseline each deploy.
-          DB_LIST=$(wrangler d1 list --json 2>/dev/null || echo "[]")
+          DB_LIST=$(pnpm dlx wrangler@4.142.0 d1 list --json 2>/dev/null || echo "[]")
           DB_ID=$(echo "$DB_LIST" | jq -r --arg n "$DB_NAME" \
             '.[] | select(.name==$n) | (.uuid // .database_id // "") | select(length>0)' \
             2>/dev/null || echo "")
           if [ -n "$DB_ID" ]; then
             echo "Deleting prior demo D1 database '$DB_NAME'..."
-            wrangler d1 delete "$DB_NAME" --skip-confirmation >/dev/null
+            pnpm dlx wrangler@4.142.0 d1 delete "$DB_NAME" --skip-confirmation >/dev/null
           fi
           echo "Creating clean D1 database '$DB_NAME'..."
-          wrangler d1 create "$DB_NAME" >/dev/null
-          DB_ID=$(wrangler d1 list --json | jq -r --arg n "$DB_NAME" \
+          pnpm dlx wrangler@4.142.0 d1 create "$DB_NAME" >/dev/null
+          DB_ID=$(pnpm dlx wrangler@4.142.0 d1 list --json | jq -r --arg n "$DB_NAME" \
             '.[] | select(.name==$n) | (.uuid // .database_id)')
           echo "db_id=$DB_ID" >> "$GITHUB_OUTPUT"
 
@@ -237,21 +240,21 @@ jobs:
           set -euo pipefail
           DB_NAME="edgesonic-demo-db"
           # Apply schema (idempotent — every CREATE uses IF NOT EXISTS).
-          wrangler d1 execute "$DB_NAME" --remote \
+          pnpm dlx wrangler@4.142.0 d1 execute "$DB_NAME" --remote \
             --config edgesonic-release/worker/wrangler.toml \
             --file edgesonic-release/worker/migrations/Schema.sql
 
           # Seed the demo superadmin only if the users table is empty. The
           # password hash is sha256("demo") — same convention as the
           # README's first-login bootstrap.
-          USER_COUNT=$(wrangler d1 execute "$DB_NAME" --remote \
+          USER_COUNT=$(pnpm dlx wrangler@4.142.0 d1 execute "$DB_NAME" --remote \
             --config edgesonic-release/worker/wrangler.toml \
             --command 'SELECT COUNT(*) AS c FROM users' --json \
             | jq -r '.[0].results[0].c')
           if [ "$USER_COUNT" = "0" ]; then
             echo "Seeding demo superadmin..."
             PASS_HASH=$(node -e 'const c=require("crypto");console.log(c.createHash("sha256").update("demo").digest("hex"))')
-            wrangler d1 execute "$DB_NAME" --remote \
+            pnpm dlx wrangler@4.142.0 d1 execute "$DB_NAME" --remote \
               --config edgesonic-release/worker/wrangler.toml \
               --command "INSERT INTO users (username, master_password, level, enabled, created_at, updated_at) VALUES ('admin', '$PASS_HASH', 3, 1, strftime('%s','now'), strftime('%s','now'))" \
               >/dev/null
@@ -363,7 +366,7 @@ jobs:
             # R2 object commands otherwise default to the runner's local
             # simulator. Explicit remote mode is required to restore the
             # Cloudflare bucket the demo Worker is bound to.
-            wrangler r2 object put "$R2_NAME/$KEY" \
+            pnpm dlx wrangler@4.142.0 r2 object put "$R2_NAME/$KEY" \
               --remote \
               --config edgesonic-release/worker/wrangler.toml \
               --file "$FILE" \
@@ -409,7 +412,7 @@ jobs:
           done <<< "$DEMO_VARS"
 
           echo "Deploying demo Worker edgesonic with ${#VAR_FLAGS[@]} var flags"
-          wrangler deploy \
+          pnpm dlx wrangler@4.142.0 deploy \
             --config edgesonic-release/worker/wrangler.toml \
             "${VAR_FLAGS[@]}"
 
@@ -565,7 +568,7 @@ jobs:
             echo "::error::Demo metadata manifest has no tracks."
             exit 1
           fi
-          wrangler d1 execute edgesonic-demo-db --remote \
+          pnpm dlx wrangler@4.142.0 d1 execute edgesonic-demo-db --remote \
             --command "UPDATE work_queue SET status = 'completed', error_message = NULL, claimed_by = NULL, claimed_at = NULL, heartbeat_at = unixepoch() WHERE task_type = 'metadata' AND status = 'queued';"
           echo "::notice::Restored metadata for $RESTORED demo tracks."
 

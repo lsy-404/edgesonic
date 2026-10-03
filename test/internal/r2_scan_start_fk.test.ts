@@ -34,7 +34,7 @@
 // PRAGMA foreign_keys = ON and the actual scan_jobs FK, so a regression here
 // fails loudly instead of silently passing like before.
 //
-// Run: npx tsx test/internal/r2_scan_start_fk.test.ts
+// Run: pnpm exec tsx test/internal/r2_scan_start_fk.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

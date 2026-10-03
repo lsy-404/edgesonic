@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // Scheduling checks for the shared low-priority request budget.
-// Run: npx tsx test/frontend/request_budget.test.ts
+// Run: pnpm exec tsx test/frontend/request_budget.test.ts
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {

@@ -18,7 +18,7 @@
 // permanent idempotent refusal), invite-code validity checks, expiry
 // clamping, registration gate combinations, and code generation format.
 //
-// Run: npx tsx test/internal/activation_core.test.ts
+// Run: pnpm exec tsx test/internal/activation_core.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import {

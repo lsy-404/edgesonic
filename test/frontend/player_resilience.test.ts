@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // Source-level contracts for player dragging, full buffering, and fallback.
-// Run: npx tsx test/frontend/player_resilience.test.ts
+// Run: pnpm exec tsx test/frontend/player_resilience.test.ts
 
 import * as fs from "node:fs";
 import * as path from "node:path";

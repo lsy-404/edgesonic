@@ -36,7 +36,7 @@ Set-Location $Root
 
 $Config = "worker/wrangler.toml"
 $DB = "edgesonic-db"
-# Sandbox 转码容器（049）走 [[containers]]，正常 deploy 会尝试用 Docker 构建镜像。
+# Sandbox 转码容器走 [[containers]]，正常 deploy 会尝试用 Docker 构建镜像。
 # 本地无 Docker 时用 --containers-rollout=none：只部署 Worker + 保留 Sandbox DO 绑定
 # （避免 CF error 10064 孤立 DO），跳过容器构建/更新。需要更新容器镜像时删掉此变量并确保 Docker 运行。
 $ContainersFlag = "--containers-rollout=none"
@@ -62,8 +62,8 @@ $env:EDGESONIC_BUILD_TIME = $BuildTime
 
 if (-not $NoBuild) {
   Write-Host "▶ [构建] 安装锁定依赖 + 生成前端 web/dist（worker 通过 [assets] 打包它）…"
-  npm ci
-  npm run build:web
+  pnpm install --frozen-lockfile
+  pnpm run build:web
   if (-not (Test-Path "web/dist/build-info.json")) { throw "前端构建未生成 build-info.json" }
 } else {
   Write-Host "▶ [构建] 已跳过（-NoBuild）；确保 web/dist 是最新的。"
@@ -75,17 +75,17 @@ if ($Migrate) {
     exit 1
   }
   Write-Host "▶ [D1] 应用迁移到远端数据库 $DB`: $Migrate"
-  wrangler d1 execute $DB --remote --config $Config --file $Migrate
+  pnpm exec wrangler d1 execute $DB --remote --config $Config --file $Migrate
 }
 
 if ($VersionOnly) {
   Write-Host "▶ [版本] 上传新版本（不切生产流量）…"
-  wrangler versions upload --config $Config --var "WORKER_VERSION:$Version" --var "EDGESONIC_VERSION:$Version" --var "EDGESONIC_BUILD_TIME:$BuildTime"
+  pnpm exec wrangler versions upload --config $Config --var "WORKER_VERSION:$Version" --var "EDGESONIC_VERSION:$Version" --var "EDGESONIC_BUILD_TIME:$BuildTime"
   Write-Host ""
   Write-Host "✓ 完成。WORKER_VERSION=$Version（版本上传，未切生产，cron 未受影响）"
 } else {
   Write-Host "▶ [部署] wrangler deploy（含 web/dist 静态资源）…"
-  wrangler deploy --config $Config $ContainersFlag --keep-vars --var "WORKER_VERSION:$Version" --var "EDGESONIC_VERSION:$Version" --var "EDGESONIC_BUILD_TIME:$BuildTime"
+  pnpm exec wrangler deploy --config $Config $ContainersFlag --keep-vars --var "WORKER_VERSION:$Version" --var "EDGESONIC_VERSION:$Version" --var "EDGESONIC_BUILD_TIME:$BuildTime"
 
   # wrangler deploy 会清空 Cloudflare 上的所有 cron 触发器。
   # 部署完毕后立即通过 CF API 恢复默认时间表。

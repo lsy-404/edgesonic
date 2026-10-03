@@ -21,7 +21,7 @@
 //  * In-memory KV stub so we can verify the 24h cache layer.
 //  * Stubbed global fetch so we never hit ws.audioscrobbler.com.
 //
-// Run: npx tsx test/subsonic/lastfm_proxy.test.ts
+// Run: pnpm exec tsx test/subsonic/lastfm_proxy.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

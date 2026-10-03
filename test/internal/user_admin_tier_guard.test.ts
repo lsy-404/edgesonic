@@ -22,7 +22,7 @@
 // guard (endpoints/subsonic/users.ts) but aren't re-tested here since the
 // logic is a byte-for-byte port.
 //
-// Run: npx tsx test/internal/user_admin_tier_guard.test.ts
+// Run: pnpm exec tsx test/internal/user_admin_tier_guard.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Run: npx tsx test/web/local_audio_conversion.test.ts
+// Run: pnpm exec tsx test/web/local_audio_conversion.test.ts
 
 import { decryptQMC1, ready as cryptoReady } from "@clamber_l/crypto/inline";
 import {

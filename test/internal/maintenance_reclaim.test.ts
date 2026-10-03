@@ -30,7 +30,7 @@
 //
 // node:sqlite shim mirrors the cleanup_duplicate_covers.test.ts harness.
 //
-// Run: npx tsx test/internal/maintenance_reclaim.test.ts
+// Run: pnpm exec tsx test/internal/maintenance_reclaim.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

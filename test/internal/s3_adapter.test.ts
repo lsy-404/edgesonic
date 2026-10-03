@@ -23,7 +23,7 @@
 //  6. getS3Config: s3 source row → S3Config; missing/disabled → null
 //  7. asyncScanS3Source: creates song_instances + work_queue rows with correct dedupKey
 //
-// Run: cd worker && npm test -- --reporter=verbose 2>&1 | grep s3_adapter
+// Run: cd worker && pnpm test --reporter=verbose 2>&1 | grep s3_adapter
 
 import { DatabaseSync } from "node:sqlite";
 import { parseS3RootPath, createS3Adapter, listS3Objects } from "../../worker/src/adapters/s3";

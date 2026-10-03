@@ -13,5 +13,6 @@
   },
   "dependencies": {
     "express": "^4.19.2"
-  }
+  },
+  "packageManager": "pnpm@10.34.6"
 }

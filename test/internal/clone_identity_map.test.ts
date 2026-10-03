@@ -18,7 +18,7 @@
 //  2. upsertStarred resolves remote song ids through clone_id_map
 //  3. upsertPlaylist resolves remote song ids and falls back when upstream owner is missing
 //
-// Run: npx tsx test/internal/clone_identity_map.test.ts
+// Run: pnpm exec tsx test/internal/clone_identity_map.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

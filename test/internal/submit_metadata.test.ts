@@ -21,7 +21,7 @@
 //  * No R2 / no WebDAV — the endpoint never touches them anyway (041 is the
 //   "browser parsed everything, just record it" path).
 //
-// Run: npx tsx test/internal/submit_metadata.test.ts
+// Run: pnpm exec tsx test/internal/submit_metadata.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

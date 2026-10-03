@@ -21,7 +21,7 @@
 //  * TTML with xml:lang div → multiple tracks (main + translation).
 //  * JSON round-trip via serialize/deserialize.
 //
-// Run: npx tsx test/internal/rich_lyrics.test.ts
+// Run: pnpm exec tsx test/internal/rich_lyrics.test.ts
 
 import {
   parseLrcToRich,

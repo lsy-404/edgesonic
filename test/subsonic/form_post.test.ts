@@ -21,7 +21,7 @@
 //   Hono fetch with Content-Type: application/x-www-form-urlencoded bodies.
 //  * Also test that JSON & multipart bodies pass through untouched.
 //
-// Run: npx tsx test/subsonic/form_post.test.ts
+// Run: pnpm exec tsx test/subsonic/form_post.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

@@ -32,7 +32,7 @@
 //  6. Accept negotiation → webp/avif slots; */* and none default to jpeg
 //  7. IMAGES unavailable → bypass: original bytes, no sized write, no 500
 //
-// Run: npx tsx test/subsonic/cover_size.test.ts
+// Run: pnpm exec tsx test/subsonic/cover_size.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

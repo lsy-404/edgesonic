@@ -35,7 +35,7 @@ edgesonic/
 ├── test/                 # Plain tsx test scripts (worker) — each file is self-contained, run individually
 ├── docs/                 # Architecture, development, and deployment guides
 ├── deploy.sh             # Manual deploy script (wrangler CLI, no CF Git integration)
-└── package.json          # npm workspaces root (worker + web)
+└── package.json          # pnpm workspace root (worker + web)
 ```
 
 ## Storage backends

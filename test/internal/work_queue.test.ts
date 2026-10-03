@@ -25,7 +25,7 @@
 //  8. /work/cancel marks row canceled
 //  9. reclaimStaleWork puts heartbeat-aged claims back to queued (or failed when attempts exhausted)
 //
-// Run: npx tsx test/internal/work_queue.test.ts
+// Run: pnpm exec tsx test/internal/work_queue.test.ts
 
 import { dispatchWork, dispatchWorkBatch } from "../../worker/src/endpoints/edgesonic/work";
 import { reclaimStaleWork } from "../../worker/src/utils/workReclaim";

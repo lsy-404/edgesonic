@@ -22,7 +22,7 @@
 // (current-password verification + new-mailbox confirmation before the
 // address takes effect), and the super-admin-only email template gate.
 //
-// Run: npx tsx test/internal/email_auth_flow.test.ts
+// Run: pnpm exec tsx test/internal/email_auth_flow.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

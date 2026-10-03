@@ -30,7 +30,7 @@
 //  6. Regular (non-r2) sources are unaffected: still 404 on update-missing,
 //    still deletable.
 //
-// Run: npx tsx test/internal/r2_builtin_source.test.ts
+// Run: pnpm exec tsx test/internal/r2_builtin_source.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

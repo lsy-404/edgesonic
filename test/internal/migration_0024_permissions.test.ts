@@ -27,7 +27,7 @@
 // Schema.sql does NOT re-seed it inside the 0024 block — we only assert the 5
 // new keys.
 //
-// Run: npx tsx test/internal/migration_0024_permissions.test.ts
+// Run: pnpm exec tsx test/internal/migration_0024_permissions.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";

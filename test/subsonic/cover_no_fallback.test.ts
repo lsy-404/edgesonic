@@ -27,7 +27,7 @@
 //  2. albums.cover_r2_key is NEVER updated by the request (fallback path off)
 //  3. when cover_r2_key is set, the legacy 200 path still works
 //
-// Run: npx tsx test/subsonic/cover_no_fallback.test.ts
+// Run: pnpm exec tsx test/subsonic/cover_no_fallback.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

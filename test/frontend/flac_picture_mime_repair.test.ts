@@ -17,7 +17,7 @@
 // pattern Chrome's demuxer rejects wholesale. Builds synthetic FLACs and
 // asserts the repaired byte stream block-by-block.
 //
-// Run: npx tsx test/frontend/flac_picture_mime_repair.test.ts
+// Run: pnpm exec tsx test/frontend/flac_picture_mime_repair.test.ts
 import { repairFlacPictureMime } from "../../web/src/lib/flacRepair";
 
 let failures = 0;

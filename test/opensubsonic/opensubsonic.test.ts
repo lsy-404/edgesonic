@@ -23,7 +23,7 @@
 // Same harness style as test/annotation.test.ts: an in-memory SQLite wrapped
 // in a tiny D1Database shim, the production handlers driven via Hono.fetch.
 //
-// Run: npx tsx test/opensubsonic/opensubsonic.test.ts
+// Run: pnpm exec tsx test/opensubsonic/opensubsonic.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Run: npx tsx test/internal/elrc_sidecar.test.ts
+// Run: pnpm exec tsx test/internal/elrc_sidecar.test.ts
 
 import { parseSidecarToRich } from "../../worker/src/utils/richLyrics";
 

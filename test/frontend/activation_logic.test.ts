@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Run: npx tsx test/frontend/activation_logic.test.ts
+// Run: pnpm exec tsx test/frontend/activation_logic.test.ts
 
 import {
   parseActivation, activationDisplay, mapActivationError,

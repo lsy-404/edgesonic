@@ -19,7 +19,7 @@
 // library_songs_default_tab.test.ts does: the handlers, the listener
 // symmetry and the request shape are the contract.
 //
-// Run: npx tsx test/frontend/files_context_menu.test.ts
+// Run: pnpm exec tsx test/frontend/files_context_menu.test.ts
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

@@ -22,7 +22,7 @@
 //  4. ingestAudio end-to-end: originalPath wins, fallback dedups, identity
 //     map resolution keeps the key stable across a re-clone after an R2 wipe
 //
-// Run: npx tsx test/internal/clone_original_path.test.ts
+// Run: pnpm exec tsx test/internal/clone_original_path.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

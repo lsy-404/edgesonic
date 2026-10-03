@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Real Hono route contract tests for R2 tag and LRC writes.
-// Run: npx tsx test/internal/tag_write_r2.test.ts
+// Run: pnpm exec tsx test/internal/tag_write_r2.test.ts
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { tagEditRoutes } from "../../worker/src/endpoints/tag/write";

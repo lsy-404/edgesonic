@@ -22,7 +22,7 @@
 //  5. FLAC: existing LYRICS= comment is replaced, not duplicated
 //  6. When lyrics not provided, no USLT/LYRICS frame added
 //
-// Run: npx tsx test/internal/lyrics_file_writeback.test.ts
+// Run: pnpm exec tsx test/internal/lyrics_file_writeback.test.ts
 
 import { rebuildTagPrefix, requiredPrefixLen } from "../../worker/src/utils/tagwrite";
 import type { SongTags } from "../../worker/src/utils/tags";

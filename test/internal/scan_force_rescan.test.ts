@@ -22,7 +22,7 @@
 // behavioural: with `etagCheck=false` (which `force=1` triggers in the
 // HTTP handler), an UNCHANGED file still gets an UPDATE.
 //
-// Run: npx tsx test/internal/scan_force_rescan.test.ts
+// Run: pnpm exec tsx test/internal/scan_force_rescan.test.ts
 
 import { asyncScanSource } from "../../worker/src/endpoints/storage/scan";
 

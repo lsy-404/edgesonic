@@ -7,7 +7,7 @@
 > wrong.
 >
 > This is the **agent-run, local `wrangler`** deployment path. It downloads a precompiled package
-> from GitHub Releases so you never need to run `npm ci` / `npm run build:web` yourself. If you
+> from GitHub Releases so you never need to run dependency installation / `pnpm run build:web` yourself. If you
 > want the human-driven path instead, use [Overture](https://overture.voidcarve.com/?src=lsy-404%2Fedgesonic),
 > the browser-based deployment wizard preconfigured for this repository.
 >
@@ -26,17 +26,16 @@ list of optional secrets left for the operator to configure themselves.
 ## 1. Ensure `wrangler` is available
 
 ```bash
-command -v wrangler || npm install -g wrangler
-wrangler --version
+pnpm dlx wrangler@4.142.0 --version
 ```
 
-If the install fails (no npm, no network, permission error), stop and report the exact error to
+If the install fails (no pnpm, no network, permission error), stop and report the exact error to
 the operator — do not attempt sudo escalation without asking first.
 
 ## 2. Authenticate and clarify the deployment target
 
 ```bash
-wrangler whoami
+pnpm dlx wrangler@4.142.0 whoami
 ```
 
 If this fails or shows no login, run `wrangler login` and wait — this opens a browser OAuth flow
@@ -58,7 +57,7 @@ complete the checkout if not:
    R2 Plan** (no payment required for the free tier).
 2. Once subscribed, verify with:
    ```bash
-   wrangler r2 bucket list
+   pnpm dlx wrangler@4.142.0 r2 bucket list
    ```
    A successful (even if empty) response confirms R2 is active. A 403 / "R2 is not enabled" error
    means the operator hasn't completed checkout — stop and retry after they have.
@@ -121,8 +120,8 @@ Use names derived from the project name confirmed in §2.2 (default `edgesonic-d
 
 ```bash
 cd worker
-wrangler d1 create <project-name>-db          # note the printed database_id
-wrangler r2 bucket create <project-name>-storage
+pnpm dlx wrangler@4.142.0 d1 create <project-name>-db          # note the printed database_id
+pnpm dlx wrangler@4.142.0 r2 bucket create <project-name>-storage
 ```
 
 D1/R2 are the only resources that need explicit creation. The Durable Object binding (Sandbox
@@ -150,10 +149,10 @@ Replace these placeholders in `wrangler.toml` with the values gathered above:
 ### 3.4 Apply the schema and required secret
 
 ```bash
-wrangler d1 execute <project-name>-db --remote --config wrangler.toml --file migrations/Schema.sql
+pnpm dlx wrangler@4.142.0 d1 execute <project-name>-db --remote --config wrangler.toml --file migrations/Schema.sql
 
-openssl rand -base64 48 | wrangler secret put WORK_UPLOAD_HMAC_KEY --config wrangler.toml
-printf '%s' "<account-id-from-step-2>" | wrangler secret put CF_ACCOUNT_ID --config wrangler.toml
+openssl rand -base64 48 | pnpm dlx wrangler@4.142.0 secret put WORK_UPLOAD_HMAC_KEY --config wrangler.toml
+printf '%s' "<account-id-from-step-2>" | pnpm dlx wrangler@4.142.0 secret put CF_ACCOUNT_ID --config wrangler.toml
 ```
 
 `WORK_UPLOAD_HMAC_KEY` is the HMAC-SHA-256 signing key for browser-pool transcode upload tokens
@@ -215,9 +214,9 @@ curl -s -o /dev/null -w '%{http_code}\n' \
 Only once both checks pass, push the three secrets:
 
 ```bash
-wrangler secret put CF_API_TOKEN --config wrangler.toml
-wrangler secret put R2_ACCESS_KEY_ID --config wrangler.toml
-wrangler secret put R2_SECRET_ACCESS_KEY --config wrangler.toml
+pnpm dlx wrangler@4.142.0 secret put CF_API_TOKEN --config wrangler.toml
+pnpm dlx wrangler@4.142.0 secret put R2_ACCESS_KEY_ID --config wrangler.toml
+pnpm dlx wrangler@4.142.0 secret put R2_SECRET_ACCESS_KEY --config wrangler.toml
 ```
 
 After `CF_API_TOKEN` is set, also flip `enable_r2_presign` on (see `SECRETS.md` §3) and restore the
@@ -265,7 +264,7 @@ month — check current pricing at `https://developers.cloudflare.com/images/pri
 ```bash
 VERSION=$(date +%s)
 # Default (Sandbox container disabled — matches step 2 item 5 = no):
-wrangler deploy --config wrangler.toml --containers-rollout=none --keep-vars --var WORKER_VERSION:"$VERSION"
+pnpm dlx wrangler@4.142.0 deploy --config wrangler.toml --containers-rollout=none --keep-vars --var WORKER_VERSION:"$VERSION"
 
 # Only if the operator opted into the Sandbox transcoder in step 2 item 5 AND Docker is running:
 # wrangler deploy --config wrangler.toml --keep-vars --var WORKER_VERSION:"$VERSION"
@@ -293,7 +292,7 @@ auto-provisioned first-run admin in this codebase, this INSERT is the only way a
 ```bash
 ADMIN_PASSWORD="$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | head -c 10)"
 
-wrangler d1 execute <project-name>-db --remote --config wrangler.toml --command \
+pnpm dlx wrangler@4.142.0 d1 execute <project-name>-db --remote --config wrangler.toml --command \
   "INSERT INTO users (username, master_password, level, enabled) VALUES ('admin', hex(sha256('${ADMIN_PASSWORD}')), 3, 1)"
 ```
 

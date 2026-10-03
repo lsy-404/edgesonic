@@ -26,7 +26,7 @@
 // The mock D1 here is a spy that records every prepare() / bind() call so we
 // can assert chunk counts deterministically without spinning up node:sqlite.
 //
-// Run: npx tsx test/internal/d1_in_batch.test.ts
+// Run: pnpm exec tsx test/internal/d1_in_batch.test.ts
 
 import { createQueries } from "../../worker/src/db/queries";
 

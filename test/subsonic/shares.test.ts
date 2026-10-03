@@ -21,7 +21,7 @@
 // for CRUD and exercise the public-route policy via a small simulator so we
 // don't need to spin up the full Hono router (storage adapters etc.).
 //
-// Run: npx tsx test/subsonic/shares.test.ts
+// Run: pnpm exec tsx test/subsonic/shares.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { createQueries } from "../../worker/src/db/queries";

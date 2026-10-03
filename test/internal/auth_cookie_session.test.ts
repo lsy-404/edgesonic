@@ -33,7 +33,7 @@
 //     `SameSite=Lax` flags and the session token as value.
 //  6. /edgesonic/auth/logout clears the cookie.
 //
-// Run: npx tsx test/internal/auth_cookie_session.test.ts
+// Run: pnpm exec tsx test/internal/auth_cookie_session.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

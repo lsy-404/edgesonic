@@ -26,7 +26,7 @@
 //  4. auth.ts no longer exports minLevel — drift guard against accidental
 //    reintroduction (we lint the source text since the function is removed)
 //
-// Run: npx tsx test/internal/permission_model_compliance.test.ts
+// Run: pnpm exec tsx test/internal/permission_model_compliance.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";

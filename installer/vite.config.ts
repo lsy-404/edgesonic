@@ -27,7 +27,7 @@ export default defineConfig({
     // (shared/autoupdate.ts), mirroring web/vite.config.ts.
     fs: { allow: [".."] },
     // In production this app is same-origin with its own /cf and /r2 routes
-    // (see worker/index.ts) — `npm run dev` alone can't replicate that, so
+    // (see worker/index.ts) — `pnpm run dev` alone can't replicate that, so
     // forward those paths to a separately-running `wrangler dev` (port 8787
     // by default) instead of requiring VITE_RELAY_URL for local work too.
     proxy: {

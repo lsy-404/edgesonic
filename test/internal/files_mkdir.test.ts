@@ -26,7 +26,7 @@
 // Adapters are shimmed via globalThis.fetch + an in-memory R2 bucket mock so
 // no real network calls are made.
 //
-// Run: npx tsx test/internal/files_mkdir.test.ts
+// Run: pnpm exec tsx test/internal/files_mkdir.test.ts
 
 import { Hono } from "hono";
 import { filesRoutes } from "../../worker/src/endpoints/storage/files";

@@ -22,7 +22,7 @@
 // chunk started more than 256KB before EOF was silently never found — this
 // is common once the chunk itself embeds a picture of any real size.
 //
-// Run: npx tsx test/internal/wav_cover_tail_window.test.ts
+// Run: pnpm exec tsx test/internal/wav_cover_tail_window.test.ts
 
 import { extractEmbedded } from "../../worker/src/utils/covers";
 

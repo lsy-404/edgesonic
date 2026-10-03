@@ -16,7 +16,7 @@
 // The generated avatar is drawn by the browser and by the worker from the same
 // module, so both sides must agree for any given name.
 //
-// Run: npx tsx test/internal/default_avatar.test.ts
+// Run: pnpm exec tsx test/internal/default_avatar.test.ts
 import { defaultAvatarColor, defaultAvatarInitial, defaultAvatarSvg } from "../../shared/avatar";
 
 let failures = 0;

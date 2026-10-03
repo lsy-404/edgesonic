@@ -19,7 +19,7 @@
 // /edgesonic/activation/* endpoints with their permission matrix, and the
 // invite-gated registration endpoint in both gate modes.
 //
-// Run: npx tsx test/internal/activation_enforcement.test.ts
+// Run: pnpm exec tsx test/internal/activation_enforcement.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

@@ -4,26 +4,26 @@ Local dev workflow, type-checking, running tests, and applying the database sche
 
 ## Commands
 
-Install Wrangler globally (`npm install --global wrangler`). Workspace dependencies do not include the CLI.
+Use the workspace Wrangler CLI (`pnpm exec wrangler`). Workspace dependencies include the pinned CLI.
 
 ```bash
-npm install              # install all workspaces
+pnpm install --frozen-lockfile              # install all workspaces
 
 # Run worker dev server (Miniflare + local D1/R2)
-npm run dev:worker
+pnpm run dev:worker
 
 # Run frontend dev server (Vite HMR)
-npm run dev:web
+pnpm run dev:web
 
 # Type-check all workspaces
-npm run typecheck
+pnpm run typecheck
 
 # Run a single worker test (each file under test/ is self-contained, no
 # aggregate runner — see the "Run:" comment at the top of each *.test.ts)
-npx tsx test/subsonic/annotation.test.ts
+pnpm exec tsx test/subsonic/annotation.test.ts
 
 # Run every test file
-find test -name '*.test.ts' -exec npx tsx {} \;
+find test -name '*.test.ts' -exec pnpm exec tsx {} \;
 
 ```
 

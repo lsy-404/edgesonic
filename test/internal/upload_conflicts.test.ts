@@ -1,5 +1,5 @@
 // POST /storage/files/upload conflict handling and idempotent registration.
-// Run: npx tsx test/internal/upload_conflicts.test.ts
+// Run: pnpm exec tsx test/internal/upload_conflicts.test.ts
 
 import { Hono } from "hono";
 import { filesRoutes } from "../../worker/src/endpoints/storage/files";

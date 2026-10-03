@@ -27,7 +27,7 @@
 // Mirrors test/worker_concurrent_config.test.ts's shim (node:sqlite + Hono +
 // handwritten D1 stub) so the suite stays self-contained.
 //
-// Run: npx tsx test/internal/r2_free_allocation_gb.test.ts
+// Run: pnpm exec tsx test/internal/r2_free_allocation_gb.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

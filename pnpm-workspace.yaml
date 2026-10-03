@@ -1,0 +1,5 @@
+packages:
+  - worker
+  - web
+  - installer
+injectWorkspacePackages: true

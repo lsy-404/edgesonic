@@ -40,7 +40,7 @@
 //  14. stream: cached-bad credential health → skips presign, falls back to 200 (binding)
 //  15. /rest/r2presign/status: secrets missing / credential valid / credential rejected by R2
 //
-// Run: npx tsx test/subsonic/r2_presign.test.ts
+// Run: pnpm exec tsx test/subsonic/r2_presign.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { createHash, createHmac } from "node:crypto";

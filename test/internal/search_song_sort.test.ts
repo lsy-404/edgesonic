@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // Contract checks for the EdgeSonic-only search3 song sort extension.
-// Run: npx tsx test/internal/search_song_sort.test.ts
+// Run: pnpm exec tsx test/internal/search_song_sort.test.ts
 
 import { createQueries } from "../../worker/src/db/queries";
 

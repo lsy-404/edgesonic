@@ -31,7 +31,7 @@
 // a real SQLite engine (node:sqlite) so ON CONFLICT semantics are genuinely
 // exercised, not hand-mocked.
 //
-// Run: npx tsx test/internal/work_queue_redispatch_upsert.test.ts
+// Run: pnpm exec tsx test/internal/work_queue_redispatch_upsert.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { dispatchWork, dispatchWorkBatch } from "../../worker/src/endpoints/edgesonic/work";

@@ -16,7 +16,7 @@
 // Client-side embedded-cover extraction from buffered audio bytes (cover-404
 // fallback). Synthetic FLAC PICTURE and ID3v2 APIC fixtures.
 //
-// Run: npx tsx test/frontend/embedded_cover_extract.test.ts
+// Run: pnpm exec tsx test/frontend/embedded_cover_extract.test.ts
 import { extractEmbeddedCover } from "../../web/src/lib/embeddedCover";
 
 let failures = 0;

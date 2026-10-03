@@ -20,7 +20,7 @@
 //   production queries (createQueries) and endpoint handlers run unmodified.
 //  * Drive each Hono route through annotationRoutes.fetch().
 //
-// Run: npx tsx test/subsonic/annotation.test.ts
+// Run: pnpm exec tsx test/subsonic/annotation.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

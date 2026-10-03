@@ -29,7 +29,7 @@
 //   5. maybeRunLrcBackfill respects lrc_backfill_interval_hours=0 (disabled)
 //      and the kv_store cadence throttle (won't re-run within the window).
 //
-// Run: npx tsx test/internal/lrc_backfill.test.ts
+// Run: pnpm exec tsx test/internal/lrc_backfill.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { runLrcBackfill, maybeRunLrcBackfill } from "../../worker/src/utils/lrcBackfill";

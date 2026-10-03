@@ -20,7 +20,7 @@
 //  * Drive annotationRoutes (scrobble) → assert D1 now_playing row, then
 //   nowPlayingRoutes → assert response XML, visibility filter, minutesAgo.
 //
-// Run: npx tsx test/subsonic/now_playing.test.ts
+// Run: pnpm exec tsx test/subsonic/now_playing.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

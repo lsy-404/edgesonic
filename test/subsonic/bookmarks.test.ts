@@ -14,13 +14,13 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // ============================================================================
-// Run: npx tsx test/subsonic/bookmarks.test.ts
+// Run: pnpm exec tsx test/subsonic/bookmarks.test.ts
 // ----------------------------------------------------------------------------
 // Uses an in-memory D1 mock that recognises just the SQL statements created by
 // the queries we ship in this task (bookmarks UPSERT/SELECT/DELETE,
 // play_queues UPSERT/SELECT, song_masters lookup by id list). The mock keeps
 // the tests independent from miniflare / wrangler and matches the existing
-// `npx tsx` flow used by test/tagwrite.test.ts.
+// `pnpm exec tsx` flow used by test/tagwrite.test.ts.
 // ============================================================================
 
 import { createQueries } from "../../worker/src/db/queries";

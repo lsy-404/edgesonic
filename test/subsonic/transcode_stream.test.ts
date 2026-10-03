@@ -29,7 +29,7 @@
 //  5. POST /files/upload?profiles=... triggers preBakeProfile only for
 //     profile ids that exist in the catalogue; unknown ids are dropped
 //
-// Run: npx tsx test/subsonic/transcode_stream.test.ts
+// Run: pnpm exec tsx test/subsonic/transcode_stream.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

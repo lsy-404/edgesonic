@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Run: npx tsx test/frontend/instrumental_filter.test.ts
+// Run: pnpm exec tsx test/frontend/instrumental_filter.test.ts
 
 import { isInstrumentalTitle } from "../../web/src/lib/instrumental";
 

@@ -16,7 +16,7 @@
 // Input-validation rules for the request surface: SQL payloads must stay bound
 // values, identifiers must come from whitelists, upload paths must not escape
 // the music prefix, and every parameter has a type, range and size bound.
-// Run: npx tsx test/internal/injection.test.ts
+// Run: pnpm exec tsx test/internal/injection.test.ts
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {

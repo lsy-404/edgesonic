@@ -30,7 +30,7 @@
 // calls, and `self` doesn't exist in plain Node (same constraint as
 // task_executor_error_msg.test.ts).
 //
-// Run: npx tsx test/frontend/fmp4_moof_fallback.test.ts
+// Run: pnpm exec tsx test/frontend/fmp4_moof_fallback.test.ts
 
 import * as fs from "node:fs";
 import * as path from "node:path";

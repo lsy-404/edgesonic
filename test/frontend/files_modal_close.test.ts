@@ -19,7 +19,7 @@
 // their own busy flag was still set, so the guard swallowed it: the operation
 // succeeded and the dialog just sat there, reading as a dead button.
 //
-// Run: npx tsx test/frontend/files_modal_close.test.ts
+// Run: pnpm exec tsx test/frontend/files_modal_close.test.ts
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

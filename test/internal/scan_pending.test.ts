@@ -20,7 +20,7 @@
 //  • total count is separate from items.length (i.e. items truncated by limit)
 //  • missing source query param → 400
 //
-// Run: npx tsx test/internal/scan_pending.test.ts
+// Run: pnpm exec tsx test/internal/scan_pending.test.ts
 
 import { Hono } from "hono";
 import { scanRoutes } from "../../worker/src/endpoints/storage/scan";

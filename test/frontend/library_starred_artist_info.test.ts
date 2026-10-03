@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // Contract checks for the Library liked tab and automatic artist lookup.
-// Run: npx tsx test/frontend/library_starred_artist_info.test.ts
+// Run: pnpm exec tsx test/frontend/library_starred_artist_info.test.ts
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

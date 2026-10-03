@@ -36,7 +36,7 @@
 //     threshold; left untouched when comfortably far from expiry (no
 //     unnecessary D1 write)
 //
-// Run: npx tsx test/internal/auth_session_boundary.test.ts
+// Run: pnpm exec tsx test/internal/auth_session_boundary.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

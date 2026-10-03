@@ -18,7 +18,7 @@
 // dedupKey) must result in exactly one work_queue row, not two. Mixed batches
 // (some with dedupKey, some without) keep the random-id path working.
 //
-// Run: npx tsx test/internal/work_queue_dedup.test.ts
+// Run: pnpm exec tsx test/internal/work_queue_dedup.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { dispatchWork, dispatchWorkBatch } from "../../worker/src/endpoints/edgesonic/work";

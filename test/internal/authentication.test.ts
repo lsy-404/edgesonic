@@ -16,7 +16,7 @@
 // Authentication rules: login throttling, credential length and character
 // limits, token lifetime and session handling, password storage, and the
 // error-message policy that must not distinguish unknown user from bad password.
-// Run: npx tsx test/internal/authentication.test.ts
+// Run: pnpm exec tsx test/internal/authentication.test.ts
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {

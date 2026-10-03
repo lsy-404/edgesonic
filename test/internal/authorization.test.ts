@@ -17,7 +17,7 @@
 // (IDOR), upload authorization, clone isolation and cross-user data isolation.
 // The rules are asserted against a reference model so a rule change here has to
 // be a deliberate edit; the wire-level enforcement lives in the endpoint tests.
-// Run: npx tsx test/internal/authorization.test.ts
+// Run: pnpm exec tsx test/internal/authorization.test.ts
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {

@@ -23,7 +23,7 @@
 //  • asyncScanSource with mode='sync_only' skips artist/album/master/instance inserts
 //   but still increments added counter and updates last_sync
 //
-// Run: npx tsx test/internal/source_mode.test.ts
+// Run: pnpm exec tsx test/internal/source_mode.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

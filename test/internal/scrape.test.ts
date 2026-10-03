@@ -21,7 +21,7 @@
 //  * The proxy path is exercised with a stubbed global fetch so we never hit
 //   the real NetEase/QQ/Kugou endpoints.
 //
-// Run: npx tsx test/internal/scrape.test.ts
+// Run: pnpm exec tsx test/internal/scrape.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

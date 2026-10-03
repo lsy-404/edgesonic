@@ -34,7 +34,7 @@
 // exercising the real function in-process — same tradeoff this repo already
 // makes for web/src/workers/taskExecutor.ts in test/browser_lyrics_native_fallback.test.ts.
 //
-// Run: npx tsx test/frontend/nowplaying_lyrics_timestamp.test.ts
+// Run: pnpm exec tsx test/frontend/nowplaying_lyrics_timestamp.test.ts
 
 import * as fs from "node:fs";
 import * as path from "node:path";

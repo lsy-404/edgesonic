@@ -16,15 +16,15 @@ This is a single Cloudflare Worker with two halves:
 
 ## Local development
 
-Install Wrangler globally (`npm install --global wrangler`), then run both processes from `installer/`:
+Use the workspace Wrangler CLI (`pnpm exec wrangler`), then run both processes from `installer/`:
 
 ```bash
 cp wrangler.toml.example wrangler.toml
 # edit wrangler.toml: set account_id, and ALLOWED_ORIGINS if you need cross-origin access
-npm install
+pnpm install --frozen-lockfile
 
 wrangler dev      # backend, port 8787
-npm run dev           # frontend, port 5174 — proxies /cf and /r2 to :8787 (see vite.config.ts)
+pnpm run dev           # frontend, port 5174 — proxies /cf and /r2 to :8787 (see vite.config.ts)
 ```
 
 Open `http://localhost:5174`.
@@ -32,7 +32,7 @@ Open `http://localhost:5174`.
 ## Deploy
 
 ```bash
-npm run build          # -> dist/
+pnpm run build          # -> dist/
 wrangler deploy
 ```
 

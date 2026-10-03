@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // ============================================================================
-// Run: npx tsx test/subsonic/podcasts.test.ts
+// Run: pnpm exec tsx test/subsonic/podcasts.test.ts
 // ----------------------------------------------------------------------------
 // Strategy mirrors test/lastfm_proxy.test.ts:
 //  * In-memory node:sqlite DatabaseSync shimmed as D1.

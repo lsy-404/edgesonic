@@ -29,7 +29,7 @@
 // Mirrors test/internal/cf_ensure_default_cron.test.ts (fetch mock) and
 // permissions_save.test.ts (node:sqlite D1 shim).
 //
-// Run: npx tsx test/internal/cron_recovery.test.ts
+// Run: pnpm exec tsx test/internal/cron_recovery.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { recoverCronIfStale, persistCronState, readCronState } from "../../worker/src/utils/cronRecovery";

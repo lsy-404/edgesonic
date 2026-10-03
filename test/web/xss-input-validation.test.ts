@@ -16,7 +16,7 @@
 // Client-side input rules: upload type/size/name checks, form length limits,
 // escaping of user text, route parameter validation and the DOM sinks the UI
 // must not feed with user content.
-// Run: npx tsx test/web/xss-input-validation.test.ts
+// Run: pnpm exec tsx test/web/xss-input-validation.test.ts
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {

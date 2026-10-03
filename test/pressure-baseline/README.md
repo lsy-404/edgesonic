@@ -6,7 +6,7 @@ From the repository root, prepare the isolated local database:
 
 ```powershell
 $env:EDGESONIC_VERSION = 'dev'
-npm run build:web
+pnpm run build:web
 ./test/pressure-baseline/prepare-local.ps1
 ```
 

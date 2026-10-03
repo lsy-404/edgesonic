@@ -13,7 +13,8 @@ on:
       - 'installer/**'
       - 'shared/**'
       - 'package.json'
-      - 'package-lock.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
   workflow_dispatch:
     inputs:
       allowed_origins:
@@ -44,22 +45,25 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.6
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '24'
 
-      # npm workspaces monorepo — `npm ci` runs at the repo root so installer's
+      # pnpm workspace monorepo — dependency installation runs at the repo root so installer's
       # deps resolve/hoist against the shared root lockfile, same pattern
       # release.yml uses for the web build.
       - name: Install monorepo dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Install Wrangler CLI
-        run: npm install --global wrangler@4.142.0
+        run: pnpm exec wrangler --version
 
       - name: Build frontend
-        run: npm run build -w installer
+        run: pnpm --dir installer run build
 
       - name: Generate wrangler.toml
         working-directory: installer
@@ -77,4 +81,4 @@ jobs:
         working-directory: installer
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: wrangler deploy
+        run: pnpm exec wrangler deploy

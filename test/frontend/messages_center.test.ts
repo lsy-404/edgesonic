@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// Run: npx tsx test/frontend/messages_center.test.ts
+// Run: pnpm exec tsx test/frontend/messages_center.test.ts
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

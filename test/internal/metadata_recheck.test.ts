@@ -19,7 +19,7 @@
 // -scanned songs whose album already has a cover, and (C) re-checks WAV files
 // whose duration looks like a pre-111 truncated-buffer scan artifact.
 //
-// Run: npx tsx test/internal/metadata_recheck.test.ts
+// Run: pnpm exec tsx test/internal/metadata_recheck.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { runMetadataRecheck, maybeRunMetadataRecheck } from "../../worker/src/utils/metadataRecheck";

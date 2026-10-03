@@ -72,7 +72,7 @@ EdgeSonic 同时承担两个角色：
 ### 前置条件
 
 - Node.js 20+
-- 全局安装 [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)（`npm i -g wrangler`）；项目依赖安装不会提供 Wrangler。
+- 使用项目内 [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)（`pnpm dlx wrangler@4.142.0`）；项目依赖包含固定版本的 Wrangler。
 - 一个 Cloudflare 账号，并已开通：
   - **D1** 数据库（`edgesonic-db`）
   - **R2** 存储桶（`edgesonic-storage`）

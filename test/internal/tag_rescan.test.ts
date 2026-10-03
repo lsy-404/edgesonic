@@ -24,7 +24,7 @@
 // D1, real Hono route, session-auth injected) extended with source_type on
 // song_instances and a work_queue table.
 //
-// Run: npx tsx test/internal/tag_rescan.test.ts
+// Run: pnpm exec tsx test/internal/tag_rescan.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

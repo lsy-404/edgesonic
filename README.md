@@ -74,7 +74,7 @@ Prefer to build and deploy from your own machine (e.g. while developing)? Use th
 ### Prerequisites
 
 - Node.js 20+
-- Global [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (`npm i -g wrangler`); workspace installs do not provide it.
+- Workspace [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (`pnpm exec wrangler`); workspace installs provide the pinned CLI.
 - A Cloudflare account with:
   - **D1** database (`edgesonic-db`)
   - **R2** bucket (`edgesonic-storage`)

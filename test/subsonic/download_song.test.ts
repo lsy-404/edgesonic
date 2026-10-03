@@ -42,7 +42,7 @@
 // node:sqlite shim mirrors maintenance_reclaim.test.ts / orphan_songs.test.ts;
 // global fetch stub mirrors lastfm_proxy.test.ts's installFetchStub pattern.
 //
-// Run: npx tsx test/subsonic/download_song.test.ts
+// Run: pnpm exec tsx test/subsonic/download_song.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

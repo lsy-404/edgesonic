@@ -18,7 +18,7 @@
 // stubs `env.MUSIC_BUCKET` so we can observe put + delete calls. WebDAV is
 // covered with a stubbed global fetch tracking MOVE requests.
 //
-// Run: npx tsx test/internal/tidy_folder.test.ts
+// Run: pnpm exec tsx test/internal/tidy_folder.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

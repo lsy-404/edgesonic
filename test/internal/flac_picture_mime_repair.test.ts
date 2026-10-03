@@ -18,7 +18,7 @@
 // must heal such blocks during any prefix rewrite by sniffing the MIME from
 // the image magic, while leaving healthy pictures byte-identical and unknown
 // magics untouched.
-// Run: npx tsx test/internal/flac_picture_mime_repair.test.ts
+// Run: pnpm exec tsx test/internal/flac_picture_mime_repair.test.ts
 
 import { requiredPrefixLen, rebuildTagPrefix } from "../../worker/src/utils/tagwrite";
 

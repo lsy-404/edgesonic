@@ -34,7 +34,7 @@
 // a regression in either side breaks this test instead of silently
 // round-tripping through XML string shape mismatches undetected.
 //
-// Run: npx tsx test/internal/permissions_list_level_parsing.test.ts
+// Run: pnpm exec tsx test/internal/permissions_list_level_parsing.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

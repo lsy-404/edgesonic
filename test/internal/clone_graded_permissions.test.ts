@@ -23,7 +23,7 @@
 //  4. upsertPlaylist to another owner needs manage_users.
 //  5. upsertUser is super-admin only (403 for level 2 even with manage_users).
 //
-// Run: npx tsx test/internal/clone_graded_permissions.test.ts
+// Run: pnpm exec tsx test/internal/clone_graded_permissions.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

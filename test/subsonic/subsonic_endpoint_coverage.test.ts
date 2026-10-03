@@ -24,7 +24,7 @@
 // response body / status code is irrelevant for coverage. A 401/403/500 means
 // the route EXISTS; a 404 means it doesn't.
 //
-// Run: npx tsx test/subsonic/subsonic_endpoint_coverage.test.ts
+// Run: pnpm exec tsx test/subsonic/subsonic_endpoint_coverage.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

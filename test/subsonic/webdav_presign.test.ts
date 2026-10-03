@@ -28,7 +28,7 @@
 //  11. credentials/list returns streamProxyStrategy
 //  12. validator: enable_webdav_presign accepts 0/1
 //
-// Run: npx tsx test/subsonic/webdav_presign.test.ts
+// Run: pnpm exec tsx test/subsonic/webdav_presign.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

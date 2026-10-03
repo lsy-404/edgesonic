@@ -24,7 +24,7 @@
 //  5. getLyricsBySongId — D1 miss → external hit → OpenSubsonic lyricsList.
 //  6. getLyricsBySongId — id not found → 404 Subsonic error.
 //
-// Run: npx tsx test/subsonic/lyrics.test.ts
+// Run: pnpm exec tsx test/subsonic/lyrics.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

@@ -34,7 +34,7 @@ Run the isolated tests from the repository root:
 
 ```powershell
 py -3.11 -m unittest discover -s test/internal -p 'test_flac_tags_to_wav.py' -v
-npx tsx --test test/internal/id3_multivalue_tags.test.ts
+pnpm exec tsx --test test/internal/id3_multivalue_tags.test.ts
 ```
 
 ---

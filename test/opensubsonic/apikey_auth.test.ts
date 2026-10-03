@@ -36,7 +36,7 @@
 //  6. Plain password auth (q.p, no apiKey) still works — apiKey resolution
 //     doesn't interfere with the unrelated credential paths
 //
-// Run: npx tsx test/opensubsonic/apikey_auth.test.ts
+// Run: pnpm exec tsx test/opensubsonic/apikey_auth.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

@@ -26,7 +26,7 @@
 // assertions for the parts of this file that aren't a plain exported function. isMetaEmpty
 // is a pure, exported function, so it gets real unit tests here instead.
 //
-// Run: npx tsx test/frontend/metadata_full_file_fallback.test.ts
+// Run: pnpm exec tsx test/frontend/metadata_full_file_fallback.test.ts
 
 import * as fs from "node:fs";
 import * as path from "node:path";

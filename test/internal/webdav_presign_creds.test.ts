@@ -25,7 +25,7 @@
 //  8. sources/list returns presignUsername attr (not password)
 //  9. sources/list: source with no presign creds → presignUsername="" in response
 //
-// Run: npx tsx test/internal/webdav_presign_creds.test.ts
+// Run: pnpm exec tsx test/internal/webdav_presign_creds.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

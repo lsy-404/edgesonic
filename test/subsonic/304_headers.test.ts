@@ -13,7 +13,7 @@
 //  2. /rest/getCoverArt (sized + legacy) with a matching If-None-Match → 304
 //     with no Content-Length / Content-Type.
 //
-// Run: npx tsx test/subsonic/304_headers.test.ts
+// Run: pnpm exec tsx test/subsonic/304_headers.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

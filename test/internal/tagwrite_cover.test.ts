@@ -17,7 +17,7 @@
 // use the production reader (tags.ts) to locate the embedded picture and
 // assert the bytes survived intact, and that prior non-front-cover frames
 // (APIC type 4, FLAC PICTURE type 2) are preserved.
-// Run: npx tsx test/internal/tagwrite_cover.test.ts
+// Run: pnpm exec tsx test/internal/tagwrite_cover.test.ts
 
 import { requiredPrefixLen, rebuildTagPrefix } from "../../worker/src/utils/tagwrite";
 import { parseTags, locateEmbeddedPicture } from "../../worker/src/utils/tags";

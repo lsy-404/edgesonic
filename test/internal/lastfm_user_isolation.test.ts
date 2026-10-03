@@ -19,7 +19,7 @@
 // own — meaning every user's personal listening history rode on the admin's
 // shared key/quota. This test locks in that the fallback is gone.
 //
-// Run: npx tsx test/internal/lastfm_user_isolation.test.ts
+// Run: pnpm exec tsx test/internal/lastfm_user_isolation.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { getUserInfo, LastfmUnconfigured } from "../../worker/src/lib/lastfm";

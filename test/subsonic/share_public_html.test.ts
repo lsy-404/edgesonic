@@ -19,7 +19,7 @@
 // `app.fetch`. We only exercise the HTML branch + branch selection — the byte
 // stream branch is covered by 044's shares.test.ts via the policy simulator.
 //
-// Run: npx tsx test/subsonic/share_public_html.test.ts
+// Run: pnpm exec tsx test/subsonic/share_public_html.test.ts
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { createQueries } from "../../worker/src/db/queries";

@@ -5,16 +5,24 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "worker/transcoder-image/**"
+      - "docker/external-transcoder/**"
+      - "test/transcoder-image.mjs"
       - "installer/**"
       - "package.json"
-      - "package-lock.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/frontend-checks.yml"
   pull_request:
     paths:
       - "web/**"
+      - "worker/transcoder-image/**"
+      - "docker/external-transcoder/**"
+      - "test/transcoder-image.mjs"
       - "installer/**"
       - "package.json"
-      - "package-lock.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/frontend-checks.yml"
   workflow_dispatch:
 
@@ -26,12 +34,35 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.6
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-          cache: npm
-      - run: npm ci
-      - run: npm run typecheck -w web
-      - run: npm run build -w web
-      - run: npm run typecheck -w installer
-      - run: npm run build -w installer
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir web run typecheck
+      - run: pnpm --dir web run build
+      - run: pnpm --dir installer run typecheck
+      - run: pnpm --dir installer run build
+
+  transcoder:
+    name: Transcoder container
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - context: worker/transcoder-image
+            mode: sandbox
+          - context: docker/external-transcoder
+            mode: external
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: docker build -t transcoder-check "${{ matrix.context }}"
+      - run: node test/transcoder-image.mjs transcoder-check "${{ matrix.mode }}"

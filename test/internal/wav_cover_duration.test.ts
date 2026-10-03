@@ -26,7 +26,7 @@
 //    (taskExecutor.ts's actual parseBuffer call needs a browser + network
 //    fetch, out of reach for a unit test — the math is what we can verify).
 //
-// Run: npx tsx test/internal/wav_cover_duration.test.ts
+// Run: pnpm exec tsx test/internal/wav_cover_duration.test.ts
 
 import { locateEmbeddedPicture } from "../../worker/src/utils/tags";
 

@@ -94,9 +94,12 @@ const server = http.createServer((req, res) => {
     console.error(`ffmpeg exited ${code}: ${stderrBuf.slice(-512)}`);
   });
 
-  // Client aborts → kill ffmpeg so the container doesn't run forever.
-  req.on("close", () => {
+  // Completing the upload must not cancel the streamed response.
+  req.on("aborted", () => {
     if (!ff.killed) ff.kill("SIGKILL");
+  });
+  res.on("close", () => {
+    if (!res.writableEnded && !ff.killed) ff.kill("SIGKILL");
   });
 });
 

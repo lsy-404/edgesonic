@@ -16,7 +16,7 @@
 //
 // Smoke test for the "browser bundle stuck failed → unstick" recovery hatch.
 // Mirrors the maintenance_reclaim shim (node:sqlite + Hono + handwritten D1
-// stub) so the suite stays self-contained and runs under plain `npx tsx`.
+// stub) so the suite stays self-contained and runs under plain `pnpm exec tsx`.
 //
 // Coverage:
 //  1. Mixed status batch — failed rows flipped to queued; other statuses left
@@ -26,7 +26,7 @@
 //  3. No failed rows → ok:true, reset:0 (idempotent).
 //  4. Non-admin (level=2) → 403, nothing mutated.
 //
-// Run: npx tsx test/internal/reset_failed_work.test.ts
+// Run: pnpm exec tsx test/internal/reset_failed_work.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";

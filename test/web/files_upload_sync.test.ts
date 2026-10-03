@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Run: npx tsx test/web/files_upload_sync.test.ts
+// Run: pnpm exec tsx test/web/files_upload_sync.test.ts
 
 import {
   classifyUploadItems,

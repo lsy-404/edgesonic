@@ -16,7 +16,7 @@
 // Bitrate is measured from the stored file rather than trusted from a parser
 // that may only have seen a slice of it.
 //
-// Run: npx tsx test/internal/audio_metrics.test.ts
+// Run: pnpm exec tsx test/internal/audio_metrics.test.ts
 import { deriveBitrate, bitrateNeedsRepair } from "../../worker/src/utils/audioMetrics";
 
 let failures = 0;

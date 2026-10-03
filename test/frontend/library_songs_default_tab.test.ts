@@ -23,7 +23,7 @@
 // pattern. Treating the source as the contract keeps the test cheap and
 // avoids dragging in a DOM shim just to verify a one-line change.
 //
-// Run: npx tsx test/frontend/library_songs_default_tab.test.ts
+// Run: pnpm exec tsx test/frontend/library_songs_default_tab.test.ts
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

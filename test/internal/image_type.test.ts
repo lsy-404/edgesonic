@@ -16,7 +16,7 @@
 // Cover media types are decided from the artwork bytes because embedded tags
 // declare values clients cannot use ("PNG", "-->", empty).
 //
-// Run: npx tsx test/internal/image_type.test.ts
+// Run: pnpm exec tsx test/internal/image_type.test.ts
 import { sniffImageMime, isUsableImageMime, resolveImageMime } from "../../worker/src/utils/imageType";
 
 let failures = 0;

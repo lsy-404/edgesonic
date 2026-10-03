@@ -1,4 +1,4 @@
-// Run: npx tsx test/internal/embedded_cover.test.ts
+// Run: pnpm exec tsx test/internal/embedded_cover.test.ts
 
 import { DatabaseSync } from "node:sqlite";
 import { writeEmbeddedCover } from "../../worker/src/utils/embeddedCover";

@@ -22,7 +22,7 @@
 // (which storage it writes, which transport carries the password) rather
 // than behavioural. Booting the SFC would not observe them any better.
 //
-// Run: npx tsx test/web/clone-credentials-security.test.ts
+// Run: pnpm exec tsx test/web/clone-credentials-security.test.ts
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
