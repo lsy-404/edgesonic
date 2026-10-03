@@ -10,3 +10,5 @@
 - A test helper initializes Node SQLite from the complete `worker/migrations/Schema.sql`, allowing the list queries and scrobble upsert to run against the production schema.
 - Only `frequent` and `recent` need cross-song listening aggregates for WHERE/ORDER BY. Other types retain their previous album-annotation `play_count`/`play_date` values without scanning song annotations.
 - `albumList2Handler` separately loads the requesting user's album annotations and passes those to `mapAlbum`; `mapAlbum` derives public `playCount` from that annotation. The catalog aggregate is not required to preserve any public field on other list types.
+- Real token+salt (`md5(issuedPassword + salt)`) and plain client-password requests pass `authMiddleware` for enabled level-1 users with an issued `subsonic_credentials` row and `edit_annotations` permission. An absent credential or wrong password is rejected before annotations are written.
+- `/rest/scrobble.view` handles repeated `id`/`time` pairs; `submission=false` writes no song play annotations, while accepted submissions update song annotations consumed by authenticated `getAlbumList2.view` frequent/recent queries.
