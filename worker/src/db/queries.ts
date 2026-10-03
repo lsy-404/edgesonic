@@ -178,9 +178,10 @@ export function createQueries(db: D1Database) {
       const members = await db.prepare(
         `SELECT a.id, a.name, a.year, a.cover_r2_key, a.song_count, a.created_at,
                 (SELECT ar.name
-                 FROM song_masters sm JOIN artists ar ON ar.id = sm.artist_id
+                 FROM song_masters sm
+                 LEFT JOIN artists ar ON ar.id = COALESCE(sm.album_artist_id, sm.artist_id)
                  WHERE sm.album_id = a.id
-                 ORDER BY sm.track IS NULL, sm.track, sm.id
+                 ORDER BY sm.disc IS NULL, sm.disc, sm.track IS NULL, sm.track, sm.id
                  LIMIT 1) AS artist_name
          FROM album_display_group_members m
          JOIN albums a ON a.id = m.album_id
@@ -366,11 +367,20 @@ export function createQueries(db: D1Database) {
       const sql = `
         ${listeningCte}
         SELECT a.*,
-          (SELECT ar.name FROM song_masters sm JOIN artists ar ON ar.id = sm.artist_id
-           WHERE sm.album_id = a.id LIMIT 1) AS artist_name,
-          (SELECT ar.sort_name FROM song_masters sm JOIN artists ar ON ar.id = sm.artist_id
-           WHERE sm.album_id = a.id LIMIT 1) AS artist_sort,
-          (SELECT sm.artist_id FROM song_masters sm WHERE sm.album_id = a.id LIMIT 1) AS artist_id,
+          (SELECT ar.name FROM song_masters sm
+           LEFT JOIN artists ar ON ar.id = COALESCE(sm.album_artist_id, sm.artist_id)
+           WHERE sm.album_id = a.id
+           ORDER BY sm.disc IS NULL, sm.disc, sm.track IS NULL, sm.track, sm.id
+           LIMIT 1) AS artist_name,
+          (SELECT ar.sort_name FROM song_masters sm
+           LEFT JOIN artists ar ON ar.id = COALESCE(sm.album_artist_id, sm.artist_id)
+           WHERE sm.album_id = a.id
+           ORDER BY sm.disc IS NULL, sm.disc, sm.track IS NULL, sm.track, sm.id
+           LIMIT 1) AS artist_sort,
+          (SELECT COALESCE(sm.album_artist_id, sm.artist_id) FROM song_masters sm
+           WHERE sm.album_id = a.id
+           ORDER BY sm.disc IS NULL, sm.disc, sm.track IS NULL, sm.track, sm.id
+           LIMIT 1) AS artist_id,
           (SELECT si.storage_uri FROM song_masters sm
            JOIN song_instances si ON si.master_id = sm.id AND si.missing = 0
            WHERE sm.album_id = a.id
@@ -491,7 +501,7 @@ export function createQueries(db: D1Database) {
       lyricsQuery?: string;
     } = {}): Promise<{
       artists: Artist[];
-      albums: Album[];
+      albums: Array<Album & { artist_name: string | null; artist_id: string | null }>;
       songs: SongSearchRow[];
     }> {
       const like = `%${query}%`;
@@ -536,10 +546,21 @@ export function createQueries(db: D1Database) {
             "SELECT * FROM artists WHERE name LIKE ? ORDER BY sort_name ASC LIMIT ? OFFSET ?"
           ).bind(like, opts.artistCount ?? 20, opts.artistOffset ?? 0).all<Artist>(),
         (opts.albumCount ?? 20) === 0
-          ? Promise.resolve({ results: [] as Album[] })
+          ? Promise.resolve({ results: [] as Array<Album & { artist_name: string | null; artist_id: string | null }> })
           : db.prepare(
-            "SELECT * FROM albums WHERE name LIKE ? ORDER BY sort_name ASC LIMIT ? OFFSET ?"
-          ).bind(like, opts.albumCount ?? 20, opts.albumOffset ?? 0).all<Album>(),
+            `SELECT al.*,
+               (SELECT ar.name FROM song_masters sm
+                LEFT JOIN artists ar ON ar.id = COALESCE(sm.album_artist_id, sm.artist_id)
+                WHERE sm.album_id = al.id
+                ORDER BY sm.disc IS NULL, sm.disc, sm.track IS NULL, sm.track, sm.id
+                LIMIT 1) AS artist_name,
+               (SELECT COALESCE(sm.album_artist_id, sm.artist_id) FROM song_masters sm
+                WHERE sm.album_id = al.id
+                ORDER BY sm.disc IS NULL, sm.disc, sm.track IS NULL, sm.track, sm.id
+                LIMIT 1) AS artist_id
+             FROM albums al
+             WHERE al.name LIKE ? ORDER BY al.sort_name ASC LIMIT ? OFFSET ?`
+          ).bind(like, opts.albumCount ?? 20, opts.albumOffset ?? 0).all<Album & { artist_name: string | null; artist_id: string | null }>(),
         (opts.songCount ?? 20) === 0
           ? Promise.resolve({ results: [] as SongSearchRow[] })
           : db.prepare(
@@ -670,9 +691,15 @@ export function createQueries(db: D1Database) {
     ): Promise<Array<Album & { artist_name: string | null; artist_id: string | null }>> {
       const result = await db.prepare(
         `SELECT al.*,
-           (SELECT ar.name FROM song_masters sm JOIN artists ar ON ar.id = sm.artist_id
-            WHERE sm.album_id = al.id LIMIT 1) AS artist_name,
-           (SELECT sm.artist_id FROM song_masters sm WHERE sm.album_id = al.id LIMIT 1) AS artist_id
+           (SELECT ar.name FROM song_masters sm
+            LEFT JOIN artists ar ON ar.id = COALESCE(sm.album_artist_id, sm.artist_id)
+            WHERE sm.album_id = al.id
+            ORDER BY sm.disc IS NULL, sm.disc, sm.track IS NULL, sm.track, sm.id
+            LIMIT 1) AS artist_name,
+           (SELECT COALESCE(sm.album_artist_id, sm.artist_id) FROM song_masters sm
+            WHERE sm.album_id = al.id
+            ORDER BY sm.disc IS NULL, sm.disc, sm.track IS NULL, sm.track, sm.id
+            LIMIT 1) AS artist_id
          FROM albums al
          JOIN annotations an ON an.item_id = al.id AND an.item_type = 'album'
          WHERE an.user_id = ? AND an.starred = 1

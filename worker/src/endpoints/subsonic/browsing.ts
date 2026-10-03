@@ -117,8 +117,8 @@ const getAlbumHandler = async (c: Context) => {
     subsonicOK({
       album: {
         _attributes: {
-          ...mapAlbum(album, firstSong?.artist_name ?? undefined, liteOf(albumAnn.get(`album:${id}`)), firstSong?.inst_storage_uri),
-          artistId: firstSong?.artist_id || undefined,
+          ...mapAlbum(album, firstSong?.album_artist_name ?? firstSong?.artist_name ?? undefined, liteOf(albumAnn.get(`album:${id}`)), firstSong?.inst_storage_uri),
+          artistId: firstSong?.album_artist_id || firstSong?.artist_id || undefined,
         },
         song: songs.map((s) =>
           attrs(mapSong(s, album.id, liteOf(songAnn.get(`song:${s.id}`))))
