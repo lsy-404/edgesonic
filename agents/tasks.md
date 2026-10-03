@@ -16,3 +16,4 @@
 | 563 | [BugFix] player-listening-report | 播放器提交实际收听记录并刷新首页播放榜单 | 用户报告首页两个播放榜单不工作 | ✅ 已完成 |
 | 564 | [BugFix] MP4 full duration and multivalue artists | Require complete MP4-family reads for duration and retain multivalue artist credits | Prevent partial-file duration corruption and artist loss | 🔄 进行中 |
 | 565 | [Refactor] pnpm迁移 | 工作区、锁文件、脚本和 CI 使用 pnpm | 用户要求自有仓库全部替换 | ✅ 已完成 |
+| 566 | [Operations] catalog_native_delivery | Deliver native metadata verification and guarded catalog reconciliation | Complete source coverage and repair catalog identity and statistics | 🔄 进行中 |
