@@ -3,6 +3,8 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseBuffer } from "music-metadata";
+import { commonArtistsToTag } from "../../web/src/lib/metadata";
+import { parseArtistCredits } from "../../worker/src/utils/artistCredits";
 
 let failures = 0;
 function assert(condition: unknown, message: string) {
@@ -15,9 +17,16 @@ const fixture = join(dir, "partial-duration.mp3");
 const wavFixture = join(dir, "short-tail.wav");
 const flacFixture = join(dir, "bit-depth.flac");
 const mp4Fixture = join(dir, "duration-only.mp4");
+const m4aFixture = join(dir, "duration-only.m4a");
 
 async function main() {
 try {
+  const artistWire = commonArtistsToTag("Performer A & Performer B", ["Performer A", "Performer B", "Performer A"]);
+  const orderedCredits = parseArtistCredits(artistWire);
+  console.log("A0. Multi-value artist wire serialization:");
+  assert(artistWire === "Performer A, Performer B", "keeps plural common.artists values in order and removes duplicate tags");
+  assert(orderedCredits.map((credit) => credit.name).join("/") === "Performer A/Performer B", "backend credit parser preserves both artists in order");
+  assert(commonArtistsToTag("Performer A", undefined) === "Performer A", "falls back to the singular common.artist tag");
   execFileSync("ffmpeg", [
     "-hide_banner", "-loglevel", "error",
     "-f", "lavfi", "-i", "anoisesrc=color=white:sample_rate=44100:duration=152.14",
@@ -256,6 +265,88 @@ try {
     const mislabeledMp4 = await runMetadata({ instanceId: "instance-mp3-container", sourceUri: "r2://music/upload.mp3", streamUrl: "https://test/stream", suffix: "mp3", size: mp4Bytes.length }) as { tags: Record<string, unknown> };
     assert(mp4FullRequests === 1, "uses the required full read for a mislabeled MPEG-4 audio path");
     assert(mislabeledMp4.tags.duration === 12, "uses the MPEG-4 container signature when the source MIME is audio/mpeg");
+
+    execFileSync("ffmpeg", [
+      "-hide_banner", "-loglevel", "error",
+      "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=44100:duration=152.14",
+      "-c:a", "aac", "-b:a", "256k", "-metadata", "title=Fixture M4A",
+      "-metadata", "artist=Fixture Artist", "-movflags", "+faststart", m4aFixture, "-y",
+    ]);
+    const m4aBytes = new Uint8Array(readFileSync(m4aFixture));
+    const partialM4aMeta = await parseBuffer(m4aBytes.subarray(0, headBytes), {
+      path: m4aFixture, size: m4aBytes.length,
+    }, { duration: true });
+    assert(m4aBytes.length > headBytes, "synthetic M4A exceeds the metadata Range window");
+    assert((partialM4aMeta.format.duration ?? 0) > 0, "synthetic partial M4A yields a positive ranged duration estimate");
+
+    for (const suffix of ["m4a", "m4b", "alac"]) {
+      let fullFamilyRequests = 0;
+      globalThis.fetch = async (_input, init) => {
+        if (new Headers(init?.headers).get("Range")) {
+          return new Response(m4aBytes.subarray(0, headBytes), {
+            status: 206,
+            headers: { "Content-Range": `bytes 0-${headBytes - 1}/${m4aBytes.length}`, "Content-Type": "audio/mp4" },
+          });
+        }
+        fullFamilyRequests++;
+        return new Response(m4aBytes, { status: 200, headers: { "Content-Type": "audio/mp4" } });
+      };
+      const familyResult = await runMetadata({ instanceId: `instance-${suffix}`, sourceUri: `r2://music/test.${suffix}`, streamUrl: "https://test/stream", suffix, size: m4aBytes.length }) as { tags: Record<string, unknown> };
+      assert(fullFamilyRequests === 1, `${suffix} performs a complete read despite a positive ranged duration`);
+      assert(familyResult.tags.duration === 152, `${suffix} submits only the complete-file duration`);
+      assert(typeof familyResult.tags.bitrate === "number" && familyResult.tags.bitrate > 0, `${suffix} submits bitrate from the complete-file parse`);
+    }
+
+    let failedM4aFullRequests = 0;
+    globalThis.fetch = async (_input, init) => {
+      if (new Headers(init?.headers).get("Range")) {
+        return new Response(m4aBytes.subarray(0, headBytes), {
+          status: 206,
+          headers: { "Content-Range": `bytes 0-${headBytes - 1}/${m4aBytes.length}`, "Content-Type": "audio/mp4" },
+        });
+      }
+      failedM4aFullRequests++;
+      throw new Error("full M4A body unavailable");
+    };
+    const failedM4a = await runMetadata({ instanceId: "instance-m4a-failed", sourceUri: "r2://music/failed.m4a", streamUrl: "https://test/stream", suffix: "m4a", size: m4aBytes.length }) as { tags: Record<string, unknown> };
+    assert(failedM4aFullRequests === 1, "attempts the bounded M4A full read once");
+    assert(!Object.hasOwn(failedM4a.tags, "duration"), "omits a positive partial M4A duration when full read fails");
+    assert(!Object.hasOwn(failedM4a.tags, "bitrate"), "omits partial M4A bitrate when full read fails");
+    assert(failedM4a.tags.title === "Fixture M4A", "keeps ranged tags when the full M4A body is unavailable");
+
+    let shortM4aFullRequests = 0;
+    globalThis.fetch = async (_input, init) => {
+      if (new Headers(init?.headers).get("Range")) {
+        return new Response(m4aBytes.subarray(0, headBytes), {
+          status: 206,
+          headers: { "Content-Range": `bytes 0-${headBytes - 1}/${m4aBytes.length}`, "Content-Type": "audio/mp4" },
+        });
+      }
+      shortM4aFullRequests++;
+      return new Response(m4aBytes.subarray(0, headBytes), { status: 200, headers: { "Content-Type": "audio/mp4" } });
+    };
+    const shortM4a = await runMetadata({ instanceId: "instance-m4a-short", sourceUri: "r2://music/short.m4a", streamUrl: "https://test/stream", suffix: "m4a", size: m4aBytes.length }) as { tags: Record<string, unknown> };
+    assert(shortM4aFullRequests === 1, "attempts a complete M4A read after a short 200 response");
+    assert(!Object.hasOwn(shortM4a.tags, "duration"), "rejects a short 200 M4A body as a complete read");
+    assert(!Object.hasOwn(shortM4a.tags, "bitrate"), "omits partial M4A bitrate after a short full response");
+    assert(shortM4a.tags.title === "Fixture M4A", "retains tags from the ranged M4A after a short full response");
+
+    const overCapSize = 300 * 1024 * 1024 + 1;
+    let overCapFullRequests = 0;
+    globalThis.fetch = async (_input, init) => {
+      if (new Headers(init?.headers).get("Range")) {
+        return new Response(m4aBytes.subarray(0, headBytes), {
+          status: 206,
+          headers: { "Content-Range": `bytes 0-${headBytes - 1}/${overCapSize}`, "Content-Type": "audio/mp4" },
+        });
+      }
+      overCapFullRequests++;
+      return new Response(m4aBytes, { status: 200, headers: { "Content-Type": "audio/mp4" } });
+    };
+    const overCap = await runMetadata({ instanceId: "instance-m4a-over-cap", sourceUri: "r2://music/over-cap.m4a", streamUrl: "https://test/stream", suffix: "m4a", size: overCapSize }) as { tags: Record<string, unknown> };
+    assert(overCapFullRequests === 0, "does not allocate a second read for an over-cap M4A");
+    assert(!Object.hasOwn(overCap.tags, "duration"), "omits positive ranged duration above the complete-read cap");
+    assert(!Object.hasOwn(overCap.tags, "bitrate"), "omits ranged M4A bitrate above the complete-read cap");
   } finally {
     globalThis.fetch = originalFetch;
   }

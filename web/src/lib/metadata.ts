@@ -51,6 +51,22 @@ export function isBrowserParse(suffix: string): boolean {
   return BROWSER_SUPPORTED.has(suffix) && !WORKER_SUPPORTED.has(suffix);
 }
 
+/** Keep plural native artist values intact in the comma-delimited metadata wire field. */
+export function commonArtistsToTag(artist: unknown, artists: unknown): string | undefined {
+  const plural = Array.isArray(artists)
+    ? artists.filter((name): name is string => typeof name === "string")
+    : [];
+  const values = plural.length > 0
+    ? plural
+    : typeof artist === "string" ? [artist] : [];
+  const unique = new Map<string, string>();
+  for (const value of values) {
+    const name = value.trim();
+    if (name && !unique.has(name.toLocaleLowerCase())) unique.set(name.toLocaleLowerCase(), name);
+  }
+  return unique.size > 0 ? Array.from(unique.values()).join(", ") : undefined;
+}
+
 // ============================================================================
 // ExtractedMetadata — 落地到 /rest/submitMetadata 的 payload 形状
 // ----------------------------------------------------------------------------
@@ -91,7 +107,8 @@ export async function extractMetadata(file: File): Promise<ExtractedMetadata> {
 
   const out: ExtractedMetadata = {};
   if (common.title) out.title = common.title;
-  if (common.artist) out.artist = common.artist;
+  const artist = commonArtistsToTag(common.artist, common.artists);
+  if (artist) out.artist = artist;
   if (common.album) out.album = common.album;
   if (common.albumartist) out.albumArtist = common.albumartist;
   if (common.genre && common.genre.length > 0) out.genre = common.genre[0];
