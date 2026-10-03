@@ -8,3 +8,5 @@
 - A single `listening` CTE aggregates song annotations once per album, then drives both qualification and result fields; folder filters remain on album membership and do not scope the global totals.
 - `getTopSongsByArtist` already uses all-user song annotation counts, so its existing ranking is consistent and needs no change.
 - A test helper initializes Node SQLite from the complete `worker/migrations/Schema.sql`, allowing the list queries and scrobble upsert to run against the production schema.
+- Only `frequent` and `recent` need cross-song listening aggregates for WHERE/ORDER BY. Other types retain their previous album-annotation `play_count`/`play_date` values without scanning song annotations.
+- `albumList2Handler` separately loads the requesting user's album annotations and passes those to `mapAlbum`; `mapAlbum` derives public `playCount` from that annotation. The catalog aggregate is not required to preserve any public field on other list types.
