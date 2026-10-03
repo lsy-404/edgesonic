@@ -69,7 +69,8 @@ def picture_block(desc: str, data: bytes, picture_type: int = 3) -> bytes:
     return b"".join(fields)
 
 
-def write_flac(path: Path, title: str = "FLAC title", app_block: bool = True, regenerable_blocks: bool = False) -> None:
+def write_flac(path: Path, title: str = "FLAC title", app_block: bool = True, regenerable_blocks: bool = False,
+               extra_comments: list[str] | None = None) -> None:
     streaminfo = bytearray(34)
     sample_rate = 48000
     channels = 2
@@ -83,12 +84,14 @@ def write_flac(path: Path, title: str = "FLAC title", app_block: bool = True, re
     if regenerable_blocks:
         payload += flac_block(3, b"\xff" * 8 + b"\0" * 10)
         payload += flac_block(1, b"\0" * 8)
-    payload += flac_block(4, vorbis_comment([f"TITLE={title}", "ARTIST=FLAC Artist", "ARTIST=Guest Artist",
+    comments = [f"TITLE={title}", "ARTIST=FLAC Artist", "ARTIST=Guest Artist",
                                              "ALBUM ARTIST=FLAC Album Artist / Guest Album Artist",
                                              "ALBUMARTIST=FLAC Album Artist", "ALBUMARTIST=Guest Album Artist",
                                              "COMMENT=ExactAudioCopy v1.1", "COMMENT=second comment",
                                              "LYRICS=first lyric", "LYRICS=second lyric",
-                                             "MOOD=calm", "MOOD=bright"]))
+                                             "MOOD=calm", "MOOD=bright"]
+    comments.extend(extra_comments or [])
+    payload += flac_block(4, vorbis_comment(comments))
     payload += flac_block(6, picture_block("front", b"png-one"))
     payload += flac_block(6, picture_block("back", b"png-two", 4), last=True)
     payload += b"\xff\xf8\x00\x00"
@@ -221,6 +224,14 @@ class FlacTagsToWavTests(unittest.TestCase):
         self.assertEqual(status, 0)
         values = [frame.text for frame in WAVE(str(resolved_output)).tags.getall("TXXX") if frame.desc == "MOOD"]
         self.assertEqual(values, [["calm", "bright"]])
+
+    def test_empty_custom_comment_is_ignored(self):
+        write_flac(self.flac, extra_comments=["RELEASETYPE="])
+        status, report = self.run_merge()
+        self.assertEqual(status, 0)
+        self.assertTrue(report["verification"]["passed"])
+        self.assertNotIn("RELEASETYPE", report["custom_vorbis_comments"])
+        self.assertFalse(any(frame.desc == "RELEASETYPE" for frame in WAVE(str(self.output)).tags.getall("TXXX")))
 
 
 if __name__ == "__main__":

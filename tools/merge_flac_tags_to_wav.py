@@ -81,7 +81,9 @@ def flac_comments(flac: FLAC) -> dict[str, list[str]]:
     out: dict[str, list[str]] = {}
     if flac.tags:
         for key, vals in flac.tags.items():
-            out[str(key).upper()] = [str(v) for v in vals]
+            values = [str(v) for v in vals if str(v).strip()]
+            if values:
+                out[str(key).upper()] = values
     return out
 
 
