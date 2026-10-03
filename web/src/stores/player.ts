@@ -22,6 +22,8 @@ import { setPlaybackActive } from "../lib/requestBudget";
 import { beginAudioRequest, beginRequest, describeAudio, endAudioRequest } from "../lib/netDiag";
 import { repairFlacPictureMime } from "../lib/flacRepair";
 import { extractEmbeddedCover } from "../lib/embeddedCover";
+import { ListeningProgress } from "../lib/listeningProgress";
+import { notifyListeningRecorded } from "../lib/listeningRevision";
 import { i18n } from "../i18n";
 import { showError } from "./toast";
 import { setupMediaSession, syncMediaSession, clearMediaSession } from "../lib/mediaSession";
@@ -188,7 +190,25 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   function catalogId(track: Track): string {
-    return track.libraryId || track.id;
+    const id = track.libraryId || track.id;
+    return id && !id.startsWith("file:") ? id : "";
+  }
+
+  const listeningProgress = new ListeningProgress();
+  watch(() => current.value?.id, () => listeningProgress.reset());
+
+  async function reportListening(track: Track) {
+    const id = catalogId(track);
+    if (!id) return;
+    try {
+      const { authFetch, hasPerm } = useAuth();
+      if (!hasPerm("edit_annotations")) return;
+      const xml = await authFetch("scrobble", { id, time: String(Date.now()), submission: "true" });
+      if (/<subsonic-response\b[^>]*\bstatus=["']ok["']/i.test(xml) && !/<error\b/i.test(xml))
+        notifyListeningRecorded();
+    } catch {
+      // A failed listening report must not interrupt audio playback.
+    }
   }
 
   function hydrateTrack(trackId: string, details: Partial<Track>) {
@@ -901,6 +921,11 @@ export const usePlayerStore = defineStore("player", () => {
       if (el !== active) return;
       currentTime.value = el.currentTime;
       const dur = el.duration;
+      if (el.seeking) listeningProgress.anchor(el.currentTime);
+      else if (listeningProgress.update({ currentTime: el.currentTime, duration: dur, playing: !el.paused })) {
+        const track = current.value;
+        if (track) void reportListening(track);
+      }
       if (isFinite(dur) && dur > 0) {
         const remaining = dur - el.currentTime;
         prefetchNextTrackData();
@@ -908,6 +933,12 @@ export const usePlayerStore = defineStore("player", () => {
             || bufferedAhead(el) >= NEXT_TRACK_PRELOAD_BUFFER_SECONDS
             || remaining <= NEXT_TRACK_PRELOAD_FORCE_SECONDS) preloadNext();
       }
+    });
+    el.addEventListener("seeking", () => {
+      if (el === active) listeningProgress.anchor(el.currentTime);
+    });
+    el.addEventListener("seeked", () => {
+      if (el === active) listeningProgress.anchor(el.currentTime);
     });
     el.addEventListener("durationchange", () => {
       if (el === active && isFinite(el.duration)) {
@@ -930,7 +961,10 @@ export const usePlayerStore = defineStore("player", () => {
     });
     el.addEventListener("ended", () => {
       console.log("[Player] ended event");
-      if (el === active) next();
+      if (el === active) {
+        if (playMode.value === "single") listeningProgress.reset();
+        next();
+      }
     });
     el.addEventListener("error", (e) => {
       const failedSrc = el.currentSrc || el.src;
@@ -1187,6 +1221,7 @@ export const usePlayerStore = defineStore("player", () => {
 
   /** Replace queue and start playing at startIndex. */
   function setQueue(tracks: Track[], startIndex = 0) {
+    listeningProgress.reset();
     _pendingRestoreTime = null; // cancel any page-reload restore when user starts a new queue
     invalidatePreload();
     queue.value = tracks;
@@ -1219,6 +1254,7 @@ export const usePlayerStore = defineStore("player", () => {
 
   function playAt(i: number) {
     if (i < 0 || i >= queue.value.length) return;
+    listeningProgress.reset();
     _pendingRestoreTime = null; // cancel restore when user explicitly navigates
     index.value = i;
     loadCurrent();
@@ -1265,7 +1301,7 @@ export const usePlayerStore = defineStore("player", () => {
   function next() {
     if (playMode.value === "single") {
       // Repeat current track
-      if (active) { active.currentTime = 0; void active.play().catch(() => {}); }
+      if (active) { listeningProgress.reset(); active.currentTime = 0; void active.play().catch(() => {}); }
       return;
     }
     if (playMode.value === "shuffle") {
