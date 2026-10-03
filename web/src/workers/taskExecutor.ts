@@ -29,7 +29,7 @@
 // player UI MUST stay responsive; offloading is the cheap insurance.
 
 import { parseBuffer } from "music-metadata";
-import { lyricsTagsToText, nativeLyricsFallback } from "../lib/metadata";
+import { commonArtistsToTag, lyricsTagsToText, nativeLyricsFallback } from "../lib/metadata";
 
 // Wire shape — matches the task frame the coordinator pushes down the
 // socket. Kept
@@ -123,7 +123,7 @@ function detectedMimeType(buf: Uint8Array, suffix: string, hinted?: string): str
 // real Worker global and can't be exercised end-to-end under plain Node.
 export function isMetaEmpty(m: Awaited<ReturnType<typeof parseBuffer>>): boolean {
   const c = m.common;
-  const hasText = !!(c.title || c.artist || c.album || c.albumartist ||
+  const hasText = !!(c.title || c.artist || (c.artists && c.artists.length) || c.album || c.albumartist ||
     (c.genre && c.genre.length) || c.year || c.track?.no || c.disk?.no);
   const hasPicture = !!(c.picture && c.picture.length);
   const hasLyrics = !!(lyricsTagsToText(c.lyrics) || nativeLyricsFallback(m.native));
@@ -200,6 +200,7 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
   // (FLAC/MP3/M4A tags are at the head).
   const suffix = String(payload.suffix || "").toLowerCase();
   const isWav = suffix === "wav";
+  const isMp4Family = ["m4a", "m4b", "mp4", "alac"].includes(suffix);
   const HEAD_BYTES = 2 * 1024 * 1024; // 2MB — covers large ID3v2 + APIC
   // 512KB used to be enough for a text-only trailing id3 chunk, but when that
   // same chunk also embeds cover art (very common) the chunk can run several
@@ -223,9 +224,11 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
     ? parseInt(rangeTotalMatch[1], 10)
     : (Number(payload.size) || 0);
   const isPartialMp3 = suffix === "mp3" &&
-    (headResp.status === 206 || (totalSize > 0 && buf.length < totalSize));
+    ((headResp.status === 206 && (!totalSize || buf.length < totalSize)) || (totalSize > 0 && buf.length < totalSize));
+  const headAlreadyHadWholeFile = (headResp.status === 200 && (!totalSize || buf.length === totalSize)) ||
+    (totalSize > 0 && buf.length === totalSize);
   const FULL_FETCH_CAP_BYTES = 300 * 1024 * 1024;
-  let fullMp3DurationRead = !isPartialMp3;
+  let durationReadFromCompleteFile = !isPartialMp3 && (!isMp4Family || headAlreadyHadWholeFile);
 
   // music-metadata's WaveParser only reads from the head buffer, but the
   // ID3v2 parser inside it scans for "id3 " chunks which can be at the end.
@@ -305,37 +308,31 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
     }
   }
 
-  // Full-read partial MP3s before submitting duration; omitted duration preserves stored values.
-  if (isPartialMp3 && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
+  // Ranged MP3 and MP4-family parses may report a positive but truncated duration.
+  // Accept duration only after a complete object read; tags from the range remain usable.
+  const needsCompleteDurationRead = isPartialMp3 || (isMp4Family && !headAlreadyHadWholeFile);
+  if (needsCompleteDurationRead && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
     try {
       const fullResp = await fetch(streamUrl);
       if (fullResp.status === 200) {
         const fullBuf = new Uint8Array(await fullResp.arrayBuffer());
         if (fullBuf.length === totalSize) {
-          meta = await parseBuffer(fullBuf, {
-            mimeType: detectedMimeType(fullBuf, suffix, fullResp.headers.get("content-type") || mimeType),
-            size: fullBuf.length,
-          }, { duration: true, skipCovers: false });
-          fullMp3DurationRead = true;
+          const fullMimeType = detectedMimeType(fullBuf, suffix, fullResp.headers.get("content-type") || mimeType);
+          try {
+            meta = await parseBuffer(fullBuf, { mimeType: fullMimeType, size: fullBuf.length }, { duration: true, skipCovers: false });
+            durationReadFromCompleteFile = true;
+          } catch {
+            const tagsOnly = await parseBuffer(fullBuf, { mimeType: fullMimeType, size: fullBuf.length }, { duration: false, skipCovers: false }).catch(() => undefined);
+            if (tagsOnly) meta = tagsOnly;
+          }
         }
       }
-    } catch { /* retain partial tags without a duration */ }
+    } catch { /* retain ranged tags and omit the unverified duration */ }
   }
 
-  // If the head window has no usable metadata or an MP4 duration, fetch the
-  // complete object before accepting the partial parse as final.
-  // A partial window can miss tags parked somewhere neither head nor tail
-  // reaches (e.g. a WAV whose id3/LIST chunk sits mid-file rather than at
-  // either end, or any format with an oversized header pushing tags past
-  // HEAD_BYTES) — only a full read can rule that out for sure. Skipped when
-  // the head fetch already delivered the whole file (status 200, or a known
-  // totalSize that fits inside HEAD_BYTES) since a second identical fetch
-  // would find nothing new; capped so a pathological multi-GB file can't OOM
-  // the tab.
-  const headAlreadyHadWholeFile =
-    headResp.status === 200 || (totalSize > 0 && totalSize <= HEAD_BYTES);
-  const needsMp4DurationRead = suffix === "mp4" && !(meta.format.duration && meta.format.duration > 0);
-  if (!isPartialMp3 && (isMetaEmpty(meta) || needsMp4DurationRead) &&
+  // Other formats may hide tags outside both requested ranges. Fetch the complete
+  // object only when the ranged parse found no usable metadata.
+  if (!isMp4Family && !isPartialMp3 && isMetaEmpty(meta) &&
       !headAlreadyHadWholeFile && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
     try {
       const fullResp = await fetch(streamUrl);
@@ -381,14 +378,14 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
   // a separate `cover` field (base64) so the worker can write it to R2.
   const duration = isWav && totalSize > buf.length
     ? partialWavMetrics?.duration ? Math.round(partialWavMetrics.duration) : undefined
-    : fullMp3DurationRead && meta.format.duration
+    : (isPartialMp3 || isMp4Family ? durationReadFromCompleteFile : true) && meta.format.duration
       ? Math.round(meta.format.duration)
     : undefined;
   return {
     instanceId,
     tags: {
       title:       meta.common.title || "",
-      artist:      meta.common.artist || "",
+      artist:      commonArtistsToTag(meta.common.artist, meta.common.artists) || "",
       album:       meta.common.album || "",
       albumArtist: meta.common.albumartist || "",
       genre:       (meta.common.genre || []).join(", "),

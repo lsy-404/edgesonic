@@ -14,3 +14,4 @@
 | 561 | [BugFix] home-listening | 首页热门与最近专辑播放链路集成验证 | 用户报告首页两个播放榜单不工作 | ✅ 已完成 |
 | 562 | [BugFix] album-listening-queries | 从实际歌曲播放记录派生专辑热门和最近排序 | 用户报告首页两个播放榜单不工作 | ✅ 已完成 |
 | 563 | [BugFix] player-listening-report | 播放器提交实际收听记录并刷新首页播放榜单 | 用户报告首页两个播放榜单不工作 | ✅ 已完成 |
+| 564 | [BugFix] MP4 full duration and multivalue artists | Require complete MP4-family reads for duration and retain multivalue artist credits | Prevent partial-file duration corruption and artist loss | 🔄 进行中 |
