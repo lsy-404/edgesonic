@@ -17,3 +17,5 @@
 | 564 | [BugFix] MP4 full duration and multivalue artists | Require complete MP4-family reads for duration and retain multivalue artist credits | Prevent partial-file duration corruption and artist loss | 🔄 进行中 |
 | 565 | [Refactor] pnpm迁移 | 工作区、锁文件、脚本和 CI 使用 pnpm | 用户要求自有仓库全部替换 | ✅ 已完成 |
 | 566 | [Operations] catalog_native_delivery | Deliver native metadata verification and guarded catalog reconciliation | Complete source coverage and repair catalog identity and statistics | 🔄 进行中 |
+
+| 567 | [Maintenance] Kit依赖升级 | 更新已使用的公共 kit 包和锁文件 | 使用最新已发布的共享组件 | 🔄 进行中 |

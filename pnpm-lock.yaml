@@ -66,8 +66,8 @@ importers:
   installer:
     dependencies:
       '@lsypkg/fluent':
-        specifier: https://github.com/lsy-404/platform-kit/releases/download/v0.6.4/platform-kit-fluent-0.2.3.tgz
-        version: '@platform-kit/fluent@https://github.com/lsy-404/platform-kit/releases/download/v0.6.4/platform-kit-fluent-0.2.3.tgz(vue@3.5.42(typescript@6.0.3))'
+        specifier: https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.10/platform-kit-fluent-0.2.10.tgz
+        version: '@platform-kit/fluent@https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.10/platform-kit-fluent-0.2.10.tgz(vue@3.5.42(typescript@6.0.3))'
       '@vitejs/plugin-vue':
         specifier: ^6.0.7
         version: 6.0.8(vite@8.2.2(esbuild@0.28.1)(tsx@4.23.13))(vue@3.5.42(typescript@6.0.3))
@@ -112,8 +112,8 @@ importers:
         specifier: ^1.41.0
         version: 1.41.0(vue@3.5.42(typescript@6.0.3))
       '@platform-kit/fluent':
-        specifier: https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.5/platform-kit-fluent-0.2.5.tgz
-        version: https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.5/platform-kit-fluent-0.2.5.tgz(vue@3.5.42(typescript@6.0.3))
+        specifier: https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.10/platform-kit-fluent-0.2.10.tgz
+        version: https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.10/platform-kit-fluent-0.2.10.tgz(vue@3.5.42(typescript@6.0.3))
       '@vitejs/plugin-vue':
         specifier: ^6.0.7
         version: 6.0.8(vite@8.2.2(esbuild@0.28.1)(tsx@4.23.13))(vue@3.5.42(typescript@6.0.3))
@@ -636,9 +636,9 @@ packages:
   '@oxc-project/types@0.148.0':
     resolution: {integrity: sha512-Nm4s/jB+4FpFsPhWGEC4h7rzksesmtnMXomo6rCMcg/b8zLQuOziRgkCS1fxDCXOlJB/6Q8oABOZ/OP6RIPj9A==}
 
-  '@platform-kit/fluent@https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.5/platform-kit-fluent-0.2.5.tgz':
-    resolution: {integrity: sha512-D/ylhODVX005Yx0VTka4RTf4Tw4h+oNa3A/fwwgn4g4SdZSi6iIequ/Il2QDlKBPRgOOtCjgSqawHimZEqDz1Q==, tarball: https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.5/platform-kit-fluent-0.2.5.tgz}
-    version: 0.2.5
+  '@platform-kit/fluent@https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.10/platform-kit-fluent-0.2.10.tgz':
+    resolution: {tarball: https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.10/platform-kit-fluent-0.2.10.tgz}
+    version: 0.2.10
     peerDependencies:
       vue: ^3.5.0
 
@@ -1702,7 +1702,7 @@ snapshots:
 
   '@oxc-project/types@0.148.0': {}
 
-  '@platform-kit/fluent@https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.5/platform-kit-fluent-0.2.5.tgz(vue@3.5.42(typescript@6.0.3))':
+  '@platform-kit/fluent@https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.10/platform-kit-fluent-0.2.10.tgz(vue@3.5.42(typescript@6.0.3))':
     dependencies:
       vue: 3.5.42(typescript@6.0.3)
 
