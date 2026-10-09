@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "test/frontend/player_range_lifecycle.test.ts"
       - "worker/transcoder-image/**"
       - "docker/external-transcoder/**"
       - "test/transcoder-image.mjs"
@@ -16,6 +17,7 @@ on:
   pull_request:
     paths:
       - "web/**"
+      - "test/frontend/player_range_lifecycle.test.ts"
       - "worker/transcoder-image/**"
       - "docker/external-transcoder/**"
       - "test/transcoder-image.mjs"
@@ -42,6 +44,7 @@ jobs:
           node-version: "24"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsx --test test/frontend/player_range_lifecycle.test.ts
       - run: pnpm --dir web run typecheck
       - run: pnpm --dir web run build
       - run: pnpm --dir installer run typecheck

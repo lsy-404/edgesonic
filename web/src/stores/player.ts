@@ -753,12 +753,16 @@ export const usePlayerStore = defineStore("player", () => {
         }
         await logFallbackBlob(`stream-range-${state.downloaded}-${target - 1}`, resp, chunk);
         if (controller.signal.aborted || state.controller !== controller || fallbackStateByElement.get(el) !== state) return;
+        let complete = resp.status !== 206;
         if (resp.status === 206) {
           state.chunks.push(chunk);
           state.downloaded += chunk.size;
           state.contentType = state.contentType || chunk.type || resp.headers.get("Content-Type") || "";
           state.stepIndex++;
-          if (chunk.size < target - (state.downloaded - chunk.size)) state.stepIndex = FALLBACK_RANGE_STEPS.length;
+          const total = Number(resp.headers.get("Content-Range")?.match(/\/(\d+)$/)?.[1]);
+          complete = Number.isFinite(total) && total > 0
+            ? state.downloaded >= total
+            : chunk.size < target - (state.downloaded - chunk.size);
         } else {
           state.chunks = [chunk];
           state.downloaded = chunk.size;
@@ -768,7 +772,12 @@ export const usePlayerStore = defineStore("player", () => {
 
         if (el !== active || current.value?.id !== state.trackId) return;
         const blob = new Blob(state.chunks, { type: state.contentType || undefined });
-        await playFallbackBlob(el, blob, resumeAt, state.shouldPlay || shouldPlay, null, controller.signal);
+        if (complete) state.phase = "full";
+        await playFallbackBlob(el, blob, resumeAt, state.shouldPlay || shouldPlay, complete ? "fallback" : null, controller.signal);
+        if (complete && fallbackStateByElement.get(el) === state) {
+          fallbackStateByElement.delete(el);
+          fallbackInFlight.delete(el);
+        }
         return;
       }
     } catch (e) {
@@ -920,6 +929,8 @@ export const usePlayerStore = defineStore("player", () => {
     el.addEventListener("timeupdate", () => {
       if (el !== active) return;
       if (playbackTrackIdByElement.get(el) !== current.value?.id) return;
+      // Incomplete media can report the full declared duration when it reaches EOF.
+      if (el.ended && fallbackStateByElement.has(el)) return;
       currentTime.value = el.currentTime;
       const dur = el.duration;
       if (el.seeking) listeningProgress.anchor(el.currentTime);
@@ -955,6 +966,8 @@ export const usePlayerStore = defineStore("player", () => {
       console.log("[Player] pause event");
       if (consumeInternalPause(el)) return;
       if (el === active) {
+        // Partial audio emits pause before ended while the remaining bytes are still needed.
+        if (el.ended && fallbackStateByElement.has(el)) return;
         playing.value = false;
         abortFallbackWork(el);
         invalidatePreload();
@@ -963,6 +976,13 @@ export const usePlayerStore = defineStore("player", () => {
     el.addEventListener("ended", () => {
       console.log("[Player] ended event");
       if (el === active) {
+        const state = fallbackStateByElement.get(el);
+        if (state && state.trackId === current.value?.id) {
+          if (state.phase === "range" && !state.controller.signal.aborted) {
+            void continueIncrementalFallback(el, state, currentTime.value, state.shouldPlay);
+          }
+          return;
+        }
         if (playMode.value === "single") listeningProgress.reset();
         next();
       }
@@ -1272,7 +1292,11 @@ export const usePlayerStore = defineStore("player", () => {
       loadCurrent(true);
       return;
     }
-    if (active!.paused) {
+    if (active!.paused && playing.value && fallbackStateByElement.has(active!)) {
+      playing.value = false;
+      abortFallbackWork(active!);
+      invalidatePreload();
+    } else if (active!.paused) {
       resumeFallbackWork(active!);
       void active!.play().catch(() => { playing.value = false; });
     }
