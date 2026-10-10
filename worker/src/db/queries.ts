@@ -20,6 +20,7 @@ export interface SongNames {
   artist_name: string | null;
   album_name: string | null;
   album_artist_name: string | null;
+  album_year: number | null;
 }
 
 // onto song_masters rows. Subsonic clients gate playback decisions on
@@ -48,6 +49,7 @@ const SONG_ROW_COLS = `sm.*,
          WHERE sa.song_id = sm.id ORDER BY sa.position
        )), ar.name) AS artist_name,
        al.name AS album_name,
+       al.year AS album_year,
        aar.name AS album_artist_name,
        si.suffix AS inst_suffix, si.content_type AS inst_content_type,
        si.bit_rate AS inst_bit_rate, si.size AS inst_size,
@@ -61,6 +63,7 @@ const SONG_SEARCH_ROW_COLS = `sm.id, sm.album_id, sm.artist_id, sm.title, sm.tra
          WHERE sa.song_id = sm.id ORDER BY sa.position
        )), ar.name) AS artist_name,
        al.name AS album_name,
+       al.year AS album_year,
        aar.name AS album_artist_name,
        si.suffix AS inst_suffix, si.content_type AS inst_content_type,
        si.bit_rate AS inst_bit_rate, si.size AS inst_size,

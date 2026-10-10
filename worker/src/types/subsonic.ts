@@ -103,7 +103,7 @@ export function mapAlbum(a: Album, artistName?: string, annotation?: AnnotationL
 // bitRate/size/path, so emit them whenever the row has them.
 export function mapSong(
   s: Pick<SongMaster, "id" | "album_id" | "artist_id" | "title" | "track" | "disc" | "duration" | "genre" | "created_at"> & {
-    artist_name?: string | null; album_name?: string | null; album_artist_name?: string | null;
+    artist_name?: string | null; album_name?: string | null; album_artist_name?: string | null; album_year?: number | null;
     inst_suffix?: string | null; inst_content_type?: string | null;
     inst_bit_rate?: number | null; inst_size?: number | null;
     inst_duration?: number | null; inst_storage_uri?: string | null;
@@ -127,6 +127,7 @@ export function mapSong(
     artistId: s.artist_id || undefined,
     track: s.track ?? undefined,
     discNumber: s.disc ?? undefined,
+    ...(s.album_year != null ? { year: s.album_year } : {}),
     genre: s.genre ?? undefined,
     // The song's own id: getCoverArt serves the track's embedded artwork when
     // it has any and falls back to the album's, so compilations stop showing
