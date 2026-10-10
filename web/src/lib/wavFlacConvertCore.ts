@@ -106,6 +106,7 @@ const COMMON_TAGS = [
   "track", "disk", "genre", "composer", "lyricist", "writer", "copyright", "publisher",
   "bpm", "compilation", "grouping", "subtitle", "isrc", "barcode", "catalognumber", "movementIndex",
   "movementTotal", "work", "replaygain_track_gain", "replaygain_album_gain",
+  "conductor", "remixer", "language",
 ] as const;
 
 function commentEntries(value: unknown): Array<{ language: string; descriptor: string; text: string }> {
@@ -195,6 +196,13 @@ export async function assertMetadataPreserved(source: Uint8Array, output: Uint8A
   const outputTags = outputMetadata.common as unknown as Record<string, unknown>;
   for (const key of COMMON_TAGS) {
     if (stable(sourceTags[key]) !== stable(outputTags[key])) {
+      throw new WavFlacConversionError("metadata_loss", `The ${key} metadata could not be preserved exactly.`);
+    }
+  }
+  const individuallyVerified = new Set(["comment", "lyrics", "picture", "date", "year", "encodedby", "encodersettings"]);
+  for (const [key, value] of Object.entries(sourceTags)) {
+    if (individuallyVerified.has(key)) continue;
+    if (stable(value) !== stable(outputTags[key])) {
       throw new WavFlacConversionError("metadata_loss", `The ${key} metadata could not be preserved exactly.`);
     }
   }

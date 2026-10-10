@@ -5,6 +5,7 @@ const fixtureView = document.querySelector<HTMLElement>("#fixture")!;
 const resultView = document.querySelector<HTMLElement>("#result")!;
 const download = document.querySelector<HTMLAnchorElement>("#download")!;
 const start = document.querySelector<HTMLButtonElement>("#start")!;
+const realStart = document.querySelector<HTMLButtonElement>("#real-start")!;
 
 async function showFixture() {
   const response = await fetch("/fixture/report");
@@ -71,6 +72,84 @@ start.addEventListener("click", async () => {
     status.textContent = `FAILED: ${error instanceof Error ? error.message : String(error)}`;
     resultView.textContent = String(error);
   } finally {
+    start.disabled = false;
+  }
+});
+
+realStart.addEventListener("click", async () => {
+  const runtime = new URL("/runtime", location.origin).toString().replace(/\/$/u, "");
+  const proxyUrl = (value: unknown) => {
+    const url = new URL(String(value));
+    return `${runtime}${url.pathname}${url.search}`;
+  };
+  realStart.disabled = true;
+  start.disabled = true;
+  download.hidden = true;
+  resultView.textContent = "";
+  status.textContent = "Seeding the generated WAV into the local D1/R2 test runtime…";
+  try {
+    const sourceResponse = await fetch("/fixture/source");
+    if (!sourceResponse.ok) throw new Error(`Generated source returned HTTP ${sourceResponse.status}`);
+    const sourceBytes = await sourceResponse.arrayBuffer();
+    const init = await fetch(`${runtime}/__fixture/init`, { method: "POST" });
+    if (!init.ok) throw new Error(`Local runtime initialization returned HTTP ${init.status}`);
+    const seeded = await fetch(`${runtime}/__fixture/seed`, {
+      method: "POST",
+      headers: { "Content-Type": "audio/wav" },
+      body: sourceBytes,
+    });
+    if (!seeded.ok) throw new Error(`Local runtime seed returned HTTP ${seeded.status}: ${await seeded.text()}`);
+    const claim = await seeded.json() as Record<string, unknown>;
+    const id = String(claim.id || "");
+    const attempts = Number(claim.attempts);
+    const claimedAt = Number(claim.claimedAt);
+    if (!id || !String(claim.streamUrl || "") || !String(claim.uploadUrl || "")
+      || !String(claim.submitUrl || "") || !String(claim.heartbeatUrl || "")) {
+      throw new Error("Local runtime seed did not return a complete signed lossless claim.");
+    }
+    const task: QueuedTask = {
+      id,
+      taskType: "lossless",
+      payload: {
+        ...claim,
+        streamUrl: proxyUrl(claim.streamUrl),
+        uploadUrl: proxyUrl(claim.uploadUrl),
+        sourceSize: Number(claim.sourceSize),
+      },
+      requiredCaps: ["lossless"],
+      priority: 0,
+      attempts,
+      maxAttempts: Number(claim.maxAttempts || 3),
+      claimedAt,
+      heartbeatAt: claimedAt,
+    };
+    status.textContent = "Running the real browser worker against the local D1/R2 source and upload routes…";
+    const outcome = await runTask(task, {
+      restUrl: () => "",
+      edgesonicPost: async (path, body, signal) => {
+        const endpoint = path === "work/heartbeat" ? proxyUrl(claim.heartbeatUrl) : proxyUrl(claim.submitUrl);
+        const response = await fetch(String(endpoint), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal,
+        });
+        const text = await response.text();
+        if (!response.ok) throw new Error(`Local runtime ${path} returned HTTP ${response.status}: ${text}`);
+        return text;
+      },
+    }, new AbortController().signal);
+    const readback = await fetch(`${runtime}/__fixture/state?id=${encodeURIComponent(id)}`);
+    const state = readback.ok ? await readback.json() : { error: `Readback HTTP ${readback.status}`, body: await readback.text() };
+    resultView.textContent = JSON.stringify({ claim, outcome, state }, null, 2);
+    status.textContent = outcome.status === "ok"
+      ? "Real local D1/R2 path completed; inspect the task, instance, entry and R2 catalog readback below."
+      : `FAILED: ${outcome.status === "failed" ? outcome.error : outcome.status}`;
+  } catch (error) {
+    status.textContent = `FAILED: ${error instanceof Error ? error.message : String(error)}`;
+    resultView.textContent = String(error);
+  } finally {
+    realStart.disabled = false;
     start.disabled = false;
   }
 });

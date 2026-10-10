@@ -206,6 +206,16 @@ const fixturePlugin: Plugin = {
             id: "TXXX", body: Buffer.concat([Buffer.from([0]), Buffer.from("CUSTOM\0unmapped value")]),
           }]);
           negativeChecks.push(await expectMetadataLoss(customTag, bytes, "custom native tag"));
+          for (const [id, label, value] of [
+            ["TPE3", "conductor", "Fixture Conductor"],
+            ["TPE4", "remixer", "Fixture Remixer"],
+            ["TLAN", "language", "eng"],
+          ]) {
+            const encoded = rewriteId3(fixture, (frames) => [...frames, {
+              id, body: Buffer.concat([Buffer.from([0]), Buffer.from(value)]),
+            }]);
+            negativeChecks.push(await expectMetadataLoss(encoded, bytes, label));
+          }
           const valid = headers["content-type"] === "audio/flac"
             && headers["x-source-sha256"] === sourceSha256
             && headers["x-output-sha256"] === expectedOutputHash
@@ -274,6 +284,13 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 4179,
     strictPort: true,
+    proxy: {
+      "/runtime": {
+        target: "http://127.0.0.1:8798",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/runtime/u, ""),
+      },
+    },
     fs: { allow: [repository] },
   },
 });

@@ -11,3 +11,6 @@
 - Merged the server claim-bound lossless source/upload endpoints and preserved the coordinator-provided signed stream URL in the runner.
 - Extended the generated browser fixture with negative checks for changed lyrics, cover, date, comments, descriptors, and unknown native tags; the local upload saves generated source WAV and conversion evidence for endpoint testing.
 - Rejected synchronized SYLT lyrics because conversion cannot preserve event timing. Added language-suffixed FLAC lyrics support to browser and server metadata readers.
+- Added an ordinary browser control for the local Worker-backed D1/R2 flow: generated WAV seed, claim-bound stream/upload, real task submission, and catalog readback.
+- Expanded native metadata checks to cover every source common field, with explicit handling for date/year, artwork, comments, lyrics, and encoder/tool fields; added negative conductor/remixer/language checks.
+- Routed real-runtime signed URLs through a same-origin loopback Vite proxy so the browser module worker can exercise the local Worker source and upload endpoints without cross-origin fetch failures.
