@@ -20,3 +20,5 @@
 
 | 567 | [Maintenance] Kit依赖升级 | 更新已使用的公共 kit 包和锁文件 | 使用最新已发布的共享组件 | ✅ 已完成 |
 | 568 | [Feature] Library file actions | Navigate from library entries to the exact file and expose confirmed deletion | User requested direct library file management actions | ✅ 已完成 |
+
+| 569 | [Feature] WAV FLAC lossless tool | Tools 内本地 WAV 转 FLAC 并验证样本、规格与元数据 | 用户希望减少存储空间且保持无损 | ✅ 已完成 |

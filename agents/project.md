@@ -19,3 +19,6 @@
 ## 项目约束
 - 项目级补充指令见 [local.instructions.md](local.instructions.md)。
 - 线上文件操作须先形成可核对清单、备份与回滚方案。
+
+## Recent tools
+- Tools includes browser-local file utilities; WAV-to-FLAC conversion uses existing ffmpeg.wasm and music-metadata dependencies and validates before download. This does not change R2 or D1.
