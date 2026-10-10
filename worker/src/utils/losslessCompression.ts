@@ -29,7 +29,7 @@ export async function enqueueLosslessBatch(env: Env): Promise<{ enqueued: number
        JOIN storage_objects o ON o.id = si.storage_object_id
       WHERE si.source_type = 'original' AND si.missing = 0
         AND lower(si.suffix) = 'wav' AND si.storage_uri = 'r2://' || o.physical_key
-        AND o.suffix = 'wav' AND o.size > 0 AND o.etag IS NOT NULL`,
+        AND lower(o.suffix) = 'wav' AND o.size > 0 AND o.etag IS NOT NULL`,
   ).first<{ count: number }>();
   const candidates = (await env.DB.prepare(
     `SELECT si.id AS instance_id, si.storage_uri AS source_uri,
@@ -39,7 +39,7 @@ export async function enqueueLosslessBatch(env: Env): Promise<{ enqueued: number
        JOIN storage_objects o ON o.id = si.storage_object_id
       WHERE si.source_type = 'original' AND si.missing = 0
         AND lower(si.suffix) = 'wav' AND si.storage_uri = 'r2://' || o.physical_key
-        AND o.suffix = 'wav' AND o.size > 0 AND o.etag IS NOT NULL
+        AND lower(o.suffix) = 'wav' AND o.size > 0 AND o.etag IS NOT NULL
         AND NOT EXISTS (
           SELECT 1 FROM work_queue q
            WHERE q.id = 'wt-lossless-' || si.id AND q.status IN ('queued', 'claimed')
@@ -117,8 +117,8 @@ export async function sha256Stream(body: ReadableStream<Uint8Array>): Promise<st
   return toHex(await digest.digest);
 }
 
-export function losslessOutputObject(instanceId: string, outputSha256: string): { objectId: string; key: string } {
-  const objectId = createStableObjectId(`lossless:${instanceId}:${outputSha256}`);
+export function losslessOutputObject(instanceId: string, outputSha256: string, uploadNonce: string): { objectId: string; key: string } {
+  const objectId = createStableObjectId(`lossless:${instanceId}:${outputSha256}:${uploadNonce}`);
   return { objectId, key: createStableObjectKey(objectId, "flac") };
 }
 
