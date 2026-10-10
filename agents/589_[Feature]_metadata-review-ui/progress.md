@@ -12,3 +12,10 @@
 - Focused validation passed: four metadata review helper tests, web typecheck, web production build, and `git diff --check`.
 - Build output includes the existing browser `url` externalization note from `@clamber_l/crypto` and the existing large-chunk advisory.
 - Only the UI panel, Work Mode integration, en/zh-CN strings, helper tests, and this task audit are in scope for the UI commit.
+
+- Follow-up: changed current metadata display to use only the stored catalog snapshot, retaining em-dash blanks when no snapshot field exists.
+- Follow-up: removed pre-fetch row clearing, deferred poll/visibility refresh while user decisions are in flight, and queued one refresh after decisions complete.
+- Follow-up: made completeness totals internally consistent and clarified that the force-recheck action skips pending, active, and explicitly kept retrievals.
+- Added a focused unit test for stored-snapshot metadata display and source-hint exclusion. A mounted SFC test was attempted, but the existing Vite Node harness returned `ERR_CLOSED_SERVER` while resolving the component graph.
+- Final follow-up verification passed: five focused helper tests, web typecheck, web build, and `git diff --check`.
+- The component runtime attempt failed with `ERR_CLOSED_SERVER` in Vite Node; the parent is handling browser-level panel validation.

@@ -1787,7 +1787,7 @@
     "losslessDispatchHelp": "任务会先校验音频采样和标签，再用 FLAC 副本替换 WAV。",
     "losslessDispatchResult": "已加入 {enqueued} 项任务；跳过 {skipped} 项。",
     "missingMetadataDispatch": "强制重新检索缺失元数据",
-    "missingMetadataDispatchHelp": "重新开始检索缺少元数据的歌曲。已完成和失败的任务会重新排队；现有字段会保留，待处理或运行中的任务会跳过。",
+    "missingMetadataDispatchHelp": "重新检索缺失元数据的歌曲。已完成和失败的普通检索任务会重新排队；待处理、运行中以及用户明确保留的信息会跳过，现有目录字段会保留。",
     "missingMetadataDispatchStarting": "正在开始检索元数据……",
     "missingMetadataDispatchProgress": "已扫描 {scanned} 首歌曲；加入队列 {enqueued} 项；跳过 {skipped} 项。",
     "missingMetadataDispatchResult": "已扫描 {scanned} 首歌曲；加入队列 {enqueued} 项；跳过 {skipped} 项。",

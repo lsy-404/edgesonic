@@ -41,6 +41,13 @@ function record(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
+export function metadataSnapshotFields(payload: Record<string, unknown>): Record<string, string> {
+  const snapshot = payload.snapshot;
+  if (!record(snapshot)) return {};
+  return Object.fromEntries(["title", "artist", "album"].flatMap((field) =>
+    typeof snapshot[field] === "string" ? [[field, snapshot[field] as string]] : [],
+  ));
+}
 export function parseAutoState(value: unknown): boolean {
   if (!record(value) || value.ok !== true || typeof value.enabled !== "boolean") {
     throw new Error("Invalid automatic metadata state response");
@@ -86,7 +93,7 @@ export function parseMetadataReviewPage(value: unknown): MetadataReviewPage {
     if (!Number.isSafeInteger(count) || (count as number) < 0) throw new Error("Invalid metadata status counts");
     counts[key] = count as number;
   }
-  if (counts.complete + counts.incomplete > counts.total) throw new Error("Inconsistent metadata completeness counts");
+  if (counts.complete + counts.incomplete !== counts.total) throw new Error("Inconsistent metadata completeness counts");
   return {
     autoEnabled: value.autoEnabled,
     counts,

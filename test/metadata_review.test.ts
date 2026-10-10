@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   metadataReviewRequest,
+  metadataSnapshotFields,
   parseAutoState,
   parseMetadataReviewPage,
   type MetadataReviewItem,
@@ -27,6 +28,7 @@ test("parses the opt-in state and bounded status pages", () => {
 test("rejects malformed or contradictory status pages", () => {
   assert.throws(() => parseAutoState({ ok: true, enabled: "yes" }));
   assert.throws(() => parseMetadataReviewPage({ ok: true, autoEnabled: false, counts: { ...counts, complete: 6 }, pending: [], nextCursor: null }));
+  assert.throws(() => parseMetadataReviewPage({ ok: true, autoEnabled: false, counts: { ...counts, incomplete: 1, complete: 1 }, pending: [], nextCursor: null }));
   assert.throws(() => parseMetadataReviewPage({ ok: true, autoEnabled: false, counts, pending: Array(21).fill(pending), nextCursor: null }));
 });
 
@@ -42,4 +44,12 @@ test("apply action must match the selected candidate identity", () => {
   assert.equal(metadataReviewRequest(item, "apply", 0, result).decision, "apply");
   assert.throws(() => metadataReviewRequest(item, "apply", 0, { ...result, match: { ...result.match, songId: "wrong" } }));
   assert.throws(() => metadataReviewRequest(item, "apply", 0));
+});
+
+test("current metadata comes from the catalog snapshot, never retrieval identity hints", () => {
+  assert.deepEqual(metadataSnapshotFields({
+    identity: { title: "/source/folder/song.flac", artist: "folder" },
+    snapshot: { title: "Catalog title", artist: "Catalog artist", album: "Catalog album" },
+  }), { title: "Catalog title", artist: "Catalog artist", album: "Catalog album" });
+  assert.deepEqual(metadataSnapshotFields({ identity: { title: "/source/song.flac" } }), {});
 });

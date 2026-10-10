@@ -8,3 +8,10 @@
 - [x] Add focused helper tests under `/test` for response validation, paging, and review payloads.
 - [x] Run focused tests, web typecheck/build, and scoped diff hygiene review.
 - [x] Commit only this UI, helper, locale, tests, and audit scope.
+
+## Follow-up: review list stability and stored metadata display
+
+- [x] Read current title, artist, and album only from the catalog snapshot; cover source-hint separation with a unit test.
+- [x] Preserve pending rows when status refresh fails; defer background refreshes during user review and refresh once after actions settle.
+- [x] Require completeness counts to add up to the total, and clarify skipped states in the force-recheck help.
+- [x] Run focused tests, web typecheck/build, and diff hygiene review; commit this follow-up.

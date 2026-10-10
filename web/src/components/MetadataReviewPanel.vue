@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { useAuth } from "../api";
 import {
   metadataReviewRequest,
+  metadataSnapshotFields,
   parseAutoState,
   parseMetadataReviewPage,
   type MetadataReviewCandidate,
@@ -22,6 +23,7 @@ const loadingMore = ref(false);
 const changingEnabled = ref(false);
 const errors = ref<string | null>(null);
 const busyTasks = ref(new Set<string>());
+const refreshPending = ref(false);
 let mounted = false;
 let pollTimer: number | null = null;
 let statusController: AbortController | null = null;
@@ -31,6 +33,7 @@ function scheduleRefresh(): void {
   if (!mounted || document.hidden || pollTimer !== null) return;
   pollTimer = window.setTimeout(() => {
     pollTimer = null;
+    if (busyTasks.value.size > 0) { scheduleRefresh(); return; }
     void refreshStatus(true).finally(scheduleRefresh);
   }, 60_000);
 }
@@ -48,7 +51,6 @@ async function readStatus(after?: string | null, signal?: AbortSignal): Promise<
 
 async function refreshStatus(reset = true): Promise<void> {
   if (!mounted || statusController) return;
-  if (reset) { items.value = []; nextCursor.value = null; }
   loading.value = true;
   const controller = new AbortController();
   statusController = controller;
@@ -69,11 +71,32 @@ async function refreshAfterMutation(): Promise<void> {
   statusController = null;
   await refreshStatus(true);
 }
+
+async function refreshWhenIdle(): Promise<void> {
+  refreshPending.value = true;
+  if (busyTasks.value.size > 0) return;
+  refreshPending.value = false;
+  await refreshAfterMutation();
+}
+
+async function flushPendingRefresh(): Promise<void> {
+  if (refreshPending.value && busyTasks.value.size === 0) {
+    refreshPending.value = false;
+    await refreshAfterMutation();
+  }
+}
+
 async function loadMore(): Promise<void> {
-  if (loadingMore.value || !nextCursor.value) return;
+  if (loadingMore.value || busyTasks.value.size > 0 || !nextCursor.value) return;
   loadingMore.value = true;
   await refreshStatus(false);
   loadingMore.value = false;
+}
+
+function pauseStatusForDecision(): void {
+  statusController?.abort();
+  statusController = null;
+  loading.value = false;
 }
 
 async function setAutomaticRetrieval(): Promise<void> {
@@ -86,7 +109,7 @@ async function setAutomaticRetrieval(): Promise<void> {
     const next = !enabled.value;
     const body = JSON.parse(await edgesonicPost("work/scrape/auto", { enabled: next }, controller.signal)) as unknown;
     enabled.value = parseAutoState(body);
-    await refreshAfterMutation();
+    await refreshWhenIdle();
   } catch (error) {
     if (!controller.signal.aborted) errors.value = error instanceof Error ? error.message : String(error);
   } finally {
@@ -96,10 +119,7 @@ async function setAutomaticRetrieval(): Promise<void> {
 }
 
 function currentFields(item: MetadataReviewItem): Record<string, string> {
-  const identity = item.payload.identity;
-  const snapshot = item.payload.snapshot;
-  const source = identity && typeof identity === "object" ? identity : snapshot;
-  return source && typeof source === "object" ? source as Record<string, string> : {};
+  return metadataSnapshotFields(item.payload);
 }
 
 function reasonLabel(reason?: string): string {
@@ -114,17 +134,19 @@ function candidateLabel(candidate: MetadataReviewCandidate): string {
 
 async function decide(item: MetadataReviewItem, decision: "keep" | "retry"): Promise<void> {
   if (busyTasks.value.has(item.taskId)) return;
+  pauseStatusForDecision();
   const controller = new AbortController();
   actionControllers.add(controller);
   const nextBusy = new Set(busyTasks.value);
   nextBusy.add(item.taskId);
   busyTasks.value = nextBusy;
   errors.value = null;
+  let reviewApplied = false;
   try {
     const body = metadataReviewRequest(item, decision);
     const response = JSON.parse(await edgesonicPost("work/scrape/review", body, controller.signal)) as { ok?: boolean; error?: string };
     if (!response.ok) throw new Error(response.error || "Review action failed");
-    await refreshAfterMutation();
+    reviewApplied = true;
   } catch (error) {
     if (!controller.signal.aborted && mounted) errors.value = error instanceof Error ? error.message : String(error);
   } finally {
@@ -133,16 +155,20 @@ async function decide(item: MetadataReviewItem, decision: "keep" | "retry"): Pro
     settled.delete(item.taskId);
     busyTasks.value = settled;
   }
+  if (reviewApplied) refreshPending.value = true;
+  if (mounted) await flushPendingRefresh();
 }
 
 async function applyCandidate(item: MetadataReviewItem, candidateIndex: number): Promise<void> {
   if (busyTasks.value.has(item.taskId)) return;
+  pauseStatusForDecision();
   const controller = new AbortController();
   actionControllers.add(controller);
   const nextBusy = new Set(busyTasks.value);
   nextBusy.add(item.taskId);
   busyTasks.value = nextBusy;
   errors.value = null;
+  let reviewApplied = false;
   try {
     const proxyUrl = new URL("/tag/scrape", window.location.origin).toString();
     const result = await resolveMetadataRetrievalCandidate(
@@ -154,7 +180,7 @@ async function applyCandidate(item: MetadataReviewItem, candidateIndex: number):
     const body = metadataReviewRequest(item, "apply", candidateIndex, result);
     const response = JSON.parse(await edgesonicPost("work/scrape/review", body, controller.signal)) as { ok?: boolean; error?: string };
     if (!response.ok) throw new Error(response.error || "Review action failed");
-    await refreshAfterMutation();
+    reviewApplied = true;
   } catch (error) {
     if (!controller.signal.aborted && mounted) errors.value = error instanceof Error ? error.message : String(error);
   } finally {
@@ -163,6 +189,8 @@ async function applyCandidate(item: MetadataReviewItem, candidateIndex: number):
     settled.delete(item.taskId);
     busyTasks.value = settled;
   }
+  if (reviewApplied) refreshPending.value = true;
+  if (mounted) await flushPendingRefresh();
 }
 
 function onVisibility(): void {
@@ -172,7 +200,8 @@ function onVisibility(): void {
     statusController?.abort();
     statusController = null;
   } else {
-    void refreshStatus(true).finally(scheduleRefresh);
+    if (busyTasks.value.size > 0) refreshPending.value = true;
+    else void refreshStatus(true).finally(scheduleRefresh);
   }
 }
 
@@ -209,7 +238,7 @@ onBeforeUnmount(() => {
         <h2>{{ t("workMode.autoMetadataTitle") }}</h2>
         <p>{{ t("workMode.autoMetadataHelp") }}</p>
       </div>
-      <button type="button" :disabled="changingEnabled" :aria-pressed="enabled" @click="setAutomaticRetrieval">
+      <button type="button" :disabled="changingEnabled || busyTasks.size > 0" :aria-pressed="enabled" @click="setAutomaticRetrieval">
         {{ changingEnabled ? t("common.loading") : enabled ? t("workMode.autoMetadataStop") : t("workMode.autoMetadataStart") }}
       </button>
     </header>
@@ -255,7 +284,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <p v-if="!loading && items.length === 0 && counts.pending === 0" class="review-note">{{ t("workMode.metadataNoPending") }}</p>
-    <button v-if="nextCursor" type="button" :disabled="loading || loadingMore" @click="loadMore">
+    <button v-if="nextCursor" type="button" :disabled="loading || loadingMore || busyTasks.size > 0" @click="loadMore">
       {{ loadingMore ? t("common.loading") : t("workMode.metadataLoadMore") }}
     </button>
   </section>
