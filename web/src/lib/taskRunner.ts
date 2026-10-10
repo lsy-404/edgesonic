@@ -116,13 +116,16 @@ export async function runTask(
     // hand it a signed /rest/stream URL built on the main thread — the
     // credentials stay in the main-thread origin.
     const augmented: QueuedTask = JSON.parse(JSON.stringify(task));
-    if (task.taskType === "metadata" || task.taskType === "lossless") {
+    if (task.taskType === "metadata") {
       const instanceId = String(task.payload.instanceId || "");
       if (instanceId) {
         augmented.payload.streamUrl = deps.restUrl("stream", { id: instanceId, source: instanceId });
       }
     }
     if (task.taskType === "lossless") {
+      if (typeof augmented.payload.streamUrl !== "string" || !augmented.payload.streamUrl) {
+        throw new Error("The claimed lossless task has no signed source stream URL.");
+      }
       augmented.payload.attempts = task.attempts;
       augmented.payload.claimedAt = task.claimedAt;
     }

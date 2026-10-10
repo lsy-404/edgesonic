@@ -244,6 +244,10 @@ function parseVorbisComment(buf: Uint8Array): SongTags | null {
       case "SYNCEDLYRICS": tags.lyrics = val; found = true; break;
       case "LYRICS": if (!tags.lyrics) tags.lyrics = val; found = true; break;
       case "UNSYNCEDLYRICS": if (!tags.lyrics) tags.lyrics = val; found = true; break;
+      default: {
+        if (/^LYRICS[-_][A-Z]{3}$/u.test(key)) { if (!tags.lyrics) tags.lyrics = val; found = true; }
+        break;
+      }
     }
   }
   return found ? clean(tags) : null;

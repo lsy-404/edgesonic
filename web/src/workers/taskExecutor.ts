@@ -578,7 +578,8 @@ async function runLossless(payload: Record<string, unknown>): Promise<unknown> {
     throw new Error(`verified FLAC upload failed: HTTP ${upload.status} ${body.slice(0, 200)}`);
   }
   const registered = await upload.json() as { ok?: boolean; registered?: boolean; r2Key?: string; size?: number; instanceId?: string };
-  if (registered.ok !== true || registered.registered !== true || registered.instanceId !== instanceId) {
+  if (registered.ok !== true || registered.registered !== true || !registered.r2Key
+    || registered.size !== flac.byteLength || registered.instanceId !== instanceId) {
     throw new Error("upload was not registered against the source instance; no success was reported");
   }
   return { ...registered, evidence };

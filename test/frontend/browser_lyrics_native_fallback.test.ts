@@ -35,6 +35,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { nativeLyricsFallback, lyricsTagsToText } from "../../web/src/lib/metadata";
+import { parseBuffer } from "music-metadata";
 
 let failures = 0;
 function assert(cond: unknown, msg: string) {
@@ -90,6 +91,12 @@ async function main() {
     assert(out === "lowercase key", `lowercase 'lyrics' id matched (got "${out}")`);
   }
 
+  console.log("\nlanguage-suffixed FLAC lyric field:");
+  {
+    const out = nativeLyricsFallback(nativeOf([{ id: "LYRICS-ENG", value: "tagged FLAC lyrics" }]));
+    assert(out === "tagged FLAC lyrics", `LYRICS-ENG picked up (got "${out}")`);
+  }
+
   console.log("\nignores empty/whitespace-only values and non-string values:");
   {
     const a = nativeLyricsFallback(nativeOf([{ id: "LYRICS", value: "   " }]));
@@ -139,6 +146,13 @@ async function main() {
       "taskExecutor.ts (052b worker pool) imports/uses nativeLyricsFallback");
     assert(taskExecutorSrc.includes("lyricsTagsToText(meta.common.lyrics) || nativeLyricsFallback(meta.native)"),
       "runMetadata() wires the fallback in with the same precedence as 041");
+  }
+
+  const outputPath = path.resolve(__dirname, "../artifacts/workmode-lossless-browser/converted.flac");
+  if (fs.existsSync(outputPath)) {
+    const parsed = await parseBuffer(new Uint8Array(fs.readFileSync(outputPath)), { path: outputPath });
+    assert(nativeLyricsFallback(parsed.native) === "Fixture lyrics line one\nFixture lyrics line two",
+      "reads the actual language-suffixed lyrics tag from the generated FLAC output");
   }
 
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
