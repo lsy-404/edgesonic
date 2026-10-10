@@ -8,5 +8,6 @@
 - Added review status paging, pending/kept markers, explicit retry with refreshed source/catalog identity, and manual apply with a persisted server-owned approval receipt for recovery.
 - Wired the three-minute scheduled trigger and immediate scan after enabling; added the retrieval operations note in `docs/METADATA_RETRIEVAL.md`.
 - Read current Cloudflare Worker best-practices documentation for scheduled handlers and `waitUntil`; changes use the existing scheduled handler and awaitable execution context.
-- Verification run: `git diff --check` returned no whitespace errors. Tests and typecheck were left to the root integration run.
+- Added regressions for opt-in behavior, parsed/manual dispatch, queue capacity and partial-page cursor, completeness counts, pending/kept task handling, manual approval recovery, worker approval forgery, and explicit retry after exhaustion with refreshed snapshots.
+- Verification run: `pnpm exec tsx test/internal/workmode_metadata_retrieval.test.ts` and `pnpm --dir worker run typecheck` both passed; `git diff --check` returned no whitespace errors.
 - Patch attempts: two combined file patches were rejected because a path was repeated or expected context had changed; they made no edits and were reapplied as smaller patches.
