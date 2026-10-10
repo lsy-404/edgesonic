@@ -31,6 +31,7 @@
 import { parseBuffer } from "music-metadata";
 import { commonArtistsToTag, lyricsTagsToText, nativeLyricsFallback } from "../lib/metadata";
 import { convertIntegerPcmWav, loadFfmpeg } from "../lib/wavFlacConvertEngine";
+import { runMetadataRetrieval } from "../lib/workmodeMetadataRetrieval";
 
 // Wire shape — matches the task frame the coordinator pushes down the
 // socket. Kept
@@ -586,21 +587,14 @@ async function runLossless(payload: Record<string, unknown>): Promise<unknown> {
 }
 
 // ---------------------------------------------------------------------------
-// scrape — generic third-party HTTP proxy. Worker fetches the URL with the
-// caller-supplied headers, parses the response as JSON. Used by the metadata
-// scrape pipeline when CORS prevents the main thread from going direct.
+// scrape — search configured providers, verify candidate identity, and return
+// compact metadata for the server-side guarded apply step.
 // ---------------------------------------------------------------------------
 async function runScrape(payload: Record<string, unknown>): Promise<unknown> {
-  const url = String(payload.url || "");
-  if (!url) throw new Error("scrape task missing url");
-  const headers = (payload.headers && typeof payload.headers === "object")
-    ? payload.headers as Record<string, string>
-    : {};
-  const resp = await fetch(url, { headers });
-  if (!resp.ok) throw new Error(`scrape fetch failed: HTTP ${resp.status}`);
-  const ct = resp.headers.get("content-type") || "";
-  if (ct.includes("json")) return await resp.json();
-  return { text: await resp.text() };
+  if (payload.kind !== "metadata-retrieval") throw new Error("unsupported scrape task kind");
+  const proxyUrl = String(payload.scrapeProxyUrl || "");
+  if (!proxyUrl) throw new Error("metadata retrieval task missing scrape proxy URL");
+  return runMetadataRetrieval(payload, proxyUrl, activeTaskController?.signal || new AbortController().signal);
 }
 
 // Hint to TS that we're in a Worker scope (no DOM globals).

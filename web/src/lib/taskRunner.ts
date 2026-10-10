@@ -68,6 +68,15 @@ export function formatTaskError(
 // instead of an instance UUID.
 export function fileNameFrom(task: QueuedTask): string {
   const payload = task.payload || {};
+  if (task.taskType === "scrape" && payload.kind === "metadata-retrieval") {
+    const snapshot = payload.snapshot && typeof payload.snapshot === "object"
+      ? payload.snapshot as Record<string, unknown>
+      : {};
+    const title = typeof snapshot.title === "string" ? snapshot.title.trim()
+      : typeof payload.title === "string" ? payload.title.trim()
+      : "";
+    if (title && !/^(unknown(?:\s+(?:artist|album))?|pending\s+uploads)$/i.test(title)) return title;
+  }
   const candidate =
     typeof payload.sourceUri === "string" ? payload.sourceUri :
     typeof payload.storageUri === "string" ? payload.storageUri :
@@ -82,6 +91,31 @@ export function fileNameFrom(task: QueuedTask): string {
 export interface RunnerDeps {
   restUrl: (path: string, params?: Record<string, string | string[]>) => string;
   edgesonicPost: (path: string, body: unknown, signal?: AbortSignal) => Promise<string>;
+}
+
+export function prepareWorkerTask(
+  task: QueuedTask,
+  deps: RunnerDeps,
+  origin: string,
+): QueuedTask {
+  const augmented: QueuedTask = JSON.parse(JSON.stringify(task));
+  if (task.taskType === "metadata") {
+    const instanceId = String(task.payload.instanceId || "");
+    if (instanceId) {
+      augmented.payload.streamUrl = deps.restUrl("stream", { id: instanceId, source: instanceId });
+    }
+  }
+  if (task.taskType === "scrape" && task.payload.kind === "metadata-retrieval") {
+    augmented.payload.scrapeProxyUrl = new URL("/tag/scrape", origin).toString();
+  }
+  if (task.taskType === "lossless") {
+    if (typeof augmented.payload.streamUrl !== "string" || !augmented.payload.streamUrl) {
+      throw new Error("The claimed lossless task has no signed source stream URL.");
+    }
+    augmented.payload.attempts = task.attempts;
+    augmented.payload.claimedAt = task.claimedAt;
+  }
+  return augmented;
 }
 
 export type RunOutcome =
@@ -115,20 +149,7 @@ export async function runTask(
     // A metadata task can't fetch a logical `webdav://` URI directly, so we
     // hand it a signed /rest/stream URL built on the main thread — the
     // credentials stay in the main-thread origin.
-    const augmented: QueuedTask = JSON.parse(JSON.stringify(task));
-    if (task.taskType === "metadata") {
-      const instanceId = String(task.payload.instanceId || "");
-      if (instanceId) {
-        augmented.payload.streamUrl = deps.restUrl("stream", { id: instanceId, source: instanceId });
-      }
-    }
-    if (task.taskType === "lossless") {
-      if (typeof augmented.payload.streamUrl !== "string" || !augmented.payload.streamUrl) {
-        throw new Error("The claimed lossless task has no signed source stream URL.");
-      }
-      augmented.payload.attempts = task.attempts;
-      augmented.payload.claimedAt = task.claimedAt;
-    }
+    const augmented = prepareWorkerTask(task, deps, globalThis.location.origin);
 
     let result: unknown;
     try {
