@@ -30,6 +30,7 @@ import { useWorkSocket } from "../stores/workSocket";
 import { useAuth } from "../api";
 import { taskTypeLabelKey, type WorkTaskType } from "../lib/workTypes";
 import { dispatchMissingMetadataPages } from "../lib/missingMetadataDispatch";
+import MetadataReviewPanel from "../components/MetadataReviewPanel.vue";
 
 const { t } = useI18n();
 const router = useRouter();
@@ -63,6 +64,7 @@ let missingMetadataCursor: string | undefined;
 let missingMetadataController: AbortController | null = null;
 const canStart = computed(() => pool.eligible && pool.selectedTaskTypes.length > 0);
 const canDispatchMissingMetadata = computed(() => hasPerm("dispatch_work") && pool.selectedTaskTypes.includes("scrape"));
+const canManageMetadataReview = computed(() => isAdmin.value && hasPerm("dispatch_work"));
 
 function supports(type: WorkTaskType): boolean {
   return type !== "transcode" && type !== "lossless" || ffmpegAvailable.value;
@@ -296,6 +298,7 @@ onBeforeUnmount(() => {
       <p v-if="losslessDispatchResult" role="status">{{ losslessDispatchResult }}</p>
       <p v-if="losslessDispatchError" class="notice">{{ losslessDispatchError }}</p>
     </section>
+    <MetadataReviewPanel v-if="canManageMetadataReview" />
     <section v-if="canDispatchMissingMetadata" class="lossless-dispatch">
       <p>{{ t("workMode.missingMetadataDispatchHelp") }}</p>
       <button type="button" :disabled="dispatchingMissingMetadata" @click="dispatchMissingMetadata">
@@ -308,7 +311,7 @@ onBeforeUnmount(() => {
 
     <section class="gauge">
       <div class="gauge-value">{{ progress.completed }}<span class="of">/{{ totalTasks }}</span></div>
-      <div class="gauge-label">{{ t("workMode.progress", { percent: progressPct }) }}</div>
+      <div class="gauge-label">{{ t("workMode.overallQueueProgress", { percent: progressPct }) }}</div>
       <div class="bar"><div class="fill" :style="{ width: `${progressPct}%` }"></div></div>
     </section>
 
