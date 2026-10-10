@@ -9,7 +9,7 @@ import {
 } from "../web/src/lib/metadataReview";
 
 const pending = {
-  taskId: "task-1",
+  taskId: "wt-review",
   attempts: 2,
   payload: { identity: { title: "Track", artist: "Artist" } },
   result: { status: "pending", reason: "ambiguous", candidates: [
@@ -20,8 +20,8 @@ const counts = { total: 5, incomplete: 3, complete: 2, pending: 1, kept: 1, queu
 
 test("parses the opt-in state and bounded status pages", () => {
   assert.equal(parseAutoState({ ok: true, enabled: false }), false);
-  assert.deepEqual(parseMetadataReviewPage({ ok: true, autoEnabled: true, counts, pending: [pending], nextCursor: "task-1" }), {
-    autoEnabled: true, counts, pending: [pending], nextCursor: "task-1",
+  assert.deepEqual(parseMetadataReviewPage({ ok: true, autoEnabled: true, counts, pending: [pending], nextCursor: "wt-review" }), {
+    autoEnabled: true, counts, pending: [pending], nextCursor: "wt-review",
   });
 });
 
@@ -34,8 +34,8 @@ test("rejects malformed or contradictory status pages", () => {
 
 test("builds explicit keep and retry actions without an implicit decision", () => {
   const item = parseMetadataReviewPage({ ok: true, autoEnabled: false, counts, pending: [pending], nextCursor: null }).pending[0];
-  assert.deepEqual(metadataReviewRequest(item, "keep"), { taskId: "task-1", attempts: 2, decision: "keep" });
-  assert.deepEqual(metadataReviewRequest(item, "retry"), { taskId: "task-1", attempts: 2, decision: "retry" });
+  assert.deepEqual(metadataReviewRequest(item, "keep"), { taskId: "wt-review", attempts: 2, decision: "keep" });
+  assert.deepEqual(metadataReviewRequest(item, "retry"), { taskId: "wt-review", attempts: 2, decision: "retry" });
 });
 
 test("apply action must match the selected candidate identity", () => {
