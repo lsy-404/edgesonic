@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import type { User } from "../../types/entities";
 import { verifyUploadToken } from "../../utils/workUploadToken";
+import { r2KeyFromUri } from "../../utils/storageResolver";
 import {
   enqueueLosslessBatch,
   loadCurrentLosslessClaim,
@@ -138,7 +139,7 @@ workLosslessRoutes.post("/work/lossless/upload", async (c) => {
     return c.json({ ok: false, error: "Invalid FLAC STREAMINFO" }, 422);
   }
 
-  const { objectId, key } = losslessOutputObject(payload.instanceId, outputSha);
+  const { objectId, key } = losslessOutputObject(payload.instanceId, outputSha, crypto.randomUUID());
   const digest = new crypto.DigestStream("SHA-256");
   const digestWriter = digest.getWriter();
   const replay = new ReadableStream<Uint8Array>({
@@ -172,6 +173,18 @@ workLosslessRoutes.post("/work/lossless/upload", async (c) => {
     || actualOutputSha !== outputSha || written.size >= payload.sourceSize) {
     await deleteUnreferencedObject(env, objectId, key);
     return c.json({ ok: false, error: "FLAC body does not match its verification evidence" }, 422);
+  }
+  try {
+    const registered = await env.DB.prepare(
+      `INSERT INTO storage_objects
+         (id, physical_key, suffix, content_type, size, etag, created_at, updated_at)
+       VALUES (?, ?, 'flac', 'audio/flac', ?, ?, unixepoch(), unixepoch())
+       ON CONFLICT(id) DO NOTHING`,
+    ).bind(objectId, key, written.size, written.etag).run();
+    if (registered.meta.changes !== 1) throw new Error("Output object identity already exists");
+  } catch {
+    await deleteUnreferencedObject(env, objectId, key);
+    return c.json({ ok: false, error: "Unable to register verified FLAC output" }, 500);
   }
 
   let applied: boolean;
@@ -233,11 +246,16 @@ async function sourceSnapshotMatches(env: Env, payload: LosslessPayload): Promis
     storage_uri: string; storage_object_id: string; suffix: string; source_type: string;
     missing: number; size: number; etag: string; physical_key: string; object_suffix: string;
   }>();
-  return !!row && row.source_type === "original" && row.missing === 0
-    && row.suffix.toLowerCase() === "wav" && row.object_suffix === "wav"
+  const matches = !!row && row.source_type === "original" && row.missing === 0
+    && row.suffix.toLowerCase() === "wav" && row.object_suffix.toLowerCase() === "wav"
     && row.storage_uri === payload.sourceUri && row.storage_object_id === payload.sourceObjectId
     && row.size === payload.sourceSize && row.etag === payload.sourceEtag
     && payload.sourceUri === `r2://${row.physical_key}`;
+  if (!matches) return false;
+  let key: string;
+  try { key = r2KeyFromUri(payload.sourceUri); } catch { return false; }
+  const head = await env.MUSIC_BUCKET.head(key);
+  return !!head && head.size === payload.sourceSize && head.etag === payload.sourceEtag;
 }
 
 interface VerificationEvidence {
@@ -301,6 +319,7 @@ async function switchCatalogToFlac(
   output: { objectId: string; key: string; size: number; etag: string; outputSha256: string; sourceSha256: string; pcmSha256: string; evidence: VerificationEvidence },
 ): Promise<boolean> {
   if (!claim.claimed_by || claim.claimed_at === null) return false;
+  if (!await sourceSnapshotMatches(env, payload)) return false;
   const receipt = JSON.stringify({
     serverVerified: "lossless", instanceId: payload.instanceId,
     sourceObjectId: payload.sourceObjectId, outputObjectId: output.objectId,
@@ -310,15 +329,6 @@ async function switchCatalogToFlac(
   const newUri = `r2://${output.key}`;
   const results = await env.DB.batch([
     env.DB.prepare(
-      `INSERT INTO storage_objects
-         (id, physical_key, suffix, content_type, size, etag, created_at, updated_at)
-       SELECT ?, ?, 'flac', 'audio/flac', ?, ?, unixepoch(), unixepoch()
-        WHERE EXISTS (SELECT 1 FROM work_queue WHERE id = ? AND status = 'claimed'
-          AND claimed_by = ? AND attempts = ? AND claimed_at = ?)
-       ON CONFLICT(id) DO NOTHING`,
-    ).bind(output.objectId, output.key, output.size, output.etag, claim.id,
-      claim.claimed_by, claim.attempts, claim.claimed_at),
-    env.DB.prepare(
       `UPDATE song_instances
           SET storage_uri = ?, storage_object_id = ?, suffix = 'flac', content_type = 'audio/flac',
               size = ?, sample_rate = ?, channels = ?, bit_depth = ?,
@@ -326,14 +336,17 @@ async function switchCatalogToFlac(
               source_etag = ?, source_last_modified = unixepoch(),
               updated_at = unixepoch()
         WHERE id = ? AND source_type = 'original' AND missing = 0
-          AND storage_uri = ? AND storage_object_id = ? AND suffix = 'wav'
+          AND storage_uri = ? AND storage_object_id = ? AND lower(suffix) = 'wav'
           AND EXISTS (SELECT 1 FROM storage_objects WHERE id = ? AND physical_key = ?
-            AND size = ? AND etag = ?)
+            AND size = ? AND etag = ? AND suffix = 'flac')
+          AND EXISTS (SELECT 1 FROM storage_objects WHERE id = ? AND physical_key = ?
+            AND size = ? AND etag = ? AND lower(suffix) = 'wav')
           AND EXISTS (SELECT 1 FROM work_queue WHERE id = ? AND task_type = 'lossless'
             AND status = 'claimed' AND claimed_by = ? AND attempts = ? AND claimed_at = ?)`,
     ).bind(newUri, output.objectId, output.size, output.evidence.sampleRate,
       output.evidence.channels, output.evidence.bitsPerSample, output.size, output.etag, payload.instanceId,
       payload.sourceUri, payload.sourceObjectId, output.objectId, output.key,
+      output.size, output.etag, payload.sourceObjectId, payload.sourceUri.slice("r2://".length),
       payload.sourceSize, payload.sourceEtag,
       claim.id, claim.claimed_by, claim.attempts, claim.claimed_at),
     env.DB.prepare(
@@ -356,22 +369,17 @@ async function switchCatalogToFlac(
     ).bind(receipt, claim.id, claim.claimed_by, claim.attempts, claim.claimed_at,
       payload.instanceId, newUri, output.objectId, output.objectId, output.key),
   ]);
-  return results[3].meta.changes === 1;
+  return results[2].meta.changes === 1;
 }
 
 async function deleteUnreferencedObject(env: Env, objectId: string, key: string): Promise<void> {
-  const referenced = await env.DB.prepare(
-    `SELECT 1 AS used WHERE EXISTS (
-       SELECT 1 FROM song_instances WHERE storage_object_id = ? OR storage_uri = ?
-     ) OR EXISTS (SELECT 1 FROM storage_entries WHERE object_id = ?)`,
-  ).bind(objectId, `r2://${key}`, objectId).first<{ used: number }>();
-  if (referenced) return;
-  await env.DB.prepare(
+  const removed = await env.DB.prepare(
     `DELETE FROM storage_objects WHERE id = ? AND NOT EXISTS (
        SELECT 1 FROM song_instances WHERE storage_object_id = storage_objects.id OR storage_uri = 'r2://' || storage_objects.physical_key
-     ) AND NOT EXISTS (SELECT 1 FROM storage_entries WHERE object_id = storage_objects.id)`,
-  ).bind(objectId).run();
-  await env.MUSIC_BUCKET.delete(key).catch(() => {});
+     ) AND NOT EXISTS (SELECT 1 FROM storage_entries WHERE object_id = storage_objects.id)
+       AND physical_key = ?`,
+  ).bind(objectId, key).run();
+  if (removed.meta.changes === 1) await env.MUSIC_BUCKET.delete(key).catch(() => {});
 }
 
 async function retireOldObject(env: Env, objectId: string, sourceUri: string): Promise<void> {
