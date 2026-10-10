@@ -1802,6 +1802,8 @@
     "losslessDispatchResult": "Added {enqueued} tasks; skipped {skipped}.",
     "missingMetadataDispatch": "Force recheck missing metadata",
     "missingMetadataDispatchHelp": "Restart retrieval for songs missing metadata. Completed and failed tasks are queued again; existing fields are preserved, and pending or active tasks are skipped.",
+    "missingMetadataDispatchStarting": "Starting metadata retrieval…",
+    "missingMetadataDispatchProgress": "Scanned {scanned} songs so far; queued {enqueued}; skipped {skipped}.",
     "missingMetadataDispatchResult": "Scanned {scanned} songs; queued {enqueued}; skipped {skipped}.",
     "missingMetadataDispatchPartial": "Partial result: scanned {scanned} songs; queued {enqueued}; skipped {skipped}.",
     "missingMetadataDispatchError": "Retrieval stopped: {reason}",

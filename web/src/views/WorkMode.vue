@@ -29,6 +29,7 @@ import { useRouter } from "vue-router";
 import { useWorkSocket } from "../stores/workSocket";
 import { useAuth } from "../api";
 import { taskTypeLabelKey, type WorkTaskType } from "../lib/workTypes";
+import { dispatchMissingMetadataPages } from "../lib/missingMetadataDispatch";
 
 const { t } = useI18n();
 const router = useRouter();
@@ -60,6 +61,7 @@ const dispatchingLossless = ref(false);
 const losslessDispatchResult = ref<string | null>(null);
 const losslessDispatchError = ref<string | null>(null);
 const dispatchingMissingMetadata = ref(false);
+const missingMetadataProgress = ref<string | null>(null);
 const missingMetadataResult = ref<string | null>(null);
 const missingMetadataError = ref<string | null>(null);
 let missingMetadataCursor: string | undefined;
@@ -204,35 +206,30 @@ async function dispatchMissingMetadata(): Promise<void> {
   dispatchingMissingMetadata.value = true;
   missingMetadataError.value = null;
   missingMetadataResult.value = null;
+  missingMetadataProgress.value = t("workMode.missingMetadataDispatchStarting");
   const controller = new AbortController();
   missingMetadataController = controller;
   let scanned = 0;
   let enqueued = 0;
   let skipped = 0;
   try {
-    while (mounted && !controller.signal.aborted) {
-      const after = missingMetadataCursor;
-      const body = after === undefined ? {} : { after };
-      const data = JSON.parse(await edgesonicPost("work/scrape/dispatch", body, controller.signal)) as {
-        ok?: boolean;
-        enqueued?: number;
-        skipped?: number;
-        scanned?: number;
-        nextCursor?: string | null;
-        error?: string;
-      };
-      if (controller.signal.aborted || !mounted) return;
-      if (!data.ok) throw new Error(data.error || "Dispatch failed");
-      scanned += data.scanned ?? 0;
-      enqueued += data.enqueued ?? 0;
-      skipped += data.skipped ?? 0;
-      missingMetadataCursor = data.nextCursor ?? undefined;
-      if (missingMetadataCursor !== undefined && missingMetadataCursor === after) {
-        throw new Error("Pagination cursor did not advance");
-      }
-      if (missingMetadataCursor === undefined) break;
-    }
+    const result = await dispatchMissingMetadataPages({
+      after: missingMetadataCursor,
+      signal: controller.signal,
+      request: async (after, signal) => {
+        const body = after === undefined ? {} : { after };
+        return JSON.parse(await edgesonicPost("work/scrape/dispatch", body, signal)) as unknown;
+      },
+      onPage: (pageProgress) => {
+        scanned = pageProgress.scanned;
+        enqueued = pageProgress.enqueued;
+        skipped = pageProgress.skipped;
+        missingMetadataCursor = pageProgress.nextCursor;
+        missingMetadataProgress.value = t("workMode.missingMetadataDispatchProgress", { scanned, enqueued, skipped });
+      },
+    });
     if (controller.signal.aborted || !mounted) return;
+    missingMetadataCursor = result.nextCursor;
     missingMetadataResult.value = t("workMode.missingMetadataDispatchResult", { scanned, enqueued, skipped });
   } catch (error) {
     if (controller.signal.aborted || !mounted) return;
@@ -241,6 +238,7 @@ async function dispatchMissingMetadata(): Promise<void> {
   } finally {
     if (missingMetadataController === controller) missingMetadataController = null;
     if (mounted) {
+      missingMetadataProgress.value = null;
       dispatchingMissingMetadata.value = false;
       await loadProgress();
     }
@@ -315,6 +313,7 @@ onBeforeUnmount(() => {
       <button type="button" :disabled="dispatchingMissingMetadata" @click="dispatchMissingMetadata">
         {{ t("workMode.missingMetadataDispatch") }}
       </button>
+      <p v-if="missingMetadataProgress" role="status" aria-live="polite">{{ missingMetadataProgress }}</p>
       <p v-if="missingMetadataResult" role="status">{{ missingMetadataResult }}</p>
       <p v-if="missingMetadataError" class="notice">{{ missingMetadataError }}</p>
     </section>

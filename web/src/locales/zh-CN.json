@@ -1788,6 +1788,8 @@
     "losslessDispatchResult": "已加入 {enqueued} 项任务；跳过 {skipped} 项。",
     "missingMetadataDispatch": "强制重新检索缺失元数据",
     "missingMetadataDispatchHelp": "重新开始检索缺少元数据的歌曲。已完成和失败的任务会重新排队；现有字段会保留，待处理或运行中的任务会跳过。",
+    "missingMetadataDispatchStarting": "正在开始检索元数据……",
+    "missingMetadataDispatchProgress": "已扫描 {scanned} 首歌曲；加入队列 {enqueued} 项；跳过 {skipped} 项。",
     "missingMetadataDispatchResult": "已扫描 {scanned} 首歌曲；加入队列 {enqueued} 项；跳过 {skipped} 项。",
     "missingMetadataDispatchPartial": "部分完成：已扫描 {scanned} 首歌曲；加入队列 {enqueued} 项；跳过 {skipped} 项。",
     "missingMetadataDispatchError": "检索已停止：{reason}",

@@ -8,3 +8,6 @@
 - `pnpm --dir web run build` passed; Vite reported its existing large-chunk advisory and a package browser-externalization note.
 - `git diff --check` passed.
 - Committed the scoped UI, locale, and audit changes as `ae249ac8`.
+- Follow-up: extracted the paginated request loop, added live per-page status, and validated cursor ordering and page response fields.
+- Five focused pagination tests, web typecheck, web build, and whitespace validation passed.
+- Follow-up changes were committed as `c216ec59`.
