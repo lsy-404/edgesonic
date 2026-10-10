@@ -22,6 +22,29 @@ import { R2_SOURCE_ID, findR2EntryByPath } from "../../utils/storageResolver";
 
 export const browseRoutes = new Hono();
 
+browseRoutes.get("/files/song-locations", permissionMiddleware("manage_files"), async (c) => {
+  const songId = c.req.query("songId") || "";
+  if (!songId) return c.json({ ok: false, error: "Missing songId" }, 400);
+  const rows = await (c.env as Env).DB.prepare(
+    `SELECT si.id AS instance_id, se.source_id, se.path, se.display_name,
+            COALESCE(ss.name, CASE WHEN se.source_id = ? THEN 'R2' ELSE 'Storage' END) AS source_name
+       FROM song_instances si
+       JOIN storage_entries se ON se.instance_id = si.id AND se.kind = 'file'
+       LEFT JOIN storage_sources ss ON ss.id = se.source_id
+      WHERE si.master_id = ? AND si.missing = 0
+      ORDER BY se.source_id, se.path, si.created_at`,
+  ).bind(R2_SOURCE_ID, songId).all<{
+    instance_id: string; source_id: string; path: string; display_name: string; source_name: string;
+  }>();
+  return c.json({ ok: true, locations: rows.results.map((row) => ({
+    instanceId: row.instance_id,
+    source: row.source_id === R2_SOURCE_ID ? "r2" : row.source_id,
+    sourceName: row.source_name,
+    path: row.path,
+    name: row.display_name,
+  })) });
+});
+
 // GET /storage/files/list?source=r2|<sourceId>&path=<dir>
 browseRoutes.get("/files/list", permissionMiddleware("download"), async (c) => {
   const env = c.env as Env;

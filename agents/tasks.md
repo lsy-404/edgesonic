@@ -19,3 +19,4 @@
 | 566 | [Operations] catalog_native_delivery | Deliver native metadata verification and guarded catalog reconciliation | Complete source coverage and repair catalog identity and statistics | 🔄 进行中 |
 
 | 567 | [Maintenance] Kit依赖升级 | 更新已使用的公共 kit 包和锁文件 | 使用最新已发布的共享组件 | ✅ 已完成 |
+| 568 | [Feature] Library file actions | Navigate from library entries to the exact file and expose confirmed deletion | User requested direct library file management actions | ✅ 已完成 |

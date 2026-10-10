@@ -42,6 +42,7 @@ function routePath(value: unknown): string {
 
 const path = ref(routePath(route.query.path));
 const locateFileName = ref(typeof route.query.file === "string" ? route.query.file : "");
+const deleteLocatedFile = ref(route.query.delete === "true");
 const dirs = ref<DirEntry[]>([]);
 const files = ref<FileEntry[]>([]);
 const loading = ref(false);
@@ -962,7 +963,7 @@ async function confirmDelete() {
   opBusy.value = true;
   const queue = [
     ...dirTargets.map((name) => ({ kind: "dir" as const, key: joinPath(base, name), error: undefined as string | undefined })),
-    ...fileTargets.map((file) => ({ kind: "file" as const, key: r2Key(file), error: undefined as string | undefined })),
+    ...fileTargets.map((file) => ({ kind: "file" as const, key: r2Key(file), path: joinPath(base, file.name), error: undefined as string | undefined })),
   ];
   try {
     await mapConcurrent(queue, OP_CONCURRENCY, async (item) => {
@@ -970,7 +971,7 @@ async function confirmDelete() {
         // Folder deletes are recursive server-side (files/deleteFolder).
         const res = item.kind === "dir"
           ? await storagePost("files/deleteFolder", { path: item.key })
-          : await storagePost("files/delete", { key: item.key });
+          : await storagePost("files/delete", { key: item.key, path: item.path });
         if (!JSON.parse(res).ok) throw new Error();
       } catch (e) {
         item.error = e instanceof Error ? e.message : String(e);
@@ -1148,6 +1149,11 @@ async function revealRequestedFile() {
   }
   row.scrollIntoView({ behavior: "smooth", block: "center" });
   row.classList.add("file-row-located");
+  if (deleteLocatedFile.value && isR2.value && canManageFiles.value) {
+    const target = files.value.find((item) => item.name === locateFileName.value);
+    if (target) openDeleteConfirm(target);
+    deleteLocatedFile.value = false;
+  }
   locateFileName.value = "";
   setTimeout(() => row.classList.remove("file-row-located"), 1800);
 }

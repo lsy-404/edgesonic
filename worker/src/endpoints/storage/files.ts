@@ -860,28 +860,47 @@ function normalizeFolderPath(p: string | undefined): string | null {
   return path;
 }
 
-// POST /rest/files/delete body: { key: "objects/obj_....mp3" }
+// POST /rest/files/delete body: { key: "objects/obj_....mp3", path: "Album/track.mp3" }
 filesRoutes.post("/files/delete", permissionMiddleware("delete"), async (c) => {
   const user = c.get("user");
   if (user.level < 2) {
     return c.json({ ok: false, error: "File deletion requires admin privileges (level 2+)" }, 403);
   }
   const env = c.env as Env;
-  const body = await c.req.json<{ key: string }>();
-  const { key } = body;
-  if (!key) return c.json({ ok: false, error: "Missing key" }, 400);
+  const body = await c.req.json<{ key: string; path?: string }>();
+  const { key, path } = body;
+  if (!key || !path) return c.json({ ok: false, error: "Missing file location" }, 400);
 
   const db = env.DB;
-  const entry = await findR2EntryByKey(db, key);
-  if (!entry) return c.json({ ok: false, error: "File not found" }, 404);
-  await env.MUSIC_BUCKET.delete(key);
+  const entry = await findR2EntryByPath(db, path);
+  if (!entry || entry.kind !== "file" || entry.physical_key !== key) {
+    return c.json({ ok: false, error: "File not found" }, 404);
+  }
   const inst = entry.instance_id
     ? await db.prepare("SELECT master_id FROM song_instances WHERE id = ?").bind(entry.instance_id).first<{ master_id: string }>()
     : null;
-  if (entry.instance_id) await db.prepare("DELETE FROM song_instances WHERE id = ?").bind(entry.instance_id).run();
   await db.prepare("DELETE FROM storage_entries WHERE id = ?").bind(entry.id).run();
-  if (entry.object_id) await db.prepare("DELETE FROM storage_objects WHERE id = ?").bind(entry.object_id).run();
-  if (inst) await cleanupOrphanMaster(db, inst.master_id);
+  if (entry.instance_id) {
+    const remainingEntries = await db.prepare("SELECT COUNT(*) AS n FROM storage_entries WHERE instance_id = ?")
+      .bind(entry.instance_id).first<{ n: number }>();
+    if (!remainingEntries?.n) await db.prepare("DELETE FROM song_instances WHERE id = ?").bind(entry.instance_id).run();
+  }
+  if (entry.object_id) {
+    const refs = await db.prepare(
+      `SELECT (SELECT COUNT(*) FROM storage_entries WHERE object_id = ?) AS entry_refs,
+              (SELECT COUNT(*) FROM song_instances WHERE storage_object_id = ?) AS instance_refs`,
+    ).bind(entry.object_id, entry.object_id).first<{ entry_refs: number; instance_refs: number }>();
+    if (!refs?.entry_refs && !refs?.instance_refs) {
+      await env.MUSIC_BUCKET.delete(key);
+      await db.prepare("DELETE FROM storage_objects WHERE id = ? AND physical_key = ?")
+        .bind(entry.object_id, key).run();
+    }
+  }
+  if (inst && entry.instance_id) {
+    const remainingInstances = await db.prepare("SELECT COUNT(*) AS n FROM song_instances WHERE master_id = ?")
+      .bind(inst.master_id).first<{ n: number }>();
+    if (!remainingInstances?.n) await cleanupOrphanMaster(db, inst.master_id);
+  }
   return c.json({ ok: true });
 });
 

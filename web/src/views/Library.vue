@@ -24,7 +24,7 @@ import { FluentSelect } from "@platform-kit/fluent/vue";
 
 const { t } = useI18n();
 
-const { authFetch, edgesonicFetch, writeTags, batchWriteTags, rescanSongs, coverArtUrl, downloadUrl, isAdmin, hasPerm } = useAuth();
+const { authFetch, storageFetch, edgesonicFetch, writeTags, batchWriteTags, rescanSongs, coverArtUrl, downloadUrl, isAdmin, hasPerm } = useAuth();
 const player = usePlayerStore();
 const detail = useDetailStore();
 const BATCH_MAX = 50;
@@ -36,6 +36,7 @@ const props = withDefaults(defineProps<{
 }>(), { starredOnly: false, embedded: false, detailTarget: undefined });
 const starredOnly = props.starredOnly;
 const canManageFiles = computed(() => hasPerm("manage_files"));
+const canDeleteLibraryFile = computed(() => canManageFiles.value && hasPerm("delete") && isAdmin.value);
 const canShare = computed(() => hasPerm("share"));
 
 interface Artist { id: string; name: string; albumCount: string; starred: boolean; starredAt?: string; createdAt?: string; }
@@ -1260,26 +1261,44 @@ async function openArtistById(artistId: string, artistName: string) {
   await openArtist(artist);
 }
 
-async function openSongInFiles(song: Track) {
+interface SongFileLocation {
+  instanceId: string;
+  source: string;
+  sourceName: string;
+  path: string;
+  name: string;
+}
+const fileLocationPicker = ref<{ action: "view" | "delete"; locations: SongFileLocation[] } | null>(null);
+
+async function requestSongFileAction(song: Track, action: "view" | "delete") {
   if (!canManageFiles.value) return;
   try {
-    const xml = await authFetch("getSong", { id: song.id, includeSources: "true" });
-    const attrs = parseXmlAttrs(xml, "song")[0];
-    const filePath = attrs?.path?.replace(/^\/+|\/+$/g, "") || "";
-    if (!filePath) {
-      showInfo(t("library.fileLocationUnavailable"));
+    const data = JSON.parse(await storageFetch("files/song-locations", { songId: song.id })) as {
+      ok: boolean; locations?: SongFileLocation[];
+    };
+    const locations = (data.ok ? data.locations || [] : []).filter((location) => action !== "delete" || location.source === "r2");
+    if (!locations.length) {
+      showInfo(t(action === "delete" ? "library.fileDeleteUnavailable" : "library.fileLocationUnavailable"));
       return;
     }
-    const fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
-    const folder = filePath.substring(0, filePath.lastIndexOf("/"));
-    const sourceAttr = parseXmlAttrs(xml, "source")[0];
-    const source = sourceAttr?.sourceId && sourceAttr.sourceId !== "r2-local"
-      ? sourceAttr.sourceId
-      : "r2";
-    await router.push({ path: "/files", query: { source, path: folder, file: fileName } });
+    if (locations.length > 1) {
+      fileLocationPicker.value = { action, locations };
+      return;
+    }
+    await navigateToFileLocation(locations[0], action);
   } catch {
-    showInfo(t("library.fileLocationUnavailable"));
+    showInfo(t(action === "delete" ? "library.fileDeleteUnavailable" : "library.fileLocationUnavailable"));
   }
+}
+
+async function navigateToFileLocation(location: SongFileLocation, action: "view" | "delete") {
+  const fileName = location.name;
+  const folder = location.path.includes("/") ? location.path.slice(0, location.path.lastIndexOf("/")) : "";
+  await router.push({
+    path: "/files",
+    query: { source: location.source, path: folder, file: fileName, ...(action === "delete" ? { delete: "true" } : {}) },
+  });
+  fileLocationPicker.value = null;
 }
 
 function parseArtists(artistStr: string): string[] {
@@ -1928,12 +1947,14 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
             :starred="!!s.starred"
             :is-admin="isAdmin"
             :can-manage-files="canManageFiles"
+            :can-delete-file="canDeleteLibraryFile"
           :open="openMenuId === s.id"
           @toggle="toggleRowMenu(s.id)"
           @close="closeRowMenu"
            @edit="openEditor(s)"
            @share="openShare('song', s.id, s.title)"
-           @view-file="openSongInFiles(s)"
+           @view-file="requestSongFileAction(s, 'view')"
+           @delete-file="requestSongFileAction(s, 'delete')"
            @add-playlist="openAddToPlaylist(s.id, s.title)"
            @play-next="queueNext(s)"
            @update:starred="onStarChanged('song', s, $event)"
@@ -2111,12 +2132,14 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
            :starred="!!s.starred"
            :is-admin="isAdmin"
            :can-manage-files="canManageFiles"
+           :can-delete-file="canDeleteLibraryFile"
             :open="openMenuId === s.id"
             @toggle="toggleRowMenu(s.id)"
             @close="closeRowMenu"
             @edit="openEditor(s)"
            @share="openShare('song', s.id, s.title)"
-           @view-file="openSongInFiles(s)"
+           @view-file="requestSongFileAction(s, 'view')"
+           @delete-file="requestSongFileAction(s, 'delete')"
            @add-playlist="openAddToPlaylist(s.id, s.title)"
            @play-next="queueNext(s)"
            @update:starred="onStarChanged('song', s, $event)"
@@ -2273,12 +2296,14 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
              :starred="!!s.starred"
             :is-admin="isAdmin"
             :can-manage-files="canManageFiles"
+            :can-delete-file="canDeleteLibraryFile"
             :open="openMenuId === s.id"
             @toggle="toggleRowMenu(s.id)"
             @close="closeRowMenu"
             @edit="openEditor(s)"
             @share="openShare('song', s.id, s.title)"
-            @view-file="openSongInFiles(s)"
+            @view-file="requestSongFileAction(s, 'view')"
+            @delete-file="requestSongFileAction(s, 'delete')"
             @add-playlist="openAddToPlaylist(s.id, s.title)"
            @play-next="queueNext(s)"
             @update:starred="onStarChanged('song', s, $event)"
@@ -2434,12 +2459,14 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
                 :starred="!!s.starred"
                 :is-admin="isAdmin"
                 :can-manage-files="canManageFiles"
+                :can-delete-file="canDeleteLibraryFile"
                 :open="openMenuId === s.id"
                 @toggle="toggleRowMenu(s.id)"
                 @close="closeRowMenu"
                 @edit="openEditor(s)"
             @share="openShare('song', s.id, s.title)"
-            @view-file="openSongInFiles(s)"
+            @view-file="requestSongFileAction(s, 'view')"
+            @delete-file="requestSongFileAction(s, 'delete')"
             @add-playlist="openAddToPlaylist(s.id, s.title)"
            @play-next="queueNext(s)"
              @update:starred="onStarChanged('song', s, $event)"
@@ -2494,6 +2521,28 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
       @close="closeShare"
       @created="onShareCreated"
     />
+
+    <div v-if="fileLocationPicker" class="modal-backdrop" @click.self="fileLocationPicker = null">
+      <div class="modal add-playlist-modal">
+        <div class="modal-title">{{ t('library.chooseFileLocation') }}</div>
+        <div class="add-playlist-list">
+          <button
+            v-for="location in fileLocationPicker.locations"
+            :key="location.instanceId"
+            class="add-playlist-row"
+            @click="navigateToFileLocation(location, fileLocationPicker!.action)"
+          >
+            <span class="add-playlist-name">{{ location.sourceName }}</span>
+            <span class="mono-label">{{ location.name }}</span>
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" @click="fileLocationPicker = null">{{ t('common.cancel') }}</button>
+        </div>
+        <div class="corner corner-tl"></div>
+        <div class="corner corner-br"></div>
+      </div>
+    </div>
 
     <Teleport to="body">
     <!-- Add-to-playlist modal. Singleton at root, mirrors the shared modal
@@ -2876,6 +2925,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
   cursor: pointer;
   transition: background 0.12s;
 }
+.add-playlist-row:where(button) { width: 100%; color: inherit; font: inherit; text-align: left; background: transparent; border: 0; }
 .add-playlist-row:last-child { border-bottom: none; }
 .add-playlist-row:hover { background: var(--color-bg-tertiary); }
 .add-playlist-name {
