@@ -930,11 +930,11 @@ filesRoutes.post("/files/deleteFolder", permissionMiddleware("delete"), async (c
   if (!folder || folder.kind !== "folder") return c.json({ ok: false, error: "Folder not found" }, 404);
   const escapedPrefix = `${path.replace(/[\\%_]/g, (ch) => `\\${ch}`)}/%`;
   const rows = await db.prepare(
-    `SELECT e.id, e.object_id, e.instance_id, o.physical_key
+    `SELECT e.id, e.path, e.kind, e.object_id, e.instance_id, o.physical_key
        FROM storage_entries e
        LEFT JOIN storage_objects o ON o.id = e.object_id
       WHERE e.source_id = ? AND (e.path = ? OR e.path LIKE ? ESCAPE '\\')`
-  ).bind(R2_SOURCE_ID, path, escapedPrefix).all<{ id: string; object_id: string | null; instance_id: string | null; physical_key: string | null }>();
+  ).bind(R2_SOURCE_ID, path, escapedPrefix).all<{ id: string; path: string; kind: "folder" | "file"; object_id: string | null; instance_id: string | null; physical_key: string | null }>();
   const instanceIds = new Set(rows.results.map((row) => row.instance_id).filter((id): id is string => !!id));
   const deletableInstances = new Set<string>();
   const masterByInstance = new Map<string, string>();
@@ -964,29 +964,66 @@ filesRoutes.post("/files/deleteFolder", permissionMiddleware("delete"), async (c
       if (physicalKey) deletableObjects.set(objectId, physicalKey);
     }
   }
-  try {
-    for (const key of new Set(deletableObjects.values())) await env.MUSIC_BUCKET.delete(key);
-  } catch {
-    return c.json({ ok: false, error: "Storage deletion failed; catalog records were retained" }, 502);
-  }
-  for (const row of rows.results.filter((item) => item.object_id)) {
-    await db.prepare("DELETE FROM storage_entries WHERE id = ?").bind(row.id).run();
-  }
-  for (const row of rows.results.filter((item) => !item.object_id)) {
-    await db.prepare("DELETE FROM storage_entries WHERE id = ?").bind(row.id).run();
-  }
   const affected = new Set<string>();
-  for (const instanceId of deletableInstances) {
-    const masterId = masterByInstance.get(instanceId);
-    if (masterId) affected.add(masterId);
-    await db.prepare("DELETE FROM song_instances WHERE id = ?").bind(instanceId).run();
-  }
+  const removedEntries = new Set<string>();
+  const cleanupInstances = async (instanceIds: Iterable<string>) => {
+    for (const instanceId of instanceIds) {
+      if (!deletableInstances.has(instanceId)) continue;
+      const refs = await db.prepare("SELECT COUNT(*) AS n FROM storage_entries WHERE instance_id = ?")
+        .bind(instanceId).first<{ n: number }>();
+      if (refs?.n) continue;
+      const masterId = masterByInstance.get(instanceId);
+      if (masterId) affected.add(masterId);
+      await db.prepare("DELETE FROM song_instances WHERE id = ?").bind(instanceId).run();
+    }
+    for (const masterId of affected) await cleanupOrphanMaster(db, masterId);
+    affected.clear();
+  };
+  const removeObjectEntries = async (objectId: string) => {
+    const objectRows = rows.results.filter((row) => row.object_id === objectId);
+    for (const row of objectRows) {
+      await db.prepare("DELETE FROM storage_entries WHERE id = ?").bind(row.id).run();
+      removedEntries.add(row.id);
+    }
+    await cleanupInstances(objectRows.map((row) => row.instance_id).filter((id): id is string => !!id));
+    const physicalKey = deletableObjects.get(objectId);
+    if (physicalKey) {
+      await db.prepare(
+        `DELETE FROM storage_objects WHERE id = ? AND physical_key = ?
+           AND NOT EXISTS (SELECT 1 FROM storage_entries WHERE object_id = ?)
+           AND NOT EXISTS (SELECT 1 FROM song_instances WHERE storage_object_id = ?)`,
+      ).bind(objectId, physicalKey, objectId, objectId).run();
+    }
+  };
   for (const [objectId, physicalKey] of deletableObjects) {
-    await db.prepare("DELETE FROM storage_objects WHERE id = ? AND physical_key = ?")
-      .bind(objectId, physicalKey).run();
+    try {
+      await env.MUSIC_BUCKET.delete(physicalKey);
+    } catch {
+      const partial = removedEntries.size > 0;
+      return c.json({
+        ok: false,
+        ...(partial ? { partial: true, deleted: removedEntries.size } : {}),
+        error: partial
+          ? "Storage deletion partially completed; remaining catalog entries can be retried"
+          : "Storage deletion failed; catalog records were retained",
+      }, 502);
+    }
+    await removeObjectEntries(objectId);
   }
-  for (const masterId of affected) await cleanupOrphanMaster(db, masterId);
-  return c.json({ ok: true, deleted: rows.results.length });
+
+  const remainingFiles = rows.results.filter((row) => !removedEntries.has(row.id) && row.object_id);
+  for (const row of remainingFiles) {
+    await db.prepare("DELETE FROM storage_entries WHERE id = ?").bind(row.id).run();
+    removedEntries.add(row.id);
+  }
+  await cleanupInstances(remainingFiles.map((row) => row.instance_id).filter((id): id is string => !!id));
+  const folders = rows.results.filter((row) => !removedEntries.has(row.id))
+    .sort((a, b) => b.path.length - a.path.length);
+  for (const row of folders) {
+    await db.prepare("DELETE FROM storage_entries WHERE id = ?").bind(row.id).run();
+    removedEntries.add(row.id);
+  }
+  return c.json({ ok: true, deleted: removedEntries.size });
 });
 
 // POST /storage/files/moveFolder body: { path: "a", dest: "b/a" }

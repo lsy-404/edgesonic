@@ -32,6 +32,7 @@ function makeFixture(options: {
   masters: Master[];
   level?: number;
   bucketDeleteFailure?: boolean;
+  bucketDeleteFailsOnCall?: number;
 }) {
   const entries = options.entries;
   const instances = options.instances;
@@ -40,6 +41,7 @@ function makeFixture(options: {
   const bucketKeys = new Set(objects.map((row) => row.physical_key));
   let locationReads = 0;
   let bucketDeleteFailure = !!options.bucketDeleteFailure;
+  let bucketDeleteCalls = 0;
   const db = {
     prepare(sql: string) {
       const query = sql.trim().replace(/\s+/g, " ");
@@ -111,6 +113,8 @@ function makeFixture(options: {
             return { results: entries.filter((entry) => entry.source_id === statement.args[0]
               && (entry.path === path || entry.path.startsWith(prefix))).map((entry) => ({
                 id: entry.id,
+                path: entry.path,
+                kind: entry.kind,
                 object_id: entry.object_id,
                 instance_id: entry.instance_id,
                 physical_key: objects.find((object) => object.id === entry.object_id)?.physical_key ?? null,
@@ -158,12 +162,14 @@ function makeFixture(options: {
   app.route("/storage", filesRoutes);
   app.route("/storage", browseRoutes);
   const env = { DB: db, MUSIC_BUCKET: { async delete(key: string | string[]) {
-    if (bucketDeleteFailure) throw new Error("R2 unavailable");
+    bucketDeleteCalls++;
+    if (bucketDeleteFailure || bucketDeleteCalls === options.bucketDeleteFailsOnCall) throw new Error("R2 unavailable");
     for (const item of Array.isArray(key) ? key : [key]) bucketKeys.delete(item);
   } } };
   return {
     entries, instances, objects, masters, bucketKeys,
     failBucketDeletes(value: boolean) { bucketDeleteFailure = value; },
+    get bucketDeleteCalls() { return bucketDeleteCalls; },
     get locationReads() { return locationReads; },
     async post(url: string, body: unknown) {
       return app.fetch(new Request(`http://test${url}`, {
@@ -245,6 +251,24 @@ async function main() {
     assert(fixture.objects.length === 1 && fixture.bucketKeys.has(target.physical_key), "outside reference keeps the R2 object");
   }
 
+  console.log("\nfiles/deleteFolder → deletes one object before removing all of its in-folder aliases:");
+  {
+    const target = objectRow("o1");
+    const fixture = makeFixture({
+      entries: [
+        entry("folder", "Album", null, null, "folder"),
+        entry("first-alias", "Album/one.mp3", "o1", "i1", "file", "folder"),
+        entry("second-alias", "Album/two.mp3", "o1", "i1", "file", "folder"),
+      ],
+      instances: [instance("i1", "m1", "o1")],
+      objects: [target],
+      masters: [master("m1")],
+    });
+    const response = await fixture.post("/storage/files/deleteFolder", { path: "Album" });
+    assert(response.status === 200 && fixture.bucketDeleteCalls === 1, "one shared physical object is deleted exactly once");
+    assert(fixture.entries.length === 0 && fixture.instances.length === 0 && fixture.objects.length === 0, "all aliases and their shared catalog rows are removed after the object succeeds");
+  }
+
   console.log("\nfiles/deleteFolder → retains catalog rows when physical deletion fails:");
   {
     const target = objectRow("o1");
@@ -252,6 +276,36 @@ async function main() {
     const response = await fixture.post("/storage/files/deleteFolder", { path: "Album" });
     assert(response.status === 502, "folder delete reports the physical storage failure");
     assert(fixture.entries.length === 2 && fixture.instances.length === 1 && fixture.objects.length === 1 && fixture.bucketKeys.has(target.physical_key), "folder catalog remains intact after failed R2 deletion");
+  }
+
+  console.log("\nfiles/deleteFolder → commits completed objects and retries remaining entries after a later R2 failure:");
+  {
+    const first = objectRow("o1");
+    const second = objectRow("o2");
+    const fixture = makeFixture({
+      bucketDeleteFailsOnCall: 2,
+      entries: [
+        entry("folder", "Album", null, null, "folder"),
+        entry("first", "Album/one.mp3", "o1", "i1", "file", "folder"),
+        entry("nested", "Album/Disc", null, null, "folder", "folder"),
+        entry("second", "Album/Disc/two.mp3", "o2", "i2", "file", "nested"),
+      ],
+      instances: [instance("i1", "m1", "o1"), instance("i2", "m2", "o2")],
+      objects: [first, second],
+      masters: [master("m1"), master("m2")],
+    });
+    const partialResponse = await fixture.post("/storage/files/deleteFolder", { path: "Album" });
+    const partial = await partialResponse.json<{ ok: boolean; partial?: boolean; deleted?: number }>();
+    assert(partialResponse.status === 502 && partial.partial && partial.deleted === 1, "second R2 failure is reported as a partial deletion");
+    assert(!fixture.bucketKeys.has(first.physical_key) && fixture.bucketKeys.has(second.physical_key), "only the successful first R2 object is removed");
+    assert(!fixture.entries.some((item) => item.id === "first") && !fixture.instances.some((item) => item.id === "i1") && !fixture.objects.some((item) => item.id === "o1") && !fixture.masters.some((item) => item.id === "m1"), "completed entry, instance, object, and orphaned master are cleaned up");
+    assert(fixture.entries.some((item) => item.id === "folder") && fixture.entries.some((item) => item.id === "nested") && fixture.entries.some((item) => item.id === "second"), "remaining file and folder rows stay available for retry");
+
+    const retryResponse = await fixture.post("/storage/files/deleteFolder", { path: "Album" });
+    const retry = await retryResponse.json<{ ok: boolean; deleted: number }>();
+    assert(retryResponse.status === 200 && retry.ok && retry.deleted === 3, "retry completes the remaining subtree");
+    assert(fixture.entries.length === 0 && fixture.instances.length === 0 && fixture.objects.length === 0, "retry cleans the remaining catalog rows");
+    assert(fixture.bucketKeys.size === 0 && fixture.masters.length === 0, "retry removes the remaining R2 object and orphaned master");
   }
 
   console.log("\nfiles/song-locations → requires file-management permission:");
