@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import type { User } from "../../types/entities";
@@ -5,6 +7,7 @@ import { verifyUploadToken } from "../../utils/workUploadToken";
 import { r2KeyFromUri } from "../../utils/storageResolver";
 import {
   enqueueLosslessBatch,
+  LOSSLESS_MAX_UPLOAD_BYTES as MAX_UPLOAD_BYTES,
   loadCurrentLosslessClaim,
   losslessOutputObject,
   openLosslessSource,
@@ -18,8 +21,6 @@ export const workLosslessRoutes = new Hono<{
   Bindings: Env;
   Variables: { user: User };
 }>();
-
-const MAX_UPLOAD_BYTES = 256 * 1024 * 1024;
 
 workLosslessRoutes.post("/work/lossless/dispatch", permissionMiddleware("dispatch_work"), async (c) => {
   let body: unknown;

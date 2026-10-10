@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 export const WORK_TASK_TYPES = ["metadata", "transcode", "scrape", "lossless"] as const;
 
 export type WorkTaskType = typeof WORK_TASK_TYPES[number];

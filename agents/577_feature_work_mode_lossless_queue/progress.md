@@ -7,3 +7,4 @@
 - Added strict task-type parsing and attachment/config propagation; candidate SQL filters by eligible selected types before LIMIT and target delivery checks the canonical runtime capability plus task-specific required caps.
 - Added exact-claim release/requeue handling for deselection, bounded lossless enqueue, claim-time source/upload URLs, and the streaming verified upload/catalog replacement path.
 - Targeted validation passed: Worker typecheck, task-type parser tests, and coordinator selection/release/queue-recovery tests. Local D1/R2 end-to-end route execution remains open; no cloud or library data was accessed.
+- Integration runtime verification completed by the dedicated runtime worktree and root browser proof; all planned gates now passed.

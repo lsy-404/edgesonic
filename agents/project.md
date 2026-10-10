@@ -21,4 +21,4 @@
 - 线上文件操作须先形成可核对清单、备份与回滚方案。
 
 ## Recent tools
-- Tools includes browser-local file utilities; WAV-to-FLAC conversion uses existing ffmpeg.wasm and music-metadata dependencies and validates before download. This does not change R2 or D1.
+- Work Mode offers selectable parsing, transcode, metadata retrieval and lossless compression tasks. WAV-to-FLAC compression uses the existing browser FFmpeg engine, verifies decoded audio and metadata, then atomically updates the original file references; library compression is explicitly queued.

@@ -25,3 +25,8 @@
 | 574 | [BugFix] Folder delete partial failure recovery | Apply catalog cleanup after each successful R2 deletion and preserve remaining entries for retry after a later failure | Prevent R2 objects from becoming catalog ghosts during partial folder deletion | ✅ 已完成 |
 | 575 | [BugFix] Library tag editor initial metadata race | Wait for complete song metadata before opening the editor and discard stale asynchronous responses | Newly uploaded song album artist and year were missing in the editor | ✅ 已完成 |
 | 576 | [BugFix] Song response album year | Include the joined album year in song query rows and Subsonic child responses | Album year remained blank in single-song editor fetches | ✅ 已完成 |
+| 577 | [Feature] Work mode lossless queue | Select work types and verify guarded WAV to FLAC catalog replacement | User requested selectable jobs in Work Mode | ✅ 已完成 |
+| 578 | [Feature] Workmode lossless | Browser queued compression preserves decoded audio and metadata | Execute lossless compression through the existing work pool | ✅ 已完成 |
+| 579 | [Feature] Workmode selectable jobs | Parsing, transcode, metadata retrieval and lossless job choices | Replace the standalone WAV conversion pane | ✅ 已完成 |
+| 580 | [Feature] Workmode task integration | Integrate, verify and deploy selectable work jobs | Deliver the requested Work Mode workflow end to end | 🔄 进行中 |
+| 581 | [Audit] Workmode lossless runtime | Local browser and D1/R2 lossless replacement verification | Validate catalog, reference and failure behavior | ✅ 已完成 |

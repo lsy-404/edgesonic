@@ -11,4 +11,3 @@ pnpm exec vite --config test/workmode-lossless-browser/vite.config.mts
 ```
 
 Open `http://127.0.0.1:4179/` and click **Start generated WAV conversion** for the isolated loopback adapter, or **Run through local D1/R2 endpoints** when the local Worker fixture is listening on port 8798. The second button seeds the generated WAV into local R2, proxies the signed source/upload/submit routes through the fixture origin, submits the result to local D1, then displays task/instance/entry/catalog readback. Both servers bind only to loopback. The converter fetches its existing pinned FFmpeg core assets from jsDelivr.
-
