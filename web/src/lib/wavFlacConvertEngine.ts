@@ -22,8 +22,8 @@ export interface LosslessConversion {
   evidence: LosslessConversionEvidence;
 }
 
-async function loadAsset(url: string, mimeType: string) {
-  const response = await fetch(url);
+async function loadAsset(url: string, mimeType: string, signal?: AbortSignal) {
+  const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`Could not load the audio engine (${response.status}).`);
   return URL.createObjectURL(new Blob([await response.arrayBuffer()], { type: mimeType }));
 }
@@ -33,9 +33,9 @@ export async function loadFfmpeg(ffmpeg: FFmpeg, signal?: AbortSignal) {
   let wasmUrl: string | undefined;
   try {
     if (signal?.aborted) throw new DOMException("aborted", "AbortError");
-    coreUrl = await loadAsset(`${coreBaseUrl}/ffmpeg-core.js`, "text/javascript");
+    coreUrl = await loadAsset(`${coreBaseUrl}/ffmpeg-core.js`, "text/javascript", signal);
     if (signal?.aborted) throw new DOMException("aborted", "AbortError");
-    wasmUrl = await loadAsset(`${coreBaseUrl}/ffmpeg-core.wasm`, "application/wasm");
+    wasmUrl = await loadAsset(`${coreBaseUrl}/ffmpeg-core.wasm`, "application/wasm", signal);
     if (signal?.aborted) throw new DOMException("aborted", "AbortError");
     await ffmpeg.load({ coreURL: coreUrl, wasmURL: wasmUrl });
   } catch (error) {
