@@ -25,7 +25,7 @@ import { refreshAllChannels } from "./utils/podcastSync";
 import { maybeRunScheduledScan } from "./utils/scheduledScan";
 import { reclaimStaleWork } from "./utils/workReclaim";
 import { recoverPendingMetadataApplies } from "./endpoints/edgesonic/work";
-import { recoverPendingRetrievalApplies } from "./endpoints/edgesonic/workMetadataRetrieval";
+import { maybeRunAutomaticMetadataRetrieval, recoverPendingRetrievalApplies } from "./endpoints/edgesonic/workMetadataRetrieval";
 import { recoverPendingUploadMetadata } from "./utils/uploadMetadataRecovery";
 import { maybeRunMetadataRecheck } from "./utils/metadataRecheck";
 import { maybeRunLrcBackfill } from "./utils/lrcBackfill";
@@ -168,7 +168,15 @@ export default {
     if (response.status !== 404) return response;
     return spaHashRedirect(request) || response;
   },
-  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    if (controller.cron === "*/3 * * * *") {
+      ctx.waitUntil(
+        maybeRunAutomaticMetadataRetrieval(env).catch((e) => {
+          console.error("scheduled maybeRunAutomaticMetadataRetrieval failed:", e);
+        }),
+      );
+      return;
+    }
     ctx.waitUntil(
       refreshLibraryStats(env.DB).catch(() => {
         console.error("scheduled library statistics refresh failed");
@@ -203,6 +211,11 @@ export default {
     ctx.waitUntil(
       recoverPendingRetrievalApplies(env).catch((e) => {
         console.error("scheduled recoverPendingRetrievalApplies failed:", e);
+      }),
+    );
+    ctx.waitUntil(
+      maybeRunAutomaticMetadataRetrieval(env).catch((e) => {
+        console.error("scheduled maybeRunAutomaticMetadataRetrieval failed:", e);
       }),
     );
     // worker's embedded parser couldn't read (other formats) or that are

@@ -48,7 +48,7 @@ import { parseWorkTaskTypes } from "../../coordinator/workTaskTypes";
 import type { User } from "../../types/entities";
 import {
   applyCompletedRetrieval, isMetadataRetrievalPayload, isValidMetadataRetrievalResult,
-  metadataRetrievalRoutes, RETRIEVAL_APPLY_PENDING,
+  metadataRetrievalRoutes, RETRIEVAL_APPLY_PENDING, RETRIEVAL_REVIEW_PENDING,
 } from "./workMetadataRetrieval";
 
 export const workRoutes = new Hono<{
@@ -379,20 +379,20 @@ workRoutes.post("/work/submit", async (c) => {
   if (isRetrievalTask && !isValidMetadataRetrievalResult(taskPayload, retrievalResult)) {
     return c.json({ ok: false, error: "Invalid metadata retrieval result" }, 400);
   }
-  const retrievalPending = isRetrievalTask;
+  const reviewPending = isRetrievalTask && (retrievalResult as { status?: unknown } | null)?.status === "pending";
   const completed = await env.DB.prepare(
     `UPDATE work_queue
      SET status = 'completed', result_json = ?, error_message = ?,
          heartbeat_at = ?
      WHERE id = ? AND status = 'claimed' AND claimed_by = ?
        AND attempts = ? AND claimed_at = ?`,
-  ).bind(resultJson, row.task_type === "metadata" ? APPLY_PENDING : retrievalPending ? RETRIEVAL_APPLY_PENDING : null,
+  ).bind(resultJson, row.task_type === "metadata" ? APPLY_PENDING : reviewPending ? RETRIEVAL_REVIEW_PENDING : isRetrievalTask ? RETRIEVAL_APPLY_PENDING : null,
     now, body.id, user.username, body.attempts, body.claimedAt).run();
   if (completed.meta.changes === 0) return c.json({ ok: false, error: "Claim has changed" }, 409);
   const applyAnnotation = row.task_type === "metadata"
     ? await applyCompletedMetadata(env, body.id, row.payload, body.result)
     : undefined;
-  const retrievalAnnotation = retrievalPending
+  const retrievalAnnotation = isRetrievalTask && !reviewPending
     ? await applyCompletedRetrieval(env, body.id, row.payload, body.result)
     : undefined;
   return c.json({

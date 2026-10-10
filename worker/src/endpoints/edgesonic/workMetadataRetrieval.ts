@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
-import { getFeature, getFeatureString } from "../../utils/features";
+import { getFeature, getFeatureString, invalidateFeature } from "../../utils/features";
 import { albumNameFromSourcePath, recoverMetadataFromStoragePath, sourceFolderLogicalPath } from "../../utils/storageMetadata";
 import { artistInsertStatements, parseAlbumArtistCredit, parseArtistCredits, songArtistStatements } from "../../utils/artistCredits";
 import { md5 } from "../../utils/md5";
-import { normalizeMetadataIdentity, isKnownMetadataIdentity, isCredibleMetadataMatch } from "../../../../shared/metadataRetrievalMatch";
+import { normalizeMetadataIdentity, isKnownMetadataIdentity, isCredibleMetadataMatch, isSelectableMetadataMatch } from "../../../../shared/metadataRetrievalMatch";
 import { notifyCoordinator } from "../../coordinator/workCoordinator";
 import type { User } from "../../types/entities";
 
@@ -17,19 +17,21 @@ export const metadataRetrievalRoutes = new Hono<{
 interface ApplyAnnotation { ok: boolean; reason?: string; masterId?: string }
 
 export const RETRIEVAL_APPLY_PENDING = "retrieval_apply:pending";
+export const RETRIEVAL_REVIEW_PENDING = "retrieval_review:pending";
+export const RETRIEVAL_REVIEW_KEPT = "retrieval_review:kept";
 const RETRIEVAL_APPLYING_PREFIX = "retrieval_apply:applying:";
 const RETRIEVAL_APPLY_LEASE_SECONDS = 10 * 60;
 const RETRIEVAL_SOURCES = new Set(["lrc", "netease", "qmusic", "kugou"]);
 const RETRIEVAL_RETRY_BUDGET = 3;
+const RETRIEVAL_AUTO_INTERVAL_SECONDS = 60;
+const RETRIEVAL_AUTO_QUEUE_CAP = 40;
+const RETRIEVAL_AUTO_ENQUEUE_CAP = 20;
+const RETRIEVAL_SCAN_LIMIT = 100;
 
 interface RetrievalSnapshot {
   title: string; artist: string; album: string; albumArtist: string | null;
   year: number | null; lyrics: string | null; coverR2Key: string | null;
   masterUpdatedAt: number; albumFolder: string | null;
-}
-
-interface RetrievalRow {
-  id: string; task_type: string; status: string; attempts: number; error_message: string | null;
 }
 
 function metadataMissing(value: unknown, field: "title" | "artist" | "album" | "albumArtist" | "year" | "lyrics" | "cover"): boolean {
@@ -67,49 +69,55 @@ async function getRetrievalSources(env: Env): Promise<string[]> {
 async function restartRetrievalTask(
   db: D1Database,
   payload: Record<string, unknown>,
+  allowTerminalRestart = false,
 ): Promise<"queued" | "active" | "pending" | "invalid"> {
   const masterId = payload.masterId;
   if (typeof masterId !== "string") return "invalid";
   const taskId = `wt-scrape-retrieve:${masterId}`;
-  const existing = await db.prepare(
-    "SELECT id, task_type, status, attempts, error_message FROM work_queue WHERE id = ?",
-  ).bind(taskId).first<RetrievalRow>();
-  if (existing?.task_type === "scrape" && existing.status === "completed" &&
-      (existing.error_message === RETRIEVAL_APPLY_PENDING || existing.error_message?.startsWith(RETRIEVAL_APPLYING_PREFIX))) {
-    return "pending";
+  if (allowTerminalRestart) {
+    const existing = await db.prepare(
+      "SELECT task_type, status, attempts, error_message FROM work_queue WHERE id = ?",
+    ).bind(taskId).first<{ task_type: string; status: string; attempts: number; error_message: string | null }>();
+    if (existing?.error_message?.startsWith("retrieval_review:") || existing?.error_message?.startsWith("retrieval_apply:")) return "pending";
+    if (existing && existing.task_type === "scrape" && ["completed", "failed", "canceled"].includes(existing.status)) {
+      const restarted = await db.prepare(
+        `UPDATE work_queue SET status='queued', payload=?, priority=5, max_attempts=attempts + ?, error_message=NULL,
+           claimed_by=NULL, claimed_at=NULL, heartbeat_at=NULL, result_json=NULL, expires_at=NULL
+         WHERE id=? AND task_type='scrape' AND status IN ('completed','failed','canceled')
+           AND (error_message IS NULL OR error_message NOT GLOB 'retrieval_apply:*')
+           AND (error_message IS NULL OR error_message NOT GLOB 'retrieval_review:*')`,
+      ).bind(JSON.stringify(payload), RETRIEVAL_RETRY_BUDGET, taskId).run();
+      if (restarted.meta.changes === 1) return "queued";
+    }
   }
   const result = await db.prepare(
-    `INSERT INTO work_queue (id, task_type, payload, required_caps, priority, status, attempts, max_attempts)
-     VALUES (?, 'scrape', ?, NULL, 5, 'queued', 0, ?)
-     ON CONFLICT(id) DO UPDATE SET
-       status = 'queued', payload = excluded.payload, priority = excluded.priority,
-       max_attempts = work_queue.attempts + ?, error_message = NULL,
-       claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL,
-       result_json = NULL, expires_at = NULL
-     WHERE work_queue.task_type = 'scrape'
-       AND work_queue.status IN ('completed', 'failed', 'canceled')
-       AND NOT (work_queue.status = 'completed' AND work_queue.error_message GLOB 'retrieval_apply:*')`,
-  ).bind(taskId, JSON.stringify(payload), RETRIEVAL_RETRY_BUDGET,
-    RETRIEVAL_RETRY_BUDGET).run();
+    `INSERT OR IGNORE INTO work_queue (id, task_type, payload, required_caps, priority, status, attempts, max_attempts)
+     VALUES (?, 'scrape', ?, NULL, 5, 'queued', 0, ?)`,
+  ).bind(taskId, JSON.stringify(payload), RETRIEVAL_RETRY_BUDGET).run();
   if (result.meta.changes === 1) return "queued";
   const current = await db.prepare("SELECT status, error_message FROM work_queue WHERE id = ?")
     .bind(taskId).first<{ status: string; error_message: string | null }>();
-  if (current?.status === "completed" && current.error_message?.startsWith("retrieval_apply:")) return "pending";
-  return current && ["queued", "claimed"].includes(current.status) ? "active" : "invalid";
+  if (current && ["queued", "claimed"].includes(current.status)) return "active";
+  return current?.error_message?.startsWith("retrieval_review:") ? "pending" : "invalid";
 }
 
-metadataRetrievalRoutes.post("/work/scrape/dispatch", permissionMiddleware("dispatch_work"), async (c) => {
-  const env = c.env as Env;
-  let body: unknown;
-  try { body = await c.req.json(); } catch { return c.json({ ok: false, error: "Invalid JSON body" }, 400); }
-  if (!body || typeof body !== "object" || Array.isArray(body)) return c.json({ ok: false, error: "Body must be an object" }, 400);
-  const request = body as { after?: unknown };
-  if (request.after !== undefined && typeof request.after !== "string") {
-    return c.json({ ok: false, error: "after must be a master id" }, 400);
-  }
-  if (!(await getFeature(env, "scrape_enabled"))) return c.json({ ok: false, error: "Metadata retrieval is disabled" }, 409);
+function missingIdentitySql(column: string): string {
+  const value = `LOWER(REPLACE(REPLACE(TRIM(COALESCE(${column}, '')), '_', ' '), '-', ' '))`;
+  return `(TRIM(COALESCE(${column}, '')) IN ('', '??') OR ${value} IN
+    ('unknown','unknown artist','unknownartist','unknown album','unknownalbum','pending uploads','pendinguploads')
+    OR LOWER(TRIM(COALESCE(${column}, ''))) GLOB 'obj_[0-9a-f]*')`;
+}
+
+function metadataIncompleteSql(): string {
+  return `(${missingIdentitySql("sm.title")} OR ${missingIdentitySql("ar.name")} OR ${missingIdentitySql("a.name")}
+    OR ${missingIdentitySql("aar.name")} OR a.year IS NULL OR a.year <= 0
+    OR TRIM(COALESCE(sm.lyrics, '')) = ''
+    OR (TRIM(COALESCE(sm.cover_r2_key, '')) = '' AND TRIM(COALESCE(a.cover_r2_key, '')) = ''))`;
+}
+
+async function dispatchRetrievalBatch(env: Env, after: string | null, limit: number, enqueueCap = Infinity, manualForce = false) {
   const sources = await getRetrievalSources(env);
-  if (!sources.length) return c.json({ ok: false, error: "No metadata retrieval sources are enabled" }, 409);
+  if (!sources.length) return { ok: false as const, error: "No metadata retrieval sources are enabled" };
   const rows = (await env.DB.prepare(
     `SELECT sm.id AS master_id, sm.title, sm.artist_id, sm.album_id, sm.album_artist_id,
             sm.lyrics, sm.updated_at AS master_updated_at, sm.cover_r2_key AS song_cover_r2_key,
@@ -122,12 +130,12 @@ metadataRetrievalRoutes.post("/work/scrape/dispatch", permissionMiddleware("disp
      LEFT JOIN artists aar ON aar.id = sm.album_artist_id
      JOIN song_instances si ON si.id = (
        SELECT si2.id FROM song_instances si2
-       WHERE si2.master_id = sm.id AND si2.source_type = 'original' AND si2.missing = 0
+       WHERE si2.master_id = sm.id AND si2.source_type = 'original' AND si2.missing = 0 ${manualForce ? "" : "AND si2.tag_scanned = 1"}
        ORDER BY si2.created_at, si2.id LIMIT 1
      )
-     WHERE (? IS NULL OR sm.id > ?)
-     ORDER BY sm.id LIMIT 100`,
-  ).bind(request.after ?? null, request.after ?? null).all<{
+     WHERE (? IS NULL OR sm.id > ?) AND ${metadataIncompleteSql()}
+     ORDER BY sm.id LIMIT ?`,
+  ).bind(after, after, limit).all<{
     master_id: string; title: string; artist_id: string; album_id: string; album_artist_id: string | null;
     lyrics: string | null; master_updated_at: number; song_cover_r2_key: string | null;
     album_name: string; year: number | null; compilation: number; album_cover_r2_key: string | null;
@@ -135,7 +143,10 @@ metadataRetrievalRoutes.post("/work/scrape/dispatch", permissionMiddleware("disp
   }>()).results;
   let enqueued = 0;
   let skipped = 0;
+  let processed = 0;
   for (const row of rows) {
+    if (enqueued >= enqueueCap) break;
+    processed++;
     const coverR2Key = row.song_cover_r2_key || row.album_cover_r2_key;
     const needsRetrieval = metadataMissing(row.title, "title") || metadataMissing(row.artist_name, "artist") ||
       metadataMissing(row.album_name, "album") || metadataMissing(row.album_artist_name, "albumArtist") ||
@@ -165,7 +176,7 @@ metadataRetrievalRoutes.post("/work/scrape/dispatch", permissionMiddleware("disp
       identity: { title: recovered.title, artist: recovered.artist, album: identityAlbum },
       sources, query,
     };
-    const status = await restartRetrievalTask(env.DB, payload);
+    const status = await restartRetrievalTask(env.DB, payload, manualForce);
     if (status === "queued") enqueued++;
     else skipped++;
   }
@@ -173,8 +184,211 @@ metadataRetrievalRoutes.post("/work/scrape/dispatch", permissionMiddleware("disp
     try { await notifyCoordinator(env); }
     catch (error) { console.error("[work] coordinator notify failed:", error); }
   }
-  return c.json({ ok: true, enqueued, skipped, scanned: rows.length,
-    nextCursor: rows.length === 100 ? rows.at(-1)!.master_id : null });
+  const nextCursor = processed < rows.length
+    ? processed > 0 ? rows[processed - 1]!.master_id : after
+    : rows.length === limit ? rows.at(-1)!.master_id : null;
+  return { ok: true as const, enqueued, skipped, scanned: processed, nextCursor };
+}
+
+metadataRetrievalRoutes.post("/work/scrape/dispatch", permissionMiddleware("dispatch_work"), async (c) => {
+  const env = c.env as Env;
+  let body: unknown;
+  try { body = await c.req.json(); } catch { return c.json({ ok: false, error: "Invalid JSON body" }, 400); }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return c.json({ ok: false, error: "Body must be an object" }, 400);
+  const request = body as { after?: unknown };
+  if (request.after !== undefined && typeof request.after !== "string") return c.json({ ok: false, error: "after must be a master id" }, 400);
+  if (!(await getFeature(env, "scrape_enabled"))) return c.json({ ok: false, error: "Metadata retrieval is disabled" }, 409);
+  return c.json(await dispatchRetrievalBatch(env, request.after ?? null, RETRIEVAL_SCAN_LIMIT, Infinity, true));
+});
+
+metadataRetrievalRoutes.get("/work/scrape/auto", permissionMiddleware("dispatch_work"), async (c) => {
+  return c.json({ ok: true, enabled: await getFeature(c.env as Env, "metadata_auto_retrieval") });
+});
+
+metadataRetrievalRoutes.post("/work/scrape/auto", permissionMiddleware("dispatch_work"), async (c) => {
+  const body: unknown = await c.req.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body) || typeof (body as { enabled?: unknown }).enabled !== "boolean") {
+    return c.json({ ok: false, error: "enabled must be a boolean" }, 400);
+  }
+  const enabled = (body as { enabled: boolean }).enabled;
+  await c.env.DB.prepare(
+    `INSERT INTO features (key, value, description, updated_at) VALUES ('metadata_auto_retrieval', ?, 'Automatic metadata retrieval', unixepoch())
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+  ).bind(enabled ? 1 : 0).run();
+  invalidateFeature(c.env as Env, "metadata_auto_retrieval");
+  if (enabled) c.executionCtx.waitUntil(maybeRunAutomaticMetadataRetrieval(c.env as Env).catch((error) => {
+    console.error("metadata auto-retrieval immediate scan failed:", error);
+  }));
+  return c.json({ ok: true, enabled });
+});
+
+export async function maybeRunAutomaticMetadataRetrieval(env: Env): Promise<void> {
+  if (!(await getFeature(env, "metadata_auto_retrieval")) || !(await getFeature(env, "scrape_enabled"))) return;
+  const now = Math.floor(Date.now() / 1000);
+  const lease = await env.DB.prepare(
+    `INSERT INTO feature_strings (key, value, description, updated_at)
+     VALUES ('metadata_auto_retrieval_last_run', ?, 'Automatic retrieval cadence gate', ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+       WHERE CAST(feature_strings.value AS INTEGER) <= ?
+     RETURNING key`,
+  ).bind(String(now), now, now - RETRIEVAL_AUTO_INTERVAL_SECONDS).first<{ key: string }>();
+  if (!lease) return;
+  const active = await env.DB.prepare(
+    "SELECT COUNT(*) AS count FROM work_queue WHERE task_type = 'scrape' AND status IN ('queued','claimed')",
+  ).first<{ count: number }>();
+  const available = Math.max(0, Math.min(RETRIEVAL_AUTO_ENQUEUE_CAP, RETRIEVAL_AUTO_QUEUE_CAP - (active?.count ?? 0)));
+  if (available === 0) return;
+  const cursor = await getFeatureString(env, "metadata_auto_retrieval_cursor", "");
+  const result = await dispatchRetrievalBatch(env, cursor || null, RETRIEVAL_SCAN_LIMIT, available);
+  if (!result.ok) return;
+  const next = result.nextCursor ?? "";
+  await env.DB.prepare(
+    `INSERT INTO feature_strings (key, value, description, updated_at) VALUES ('metadata_auto_retrieval_cursor', ?, 'Automatic retrieval pagination cursor', ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+  ).bind(next, now).run();
+}
+
+metadataRetrievalRoutes.get("/work/scrape/status", permissionMiddleware("dispatch_work"), async (c) => {
+  const env = c.env as Env;
+  const rawAfter = c.req.query("after");
+  const after = rawAfter?.trim() || null;
+  if (rawAfter !== undefined && rawAfter.length > 200) return c.json({ ok: false, error: "after cursor is too long" }, 400);
+  const pendingRows = (await env.DB.prepare(
+    `SELECT id, attempts, payload, result_json FROM work_queue
+     WHERE task_type = 'scrape' AND status = 'completed' AND error_message = ? AND (? IS NULL OR id > ?)
+     ORDER BY id LIMIT 21`,
+  ).bind(RETRIEVAL_REVIEW_PENDING, after, after).all<{ id: string; attempts: number; payload: string; result_json: string | null }>()).results;
+  const hasMore = pendingRows.length > 20;
+  const page = pendingRows.slice(0, 20).map((row) => {
+    let payload: unknown = null;
+    let result: unknown = null;
+    try { payload = JSON.parse(row.payload); } catch { /* corrupt queue data stays reviewable */ }
+    try { result = row.result_json ? JSON.parse(row.result_json) : null; } catch { /* corrupt queue data stays reviewable */ }
+    return { taskId: row.id, attempts: row.attempts, payload, result };
+  });
+  const aggregate = await env.DB.prepare(
+    `SELECT COUNT(*) AS total,
+       SUM(CASE WHEN ${metadataIncompleteSql()} THEN 1 ELSE 0 END) AS incomplete,
+       SUM(CASE WHEN ${metadataIncompleteSql()} THEN 0 ELSE 1 END) AS complete
+     FROM song_masters sm JOIN albums a ON a.id = sm.album_id JOIN artists ar ON ar.id = sm.artist_id
+     LEFT JOIN artists aar ON aar.id = sm.album_artist_id
+     WHERE EXISTS (SELECT 1 FROM song_instances si WHERE si.master_id = sm.id AND si.source_type = 'original' AND si.missing = 0)`
+  ).first<{ total: number; incomplete: number; complete: number }>();
+  const [pending, kept, queued, claimed] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND error_message=?").bind(RETRIEVAL_REVIEW_PENDING).first<{ count: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND error_message=?").bind(RETRIEVAL_REVIEW_KEPT).first<{ count: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND status='queued'").first<{ count: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND status='claimed'").first<{ count: number }>(),
+  ]);
+  return c.json({ ok: true, autoEnabled: await getFeature(env, "metadata_auto_retrieval"),
+    counts: { total: aggregate?.total ?? 0, incomplete: aggregate?.incomplete ?? 0, complete: aggregate?.complete ?? 0,
+      pending: pending?.count ?? 0, kept: kept?.count ?? 0, queued: queued?.count ?? 0, claimed: claimed?.count ?? 0 },
+    pending: page, nextCursor: hasMore ? pendingRows[19]?.id ?? null : null });
+});
+
+async function refreshRetrievalPayload(env: Env, payload: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+  const masterId = payload.masterId;
+  const instanceId = payload.instanceId;
+  if (typeof masterId !== "string" || typeof instanceId !== "string") return null;
+  const row = await env.DB.prepare(
+    `SELECT sm.title, sm.lyrics, sm.updated_at, sm.cover_r2_key AS song_cover, a.name AS album_name, a.year,
+       a.cover_r2_key AS album_cover, ar.name AS artist_name, aar.name AS album_artist_name,
+       si.storage_uri, si.source_etag, si.missing, si.source_type
+     FROM song_masters sm JOIN albums a ON a.id = sm.album_id JOIN artists ar ON ar.id = sm.artist_id
+     LEFT JOIN artists aar ON aar.id = sm.album_artist_id JOIN song_instances si ON si.id = ? AND si.master_id = sm.id
+     WHERE sm.id = ?`,
+  ).bind(instanceId, masterId).first<{
+    title: string; lyrics: string | null; updated_at: number; song_cover: string | null; album_name: string; year: number | null;
+    album_cover: string | null; artist_name: string; album_artist_name: string | null; storage_uri: string;
+    source_etag: string | null; missing: number; source_type: string;
+  }>();
+  if (!row || row.missing !== 0 || row.source_type !== "original") return null;
+  const priorIdentity = payload.identity && typeof payload.identity === "object" ? payload.identity as Record<string, unknown> : {};
+  const identity = {
+    title: isKnownMetadataIdentity(row.title) ? row.title : priorIdentity.title,
+    artist: isKnownMetadataIdentity(row.artist_name) ? row.artist_name : priorIdentity.artist,
+    album: isKnownMetadataIdentity(row.album_name) ? row.album_name : priorIdentity.album,
+  };
+  const query = [identity.title, identity.artist, identity.album].filter(isKnownMetadataIdentity).join(" ");
+  if (!query) return null;
+  const priorSnapshot = payload.snapshot && typeof payload.snapshot === "object" ? payload.snapshot as RetrievalSnapshot : null;
+  return {
+    ...payload,
+    sourceUri: row.storage_uri,
+    sourceEtag: row.source_etag,
+    identity,
+    query,
+    snapshot: {
+      ...(priorSnapshot ?? {}),
+      title: row.title, artist: row.artist_name, album: row.album_name, albumArtist: row.album_artist_name,
+      year: row.year, lyrics: row.lyrics, coverR2Key: row.song_cover || row.album_cover, masterUpdatedAt: row.updated_at,
+    },
+  };
+}
+
+metadataRetrievalRoutes.post("/work/scrape/review", permissionMiddleware("dispatch_work"), async (c) => {
+  const body: unknown = await c.req.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return c.json({ ok: false, error: "Body must be an object" }, 400);
+  const env = c.env as Env;
+  const request = body as { taskId?: unknown; attempts?: unknown; decision?: unknown; candidateIndex?: unknown; result?: unknown };
+  if (typeof request.taskId !== "string" || !Number.isSafeInteger(request.attempts) || !["apply", "keep", "retry"].includes(String(request.decision))) {
+    return c.json({ ok: false, error: "Invalid review request" }, 400);
+  }
+  const row = await env.DB.prepare(
+    "SELECT payload, result_json, max_attempts FROM work_queue WHERE id = ? AND task_type = 'scrape' AND status = 'completed' AND attempts = ? AND error_message = ?",
+  ).bind(request.taskId, request.attempts, RETRIEVAL_REVIEW_PENDING).first<{ payload: string; result_json: string | null; max_attempts: number }>();
+  if (!row) return c.json({ ok: false, error: "Review task changed or is no longer pending" }, 409);
+  let payload: Record<string, unknown>;
+  let prior: Record<string, unknown>;
+  try { payload = JSON.parse(row.payload); prior = JSON.parse(row.result_json || "{}"); }
+  catch { return c.json({ ok: false, error: "Stored review task is invalid" }, 409); }
+  if (request.decision === "keep") {
+    const kept = await env.DB.prepare(
+      "UPDATE work_queue SET error_message = ? WHERE id = ? AND status = 'completed' AND attempts = ? AND error_message = ?",
+    ).bind(RETRIEVAL_REVIEW_KEPT, request.taskId, request.attempts, RETRIEVAL_REVIEW_PENDING).run();
+    return kept.meta.changes === 1 ? c.json({ ok: true, decision: "keep" }) : c.json({ ok: false, error: "Review task changed" }, 409);
+  }
+  if (request.decision === "retry") {
+    const refreshedPayload = await refreshRetrievalPayload(env, payload);
+    if (!refreshedPayload) return c.json({ ok: false, error: "Track source or identity is no longer available for retry" }, 409);
+    const retried = await env.DB.prepare(
+      `UPDATE work_queue SET status = 'queued', payload = ?, max_attempts = attempts + ?, error_message = NULL,
+         claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL, result_json = NULL, expires_at = NULL
+       WHERE id = ? AND status = 'completed' AND attempts = ? AND error_message = ?`,
+    ).bind(JSON.stringify(refreshedPayload), RETRIEVAL_RETRY_BUDGET, request.taskId, request.attempts, RETRIEVAL_REVIEW_PENDING).run();
+    if (retried.meta.changes !== 1) return c.json({ ok: false, error: "Review task changed" }, 409);
+    try { await notifyCoordinator(env); } catch (error) { console.error("[work] coordinator notify failed:", error); }
+    return c.json({ ok: true, decision: "retry" });
+  }
+  if (!Number.isSafeInteger(request.candidateIndex) || !Array.isArray(prior.candidates) ||
+      Number(request.candidateIndex) < 0 || Number(request.candidateIndex) >= prior.candidates.length) {
+    return c.json({ ok: false, error: "candidateIndex does not identify a saved candidate" }, 400);
+  }
+  const selected = prior.candidates[Number(request.candidateIndex)] as Record<string, unknown>;
+  const resolved = request.result as Record<string, unknown> | null;
+  const match = resolved && typeof resolved === "object" ? resolved.match as Record<string, unknown> | undefined : undefined;
+  if (!resolved || "manualReview" in resolved || resolved.kind !== "metadata-retrieval" || resolved.status !== "matched" ||
+      resolved.masterId !== payload.masterId || resolved.instanceId !== payload.instanceId ||
+      !match || match.source !== selected.source || match.songId !== selected.songId ||
+      !isSelectableMetadataMatch(match, { identity: payload.identity, snapshot: payload.snapshot })) {
+    return c.json({ ok: false, error: "Resolved candidate does not match the saved selection and known metadata" }, 400);
+  }
+  for (const field of ["title", "artist", "album"] as const) {
+    if (isKnownMetadataIdentity(selected[field]) &&
+        (!isKnownMetadataIdentity(match[field]) || normalizeMetadataIdentity(selected[field]) !== normalizeMetadataIdentity(match[field]))) {
+      return c.json({ ok: false, error: `Resolved ${field} differs from the saved candidate` }, 400);
+    }
+  }
+  const approvedResult = { ...resolved, manualReview: { candidateIndex: Number(request.candidateIndex), pendingResult: prior } };
+  const resolvedJson = JSON.stringify(approvedResult);
+  if (resolvedJson.length > 500_000) return c.json({ ok: false, error: "Resolved result is too large" }, 413);
+  const applying = await env.DB.prepare(
+    `UPDATE work_queue SET result_json = ?, error_message = ?
+     WHERE id = ? AND status = 'completed' AND attempts = ? AND error_message = ?`,
+  ).bind(resolvedJson, RETRIEVAL_APPLY_PENDING, request.taskId, request.attempts, RETRIEVAL_REVIEW_PENDING).run();
+  if (applying.meta.changes !== 1) return c.json({ ok: false, error: "Review task changed" }, 409);
+  const applied = await applyCompletedRetrieval(env, request.taskId, row.payload, approvedResult, true);
+  return applied.ok ? c.json({ ok: true, decision: "apply", applied }) : c.json({ ok: false, error: applied.reason || "Unable to apply metadata" }, 409);
 });
 
 export function isMetadataRetrievalPayload(value: unknown): value is Record<string, unknown> {
@@ -184,10 +398,28 @@ export function isMetadataRetrievalPayload(value: unknown): value is Record<stri
 
 export function isValidMetadataRetrievalResult(payload: Record<string, unknown>, value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  if ("manualReview" in value) return false;
   const result = value as RetrievalResult;
   if (result.kind !== "metadata-retrieval" || result.masterId !== payload.masterId ||
       result.instanceId !== payload.instanceId) return false;
-  if (result.status === "no-match") return true;
+  if (result.status === "pending") {
+    if (!Array.isArray(result.candidates) || result.candidates.length > 10 ||
+        !["ambiguous", "no-credible-match"].includes(String(result.reason))) return false;
+    const sources = Array.isArray(payload.sources) ? payload.sources : [];
+    return result.candidates.every((candidate) => {
+      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return false;
+      const item = candidate as Record<string, unknown>;
+      return typeof item.source === "string" && sources.includes(item.source) &&
+        typeof item.songId === "string" && !!item.songId.trim() &&
+        typeof item.title === "string" && !!item.title.trim() &&
+        (item.artist === undefined || typeof item.artist === "string") &&
+        (item.album === undefined || typeof item.album === "string") &&
+        (item.albumArtist === undefined || typeof item.albumArtist === "string") &&
+        (item.year === undefined || (Number.isInteger(item.year) && Number(item.year) > 0)) &&
+        (item.lyrics === undefined || typeof item.lyrics === "string") &&
+        isSelectableMetadataMatch(item, { identity: payload.identity, snapshot: payload.snapshot });
+    });
+  }
   if (result.status !== "matched" || !result.match || typeof result.match !== "object" || Array.isArray(result.match)) return false;
   const match = result.match as Record<string, unknown>;
   const sources = Array.isArray(payload.sources) ? payload.sources : [];
@@ -206,7 +438,7 @@ export function isValidMetadataRetrievalResult(payload: Record<string, unknown>,
 
 interface RetrievalResult {
   kind?: unknown; masterId?: unknown; instanceId?: unknown; status?: unknown;
-  reason?: unknown; match?: unknown; cover?: unknown;
+  reason?: unknown; match?: unknown; cover?: unknown; candidates?: unknown;
 }
 
 async function writeRetrievalCover(
@@ -288,8 +520,12 @@ async function finishRetrievalCatalogReceipt(
 }
 
 export async function applyCompletedRetrieval(
-  env: Env, taskId: string, payloadJson: string, result: unknown,
+  env: Env, taskId: string, payloadJson: string, result: unknown, manuallyReviewed = false,
 ): Promise<ApplyAnnotation> {
+  const manualReview = result && typeof result === "object" && !Array.isArray(result)
+    ? (result as { manualReview?: { pendingResult?: unknown } }).manualReview
+    : undefined;
+  manuallyReviewed = manuallyReviewed || !!manualReview;
   const applying = `${RETRIEVAL_APPLYING_PREFIX}${crypto.randomUUID()}`;
   const queue = await env.DB.prepare("SELECT error_message FROM work_queue WHERE id = ? AND task_type = 'scrape' AND status = 'completed'")
     .bind(taskId).first<{ error_message: string | null }>();
@@ -313,6 +549,7 @@ export async function applyCompletedRetrieval(
   let annotation: ApplyAnnotation = { ok: false, reason: "invalid retrieval result" };
   let retry = false;
   let completedReceipt: string | null = null;
+  let refreshedPayloadJson: string | null = null;
   try {
     const payload = JSON.parse(payloadJson) as Record<string, unknown>;
     const r = result as RetrievalResult | null;
@@ -321,8 +558,6 @@ export async function applyCompletedRetrieval(
         r.masterId !== payload.masterId || r.instanceId !== payload.instanceId ||
         typeof r.masterId !== "string" || typeof r.instanceId !== "string") {
       annotation = { ok: false, reason: "task result identity mismatch" };
-    } else if (r.status === "no-match") {
-      annotation = { ok: true, reason: typeof r.reason === "string" ? r.reason.slice(0, 160) : "no match" };
     } else if (r.status === "matched" && r.match && typeof r.match === "object") {
       const match = r.match as Record<string, unknown>;
       const current = await env.DB.prepare(
@@ -348,10 +583,36 @@ export async function applyCompletedRetrieval(
       if (!current || current.storage_uri !== payload.sourceUri || current.source_etag !== (payload.sourceEtag ?? null) ||
           current.missing !== 0 || current.source_type !== "original" || !fieldsCurrent) {
         annotation = { ok: false, reason: "source or metadata changed since retrieval was queued" };
+        if (manuallyReviewed) {
+          retry = true;
+          if (current && current.missing === 0 && current.source_type === "original") {
+            const identity = payload.identity && typeof payload.identity === "object" ? payload.identity as Record<string, unknown> : {};
+            const refreshed = {
+              ...payload,
+              sourceUri: current.storage_uri,
+              sourceEtag: current.source_etag,
+              identity: {
+                title: isKnownMetadataIdentity(current.title) ? current.title : identity.title,
+                artist: isKnownMetadataIdentity(current.artist_name) ? current.artist_name : identity.artist,
+                album: isKnownMetadataIdentity(current.album_name) ? current.album_name : identity.album,
+              },
+              snapshot: {
+                ...snapshot,
+                title: current.title, artist: current.artist_name, album: current.album_name,
+                albumArtist: current.album_artist_name, year: current.year, lyrics: current.lyrics,
+                coverR2Key: current.song_cover_r2_key || current.album_cover_r2_key,
+                masterUpdatedAt: current.updated_at,
+              },
+            };
+            refreshedPayloadJson = JSON.stringify(refreshed);
+          }
+        }
       } else if (typeof match.source !== "string" || !sourceList.includes(match.source) ||
           typeof match.songId !== "string" || !match.songId.trim() ||
           !payload.identity || typeof payload.identity !== "object" || Array.isArray(payload.identity) ||
-          !isCredibleMetadataMatch(match, payload.identity as { title?: unknown; artist?: unknown; album?: unknown }) || !matchesKnownSnapshot(match, snapshot)) {
+          (manuallyReviewed
+            ? !isSelectableMetadataMatch(match, { identity: payload.identity, snapshot })
+            : !isCredibleMetadataMatch(match, payload.identity as { title?: unknown; artist?: unknown; album?: unknown }) || !matchesKnownSnapshot(match, snapshot))) {
         annotation = { ok: false, reason: "provider match is not credible for this song" };
       } else {
         const title = metadataMissing(current.title, "title") && typeof match.title === "string" ? match.title.trim() : current.title;
@@ -451,9 +712,13 @@ export async function applyCompletedRetrieval(
     annotation = { ok: false, reason: error instanceof Error ? error.message : String(error) };
   }
   await env.DB.prepare(
-    `UPDATE work_queue SET error_message = ? WHERE id = ? AND status = 'completed'
+    `UPDATE work_queue SET error_message = ?, result_json = CASE WHEN ? IS NULL THEN result_json ELSE ? END,
+       payload = COALESCE(?, payload) WHERE id = ? AND status = 'completed'
       AND (error_message = ? OR (? IS NOT NULL AND error_message = ?))`,
-  ).bind(retry ? RETRIEVAL_APPLY_PENDING : null, taskId, applying, completedReceipt ? 1 : null,
+  ).bind(retry ? (manuallyReviewed ? RETRIEVAL_REVIEW_PENDING : RETRIEVAL_APPLY_PENDING) : null,
+    manuallyReviewed && retry ? JSON.stringify(manualReview?.pendingResult ?? null) : null,
+    manuallyReviewed && retry ? JSON.stringify(manualReview?.pendingResult ?? null) : null,
+    refreshedPayloadJson, taskId, applying, completedReceipt ? 1 : null,
     completedReceipt ? completedReceipt.replace(/:cover$/, ':done') : '').run();
   return annotation;
 }
@@ -477,7 +742,11 @@ export async function recoverPendingRetrievalApplies(env: Env, limit = 20): Prom
   for (const row of rows) {
     let result: unknown = null;
     try { result = row.result_json ? JSON.parse(row.result_json) : null; } catch { /* invalid saved result is terminal */ }
-    try { await applyCompletedRetrieval(env, row.id, row.payload, result); }
+    try {
+      const savedManualReview = !!(result && typeof result === "object" && !Array.isArray(result) &&
+        (result as { manualReview?: unknown }).manualReview);
+      await applyCompletedRetrieval(env, row.id, row.payload, result, savedManualReview);
+    }
     catch (error) { console.error(`[work/recover] retrieval apply failed for ${row.id}:`, error); }
   }
   return rows.length;
