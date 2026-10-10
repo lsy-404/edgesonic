@@ -3,8 +3,11 @@
 const UNKNOWN_VALUES = new Set([
   "unknown",
   "unknown artist",
+  "unknownartist",
   "unknown album",
+  "unknownalbum",
   "pending uploads",
+  "pendinguploads",
 ]);
 
 export function normalizeMetadataIdentity(value: unknown): string {
@@ -18,6 +21,7 @@ export function normalizeMetadataIdentity(value: unknown): string {
 }
 
 export function isKnownMetadataIdentity(value: unknown): boolean {
+  if (typeof value === "string" && /^obj_[0-9a-f]{16,64}(?:\.[^.]+)?$/i.test(value.trim())) return false;
   const normalized = normalizeMetadataIdentity(value);
   return normalized.length > 0 && !UNKNOWN_VALUES.has(normalized);
 }
