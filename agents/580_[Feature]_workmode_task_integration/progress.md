@@ -13,3 +13,7 @@
 - Integrated executor5a0fb89c and runtime600f7126. Final actual browser worker -> production local workerd routes -> local D1/R2 succeeded: same master/instance, WAV882378 -> FLAC69887 bytes; completed server receipt and unchanged sibling user reference/LRC companion.
 - Generated-browser fixture rerun passed all ten negative metadata checks including conductor, remixer and language. Full source/output PCM hash remains6a105841b7384251ddfb09c035c8931f5b19bde840f4838c63c95492df128f30.
 - Final scoped frontend/Worker regression files and both web/Worker typechecks passed. Live remote main remainedb4914e9a; branch protected=false. No production tasks queued or music files accessed.
+
+- main fast-forwarded to25ca2a7b and pushed with live protected=false. Primary unrelated tracked checksums and original task-index byte prefix preserved; only owned stash removed.
+- Global Wrangler deployed existing production cfg with keep-vars and containers-rollout=none. Version ca8728f3-6a96-4615-bee5-9c7ab4f0e867; public build-info exactly matched1.4.0-dev.25ca2a7b /2026-10-10T16:35:19.7522526Z. Existing SSO required/Voidcarve Access retained.
+- Production browser after reload showed four selectable jobs; worker socket online, queue0/failed0. Lossless checkbox revealed explicit enqueue action. Restored previous unchecked lossless choice; no library compression was enqueued. Tools standalone pane absent. Production screenshot retained locally, user Work Mode tab marked deliverable.

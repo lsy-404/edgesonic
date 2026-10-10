@@ -28,5 +28,5 @@
 | 577 | [Feature] Work mode lossless queue | Select work types and verify guarded WAV to FLAC catalog replacement | User requested selectable jobs in Work Mode | ✅ 已完成 |
 | 578 | [Feature] Workmode lossless | Browser queued compression preserves decoded audio and metadata | Execute lossless compression through the existing work pool | ✅ 已完成 |
 | 579 | [Feature] Workmode selectable jobs | Parsing, transcode, metadata retrieval and lossless job choices | Replace the standalone WAV conversion pane | ✅ 已完成 |
-| 580 | [Feature] Workmode task integration | Integrate, verify and deploy selectable work jobs | Deliver the requested Work Mode workflow end to end | 🔄 进行中 |
+| 580 | [Feature] Workmode task integration | Integrate, verify and deploy selectable work jobs | Deliver the requested Work Mode workflow end to end | ✅ 已完成 |
 | 581 | [Audit] Workmode lossless runtime | Local browser and D1/R2 lossless replacement verification | Validate catalog, reference and failure behavior | ✅ 已完成 |
