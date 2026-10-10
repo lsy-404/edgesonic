@@ -34,7 +34,7 @@
 | 583 | [Feature] Workmode retrieval server | Bounded dispatch and guarded durable catalog apply | Force retries without overwriting metadata | ✅ 已完成 |
 | 584 | [Feature] Workmode retrieval executor | Provider adapters through the browser work queue | Retrieve metadata from configured services | ✅ 已完成 |
 | 585 | [Feature] Workmode retrieval action | Explicitly restart metadata retrieval for songs missing metadata with paginated progress | User requested manual forced metadata retrieval | ✅ 已完成 |
-| 586 | [Feature] Metadata automatic review | Integrate automatic missing-metadata retrieval and user-controlled pending decisions | Parsing is not metadata completion | 🔄 进行中 |
+| 586 | [Feature] Metadata automatic review | Integrate automatic missing-metadata retrieval and user-controlled pending decisions | Parsing is not metadata completion | ✅ 已完成 |
 | 587 | [Feature] Metadata automatic server | Bounded automatic dispatch and guarded pending review APIs | Retain incomplete and ambiguous results for user decisions | ✅ 已完成 |
 | 588 | [Feature] Metadata candidate executor | Preserve review candidates and resolve user-selected provider results | Avoid silently finishing ambiguous metadata searches | ✅ 已完成 |
 | 589 | [Feature] Metadata review UI | Separate task progress and metadata status and expose pending decisions | Let users decide uncertain metadata | ✅ 已完成 |
