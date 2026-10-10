@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { runMetadataRetrieval } from "../../web/src/lib/workmodeMetadataRetrieval";
+import { resolveMetadataRetrievalCandidate, runMetadataRetrieval } from "../../web/src/lib/workmodeMetadataRetrieval";
 import { isKnownMetadataIdentity } from "../../shared/metadataRetrievalMatch";
 import { fileNameFrom, prepareWorkerTask, type QueuedTask, type RunnerDeps } from "../../web/src/lib/taskRunner";
 import type { ScrapeResult, ScrapeSource } from "../../web/src/lib/scrape";
@@ -44,7 +44,7 @@ test("retrieval accepts exact anchors and collapses the same identity across pro
 test("retrieval refuses live or instrumental variants and candidates with no known anchor", async () => {
   const live = await runMetadataRetrieval(BASE, "https://app.example/tag/scrape", new AbortController().signal, noFetch,
     adapters([result({ title: "Blue Sky Live" })]));
-  assert.deepEqual([live.status, live.reason], ["no-match", "no-credible-match"]);
+  assert.deepEqual([live.status, live.reason], ["pending", "no-credible-match"]);
 
   const unknowns = {
     ...BASE,
@@ -53,7 +53,9 @@ test("retrieval refuses live or instrumental variants and candidates with no kno
   };
   const missingAnchor = await runMetadataRetrieval(unknowns, "https://app.example/tag/scrape", new AbortController().signal, noFetch,
     adapters([result({ album: "A Different Album" })]));
-  assert.deepEqual([missingAnchor.status, missingAnchor.reason], ["no-match", "no-credible-match"]);
+  assert.deepEqual([missingAnchor.status, missingAnchor.reason], ["pending", "no-credible-match"]);
+  assert.equal(missingAnchor.candidates?.length, 1, "known title can be reviewed without an artist or album anchor");
+  assert.equal(missingAnchor.candidates?.[0]?.album, "A Different Album", "unknown album placeholders do not filter candidates");
 });
 
 test("compact placeholders and opaque object IDs are not identity anchors", () => {
@@ -70,10 +72,10 @@ test("known raw snapshot fields constrain derived identity hints", async () => {
   };
   const conflicting = await runMetadataRetrieval(hinted, "https://app.example/tag/scrape", new AbortController().signal, noFetch,
     adapters([result({ artist: "Other Singer" })]));
-  assert.deepEqual([conflicting.status, conflicting.reason], ["no-match", "no-credible-match"]);
+  assert.deepEqual([conflicting.status, conflicting.reason], ["pending", "no-credible-match"]);
 });
 
-test("distinct credible album identities complete as ambiguous no-match", async () => {
+test("distinct credible album identities remain pending with selectable candidates", async () => {
   const ambiguous = {
     ...BASE,
     identity: { title: "Blue Sky", artist: "Singer" },
@@ -81,16 +83,80 @@ test("distinct credible album identities complete as ambiguous no-match", async 
   };
   const output = await runMetadataRetrieval(ambiguous, "https://app.example/tag/scrape", new AbortController().signal, noFetch,
     adapters([result(), result({ source: "qmusic", songId: "other", album: "Second Album" })]));
-  assert.deepEqual([output.status, output.reason], ["no-match", "ambiguous"]);
+  assert.deepEqual([output.status, output.reason], ["pending", "ambiguous"]);
+  assert.equal(output.candidates?.length, 2);
 });
 
-test("a matching search result remains usable when optional provider detail lookup fails", async () => {
+test("a matching search result remains usable when optional automatic detail lookup fails", async () => {
   const output = await runMetadataRetrieval(BASE, "https://app.example/tag/scrape", new AbortController().signal, noFetch, {
     searchAll: async () => ({ results: [result()], errors: [] }),
     resolveResult: async () => { throw new Error("provider detail unavailable"); },
   });
   assert.equal(output.status, "matched");
   assert.equal(output.match?.songId, "42");
+});
+
+test("pending candidates are capped and known identity conflicts are filtered", async () => {
+  const many = Array.from({ length: 12 }, (_, index) => result({
+    songId: `id-${index}`, artist: `Singer ${index}`, album: "First Album",
+  }));
+  const output = await runMetadataRetrieval({
+    ...BASE,
+    identity: { title: "Blue Sky", album: "First Album" },
+    snapshot: { title: "Blue Sky", artist: "Unknown Artist", album: "Unknown Album", coverR2Key: "cover-key" },
+  }, "https://app.example/tag/scrape", new AbortController().signal, noFetch, adapters([
+    result({ songId: "wrong-album", album: "Known Wrong Album" }), ...many,
+  ]));
+  assert.deepEqual([output.status, output.reason], ["pending", "ambiguous"]);
+  assert.equal(output.candidates?.length, 10);
+  assert.ok(output.candidates?.every((candidate) => candidate.songId !== "wrong-album"));
+});
+
+test("pending review does not fetch covers before the user selects a result", async () => {
+  let coverRequested = false;
+  const fetcher = (async () => { coverRequested = true; throw new Error("unexpected cover request"); }) as typeof fetch;
+  const output = await runMetadataRetrieval({
+    ...BASE,
+    identity: { title: "Blue Sky", artist: "Singer" },
+    snapshot: { title: "Blue Sky", artist: "Singer", album: "Unknown Album", coverR2Key: null },
+  }, "https://app.example/tag/scrape", new AbortController().signal, fetcher,
+  adapters([result({ coverUrl: "https://lrc.voidcarve.com/cover.jpg" }), result({ songId: "43", album: "Second Album" })]));
+  assert.equal(output.status, "pending");
+  assert.equal(coverRequested, false);
+});
+
+test("selected candidate detail must preserve provider identity and known metadata", async () => {
+  const candidate = { source: "netease" as const, songId: "42", title: "Blue Sky", artist: "Singer", album: "First Album" };
+  await assert.rejects(resolveMetadataRetrievalCandidate(BASE, candidate, "https://app.example/tag/scrape",
+    new AbortController().signal, noFetch, {
+      searchAll: async () => ({ results: [], errors: [] }),
+      resolveResult: async (selected) => ({ ...selected, artist: "Different Singer" }),
+    }), /does not match the selected candidate/);
+  await assert.rejects(resolveMetadataRetrievalCandidate(BASE, candidate, "https://app.example/tag/scrape",
+    new AbortController().signal, noFetch, {
+      searchAll: async () => ({ results: [], errors: [] }),
+      resolveResult: async (selected) => ({ ...selected, songId: "other-id" }),
+    }), /does not match the selected candidate/);
+});
+
+test("selected candidate details include lyrics and a validated bounded cover", async () => {
+  const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jWioAAAAASUVORK5CYII="),
+    (character) => character.charCodeAt(0));
+  const output = await resolveMetadataRetrievalCandidate({ ...BASE,
+    snapshot: { ...BASE.snapshot, coverR2Key: null },
+  }, {
+    source: "netease", songId: "42", title: "Blue Sky", artist: "Singer", album: "First Album",
+  }, "https://app.example/tag/scrape", new AbortController().signal,
+  (async (input: RequestInfo | URL) => {
+    assert.equal(String(input), "https://lrc.voidcarve.com/cover.png");
+    return new Response(png, { headers: { "Content-Type": "image/png" } });
+  }) as typeof fetch, {
+    searchAll: async () => ({ results: [], errors: [] }),
+    resolveResult: async (selected) => ({ ...selected, lyrics: "resolved lyrics", coverUrl: "https://lrc.voidcarve.com/cover.png" }),
+  });
+  assert.equal(output.status, "matched");
+  assert.equal(output.match?.lyrics, "resolved lyrics");
+  assert.equal(output.cover?.mime, "image/png");
 });
 
 test("all provider failures throw for queue retry", async () => {

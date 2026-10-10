@@ -3,6 +3,7 @@
 import {
   isCredibleMetadataMatch,
   isKnownMetadataIdentity,
+  isSelectableMetadataMatch,
   normalizeMetadataIdentity,
 } from "../../../shared/metadataRetrievalMatch";
 import { resolveResult, searchAll } from "./scrape";
@@ -39,8 +40,9 @@ export interface MetadataRetrievalResult {
   kind: "metadata-retrieval";
   masterId: string;
   instanceId: string;
-  status: "matched" | "no-match";
+  status: "matched" | "pending";
   reason?: "no-credible-match" | "ambiguous";
+  candidates?: MetadataRetrievalMatch[];
   match?: {
     source: ScrapeSource;
     songId: string;
@@ -54,7 +56,19 @@ export interface MetadataRetrievalResult {
   cover?: { data: string; mime: string };
 }
 
+export interface MetadataRetrievalMatch {
+  source: ScrapeSource;
+  songId: string;
+  title: string;
+  artist: string;
+  album?: string;
+  albumArtist?: string;
+  year?: number;
+  lyrics?: string;
+}
+
 const ALLOWED_SOURCES = new Set<ScrapeSource>(["lrc", "netease", "qmusic", "kugou"]);
+const MAX_REVIEW_CANDIDATES = 10;
 
 export interface MetadataRetrievalAdapters {
   searchAll: typeof searchAll;
@@ -109,7 +123,7 @@ function sniffImageMime(bytes: Uint8Array): string | undefined {
   return undefined;
 }
 
-function toMatch(result: ScrapeResult): NonNullable<MetadataRetrievalResult["match"]> {
+function toMatch(result: ScrapeResult): MetadataRetrievalMatch {
   return {
     source: result.source,
     songId: result.songId,
@@ -122,14 +136,57 @@ function toMatch(result: ScrapeResult): NonNullable<MetadataRetrievalResult["mat
   };
 }
 
-function matchesSnapshotConstraints(result: ScrapeResult, snapshot: RetrievalSnapshot): boolean {
-  for (const field of ["title", "artist", "album"] as const) {
-    const expected = snapshot[field];
-    const actual = result[field];
-    if (isKnownMetadataIdentity(expected) && (!isKnownMetadataIdentity(actual) ||
-        normalizeMetadataIdentity(expected) !== normalizeMetadataIdentity(actual))) return false;
+function pendingResult(
+  masterId: string,
+  instanceId: string,
+  reason: "no-credible-match" | "ambiguous",
+  candidates: ScrapeResult[],
+): MetadataRetrievalResult {
+  const unique = new Map<string, MetadataRetrievalMatch>();
+  for (const candidate of candidates) {
+    if (!candidate.songId || !ALLOWED_SOURCES.has(candidate.source) || !isKnownMetadataIdentity(candidate.title)) continue;
+    const match = toMatch(candidate);
+    const key = `${match.source}\u001f${match.songId}`;
+    if (!unique.has(key)) unique.set(key, match);
+    if (unique.size >= MAX_REVIEW_CANDIDATES) break;
   }
-  return true;
+  return { kind: "metadata-retrieval", masterId, instanceId, status: "pending", reason, candidates: [...unique.values()] };
+}
+
+export async function resolveMetadataRetrievalCandidate(
+  payload: MetadataRetrievalPayload,
+  candidate: MetadataRetrievalMatch,
+  proxyUrl: string,
+  signal: AbortSignal,
+  fetcher: typeof fetch = fetch,
+  adapters: MetadataRetrievalAdapters = { searchAll, resolveResult },
+): Promise<MetadataRetrievalResult> {
+  const masterId = text(payload.masterId);
+  const instanceId = text(payload.instanceId);
+  if (payload.kind !== "metadata-retrieval" || !masterId || !instanceId || !proxyUrl || !candidate?.songId ||
+      !ALLOWED_SOURCES.has(candidate.source)) throw new Error("metadata retrieval candidate is invalid");
+  if (signal.aborted) throw new DOMException("aborted", "AbortError");
+  if (!isSelectableMetadataMatch(candidate, payload)) throw new Error("metadata candidate conflicts with known identity");
+  const proxyFetch = proxyFor(proxyUrl, signal, fetcher);
+  const selected: ScrapeResult = { ...candidate, source: candidate.source, songId: candidate.songId };
+  const match = await adapters.resolveResult(selected, proxyFetch);
+  if (signal.aborted) throw new DOMException("aborted", "AbortError");
+  if (match.source !== candidate.source || match.songId !== candidate.songId ||
+      !isSelectableMetadataMatch(match, payload)) {
+    throw new Error("resolved metadata does not match the selected candidate");
+  }
+  const output: MetadataRetrievalResult = {
+    kind: "metadata-retrieval", masterId, instanceId, status: "matched", match: toMatch(match),
+  };
+  if (!text(payload.snapshot?.coverR2Key) && match.coverUrl) {
+    const cover = await readBoundedImage(match.coverUrl, signal, fetcher);
+    if (cover) output.cover = cover;
+  }
+  return output;
+}
+
+function matchesSnapshotConstraints(result: ScrapeResult, payload: MetadataRetrievalPayload): boolean {
+  return isSelectableMetadataMatch(result, payload);
 }
 
 async function readBoundedImage(url: string, signal: AbortSignal, fetcher: typeof fetch): Promise<MetadataRetrievalResult["cover"]> {
@@ -217,42 +274,37 @@ export async function runMetadataRetrieval(
     throw new Error(`all metadata sources failed: ${searched.errors.map((error) => `${error.source}: ${error.error}`).join("; ")}`);
   }
 
+  const selectable: ScrapeResult[] = [];
   const credible = new Map<string, ScrapeResult>();
   for (const result of searched.results) {
-    if (!result.songId || !isCredibleMetadataMatch(result, current) ||
-        !matchesSnapshotConstraints(result, payload.snapshot || {})) continue;
+    if (!result.songId || !matchesSnapshotConstraints(result, payload)) continue;
+    selectable.push(result);
+    if (!isCredibleMetadataMatch(result, current) || !matchesSnapshotConstraints(result, payload)) continue;
     const key = candidateKey(result);
     if (!credible.has(key)) credible.set(key, result);
   }
   if (credible.size === 0) {
-    return { kind: "metadata-retrieval", masterId, instanceId, status: "no-match", reason: "no-credible-match" };
+    return pendingResult(masterId, instanceId, "no-credible-match", selectable);
   }
 
   if (credible.size > 1) {
-    return { kind: "metadata-retrieval", masterId, instanceId, status: "no-match", reason: "ambiguous" };
+    return pendingResult(masterId, instanceId, "ambiguous", selectable);
   }
 
   if (signal.aborted) throw new DOMException("aborted", "AbortError");
   const candidate = [...credible.values()][0];
-  let match: ScrapeResult;
-  try { match = await adapters.resolveResult(candidate, proxyFetch); }
-  catch {
-    if (signal.aborted) throw new DOMException("aborted", "AbortError");
-    match = candidate;
-  }
-  if (!isCredibleMetadataMatch(match, current) || !matchesSnapshotConstraints(match, payload.snapshot || {})) {
-    return { kind: "metadata-retrieval", masterId, instanceId, status: "no-match", reason: "no-credible-match" };
-  }
-  const output: MetadataRetrievalResult = {
-    kind: "metadata-retrieval",
-    masterId,
-    instanceId,
-    status: "matched",
-    match: toMatch(match),
+  const automaticAdapters: MetadataRetrievalAdapters = {
+    ...adapters,
+    resolveResult: async (selected, fetch) => {
+      try {
+        const resolved = await adapters.resolveResult(selected, fetch);
+        return resolved.coverUrl ? resolved : { ...resolved, coverUrl: candidate.coverUrl };
+      }
+      catch {
+        if (signal.aborted) throw new DOMException("aborted", "AbortError");
+        return { ...selected, coverUrl: candidate.coverUrl };
+      }
+    },
   };
-  if (!text(payload.snapshot?.coverR2Key) && match.coverUrl) {
-    const cover = await readBoundedImage(match.coverUrl, signal, fetcher);
-    if (cover) output.cover = cover;
-  }
-  return output;
+  return resolveMetadataRetrievalCandidate(payload, toMatch(candidate), proxyUrl, signal, fetcher, automaticAdapters);
 }

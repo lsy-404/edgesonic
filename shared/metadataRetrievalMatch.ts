@@ -43,3 +43,21 @@ export function isCredibleMetadataMatch(
       normalizeMetadataIdentity(candidate.album) !== normalizeMetadataIdentity(snapshot.album))) return false;
   return true;
 }
+
+export function isSelectableMetadataMatch(
+  candidate: { title?: unknown; artist?: unknown; album?: unknown },
+  payload: {
+    identity?: { title?: unknown; artist?: unknown; album?: unknown };
+    snapshot?: { title?: unknown; artist?: unknown; album?: unknown };
+  },
+): boolean {
+  for (const field of ["title", "artist", "album"] as const) {
+    for (const expected of [payload.identity?.[field], payload.snapshot?.[field]]) {
+      if (!isKnownMetadataIdentity(expected)) continue;
+      const actual = candidate[field];
+      if (!isKnownMetadataIdentity(actual) ||
+          normalizeMetadataIdentity(expected) !== normalizeMetadataIdentity(actual)) return false;
+    }
+  }
+  return isKnownMetadataIdentity(candidate.title);
+}
