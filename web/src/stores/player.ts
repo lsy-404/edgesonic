@@ -1285,6 +1285,20 @@ export const usePlayerStore = defineStore("player", () => {
     invalidatePreload();
   }
 
+  function removeAt(i: number) {
+    if (i < 0 || i >= queue.value.length) return;
+    if (queue.value.length === 1) {
+      clear();
+      return;
+    }
+    const removingCurrent = i === index.value;
+    invalidatePreload();
+    queue.value.splice(i, 1);
+    if (i < index.value) index.value--;
+    _shuffleOrder = _shuffleOrder.filter((entry) => entry !== i).map((entry) => entry > i ? entry - 1 : entry);
+    if (removingCurrent) playAt(i % queue.value.length);
+  }
+
   function playAt(i: number) {
     if (i < 0 || i >= queue.value.length) return;
     listeningProgress.reset();
@@ -1476,7 +1490,7 @@ export const usePlayerStore = defineStore("player", () => {
   return {
     queue, index, playing, currentTime, duration, volume, bufferedRanges,
     current, hasTrack, playMode, starred, starBusy, localCoverUrl, playbackQuality,
-    setQueue, hydrateTrack, playNext, playAt, toggle, next, prev, seek, setVolume,
+    setQueue, hydrateTrack, playNext, removeAt, playAt, toggle, next, prev, seek, setVolume,
     cyclePlayMode, toggleStar, setStarred, clear, resumePlaybackIfNeeded, reportCoverMissing,
   };
 });

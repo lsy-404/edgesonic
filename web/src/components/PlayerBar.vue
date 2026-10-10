@@ -128,11 +128,7 @@ async function revealCurrentQueueItem() {
 watch(queueOpen, (open) => { if (open) void revealCurrentQueueItem(); });
 watch(() => player.index, () => { if (queueOpen.value) void revealCurrentQueueItem(); });
 function playFromQueue(i: number) { player.playAt(i); }
-function removeFromQueue(i: number) {
-  if (i === player.index) return;
-  player.queue.splice(i, 1);
-  if (i < player.index) player.index--;
-}
+function removeFromQueue(i: number) { player.removeAt(i); }
 function onDocumentPointerDown(e: PointerEvent) {
   if (!queueOpen.value) return;
   if (isOutsideElements(e.target, [queuePanel.value, queueButton.value])) queueOpen.value = false;
@@ -248,7 +244,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
               <div class="pb-queue-artist">{{ tr.artist }}</div>
             </div>
             <span class="pb-queue-dur">{{ formatDuration(Math.floor(tr.duration)) }}</span>
-            <button v-if="i !== player.index" class="pb-queue-rm" :aria-label="t('player.removeFromQueue', { title: tr.title })" @click.stop="removeFromQueue(i)">
+            <button class="pb-queue-rm" :aria-label="t('player.removeFromQueue', { title: tr.title })" @click.stop="removeFromQueue(i)">
               <Icon name="cross" :size="14" />
             </button>
           </div>
@@ -520,6 +516,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   color: var(--color-text-muted);
   cursor: pointer;
   width: 20px; height: 20px;
+  min-width: 0; min-height: 0; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
   border-radius: 50%;
