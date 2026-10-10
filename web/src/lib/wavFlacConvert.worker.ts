@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { assertMetadataPreserved, inspectIntegerPcmWav, WavFlacConversionError } from "./wavFlacConvertCore";
+import { assertMetadataPreserved, copyForTransfer, inspectIntegerPcmWav, WavFlacConversionError } from "./wavFlacConvertCore";
 
 interface ConvertRequest { buffer: ArrayBuffer }
 
@@ -49,7 +49,7 @@ workerScope.onmessage = async (event: MessageEvent<ConvertRequest>) => {
       if (Number.isFinite(progress)) reportProgress(Math.min(68, 20 + Math.round(progress * 48)));
     });
     reportProgress(20);
-    await ffmpeg.writeFile("input.wav", source);
+    await ffmpeg.writeFile("input.wav", copyForTransfer(source));
     const encodeExit = await ffmpeg.exec([
       "-hide_banner", "-nostdin", "-v", "error", "-i", "input.wav", "-map", "0:a:0", "-map", "0:v?",
       "-map_metadata", "0", "-c:a", "flac", "-bits_per_raw_sample", String(pcm.bitsPerSample),

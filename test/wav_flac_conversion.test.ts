@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Run: pnpm exec tsx test/wav_flac_conversion.test.ts
 
-import { inspectIntegerPcmWav, WavFlacConversionError } from "../web/src/lib/wavFlacConvertCore";
+import { assertMetadataPreserved, copyForTransfer, inspectIntegerPcmWav, WavFlacConversionError } from "../web/src/lib/wavFlacConvertCore";
+import { readFile } from "node:fs/promises";
 
 let failures = 0;
 function assert(condition: unknown, message: string) {
@@ -61,4 +62,18 @@ assert(throwsCode(() => inspectIntegerPcmWav(unsupportedChunk), "metadata_loss")
 assert(throwsCode(() => inspectIntegerPcmWav(wave(1).subarray(0, 40)), "invalid_wav"), "rejects truncated WAV input");
 assert(throwsCode(() => inspectIntegerPcmWav(new Uint8Array([...wave(1), 1])), "invalid_wav"), "rejects unaccounted trailing bytes");
 
-if (failures) process.exitCode = 1;
+void (async () => {
+  try {
+    const source = new Uint8Array(await readFile("test/fixtures/wav-flac-metadata-source.wav"));
+    const output = new Uint8Array(await readFile("test/fixtures/wav-flac-metadata-output.flac"));
+    const transferCopy = copyForTransfer(source);
+    structuredClone(transferCopy.buffer, { transfer: [transferCopy.buffer] });
+    assert(source.byteLength > 0, "FFmpeg transfer copy leaves the metadata verification source attached");
+    await assertMetadataPreserved(source, output);
+    assert(true, "preserves RIFF INFO comments when FFmpeg maps ICMT to FLAC DESCRIPTION");
+  } catch (error) {
+    failures++;
+    console.error("  ✗ tagged WAV/FLAC verification regression", error);
+  }
+  if (failures) process.exitCode = 1;
+})();

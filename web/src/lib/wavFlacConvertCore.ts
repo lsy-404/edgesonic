@@ -16,6 +16,10 @@ export class WavFlacConversionError extends Error {
   }
 }
 
+export function copyForTransfer(bytes: Uint8Array) {
+  return bytes.slice();
+}
+
 function fourCC(bytes: Uint8Array, offset: number) {
   return String.fromCharCode(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
 }
@@ -95,10 +99,18 @@ function stable(value: unknown): string {
 
 const COMMON_TAGS = [
   "title", "artists", "artist", "album", "albumartist", "albumartists", "year", "date", "originaldate",
-  "track", "disk", "genre", "composer", "lyricist", "writer", "lyrics", "copyright", "publisher", "comment",
+  "track", "disk", "genre", "composer", "lyricist", "writer", "lyrics", "copyright", "publisher",
   "bpm", "compilation", "grouping", "subtitle", "isrc", "barcode", "catalognumber", "movementIndex",
   "movementTotal", "work", "replaygain_track_gain", "replaygain_album_gain",
 ] as const;
+
+function commentTexts(value: unknown): string[] {
+  const entries = Array.isArray(value) ? value : value === undefined ? [] : [value];
+  return entries.map((entry) => {
+    if (entry && typeof entry === "object" && "text" in entry) return String((entry as { text: unknown }).text);
+    return String(entry);
+  }).sort();
+}
 
 export async function assertMetadataPreserved(source: Uint8Array, output: Uint8Array) {
   const sourceMetadata = await parseBuffer(source, { path: "input.wav" });
@@ -109,6 +121,15 @@ export async function assertMetadataPreserved(source: Uint8Array, output: Uint8A
     if (stable(sourceTags[key]) !== stable(outputTags[key])) {
       throw new WavFlacConversionError("metadata_loss", `The ${key} metadata could not be preserved exactly.`);
     }
+  }
+  const sourceComments = commentTexts(sourceTags.comment);
+  const outputComments = commentTexts(outputTags.comment);
+  const outputDescriptions = commentTexts(outputTags.description);
+  for (const tag of Object.values(outputMetadata.native).flat()) {
+    if (tag.id.toUpperCase() === "DESCRIPTION") outputDescriptions.push(...commentTexts(tag.value));
+  }
+  if (stable(sourceComments) !== stable([...outputComments, ...outputDescriptions].sort())) {
+    throw new WavFlacConversionError("metadata_loss", "The comment metadata could not be preserved exactly.");
   }
   const sourcePictures = sourceMetadata.common.picture ?? [];
   const outputPictures = outputMetadata.common.picture ?? [];
@@ -130,10 +151,14 @@ export async function assertMetadataPreserved(source: Uint8Array, output: Uint8A
       throw new WavFlacConversionError("metadata_loss", `The ${tag.id} metadata field could not be preserved.`);
     }
   }
+  const sampleCount = (metadata: typeof sourceMetadata) => metadata.format.numberOfSamples
+    ?? (metadata.format.duration !== undefined && metadata.format.sampleRate !== undefined
+      ? Math.round(metadata.format.duration * metadata.format.sampleRate)
+      : undefined);
   if (stable(sourceMetadata.format.sampleRate) !== stable(outputMetadata.format.sampleRate)
     || stable(sourceMetadata.format.numberOfChannels) !== stable(outputMetadata.format.numberOfChannels)
     || stable(sourceMetadata.format.bitsPerSample) !== stable(outputMetadata.format.bitsPerSample)
-    || stable(sourceMetadata.format.numberOfSamples) !== stable(outputMetadata.format.numberOfSamples)) {
+    || stable(sampleCount(sourceMetadata)) !== stable(sampleCount(outputMetadata))) {
     throw new WavFlacConversionError("conversion_failed", "The FLAC stream properties differ from the source WAV.");
   }
 }
