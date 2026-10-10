@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue";
 import type { CSSProperties } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { useAuth, parseXmlAttrs, formatSize } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
@@ -25,6 +25,7 @@ const { t } = useI18n();
 const { authFetch, storageFetch, storagePost, tagFetch, uploadFile, checkUploadConflicts, crossCopy, writeTags, batchWriteTags, tidyFolder, restUrl, hasPerm, coverArtUrl, submitUploadedMetadata, queueUploadedMetadataFallback } = useAuth();
 const player = usePlayerStore();
 const route = useRoute();
+const router = useRouter();
 
 interface StorageSource { id: string; type: string; name: string; baseUrl: string; }
 interface DirEntry { name: string; modifiedAt: number | null; }
@@ -155,6 +156,7 @@ const PRE_TRANSCODE_PROFILES: { id: string; label: string }[] = [
 ];
 
 const canUpload = computed(() => hasPerm("upload"));
+const canDeleteFiles = computed(() => hasPerm("delete"));
 const canScan = computed(() => hasPerm("manage_files"));
 const canManageFiles = computed(() => hasPerm("manage_files"));
 const canShare = computed(() => hasPerm("share"));
@@ -1149,10 +1151,11 @@ async function revealRequestedFile() {
   }
   row.scrollIntoView({ behavior: "smooth", block: "center" });
   row.classList.add("file-row-located");
-  if (deleteLocatedFile.value && isR2.value && canManageFiles.value) {
+  if (deleteLocatedFile.value) {
     const target = files.value.find((item) => item.name === locateFileName.value);
-    if (target) openDeleteConfirm(target);
+    if (target && isR2.value && canDeleteFiles.value) openDeleteConfirm(target);
     deleteLocatedFile.value = false;
+    void router.replace({ query: { ...route.query, delete: undefined } });
   }
   locateFileName.value = "";
   setTimeout(() => row.classList.remove("file-row-located"), 1800);
@@ -1555,6 +1558,18 @@ onMounted(async () => {
   await loadPending();
 });
 
+watch(
+  () => [route.query.source, route.query.path, route.query.file, route.query.delete] as const,
+  async ([source, requestedPath, fileName, deleteFlag], previous) => {
+    if (!previous) return;
+    currentSource.value = typeof source === "string" && source ? source : "r2";
+    path.value = routePath(requestedPath);
+    locateFileName.value = typeof fileName === "string" ? fileName : "";
+    deleteLocatedFile.value = deleteFlag === "true";
+    await loadDir();
+  },
+);
+
 onBeforeUnmount(() => {
   chooseUploadConflict("cancel");
   cancelLongPress();
@@ -1732,7 +1747,7 @@ onBeforeUnmount(() => {
            every source, matching their existing per-row buttons — but grey
            out while a folder is selected (they have no folder semantic).
            Move/Delete handle folders recursively via moveFolder/deleteFolder. -->
-      <div v-if="(canUpload || canShare) && selectedTotal > 0" class="batch-actions-bar">
+      <div v-if="(canUpload || canShare || canDeleteFiles) && selectedTotal > 0" class="batch-actions-bar">
         <span class="batch-actions-count">{{ t("files.selectedCount", { n: selectedTotal }) }}</span>
         <button
           v-if="canUpload"
@@ -1742,7 +1757,7 @@ onBeforeUnmount(() => {
           @click="openBatchTagEditor"
         >{{ t("files.batchEditTags") }}</button>
         <button v-if="canUpload && isR2" class="btn-secondary" @click="openBatchMoveModal">{{ t("files.batchMove") }}</button>
-        <button v-if="canUpload && isR2" class="btn-danger" @click="openBatchDeleteConfirm">{{ t("files.batchDelete") }}</button>
+        <button v-if="canDeleteFiles && isR2" class="btn-danger" @click="openBatchDeleteConfirm">{{ t("files.batchDelete") }}</button>
         <button
           v-if="canUpload"
           class="btn-secondary"
@@ -2152,7 +2167,7 @@ onBeforeUnmount(() => {
             :disabled="hasDirSelection || sharePreparing"
             @click="ctxRun(openSelectedShare)"
           ><Icon name="up" /> {{ t("files.shareSelected") }}</button>
-          <button v-if="canUpload && isR2" class="ctx-item ctx-danger" @click="ctxRun(openBatchDeleteConfirm)"><Icon name="cross" /> {{ t("files.batchDelete") }}</button>
+          <button v-if="canDeleteFiles && isR2" class="ctx-item ctx-danger" @click="ctxRun(openBatchDeleteConfirm)"><Icon name="cross" /> {{ t("files.batchDelete") }}</button>
           <div class="ctx-sep"></div>
           <button class="ctx-item" @click="ctxRun(clearSelection)"><Icon name="empty" /> {{ t("files.clearSelection") }}</button>
         </template>
@@ -2172,8 +2187,8 @@ onBeforeUnmount(() => {
             <button class="ctx-item" @click="ctxRun(() => startRename(ctxFile!))"><Icon name="edit" /> {{ t("files.rename") }}</button>
             <button class="ctx-item" @click="ctxRun(() => openMoveModal(ctxFile!, 'move'))"><Icon name="right" /> {{ t("files.moveTo") }}</button>
             <button class="ctx-item" @click="ctxRun(() => openMoveModal(ctxFile!, 'copy'))"><Icon name="copy" /> {{ t("files.copyTo") }}</button>
-            <button class="ctx-item ctx-danger" :disabled="opBusy" @click="ctxRun(() => openDeleteConfirm(ctxFile!))"><Icon name="cross" /> {{ t("files.deleteFile") }}</button>
           </template>
+          <button v-if="isR2 && canDeleteFiles" class="ctx-item ctx-danger" :disabled="opBusy" @click="ctxRun(() => openDeleteConfirm(ctxFile!))"><Icon name="cross" /> {{ t("files.deleteFile") }}</button>
           <div class="ctx-sep"></div>
           <button v-if="canManageFiles" class="ctx-item" @click="ctxRun(() => toggleCrossSelect(ctxFile!))">
             <Icon name="check" /> {{ selectedFiles.has(ctxFile.uri) ? t("files.deselect") : t("files.select") }}
@@ -2190,8 +2205,8 @@ onBeforeUnmount(() => {
             <div class="ctx-sep"></div>
             <button class="ctx-item" @click="ctxRun(() => startRenameDir(ctxDir!))"><Icon name="edit" /> {{ t("files.renameFolder") }}</button>
             <button class="ctx-item" @click="ctxRun(() => openDirMoveModal(ctxDir!))"><Icon name="right" /> {{ t("files.moveFolderTo") }}</button>
-            <button class="ctx-item ctx-danger" :disabled="opBusy" @click="ctxRun(() => openDirDeleteConfirm(ctxDir!))"><Icon name="cross" /> {{ t("files.deleteFolder") }}</button>
           </template>
+          <button v-if="isR2 && canDeleteFiles" class="ctx-item ctx-danger" :disabled="opBusy" @click="ctxRun(() => openDirDeleteConfirm(ctxDir!))"><Icon name="cross" /> {{ t("files.deleteFolder") }}</button>
           <div class="ctx-sep"></div>
           <button v-if="canManageFiles" class="ctx-item" @click="ctxRun(() => toggleDirSelect(ctxDir!))">
             <Icon name="check" /> {{ selectedDirs.has(ctxDir.name) ? t("files.deselect") : t("files.select") }}

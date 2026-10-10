@@ -6,3 +6,5 @@
 - Ran `pnpm install --frozen-lockfile` because the worktree had no dependencies; lockfile remained unchanged.
 - Ran `pnpm run typecheck`; worker, web, and installer typechecks passed.
 - `git diff --check` passed.
+- Added destructive-delete regression coverage for path/key mismatches, shared references, last-reference cleanup, folder deletion, and song-location permission checks.
+- Corrected Files-page delete visibility to use `delete` permission and made route-query changes reload/reveal the requested file in an already-mounted Files view.

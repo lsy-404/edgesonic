@@ -923,17 +923,35 @@ filesRoutes.post("/files/deleteFolder", permissionMiddleware("delete"), async (c
        LEFT JOIN storage_objects o ON o.id = e.object_id
       WHERE e.source_id = ? AND (e.path = ? OR e.path LIKE ? ESCAPE '\\')`
   ).bind(R2_SOURCE_ID, path, escapedPrefix).all<{ id: string; object_id: string | null; instance_id: string | null; physical_key: string | null }>();
-  const keys = rows.results.map((row) => row.physical_key).filter((key): key is string => !!key);
-  for (let i = 0; i < keys.length; i += 1000) await env.MUSIC_BUCKET.delete(keys.slice(i, i + 1000));
-  const affected = new Set<string>();
-  for (const row of rows.results) {
-    if (row.instance_id) {
-      const inst = await db.prepare("SELECT master_id FROM song_instances WHERE id = ?").bind(row.instance_id).first<{ master_id: string }>();
-      if (inst) affected.add(inst.master_id);
-      await db.prepare("DELETE FROM song_instances WHERE id = ?").bind(row.instance_id).run();
-    }
+  for (const row of rows.results.filter((item) => item.object_id)) {
     await db.prepare("DELETE FROM storage_entries WHERE id = ?").bind(row.id).run();
-    if (row.object_id) await db.prepare("DELETE FROM storage_objects WHERE id = ?").bind(row.object_id).run();
+  }
+  for (const row of rows.results.filter((item) => !item.object_id)) {
+    await db.prepare("DELETE FROM storage_entries WHERE id = ?").bind(row.id).run();
+  }
+  const affected = new Set<string>();
+  for (const instanceId of new Set(rows.results.map((row) => row.instance_id).filter((id): id is string => !!id))) {
+    const inst = await db.prepare("SELECT master_id FROM song_instances WHERE id = ?").bind(instanceId).first<{ master_id: string }>();
+    const remainingEntries = await db.prepare("SELECT COUNT(*) AS n FROM storage_entries WHERE instance_id = ?")
+      .bind(instanceId).first<{ n: number }>();
+    if (!remainingEntries?.n && inst) {
+      affected.add(inst.master_id);
+      await db.prepare("DELETE FROM song_instances WHERE id = ?").bind(instanceId).run();
+    }
+  }
+  for (const objectId of new Set(rows.results.map((row) => row.object_id).filter((id): id is string => !!id))) {
+    const refs = await db.prepare(
+      `SELECT (SELECT COUNT(*) FROM storage_entries WHERE object_id = ?) AS entry_refs,
+              (SELECT COUNT(*) FROM song_instances WHERE storage_object_id = ?) AS instance_refs`,
+    ).bind(objectId, objectId).first<{ entry_refs: number; instance_refs: number }>();
+    if (!refs?.entry_refs && !refs?.instance_refs) {
+      const physicalKey = rows.results.find((row) => row.object_id === objectId)?.physical_key;
+      if (physicalKey) {
+        await env.MUSIC_BUCKET.delete(physicalKey);
+        await db.prepare("DELETE FROM storage_objects WHERE id = ? AND physical_key = ?")
+          .bind(objectId, physicalKey).run();
+      }
+    }
   }
   for (const masterId of affected) await cleanupOrphanMaster(db, masterId);
   return c.json({ ok: true, deleted: rows.results.length });
