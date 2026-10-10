@@ -15,7 +15,7 @@ type Entry = {
   instance_id: string | null;
   companion_of: string | null;
 };
-type Instance = { id: string; master_id: string; storage_object_id: string | null; missing: number };
+type Instance = { id: string; master_id: string; storage_object_id: string | null; missing: number; storage_uri?: string; source_id?: string };
 type ObjectRow = { id: string; physical_key: string };
 type Master = { id: string; album_id: string; artist_id: string };
 
@@ -31,6 +31,7 @@ function makeFixture(options: {
   objects: ObjectRow[];
   masters: Master[];
   level?: number;
+  bucketDeleteFailure?: boolean;
 }) {
   const entries = options.entries;
   const instances = options.instances;
@@ -38,6 +39,7 @@ function makeFixture(options: {
   const masters = options.masters;
   const bucketKeys = new Set(objects.map((row) => row.physical_key));
   let locationReads = 0;
+  let bucketDeleteFailure = !!options.bucketDeleteFailure;
   const db = {
     prepare(sql: string) {
       const query = sql.trim().replace(/\s+/g, " ");
@@ -51,12 +53,15 @@ function makeFixture(options: {
             const object = objects.find((item) => item.id === row.object_id);
             return { ...row, physical_key: object?.physical_key ?? null, object_suffix: "mp3", object_content_type: "audio/mpeg", object_size: 123 } as T;
           }
-          if (query.includes("SELECT master_id FROM song_instances WHERE id = ?")) {
+          if (query.includes("SELECT master_id, storage_object_id FROM song_instances WHERE id = ?")) {
             const row = instances.find((item) => item.id === statement.args[0]);
-            return row ? { master_id: row.master_id } as T : null;
+            return row ? { master_id: row.master_id, storage_object_id: row.storage_object_id } as T : null;
           }
           if (query.includes("SELECT COUNT(*) AS n FROM storage_entries WHERE instance_id = ?")) {
             return { n: entries.filter((item) => item.instance_id === statement.args[0]).length } as T;
+          }
+          if (query.includes("SELECT COUNT(*) AS n FROM storage_entries WHERE object_id = ?")) {
+            return { n: entries.filter((item) => item.object_id === statement.args[0]).length } as T;
           }
           if (query.includes("SELECT COUNT(*) AS n FROM song_instances WHERE master_id = ?")) {
             return { n: instances.filter((item) => item.master_id === statement.args[0]).length } as T;
@@ -77,14 +82,27 @@ function makeFixture(options: {
         async all<T = unknown>() {
           if (query.includes("si.id AS instance_id") && query.includes("FROM song_instances si")) {
             locationReads++;
-            return { results: instances.flatMap((instance) => instance.master_id === statement.args[1]
-              ? entries.filter((entry) => entry.instance_id === instance.id && entry.kind === "file").map((entry) => ({
+            return { results: instances.flatMap((instance) => instance.master_id === statement.args[0]
+              ? (entries.filter((entry) => entry.instance_id === instance.id && entry.kind === "file").length
+                ? entries.filter((entry) => entry.instance_id === instance.id && entry.kind === "file").map((entry) => ({
                 instance_id: instance.id,
-                source_id: entry.source_id,
+                storage_uri: instance.storage_uri || `r2://${instance.id}.mp3`,
+                instance_source_id: instance.source_id || entry.source_id,
+                entry_id: entry.id,
+                entry_source_id: entry.source_id,
                 path: entry.path,
                 display_name: entry.display_name,
                 source_name: entry.source_id === "r2-local" ? "R2" : "Storage",
-              }))
+              })) : [{
+                instance_id: instance.id,
+                storage_uri: instance.storage_uri || "",
+                instance_source_id: instance.source_id || "",
+                entry_id: null,
+                entry_source_id: null,
+                path: null,
+                display_name: null,
+                source_name: "WebDAV",
+              }])
               : []) as T[] };
           }
           if (query.includes("FROM storage_entries e") && query.includes("e.path LIKE ?")) {
@@ -97,6 +115,9 @@ function makeFixture(options: {
                 instance_id: entry.instance_id,
                 physical_key: objects.find((object) => object.id === entry.object_id)?.physical_key ?? null,
               })) as T[] };
+          }
+          if (query.includes("SELECT id FROM song_instances WHERE storage_object_id = ?")) {
+            return { results: instances.filter((row) => row.storage_object_id === statement.args[0]).map((row) => ({ id: row.id })) as T[] };
           }
           return { results: [] as T[] };
         },
@@ -137,10 +158,12 @@ function makeFixture(options: {
   app.route("/storage", filesRoutes);
   app.route("/storage", browseRoutes);
   const env = { DB: db, MUSIC_BUCKET: { async delete(key: string | string[]) {
+    if (bucketDeleteFailure) throw new Error("R2 unavailable");
     for (const item of Array.isArray(key) ? key : [key]) bucketKeys.delete(item);
   } } };
   return {
     entries, instances, objects, masters, bucketKeys,
+    failBucketDeletes(value: boolean) { bucketDeleteFailure = value; },
     get locationReads() { return locationReads; },
     async post(url: string, body: unknown) {
       return app.fetch(new Request(`http://test${url}`, {
@@ -203,6 +226,15 @@ async function main() {
     assert(fixture.objects.length === 0 && !fixture.bucketKeys.has(target.physical_key) && fixture.masters.length === 0, "orphaned object bytes and master are cleaned up");
   }
 
+  console.log("\nfiles/delete → retains catalog rows when physical deletion fails:");
+  {
+    const target = objectRow("o1");
+    const fixture = makeFixture({ bucketDeleteFailure: true, entries: [entry("e1", "Album/track.mp3", "o1", "i1")], instances: [instance("i1", "m1", "o1")], objects: [target], masters: [master("m1")] });
+    const response = await fixture.post("/storage/files/delete", { path: "Album/track.mp3", key: target.physical_key });
+    assert(response.status === 502, "R2 failure is reported as a retryable delete failure");
+    assert(fixture.entries.length === 1 && fixture.instances.length === 1 && fixture.objects.length === 1 && fixture.bucketKeys.has(target.physical_key), "all catalog references remain intact after failed R2 deletion");
+  }
+
   console.log("\nfiles/deleteFolder → keeps an object shared with an entry outside the folder:");
   {
     const target = objectRow("o1");
@@ -211,6 +243,15 @@ async function main() {
     assert(response.status === 200, "folder removal succeeds");
     assert(fixture.entries.length === 1 && fixture.entries[0].id === "outside" && fixture.instances.length === 1, "outside entry keeps its instance");
     assert(fixture.objects.length === 1 && fixture.bucketKeys.has(target.physical_key), "outside reference keeps the R2 object");
+  }
+
+  console.log("\nfiles/deleteFolder → retains catalog rows when physical deletion fails:");
+  {
+    const target = objectRow("o1");
+    const fixture = makeFixture({ bucketDeleteFailure: true, entries: [entry("folder", "Album", null, null, "folder"), entry("inside", "Album/track.mp3", "o1", "i1", "file", "folder")], instances: [instance("i1", "m1", "o1")], objects: [target], masters: [master("m1")] });
+    const response = await fixture.post("/storage/files/deleteFolder", { path: "Album" });
+    assert(response.status === 502, "folder delete reports the physical storage failure");
+    assert(fixture.entries.length === 2 && fixture.instances.length === 1 && fixture.objects.length === 1 && fixture.bucketKeys.has(target.physical_key), "folder catalog remains intact after failed R2 deletion");
   }
 
   console.log("\nfiles/song-locations → requires file-management permission:");
@@ -224,9 +265,22 @@ async function main() {
   {
     const fixture = makeFixture({ entries: [entry("e1", "Album/track.mp3", "o1", "i1")], instances: [instance("i1", "m1", "o1")], objects: [objectRow("o1")], masters: [master("m1")] });
     const response = await fixture.get("/storage/files/song-locations?songId=m1");
-    const result = await response.json<{ ok: boolean; locations: Array<{ source: string; sourceName: string; path: string; name: string }> }>();
+    const result = await response.json<{ ok: boolean; locations: Array<{ locationKey: string; entryId: string | null; source: string; sourceName: string; path: string; name: string }> }>();
     assert(response.status === 200 && result.ok && fixture.locationReads === 1, "permitted users can resolve library locations");
     assert(result.locations[0]?.source === "r2" && result.locations[0]?.sourceName === "R2" && result.locations[0]?.path === "Album/track.mp3", "location response contains the exact logical file entry");
+    assert(result.locations[0]?.entryId === "e1" && result.locations[0]?.locationKey === "e1", "location identity is the logical entry id");
+  }
+
+  console.log("\nfiles/song-locations → distinguishes same-name aliases and external WebDAV instances:");
+  {
+    const fixture = makeFixture({ entries: [entry("single", "Single/track.mp3", "o1", "i1"), entry("album", "Album/track.mp3", "o1", "i1")], instances: [instance("i1", "m1", "o1"), { ...instance("i2", "m1", null), storage_uri: "webdav://dav-a/External/track.mp3", source_id: "dav-a" }], objects: [objectRow("o1")], masters: [master("m1")] });
+    const response = await fixture.get("/storage/files/song-locations?songId=m1");
+    const result = await response.json<{ locations: Array<{ locationKey: string; entryId: string | null; source: string; path: string }> }>();
+    const single = result.locations.find((row) => row.entryId === "single");
+    const album = result.locations.find((row) => row.entryId === "album");
+    const external = result.locations.find((row) => row.entryId === null);
+    assert(single?.locationKey === "single" && album?.locationKey === "album" && single.path !== album.path, "same-instance entries keep distinct stable identities and full paths");
+    assert(external?.locationKey === "i2" && external.source === "dav-a" && external.path === "External/track.mp3", "external source without a logical entry resolves only from its canonical storage URI");
   }
 
   console.log(`\n${failures === 0 ? "All tests passed." : `${failures} test(s) FAILED.`}`);

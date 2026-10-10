@@ -1262,7 +1262,8 @@ async function openArtistById(artistId: string, artistName: string) {
 }
 
 interface SongFileLocation {
-  instanceId: string;
+  locationKey: string;
+  entryId: string | null;
   source: string;
   sourceName: string;
   path: string;
@@ -2528,12 +2529,12 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
         <div class="add-playlist-list">
           <button
             v-for="location in fileLocationPicker.locations"
-            :key="location.instanceId"
+            :key="location.entryId || location.locationKey"
             class="add-playlist-row"
             @click="navigateToFileLocation(location, fileLocationPicker!.action)"
           >
             <span class="add-playlist-name">{{ location.sourceName }}</span>
-            <span class="mono-label">{{ location.name }}</span>
+            <span class="mono-label">{{ location.path }}</span>
           </button>
         </div>
         <div class="modal-actions">

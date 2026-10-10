@@ -8,3 +8,7 @@
 - `git diff --check` passed.
 - Added destructive-delete regression coverage for path/key mismatches, shared references, last-reference cleanup, folder deletion, and song-location permission checks.
 - Corrected Files-page delete visibility to use `delete` permission and made route-query changes reload/reveal the requested file in an already-mounted Files view.
+- Picker rows now use stable logical `entryId` keys and display full paths, so aliases with identical basenames remain distinguishable.
+- Added the canonical `storage_uri` fallback for WebDAV instances with no logical `storage_entries` row; unsupported URI schemes are omitted rather than converted into guessed paths.
+- Singular and folder deletion now delete R2 bytes before catalog cleanup. R2 failures return a retryable error and leave catalog references available.
+- Re-ran `pnpm exec tsx test/internal/files_delete.test.ts`, `pnpm exec tsx test/internal/files_folder_ops.test.ts`, `pnpm run typecheck`, and `git diff --check`; all passed.

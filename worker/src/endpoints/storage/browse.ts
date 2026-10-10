@@ -16,6 +16,7 @@
 // endpoints/filebrowse.ts; the scanTags sibling moved to tag/read.ts.
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
+import { parseStorageUri } from "../../adapters";
 import { parseMultistatus, stripTrailingSlash, encodePath } from "./scan";
 import { srcBaseUrl, type SourceRow } from "../../utils/slices";
 import { R2_SOURCE_ID, findR2EntryByPath } from "../../utils/storageResolver";
@@ -26,23 +27,43 @@ browseRoutes.get("/files/song-locations", permissionMiddleware("manage_files"), 
   const songId = c.req.query("songId") || "";
   if (!songId) return c.json({ ok: false, error: "Missing songId" }, 400);
   const rows = await (c.env as Env).DB.prepare(
-    `SELECT si.id AS instance_id, se.source_id, se.path, se.display_name,
-            COALESCE(ss.name, CASE WHEN se.source_id = ? THEN 'R2' ELSE 'Storage' END) AS source_name
+    `SELECT si.id AS instance_id, si.storage_uri, si.source_id AS instance_source_id,
+            se.id AS entry_id, se.source_id AS entry_source_id, se.path, se.display_name,
+            ss.name AS source_name
        FROM song_instances si
-       JOIN storage_entries se ON se.instance_id = si.id AND se.kind = 'file'
-       LEFT JOIN storage_sources ss ON ss.id = se.source_id
+       LEFT JOIN storage_entries se ON se.instance_id = si.id AND se.kind = 'file'
+       LEFT JOIN storage_sources ss ON ss.id = COALESCE(se.source_id, si.source_id)
       WHERE si.master_id = ? AND si.missing = 0
-      ORDER BY se.source_id, se.path, si.created_at`,
-  ).bind(R2_SOURCE_ID, songId).all<{
-    instance_id: string; source_id: string; path: string; display_name: string; source_name: string;
+      ORDER BY COALESCE(se.source_id, si.source_id), se.path, si.created_at`,
+  ).bind(songId).all<{
+    instance_id: string; storage_uri: string; instance_source_id: string;
+    entry_id: string | null; entry_source_id: string | null; path: string | null;
+    display_name: string | null; source_name: string | null;
   }>();
-  return c.json({ ok: true, locations: rows.results.map((row) => ({
-    instanceId: row.instance_id,
-    source: row.source_id === R2_SOURCE_ID ? "r2" : row.source_id,
-    sourceName: row.source_name,
-    path: row.path,
-    name: row.display_name,
-  })) });
+  const locations = rows.results.flatMap<{ locationKey: string; entryId: string | null; source: string; sourceName: string; path: string; name: string }>((row) => {
+    if (row.entry_id && row.entry_source_id && row.path && row.display_name) {
+      return [{
+        locationKey: row.entry_id,
+        entryId: row.entry_id,
+        source: row.entry_source_id === R2_SOURCE_ID ? "r2" : row.entry_source_id,
+        sourceName: row.source_name || (row.entry_source_id === R2_SOURCE_ID ? "R2" : "Storage"),
+        path: row.path,
+        name: row.display_name,
+      }];
+    }
+    const uri = parseStorageUri(row.storage_uri);
+    if (uri.scheme !== "webdav" || !uri.path) return [];
+    const slash = uri.path.lastIndexOf("/");
+    return [{
+      locationKey: row.instance_id,
+      entryId: null,
+      source: uri.sourceId,
+      sourceName: row.source_name || "WebDAV",
+      path: uri.path,
+      name: slash >= 0 ? uri.path.slice(slash + 1) : uri.path,
+    }];
+  });
+  return c.json({ ok: true, locations });
 });
 
 // GET /storage/files/list?source=r2|<sourceId>&path=<dir>
