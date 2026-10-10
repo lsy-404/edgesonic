@@ -45,14 +45,9 @@ let progressInFlight: Promise<void> | null = null;
 const totalTasks = computed(() => progress.value.queued + progress.value.claimed + progress.value.completed + progress.value.failed);
 const progressPct = computed(() => totalTasks.value ? Math.round(progress.value.completed / totalTasks.value * 100) : 0);
 
-// The opt-in lives in the store (and localStorage), not here: a work machine
-// that reloads should come back working, and the toggle must never disagree
-// with whether the socket is actually up.
+// Persisted pool state keeps the toggle aligned with the socket after reload.
 const active = computed(() => pool.enabled);
-// Screen Wake Lock keeps the display (and with it the tab's full timer and
-// rendering budget) awake. It needs a secure context and is refused without a
-// user gesture, so we only ask on the toggle and re-ask when the page comes
-// back to the foreground — the browser releases the lock on every hide.
+// Wake Lock requires a user gesture and is released when the page is hidden.
 const wakeLock = ref<WakeLockSentinel | null>(null);
 const wakeLockError = ref<string | null>(null);
 const wakeLockSupported = typeof navigator !== "undefined" && "wakeLock" in navigator;
@@ -88,9 +83,7 @@ const uptime = computed(() => {
   return h > 0 ? `${h}h ${m}m` : `${m}m ${s % 60}s`;
 });
 
-// Sized by the live adaptive budget, not the ceiling: showing eight empty
-// slots while the controller has backed off to two would misreport the machine
-// as idle when it is actually saturated.
+// The adaptive budget determines the currently available worker slots.
 const slots = computed(() => {
   const busy = [...pool.running.values()];
   const width = Math.max(pool.currentConcurrency, busy.length);
@@ -124,8 +117,7 @@ function exit(): void {
   void router.push("/tools");
 }
 
-// The lock dies whenever the page is hidden; take it back on return so a tab
-// that was briefly switched away from doesn't quietly stop holding the screen.
+// Reacquire the released Wake Lock when the page returns to the foreground.
 function onVisibility(): void {
   if (document.hidden) {
     if (progressPoll !== null) {
@@ -254,7 +246,6 @@ onMounted(async () => {
   await loadProgress();
   if (!mounted) return;
   scheduleProgressPoll();
-  // Resume a machine that was already opted in before this page loaded.
   if (pool.enabled) {
     if (!mounted) return;
     pool.start();
@@ -269,10 +260,7 @@ onBeforeUnmount(() => {
   progressController?.abort();
   missingMetadataController?.abort();
   document.removeEventListener("visibilitychange", onVisibility);
-  // Deliberately does NOT stop the pool. The store is a singleton shared with
-  // the rest of the app, and the opt-in is persisted — navigating away from
-  // this page is not the same as switching the machine off, which is what the
-  // toggle is for. Only the screen lock is page-scoped.
+  // The shared pool keeps running when this view unmounts.
   void releaseWakeLock();
 });
 </script>
@@ -379,8 +367,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* Deliberately flat: no gradients, blurs, shadows or transitions beyond the
-   occupancy bar. Every pixel this page paints is CPU taken from the tasks. */
 .work-mode {
   max-width: 40rem;
   margin: 0 auto;
