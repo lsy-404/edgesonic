@@ -357,7 +357,7 @@ export async function applyCompletedRetrieval(
         const title = metadataMissing(current.title, "title") && typeof match.title === "string" ? match.title.trim() : current.title;
         const artistMissing = metadataMissing(current.artist_name, "artist") && typeof match.artist === "string";
         const albumMissing = metadataMissing(current.album_name, "album") && typeof match.album === "string";
-        const albumArtistMissing = metadataMissing(current.album_artist_name, "albumArtist") && typeof match.albumArtist === "string";
+        const albumArtistMissing = metadataMissing(current.album_artist_name, "albumArtist") && (current.compilation !== 0 || typeof match.albumArtist === "string");
         const yearMissing = metadataMissing(current.year, "year") && Number.isInteger(match.year) && Number(match.year) > 0;
         const lyricsMissing = metadataMissing(current.lyrics, "lyrics") && typeof match.lyrics === "string" && !!match.lyrics.trim();
         const now = Math.floor(Date.now() / 1000);
@@ -367,7 +367,7 @@ export async function applyCompletedRetrieval(
           ? parseAlbumArtistCredit(current.compilation ? "Various Artists" : typeof match.albumArtist === "string" ? match.albumArtist : "")
           : null;
         const statements = artistInsertStatements(env.DB, [...artistCredits, ...(albumArtistCredit ? [albumArtistCredit] : [])], now);
-        const currentCoverMissing = !current.song_cover_r2_key && !current.album_cover_r2_key;
+        const currentCoverMissing = !current.song_cover_r2_key?.trim() && !current.album_cover_r2_key?.trim();
         const titleMissing = metadataMissing(current.title, "title") && typeof match.title === "string" && !!match.title.trim();
         const albumName = albumMissing && typeof match.album === "string"
           ? (snapshot.albumFolder || match.album.trim()) : current.album_name;
@@ -390,6 +390,9 @@ export async function applyCompletedRetrieval(
           `UPDATE song_masters SET title = ?, sort_title = ?, artist_id = ?, album_artist_id = ?, album_id = ?,
              lyrics = ?, updated_at = ? WHERE id = ? AND album_id = ? AND title = ? AND lyrics IS ?
              AND artist_id = ? AND album_artist_id IS ? AND updated_at = ?
+             AND EXISTS (SELECT 1 FROM work_queue WHERE id = ? AND status = 'completed' AND error_message = ?)
+             AND EXISTS (SELECT 1 FROM artists WHERE id = song_masters.artist_id AND name = ?)
+             AND (SELECT name FROM artists WHERE id = song_masters.album_artist_id) IS ?
              AND COALESCE(cover_r2_key, '') = ?
              AND EXISTS (SELECT 1 FROM albums WHERE id = ? AND name = ? AND year IS ?
                AND COALESCE(cover_r2_key, '') = ?)
@@ -400,7 +403,7 @@ export async function applyCompletedRetrieval(
           albumArtistCredit?.id ?? current.album_artist_id, albumId,
           lyricsMissing ? (match.lyrics as string).trim() : current.lyrics,
           now, current.id, current.album_id, current.title, current.lyrics, current.artist_id,
-          current.album_artist_id, snapshot.masterUpdatedAt, current.song_cover_r2_key || "",
+          current.album_artist_id, snapshot.masterUpdatedAt, taskId, applying, current.artist_name, current.album_artist_name, current.song_cover_r2_key || "",
           current.album_id, current.album_name, current.year,
           current.album_cover_r2_key || "", payload.instanceId, current.id, payload.sourceUri,
           payload.sourceEtag ?? null,

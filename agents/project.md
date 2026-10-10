@@ -22,3 +22,5 @@
 
 ## Recent tools
 - Work Mode offers selectable parsing, transcode, metadata retrieval and lossless compression tasks. WAV-to-FLAC compression uses the existing browser FFmpeg engine, verifies decoded audio and metadata, then atomically updates the original file references; library compression is explicitly queued.
+
+- Work Mode can explicitly restart retrieval for missing metadata, uses configured provider adapters, preserves existing catalog fields and release identity, and recovers interrupted catalog application.

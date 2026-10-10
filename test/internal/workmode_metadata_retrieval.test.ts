@@ -57,7 +57,7 @@ function makeDb() {
   return sqlite;
 }
 
-function d1(sqlite: DatabaseSync) {
+function d1(sqlite: DatabaseSync, beforeBatch?: () => void) {
   return {
     prepare(query: string) {
       const stmt = sqlite.prepare(query);
@@ -73,6 +73,7 @@ function d1(sqlite: DatabaseSync) {
       };
     },
     async batch(statements: Array<{ run(): Promise<{ meta: { changes: number } }> }>) {
+      beforeBatch?.();
       sqlite.exec("BEGIN");
       try {
         const result = [];
@@ -84,7 +85,7 @@ function d1(sqlite: DatabaseSync) {
   };
 }
 
-function appFor(sqlite: DatabaseSync) {
+function appFor(sqlite: DatabaseSync, beforeBatch?: () => void) {
   const app = new Hono<{ Bindings: Env; Variables: { user: { username: string; level: number }; authMethod: "session" } }>();
   app.use("*", async (c, next) => {
     c.set("user", { username: "admin", level: 3 } as never);
@@ -92,7 +93,7 @@ function appFor(sqlite: DatabaseSync) {
     return next();
   });
   app.route("/edgesonic", workRoutes);
-  const env = { DB: d1(sqlite), MUSIC_BUCKET: { async put() {}, async delete() {} } } as unknown as Env;
+  const env = { DB: d1(sqlite, beforeBatch), MUSIC_BUCKET: { async put() {}, async delete() {} } } as unknown as Env;
   return { app, env };
 }
 
@@ -226,7 +227,7 @@ async function main() {
     const { app, env } = appFor(sqlite);
     await post(app, env, "/edgesonic/work/submit", { id: "wt-scrape-retrieve:sg-known", attempts: 1, claimedAt: 888,
       result: { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known", status: "matched",
-        match: { source: "netease", songId: "6", title: "Known Track", artist: "Known Artist", album: "Known Record", albumArtist: "Known Artist" } } });
+        match: { source: "netease", songId: "6", title: "Known Track", artist: "Known Artist", album: "Known Record" } } });
     const master = sqlite.prepare("SELECT artist_id, album_artist_id FROM song_masters WHERE id='sg-known'").get() as any;
     const credits = sqlite.prepare("SELECT ar.name FROM song_artists sa JOIN artists ar ON ar.id=sa.artist_id WHERE sa.song_id='sg-known'").all() as any[];
     assert((sqlite.prepare("SELECT name FROM artists WHERE id=?").get(master.album_artist_id) as any)?.name === "Various Artists",
@@ -265,6 +266,35 @@ async function main() {
       "song artist links are gated by the catalog receipt");
     assert(!(sqlite.prepare("SELECT error_message FROM work_queue WHERE id='wt-scrape-retrieve:sg-known'").get() as any).error_message?.startsWith("retrieval_apply:catalog:"),
       "a failed compare-and-set cannot create a catalog receipt");
+  }
+
+  console.log("artist edits and a replaced apply lease fence catalog writes:");
+  for (const change of ["artist", "lease"] as const) {
+    const sqlite = makeDb();
+    const payload = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
+      sourceUri: "r2://music/known.flac", sourceEtag: "etag-k", sources: ["netease"],
+      identity: { title: "Known Track", artist: "Known Artist", album: "Known Record" },
+      snapshot: { title: "Known Track", artist: "Known Artist", album: "Known Record", albumArtist: null,
+        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100 }, query: "Known Track" };
+    const id = "wt-scrape-retrieve:sg-known";
+    sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status, claimed_by, claimed_at, attempts) VALUES (?, 'scrape', ?, 'claimed', 'admin', 444, 1)")
+      .run(id, JSON.stringify(payload));
+    const { app, env } = appFor(sqlite, () => {
+      if (change === "artist") sqlite.prepare("UPDATE artists SET name='Manual Artist' WHERE id='ar-known'").run();
+      else sqlite.prepare("UPDATE work_queue SET error_message='retrieval_apply:applying:other-owner' WHERE id=?").run(id);
+    });
+    const response = await post(app, env, "/edgesonic/work/submit", { id, attempts: 1, claimedAt: 444, result: {
+      kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known", status: "matched",
+      match: { source: "netease", songId: "7", title: "Known Track", artist: "Known Artist", album: "Known Record", year: 2024, lyrics: "provider lyrics" },
+    } });
+    const body = await response.json() as { applied?: { ok: boolean } };
+    assert(body.applied?.ok === false, `${change} mutation prevents the stale catalog apply`);
+    assert((sqlite.prepare("SELECT lyrics FROM song_masters WHERE id='sg-known'").get() as any).lyrics === null,
+      `${change} mutation leaves lyrics unchanged`);
+    assert((sqlite.prepare("SELECT year FROM albums WHERE id='al-known'").get() as any).year === null,
+      `${change} mutation leaves album year unchanged`);
+    if (change === "lease") assert((sqlite.prepare("SELECT error_message FROM work_queue WHERE id=?").get(id) as any).error_message === "retrieval_apply:applying:other-owner",
+      "stale finalization does not clear another owner's lease");
   }
 
   console.log("stale source and ambiguous matches are recorded without catalog edits:");
