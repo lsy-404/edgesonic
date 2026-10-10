@@ -2,7 +2,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { workRoutes } from "../../worker/src/endpoints/edgesonic/work";
-import { recoverPendingRetrievalApplies } from "../../worker/src/endpoints/edgesonic/workMetadataRetrieval";
+import { isValidMetadataRetrievalResult, maybeRunAutomaticMetadataRetrieval, recoverPendingRetrievalApplies } from "../../worker/src/endpoints/edgesonic/workMetadataRetrieval";
 
 let failures = 0;
 function assert(value: unknown, message: string) {
@@ -20,10 +20,11 @@ function makeDb() {
       error_message TEXT, attempts INTEGER DEFAULT 0, max_attempts INTEGER DEFAULT 3,
       created_at INTEGER DEFAULT 0, expires_at INTEGER
     );
-    CREATE TABLE feature_strings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-    INSERT INTO feature_strings VALUES ('scrape_enabled_sources', '["lrc","netease","qmusic","kugou"]');
-    CREATE TABLE features (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
-    INSERT INTO features VALUES ('scrape_enabled', 1);
+    CREATE TABLE feature_strings (key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT, updated_at INTEGER);
+    INSERT INTO feature_strings (key, value) VALUES ('scrape_enabled_sources', '["lrc","netease","qmusic","kugou"]');
+    CREATE TABLE features (key TEXT PRIMARY KEY, value INTEGER NOT NULL, description TEXT, updated_at INTEGER);
+    INSERT INTO features (key, value) VALUES ('scrape_enabled', 1);
+    INSERT INTO features (key, value) VALUES ('metadata_auto_retrieval', 0);
     CREATE TABLE user_permissions (level INTEGER, permission TEXT, enabled INTEGER, max_rph INTEGER, PRIMARY KEY(level, permission));
     CREATE TABLE artists (id TEXT PRIMARY KEY, name TEXT, sort_name TEXT, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE albums (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT, year INTEGER, genre TEXT,
@@ -35,7 +36,7 @@ function makeDb() {
       lyrics TEXT, lyrics_rich TEXT, created_at INTEGER DEFAULT 0, updated_at INTEGER DEFAULT 0);
     CREATE TABLE song_instances (id TEXT PRIMARY KEY, master_id TEXT NOT NULL, source_type TEXT DEFAULT 'original',
       storage_uri TEXT NOT NULL, source_etag TEXT, missing INTEGER DEFAULT 0, suffix TEXT, size INTEGER DEFAULT 0,
-      created_at INTEGER DEFAULT 0, FOREIGN KEY(master_id) REFERENCES song_masters(id));
+      tag_scanned INTEGER DEFAULT 1, created_at INTEGER DEFAULT 0, FOREIGN KEY(master_id) REFERENCES song_masters(id));
     CREATE TABLE storage_entries (id TEXT PRIMARY KEY, path TEXT, kind TEXT, instance_id TEXT);
     CREATE TABLE song_artists (song_id TEXT, artist_id TEXT, position INTEGER, PRIMARY KEY(song_id, artist_id));
     INSERT INTO artists VALUES ('ar-unknown', 'Unknown Artist', 'unknown artist', 1, 1);
@@ -95,14 +96,14 @@ function appFor(sqlite: DatabaseSync, beforeBatch?: () => void) {
     return next();
   });
   app.route("/edgesonic", workRoutes);
-  const env = { DB: d1(sqlite, beforeBatch), MUSIC_BUCKET: { async put() {}, async delete() {} } } as unknown as Env;
+  const env = { DB: d1(sqlite, beforeBatch), MUSIC_BUCKET: { async put() {}, async delete() {} }, __waits: [] as Promise<unknown>[] } as unknown as Env & { __waits: Promise<unknown>[] };
   return { app, env };
 }
 
 async function post(app: Hono, env: Env, url: string, body: unknown) {
   return app.fetch(new Request(`http://test${url}`, {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
-  }), env);
+  }), env, { waitUntil(promise: Promise<unknown>) { (env as unknown as { __waits: Promise<unknown>[] }).__waits.push(promise); } } as ExecutionContext);
 }
 
 async function main() {
@@ -115,6 +116,61 @@ async function main() {
     assert(response.status === 409, "retrieval respects the existing master feature switch");
     assert((sqlite.prepare("SELECT COUNT(*) AS n FROM work_queue").get() as { n: number }).n === 0,
       "disabled retrieval does not enqueue work");
+  }
+
+  console.log("automatic retrieval is opt-in and waits for tag parsing:");
+  {
+    const sqlite = makeDb();
+    sqlite.prepare("UPDATE song_instances SET tag_scanned=0 WHERE id='si-a'").run();
+    sqlite.prepare("UPDATE song_instances SET tag_scanned=2 WHERE id='si-b'").run();
+    const { app, env } = appFor(sqlite);
+    await maybeRunAutomaticMetadataRetrieval(env);
+    assert((sqlite.prepare("SELECT COUNT(*) AS count FROM work_queue").get() as any).count === 0,
+      "automatic scans stay off by default");
+    const enabled = await post(app, env, "/edgesonic/work/scrape/auto", { enabled: true });
+    await Promise.all((env as unknown as { __waits: Promise<unknown>[] }).__waits);
+    assert(enabled.status === 200 && (await enabled.json() as any).enabled === true,
+      "the persisted opt-in enables automatic retrieval");
+    const ids = sqlite.prepare("SELECT id FROM work_queue ORDER BY id").all() as Array<{ id: string }>;
+    assert(ids.length === 1 && ids[0]!.id === "wt-scrape-retrieve:sg-known",
+      "automatic scans only parsed originals even after parser queue completion");
+    const manual = await post(app, env, "/edgesonic/work/scrape/dispatch", {});
+    const manualBody = await manual.json() as any;
+    assert(manualBody.enqueued === 2,
+      "explicit manual dispatch remains able to force retrieval for unparsed originals");
+  }
+
+  console.log("automatic queue cap preserves the cursor at a partial page boundary:");
+  {
+    const sqlite = makeDb();
+    sqlite.exec("DELETE FROM song_instances; DELETE FROM song_masters; DELETE FROM storage_entries;");
+    const insertMaster = sqlite.prepare("INSERT INTO song_masters (id, album_id, artist_id, title, updated_at) VALUES (?, 'al-known', 'ar-known', ?, 100)");
+    const insertInstance = sqlite.prepare("INSERT INTO song_instances (id, master_id, storage_uri, suffix, tag_scanned) VALUES (?, ?, ?, 'flac', 1)");
+    for (let i = 0; i < 101; i++) {
+      const id = `sg-${String(i).padStart(3, "0")}`;
+      insertMaster.run(id, `Track ${i}`);
+      insertInstance.run(`si-${i}`, id, `r2://music/${i}.flac`);
+    }
+    for (let i = 0; i < 39; i++) sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status) VALUES (?, 'scrape', '{}', 'queued')")
+      .run(`existing-${i}`);
+    sqlite.prepare("UPDATE features SET value=1 WHERE key='metadata_auto_retrieval'").run();
+    const { env } = appFor(sqlite);
+    await maybeRunAutomaticMetadataRetrieval(env);
+    const cursor = sqlite.prepare("SELECT value FROM feature_strings WHERE key='metadata_auto_retrieval_cursor'").get() as any;
+    const total = sqlite.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND status='queued'").get() as any;
+    assert(total.count === 40 && cursor.value === "sg-000",
+      "automatic enqueue caps the queue at forty and saves the last processed id on a partial page");
+  }
+
+  console.log("status reports catalog completeness independently of retrieval queue state:");
+  {
+    const sqlite = makeDb();
+    sqlite.prepare("UPDATE song_masters SET album_artist_id=NULL WHERE id='sg-known'").run();
+    const { app, env } = appFor(sqlite);
+    const response = await app.fetch(new Request("http://test/edgesonic/work/scrape/status"), env);
+    const body = await response.json() as any;
+    assert(body.counts.total === 3 && body.counts.incomplete === 3 && body.counts.complete === 0,
+      "missing lyrics, album artist, and placeholder album count as incomplete tracks");
   }
 
   console.log("dispatch retrieves only eligible missing masters and leaves active work alone:");
@@ -355,7 +411,7 @@ async function main() {
       "conflicting album identity keeps the existing album link");
   }
 
-  console.log("a no-match result completes durably without changing catalog metadata:");
+  console.log("pending candidates remain unapplied until an explicit keep decision:");
   {
     const sqlite = makeDb();
     const payload = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
@@ -366,12 +422,73 @@ async function main() {
       .run("wt-scrape-retrieve:sg-known", JSON.stringify(payload));
     const { app, env } = appFor(sqlite);
     const response = await post(app, env, "/edgesonic/work/submit", { id: "wt-scrape-retrieve:sg-known", attempts: 1, claimedAt: 789, result: {
-      kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known", status: "no-match", reason: "No exact result",
+      kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known", status: "pending", reason: "ambiguous",
+      candidates: [{ source: "netease", songId: "77", title: "Known Track", artist: "Known Artist", album: "Known Record" }],
     } });
-    const body = await response.json() as { applied?: { ok: boolean } };
-    assert(body.applied?.ok === true, "no-match is a successful completed retrieval");
+    const body = await response.json() as { applied?: { ok: boolean }; status?: string };
+    const pending = sqlite.prepare("SELECT status, error_message FROM work_queue WHERE id='wt-scrape-retrieve:sg-known'").get() as any;
+    assert(response.status === 200 && body.status === "completed" && pending.error_message === "retrieval_review:pending",
+      "candidate results are durably queued for human review");
     assert((sqlite.prepare("SELECT lyrics FROM song_masters WHERE id='sg-known'").get() as any).lyrics === null,
-      "no-match does not alter the catalog");
+      "pending results cannot alter catalog metadata");
+    const kept = await post(app, env, "/edgesonic/work/scrape/review", {
+      taskId: "wt-scrape-retrieve:sg-known", attempts: 1, decision: "keep",
+    });
+    assert(kept.status === 200 && (await kept.json() as any).decision === "keep" &&
+      (sqlite.prepare("SELECT error_message FROM work_queue WHERE id='wt-scrape-retrieve:sg-known'").get() as any).error_message === "retrieval_review:kept",
+      "explicit keep is persisted and does not apply metadata");
+    await post(app, env, "/edgesonic/work/scrape/dispatch", {});
+    assert((sqlite.prepare("SELECT error_message FROM work_queue WHERE id='wt-scrape-retrieve:sg-known'").get() as any).error_message === "retrieval_review:kept",
+      "manual redispatch never reopens a kept review task");
+  }
+
+  console.log("manual candidate approval survives recovery, while workers cannot forge approval:");
+  {
+    const sqlite = makeDb();
+    sqlite.prepare("UPDATE albums SET name='Unknown Album' WHERE id='al-known'").run();
+    sqlite.prepare("UPDATE song_masters SET artist_id='ar-unknown' WHERE id='sg-known'").run();
+    const payload = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
+      sourceUri: "r2://music/known.flac", sourceEtag: "etag-k", sources: ["netease"],
+      identity: { title: "Known Track" },
+      snapshot: { title: "Known Track", artist: "Unknown Artist", album: "Unknown Album", albumArtist: null,
+        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100 }, query: "Known Track" };
+    const match = { source: "netease", songId: "91", title: "Known Track", artist: "Recovered Artist", album: "Recovered Album", lyrics: "approved lyrics" };
+    const approved = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known", status: "matched", match,
+      manualReview: { candidateIndex: 0, pendingResult: { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
+        status: "pending", reason: "no-credible-match", candidates: [match] } } };
+    sqlite.prepare(`INSERT INTO work_queue (id, task_type, payload, status, result_json, error_message)
+      VALUES ('wt-scrape-retrieve:sg-known', 'scrape', ?, 'completed', ?, 'retrieval_apply:pending')`)
+      .run(JSON.stringify(payload), JSON.stringify(approved));
+    assert(!isValidMetadataRetrievalResult(payload, approved), "untrusted workers cannot submit a server-owned approval receipt");
+    const { env } = appFor(sqlite);
+    assert(await recoverPendingRetrievalApplies(env) === 1, "scheduled recovery replays approved manual selection");
+    assert((sqlite.prepare("SELECT lyrics FROM song_masters WHERE id='sg-known'").get() as any).lyrics === "approved lyrics",
+      "low-anchor selected metadata is applied using persisted server approval");
+  }
+
+  console.log("review retry refreshes the snapshot and extends exhausted claims without resetting attempts:");
+  {
+    const sqlite = makeDb();
+    const payload = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
+      sourceUri: "r2://music/known.flac", sourceEtag: "etag-k", sources: ["netease"],
+      identity: { title: "Known Track", artist: "Known Artist", album: "Known Record" },
+      snapshot: { title: "Known Track", artist: "Known Artist", album: "Known Record", albumArtist: null,
+        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100 }, query: "Known Track" };
+    sqlite.prepare("UPDATE song_masters SET updated_at=101 WHERE id='sg-known'").run();
+    sqlite.prepare(`INSERT INTO work_queue (id, task_type, payload, status, attempts, max_attempts, result_json, error_message)
+      VALUES ('wt-scrape-retrieve:sg-known', 'scrape', ?, 'completed', 4, 4, ?, 'retrieval_review:pending')`)
+      .run(JSON.stringify(payload), JSON.stringify({ kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
+        status: "pending", reason: "no-credible-match", candidates: [] }));
+    const { app, env } = appFor(sqlite);
+    const response = await post(app, env, "/edgesonic/work/scrape/review", {
+      taskId: "wt-scrape-retrieve:sg-known", attempts: 4, decision: "retry",
+    });
+    const row = sqlite.prepare("SELECT status, attempts, max_attempts, payload FROM work_queue WHERE id='wt-scrape-retrieve:sg-known'").get() as any;
+    const refreshed = JSON.parse(row.payload);
+    assert(response.status === 200 && row.status === "queued" && row.attempts === 4 && row.max_attempts === 7,
+      "an explicit review retry can proceed after the prior task budget is exhausted without resetting attempts");
+    assert(refreshed.snapshot.masterUpdatedAt === 101,
+      "retry refreshes the payload to the current catalog snapshot");
   }
 
   console.log("scheduled recovery finishes an atomic catalog receipt without replaying its old snapshot:");

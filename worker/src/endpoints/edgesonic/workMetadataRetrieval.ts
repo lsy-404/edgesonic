@@ -51,6 +51,10 @@ function matchesKnownSnapshot(
       normalizeMetadataIdentity(snapshot[field]) === normalizeMetadataIdentity(candidate[field]));
 }
 
+function isMetadataIdentityRecord(value: unknown): value is { title?: unknown; artist?: unknown; album?: unknown } {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
 function parseConfiguredRetrievalSources(raw: string): string[] {
   try {
     const value: unknown = JSON.parse(raw);
@@ -370,6 +374,7 @@ metadataRetrievalRoutes.post("/work/scrape/review", permissionMiddleware("dispat
   if (!resolved || "manualReview" in resolved || resolved.kind !== "metadata-retrieval" || resolved.status !== "matched" ||
       resolved.masterId !== payload.masterId || resolved.instanceId !== payload.instanceId ||
       !match || match.source !== selected.source || match.songId !== selected.songId ||
+      !isMetadataIdentityRecord(payload.identity) || !isMetadataIdentityRecord(payload.snapshot) ||
       !isSelectableMetadataMatch(match, { identity: payload.identity, snapshot: payload.snapshot })) {
     return c.json({ ok: false, error: "Resolved candidate does not match the saved selection and known metadata" }, 400);
   }
@@ -417,23 +422,24 @@ export function isValidMetadataRetrievalResult(payload: Record<string, unknown>,
         (item.albumArtist === undefined || typeof item.albumArtist === "string") &&
         (item.year === undefined || (Number.isInteger(item.year) && Number(item.year) > 0)) &&
         (item.lyrics === undefined || typeof item.lyrics === "string") &&
+        isMetadataIdentityRecord(payload.identity) && isMetadataIdentityRecord(payload.snapshot) &&
         isSelectableMetadataMatch(item, { identity: payload.identity, snapshot: payload.snapshot });
     });
   }
   if (result.status !== "matched" || !result.match || typeof result.match !== "object" || Array.isArray(result.match)) return false;
   const match = result.match as Record<string, unknown>;
   const sources = Array.isArray(payload.sources) ? payload.sources : [];
-  const identity = payload.identity as { title?: unknown; artist?: unknown; album?: unknown } | undefined;
-  const snapshot = payload.snapshot as { title?: unknown; artist?: unknown; album?: unknown } | undefined;
+  const identity = isMetadataIdentityRecord(payload.identity) ? payload.identity : undefined;
+  const snapshot = isMetadataIdentityRecord(payload.snapshot) ? payload.snapshot : undefined;
   const albumKnown = isKnownMetadataIdentity(identity?.album) || isKnownMetadataIdentity(snapshot?.album);
-  return !!identity && typeof identity === "object" &&
+  return !!identity && !!snapshot &&
     typeof match.source === "string" && sources.includes(match.source) &&
     typeof match.songId === "string" && !!match.songId.trim() &&
     typeof match.title === "string" && !!match.title.trim() &&
     typeof match.artist === "string" && !!match.artist.trim() &&
     (!albumKnown || (typeof match.album === "string" && !!match.album.trim())) &&
     (match.album === undefined || (typeof match.album === "string" && !!match.album.trim())) &&
-    isCredibleMetadataMatch(match, identity) && matchesKnownSnapshot(match, snapshot ?? {});
+    isCredibleMetadataMatch(match, identity) && matchesKnownSnapshot(match, snapshot);
 }
 
 interface RetrievalResult {
