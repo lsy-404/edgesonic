@@ -30,3 +30,4 @@
 | 579 | [Feature] Workmode selectable jobs | Parsing, transcode, metadata retrieval and lossless job choices | Replace the standalone WAV conversion pane | ✅ 已完成 |
 | 580 | [Feature] Workmode task integration | Integrate, verify and deploy selectable work jobs | Deliver the requested Work Mode workflow end to end | ✅ 已完成 |
 | 581 | [Audit] Workmode lossless runtime | Local browser and D1/R2 lossless replacement verification | Validate catalog, reference and failure behavior | ✅ 已完成 |
+| 585 | [Feature] Workmode retrieval action | Explicitly restart metadata retrieval for songs missing metadata with paginated progress | User requested manual forced metadata retrieval | ✅ 已完成 |
