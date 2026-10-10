@@ -23,3 +23,4 @@
 | 569 | [Feature] WAV FLAC lossless tool | Tools 内本地 WAV 转 FLAC 并验证样本、规格与元数据 | 用户希望减少存储空间且保持无损 | ✅ 已完成 |
 
 | 574 | [BugFix] Folder delete partial failure recovery | Apply catalog cleanup after each successful R2 deletion and preserve remaining entries for retry after a later failure | Prevent R2 objects from becoming catalog ghosts during partial folder deletion | ✅ 已完成 |
+| 575 | [BugFix] Library tag editor initial metadata race | Wait for complete song metadata before opening the editor and discard stale asynchronous responses | Newly uploaded song album artist and year were missing in the editor | ✅ 已完成 |
