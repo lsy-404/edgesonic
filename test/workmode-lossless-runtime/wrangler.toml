@@ -1,0 +1,17 @@
+name = "workmode-lossless-runtime-test"
+main = "./worker.ts"
+compatibility_date = "2026-10-03"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+INSTANCE_ID = "workmode-lossless-runtime-test"
+WORK_UPLOAD_HMAC_KEY = "local-test-only-secret-never-deployed"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "workmode-lossless-runtime-test"
+database_id = "9a5fe19d-904d-488e-9056-9c97234e0f60"
+
+[[r2_buckets]]
+binding = "MUSIC_BUCKET"
+bucket_name = "workmode-lossless-runtime-test"
