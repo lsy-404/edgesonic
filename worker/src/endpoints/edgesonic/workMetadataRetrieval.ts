@@ -80,6 +80,17 @@ async function retrieveCurrentHints(
   };
 }
 
+async function retrieveSourcePathState(
+  db: D1Database,
+  instanceId: string,
+): Promise<{ count: number; uniquePath: string | null }> {
+  const row = await db.prepare(
+    `SELECT COUNT(*) AS count, CASE WHEN COUNT(*) = 1 THEN MIN(path) ELSE NULL END AS unique_path
+     FROM storage_entries WHERE instance_id = ? AND kind = 'file'`,
+  ).bind(instanceId).first<{ count: number; unique_path: string | null }>();
+  return { count: row?.count ?? 0, uniquePath: row?.unique_path ?? null };
+}
+
 function parseConfiguredRetrievalSources(raw: string): string[] {
   try {
     const value: unknown = JSON.parse(raw);
@@ -603,8 +614,10 @@ export async function applyCompletedRetrieval(
         storage_uri: string; source_etag: string | null; missing: number; source_type: string;
       }>();
       const sourceList = Array.isArray(payload.sources) ? payload.sources : [];
-      const currentPath = current ? await sourceFolderLogicalPath(env.DB, String(payload.instanceId)) : null;
-      const currentAlbumFolder = currentPath ? albumNameFromSourcePath(currentPath) : null;
+      const pathState = current
+        ? await retrieveSourcePathState(env.DB, String(payload.instanceId))
+        : { count: 0, uniquePath: null };
+      const currentAlbumFolder = pathState.uniquePath ? albumNameFromSourcePath(pathState.uniquePath) : null;
       const folderChanged = metadataMissing(snapshot.album, "album") &&
         (snapshot.albumFolder ?? null) !== currentAlbumFolder;
       const fieldsCurrent = current && current.title === snapshot.title && current.artist_name === snapshot.artist &&
@@ -690,7 +703,10 @@ export async function applyCompletedRetrieval(
              AND EXISTS (SELECT 1 FROM albums WHERE id = ? AND name = ? AND year IS ?
                AND COALESCE(cover_r2_key, '') = ?)
              AND EXISTS (SELECT 1 FROM song_instances WHERE id = ? AND master_id = ?
-               AND storage_uri = ? AND source_etag IS ? AND missing = 0 AND source_type = 'original')`,
+               AND storage_uri = ? AND source_etag IS ? AND missing = 0 AND source_type = 'original')
+             AND (SELECT COUNT(*) FROM storage_entries WHERE instance_id = ? AND kind = 'file') = ?
+             AND (SELECT CASE WHEN COUNT(*) = 1 THEN MIN(path) ELSE NULL END FROM storage_entries
+               WHERE instance_id = ? AND kind = 'file') IS ?`,
         ).bind(
           title, titleMissing ? title.toLowerCase() : current.sort_title, primaryArtist?.id ?? current.artist_id,
           albumArtistCredit?.id ?? current.album_artist_id, albumId,
@@ -699,7 +715,7 @@ export async function applyCompletedRetrieval(
           current.album_artist_id, snapshot.masterUpdatedAt, taskId, applying, current.artist_name, current.album_artist_name, current.song_cover_r2_key || "",
           current.album_id, current.album_name, current.year,
           current.album_cover_r2_key || "", payload.instanceId, current.id, payload.sourceUri,
-          payload.sourceEtag ?? null,
+          payload.sourceEtag ?? null, payload.instanceId, pathState.count, payload.instanceId, pathState.uniquePath,
         ));
         statements.push(env.DB.prepare(
           "UPDATE work_queue SET error_message = ?, heartbeat_at = unixepoch() WHERE id = ? AND status = 'completed' AND error_message = ? AND changes() = 1"
@@ -727,6 +743,10 @@ export async function applyCompletedRetrieval(
         if (batchResults[masterUpdateIndex]?.meta?.changes !== 1) {
           annotation = { ok: false, reason: "source or metadata changed during retrieval apply" };
           retry = true;
+          if (manuallyReviewed) {
+            const refreshed = await refreshRetrievalPayload(env, payload);
+            if (refreshed) refreshedPayloadJson = JSON.stringify(refreshed);
+          }
           if (albumId !== current.album_id) {
             await env.DB.prepare("DELETE FROM albums WHERE id = ? AND NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = ?)")
               .bind(albumId, albumId).run();

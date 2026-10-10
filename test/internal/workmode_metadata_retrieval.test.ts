@@ -536,6 +536,37 @@ async function main() {
       "the stale folder candidate cannot alter the catalog");
   }
 
+  console.log("catalog apply atomically fences a folder moved after the freshness read:");
+  {
+    const sqlite = makeDb();
+    const payload = { kind: "metadata-retrieval", masterId: "sg-a", instanceId: "si-a",
+      sourceUri: "r2://music/a.flac", sourceEtag: "etag-a", sources: ["netease"],
+      identity: { title: "Track A" },
+      snapshot: { title: "Track A", artist: "Unknown Artist", album: "Pending Uploads", albumArtist: null,
+        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100, albumFolder: "Folder A" }, query: "Track A" };
+    const candidate = { source: "netease", songId: "88", title: "Track A", artist: "Recovered Artist", album: "Folder A" };
+    sqlite.prepare(`INSERT INTO work_queue (id, task_type, payload, status, attempts, max_attempts, result_json, error_message)
+      VALUES ('wt-scrape-retrieve:sg-a', 'scrape', ?, 'completed', 1, 3, ?, 'retrieval_review:pending')`)
+      .run(JSON.stringify(payload), JSON.stringify({ kind: "metadata-retrieval", masterId: "sg-a", instanceId: "si-a",
+        status: "pending", reason: "no-credible-match", candidates: [candidate] }));
+    const { app, env } = appFor(sqlite, () => {
+      sqlite.prepare("UPDATE storage_entries SET path='Artist/专辑/Folder B/01 Track A.flac' WHERE instance_id='si-a'").run();
+    });
+    const response = await post(app, env, "/edgesonic/work/scrape/review", {
+      taskId: "wt-scrape-retrieve:sg-a", attempts: 1, decision: "apply", candidateIndex: 0,
+      result: { kind: "metadata-retrieval", masterId: "sg-a", instanceId: "si-a", status: "matched", match: candidate },
+    });
+    const row = sqlite.prepare("SELECT payload, error_message FROM work_queue WHERE id='wt-scrape-retrieve:sg-a'").get() as any;
+    const refreshed = JSON.parse(row.payload);
+    assert(response.status === 409 && row.error_message === "retrieval_review:pending",
+      "a path change between read and catalog transaction returns the manual approval to review");
+    assert(refreshed.snapshot.albumFolder === "Folder B" && refreshed.identity.album === "Folder B",
+      "the failed compare-and-set stores the newly observed path-derived album hint");
+    assert((sqlite.prepare("SELECT album_id, lyrics FROM song_masters WHERE id='sg-a'").get() as any).album_id === "al-pending" &&
+      (sqlite.prepare("SELECT lyrics FROM song_masters WHERE id='sg-a'").get() as any).lyrics === null,
+      "the concurrent folder move prevents stale metadata from entering the catalog");
+  }
+
   console.log("scheduled recovery finishes an atomic catalog receipt without replaying its old snapshot:");
   {
     const sqlite = makeDb();
