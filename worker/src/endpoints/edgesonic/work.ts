@@ -44,6 +44,7 @@ import { applyMetadataResult } from "../../utils/metadataApply";
 import { writeEmbeddedCover } from "../../utils/embeddedCover";
 import { acquireUploadMetadataLease, releaseUploadMetadataLease, uploadMetadataMarkerId, type UploadMetadataLease } from "../../utils/uploadMetadataQueue";
 import { notifyCoordinator } from "../../coordinator/workCoordinator";
+import { parseWorkTaskTypes } from "../../coordinator/workTaskTypes";
 import type { User } from "../../types/entities";
 
 export const workRoutes = new Hono<{
@@ -243,12 +244,19 @@ workRoutes.get("/work/socket", permissionMiddleware("participate_work"), async (
   if (!enabled) {
     return c.json({ ok: false, error: "Worker pool is disabled" }, 503);
   }
+  const taskTypesRaw = c.req.query("taskTypes");
+  const taskTypes = parseWorkTaskTypes(taskTypesRaw ?? null);
+  if (!taskTypes) {
+    return c.json({ ok: false, error: "taskTypes must be a JSON array of available job types" }, 400);
+  }
 
   // The agent's identity comes from the authenticated session, never from the
   // client — claims are recorded against it and /work/submit checks ownership.
   const headers = new Headers(c.req.raw.headers);
   headers.set("X-Agent-User", user.username);
   headers.set("X-Agent-Caps", c.req.query("caps") || "");
+  headers.set("X-Agent-Task-Types", JSON.stringify(taskTypes));
+  headers.set("X-Agent-Origin", new URL(c.req.url).origin);
   headers.set("X-Agent-Concurrency", c.req.query("concurrency") || "1");
 
   const id = env.WORK_COORDINATOR.idFromName("pool");
@@ -286,7 +294,7 @@ workRoutes.post("/work/submit", async (c) => {
   }
 
   const row = await env.DB.prepare(
-    "SELECT status, claimed_by, attempts, claimed_at, max_attempts, task_type, payload FROM work_queue WHERE id = ?",
+    "SELECT status, claimed_by, attempts, claimed_at, max_attempts, task_type, payload, result_json FROM work_queue WHERE id = ?",
   ).bind(body.id).first<{
     status: string;
     claimed_by: string | null;
@@ -295,8 +303,17 @@ workRoutes.post("/work/submit", async (c) => {
     max_attempts: number;
     task_type: string;
     payload: string;
+    result_json: string | null;
   }>();
   if (!row) return c.json({ ok: false, error: "Task not found" }, 404);
+  if (row.task_type === "lossless" && row.status === "completed") {
+    let receipt: { serverVerified?: string } | null = null;
+    try { receipt = row.result_json ? JSON.parse(row.result_json) as { serverVerified?: string } : null; } catch { /* invalid stored receipt */ }
+    if (receipt?.serverVerified === "lossless" && row.claimed_by === user.username
+      && row.attempts === body.attempts && row.claimed_at === body.claimedAt) {
+      return c.json({ ok: true, status: "completed", replayed: true });
+    }
+  }
   if (row.status !== "claimed") {
     return c.json({ ok: false, error: `Task is ${row.status}, not claimed` }, 409);
   }
@@ -305,6 +322,9 @@ workRoutes.post("/work/submit", async (c) => {
   }
   if (row.attempts !== body.attempts || row.claimed_at !== body.claimedAt) {
     return c.json({ ok: false, error: "Claim has changed" }, 409);
+  }
+  if (row.task_type === "lossless" && !body.error) {
+    return c.json({ ok: false, error: "Lossless tasks complete only after verified upload" }, 409);
   }
 
   const now = Math.floor(Date.now() / 1000);

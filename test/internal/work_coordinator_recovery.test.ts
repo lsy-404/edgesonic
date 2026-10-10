@@ -7,6 +7,8 @@ type Claim = { id: string; attempts: number; claimedAt: number };
 type Attachment = {
   username: string;
   caps: string[];
+  taskTypes: Array<"metadata" | "transcode" | "scrape" | "lossless">;
+  origin: string;
   maxConcurrent: number;
   holding: Claim[];
   joinedAt: number;
@@ -94,6 +96,17 @@ function seed(sqlite: DatabaseSync, id: string, status: string, ageSeconds: numb
       status === "claimed" ? now - ageSeconds : null, attempts, now - 300);
 }
 
+function seedTask(sqlite: DatabaseSync, id: string, taskType: string) {
+  sqlite.prepare(`INSERT INTO work_queue
+    (id,task_type,payload,required_caps,priority,status,attempts,max_attempts,created_at)
+    VALUES (?,?,'{}',NULL,5,'queued',0,3,unixepoch())`).run(id, taskType);
+}
+
+function agentSocket(caps: string[], taskTypes: Attachment["taskTypes"]) {
+  return new FakeSocket({ username: "admin", caps, taskTypes, origin: "https://fixture.test",
+    maxConcurrent: 1, holding: [], joinedAt: Math.floor(Date.now() / 1000) }, new Date());
+}
+
 async function main() {
   (globalThis as Record<string, unknown>).WebSocket = FakeSocket;
   (globalThis as Record<string, unknown>).WebSocketRequestResponsePair = class {
@@ -136,7 +149,7 @@ async function main() {
     const state = new FakeState();
     const now = Math.floor(Date.now() / 1000);
     const socket = new FakeSocket({
-      username: "admin", caps: [], maxConcurrent: 1,
+      username: "admin", caps: ["music-metadata"], taskTypes: ["metadata"], origin: "https://fixture.test", maxConcurrent: 1,
       holding: [{ id: "lost-done", attempts: 1, claimedAt: now - 120 }], joinedAt: now,
     }, new Date());
     state.sockets.push(socket);
@@ -158,11 +171,11 @@ async function main() {
     const state = new FakeState();
     const now = Math.floor(Date.now() / 1000);
     const ghost = new FakeSocket({
-      username: "admin", caps: [], maxConcurrent: 1,
+      username: "admin", caps: ["music-metadata"], taskTypes: ["metadata"], origin: "https://fixture.test", maxConcurrent: 1,
       holding: [{ id: "ghost-job", attempts: 1, claimedAt: now - 120 }], joinedAt: now - 120,
     }, new Date(Date.now() - 120_000));
     const live = new FakeSocket({
-      username: "admin", caps: [], maxConcurrent: 1, holding: [], joinedAt: now,
+      username: "admin", caps: ["music-metadata"], taskTypes: ["metadata"], origin: "https://fixture.test", maxConcurrent: 1, holding: [], joinedAt: now,
     }, new Date());
     state.sockets.push(ghost, live);
     const coordinator = new WorkCoordinator(state as unknown as DurableObjectState,
@@ -181,7 +194,7 @@ async function main() {
     const state = new FakeState();
     const now = Math.floor(Date.now() / 1000);
     const ghost = new FakeSocket({
-      username: "admin", caps: [], maxConcurrent: 1,
+      username: "admin", caps: ["music-metadata"], taskTypes: ["metadata"], origin: "https://fixture.test", maxConcurrent: 1,
       holding: [{ id: "last-ghost", attempts: 1, claimedAt: now - 60 }],
       joinedAt: now - 60,
     }, new Date(Date.now() - 60_000));
@@ -209,7 +222,7 @@ async function main() {
     const state = new FakeState();
     const now = Math.floor(Date.now() / 1000);
     const socket = new FakeSocket({
-      username: "admin", caps: [], maxConcurrent: 1,
+      username: "admin", caps: ["music-metadata"], taskTypes: ["metadata"], origin: "https://fixture.test", maxConcurrent: 1,
       holding: [{ id: "late-done", attempts: 2, claimedAt: now }], joinedAt: now,
     }, new Date());
     state.sockets.push(socket);
@@ -226,7 +239,7 @@ async function main() {
     seed(sqlite, "send-failure", "queued", 0, 0);
     const state = new FakeState();
     const socket = new FakeSocket({
-      username: "admin", caps: [], maxConcurrent: 1, holding: [],
+      username: "admin", caps: ["music-metadata"], taskTypes: ["metadata"], origin: "https://fixture.test", maxConcurrent: 1, holding: [],
       joinedAt: Math.floor(Date.now() / 1000),
     }, new Date());
     socket.failSend = true;
@@ -239,6 +252,77 @@ async function main() {
     assert.equal(row.status, "claimed");
     assert.equal(row.attempts, 1);
     assert.equal(socket.readyState, 3);
+    sqlite.close();
+  }
+
+  {
+    const { sqlite, db } = makeDatabase();
+    seedTask(sqlite, "lossless-only-transcode", "transcode");
+    seedTask(sqlite, "lossless-only-lossless", "lossless");
+    const state = new FakeState();
+    const socket = agentSocket(["ffmpeg"], ["lossless"]);
+    state.sockets.push(socket);
+    const coordinator = new WorkCoordinator(state as unknown as DurableObjectState,
+      { DB: db } as unknown as Env);
+    await coordinator.fetch(new Request("https://coordinator/notify"));
+    assert.deepEqual(socket.sent.map((raw) => JSON.parse(raw).task.id), ["lossless-only-lossless"]);
+    sqlite.close();
+  }
+
+  {
+    const { sqlite, db } = makeDatabase();
+    seedTask(sqlite, "empty-selection", "metadata");
+    const state = new FakeState();
+    state.sockets.push(agentSocket(["music-metadata", "ffmpeg"], []));
+    const coordinator = new WorkCoordinator(state as unknown as DurableObjectState,
+      { DB: db } as unknown as Env);
+    await coordinator.fetch(new Request("https://coordinator/notify"));
+    assert.equal((sqlite.prepare("SELECT status FROM work_queue WHERE id = 'empty-selection'")
+      .get() as { status: string }).status, "queued");
+    sqlite.close();
+  }
+
+  {
+    const { sqlite, db } = makeDatabase();
+    seedTask(sqlite, "unsupported-high-priority", "transcode");
+    seedTask(sqlite, "supported-metadata", "metadata");
+    const state = new FakeState();
+    const unsupported = agentSocket(["music-metadata"], ["transcode", "metadata"]);
+    const supported = agentSocket(["ffmpeg"], ["transcode"]);
+    state.sockets.push(unsupported, supported);
+    const coordinator = new WorkCoordinator(state as unknown as DurableObjectState,
+      { DB: db } as unknown as Env);
+    await coordinator.fetch(new Request("https://coordinator/notify"));
+    assert.equal(JSON.parse(unsupported.sent[0]).task.id, "supported-metadata");
+    assert.equal(JSON.parse(supported.sent[0]).task.id, "unsupported-high-priority");
+    sqlite.close();
+  }
+
+  {
+    const { sqlite, db } = makeDatabase();
+    seedTask(sqlite, "deselected-release", "lossless");
+    const state = new FakeState();
+    const old = agentSocket(["ffmpeg"], ["lossless"]);
+    const coordinator = new WorkCoordinator(state as unknown as DurableObjectState,
+      { DB: db } as unknown as Env);
+    // Claim the task, then emulate a config deselection followed by the UI release.
+    state.sockets.push(old);
+    await coordinator.fetch(new Request("https://coordinator/notify"));
+    const task = JSON.parse(old.sent[0]).task;
+    await coordinator.webSocketMessage(old as unknown as WebSocket, JSON.stringify({
+      type: "config", taskTypes: [],
+    }));
+    const replacement = agentSocket(["ffmpeg"], ["lossless"]);
+    state.sockets.push(replacement);
+    await coordinator.webSocketMessage(old as unknown as WebSocket, JSON.stringify({
+      type: "release", id: task.id, attempts: task.attempts, claimedAt: task.claimedAt,
+    }));
+    const row = sqlite.prepare("SELECT status,claimed_by,attempts FROM work_queue WHERE id = ?")
+      .get(task.id) as { status: string; claimed_by: string | null; attempts: number };
+    assert.equal(row.status, "claimed", "the replacement agent takes a released claim immediately");
+    assert.equal(row.claimed_by, "admin");
+    assert.equal(row.attempts, 2);
+    assert.equal(JSON.parse(replacement.sent[0]).task.id, task.id);
     sqlite.close();
   }
 
