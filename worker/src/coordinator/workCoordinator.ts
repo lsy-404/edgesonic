@@ -34,6 +34,8 @@
 
 import { getFeatureString } from "../utils/features";
 import { reclaimStaleWork } from "../utils/workReclaim";
+import { parseWorkTaskTypes, type WorkTaskType } from "./workTaskTypes";
+import { signUploadToken } from "../utils/workUploadToken";
 
 interface HeldClaim {
   id: string;
@@ -45,6 +47,8 @@ interface HeldClaim {
 interface AgentState {
   username: string;
   caps: string[];
+  taskTypes: WorkTaskType[];
+  origin: string;
   // How many tasks this browser is willing to run at once.
   maxConcurrent: number;
   // The attempt number identifies the claim when reconciling local capacity.
@@ -89,6 +93,10 @@ export class WorkCoordinator implements DurableObject {
     }
     const username = req.headers.get("X-Agent-User") || "";
     if (!username) return new Response("missing agent identity", { status: 400 });
+    const taskTypes = parseWorkTaskTypes(req.headers.get("X-Agent-Task-Types"));
+    if (!taskTypes) return new Response("invalid task types", { status: 400 });
+    const origin = parseAgentOrigin(req.headers.get("X-Agent-Origin"));
+    if (!origin) return new Response("invalid agent origin", { status: 400 });
     const caps = (req.headers.get("X-Agent-Caps") || "")
       .split(",").map((s) => s.trim()).filter(Boolean);
     const maxConcurrent = clampInt(
@@ -98,11 +106,11 @@ export class WorkCoordinator implements DurableObject {
     const pair = new WebSocketPair();
     this.state.acceptWebSocket(pair[1]);
     const agent: AgentState = {
-      username, caps, maxConcurrent, holding: [],
+      username, caps, taskTypes, origin, maxConcurrent, holding: [],
       joinedAt: Math.floor(Date.now() / 1000),
     };
     pair[1].serializeAttachment(agent);
-    pair[1].send(JSON.stringify({ type: "welcome", maxConcurrent }));
+    pair[1].send(JSON.stringify({ type: "welcome", maxConcurrent, taskTypes }));
     await this.ensureAlarm();
 
     // Hand this agent whatever is already queued before returning. Without
@@ -121,7 +129,7 @@ export class WorkCoordinator implements DurableObject {
 
   async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     if (typeof raw !== "string") return;
-    let msg: { type?: string; id?: string; attempts?: number; claimedAt?: number; caps?: string[]; maxConcurrent?: number };
+    let msg: { type?: string; id?: string; attempts?: number; claimedAt?: number; caps?: string[]; taskTypes?: unknown; maxConcurrent?: number };
     try { msg = JSON.parse(raw); } catch { return; }
     const agent = ws.deserializeAttachment() as AgentState | null;
     if (!isAgentState(agent)) {
@@ -142,6 +150,14 @@ export class WorkCoordinator implements DurableObject {
       case "release":
         if (msg.id && agent.holding.some((claim) => claim.id === msg.id
           && claim.attempts === msg.attempts && claim.claimedAt === msg.claimedAt)) {
+          const held = agent.holding.find((claim) => claim.id === msg.id
+            && claim.attempts === msg.attempts && claim.claimedAt === msg.claimedAt);
+          if (held) await this.env.DB.prepare(
+            `UPDATE work_queue
+                SET status = 'queued', claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL
+              WHERE id = ? AND status = 'claimed' AND claimed_by = ?
+                AND attempts = ? AND claimed_at = ?`,
+          ).bind(held.id, agent.username, held.attempts, held.claimedAt).run();
           agent.holding = agent.holding.filter((claim) =>
             claim.id !== msg.id || claim.attempts !== msg.attempts || claim.claimedAt !== msg.claimedAt);
           ws.serializeAttachment(agent);
@@ -149,6 +165,15 @@ export class WorkCoordinator implements DurableObject {
         }
         break;
       case "config":
+        if (msg.taskTypes !== undefined) {
+          if (!Array.isArray(msg.taskTypes) || msg.taskTypes.some((value) =>
+            typeof value !== "string" || !["metadata", "transcode", "scrape", "lossless"].includes(value),
+          ) || new Set(msg.taskTypes).size !== msg.taskTypes.length) {
+            try { ws.close(1008, "Invalid task types"); } catch { /* already closing */ }
+            return;
+          }
+          agent.taskTypes = msg.taskTypes as WorkTaskType[];
+        }
         if (Array.isArray(msg.caps)) agent.caps = msg.caps.filter((c) => typeof c === "string");
         if (msg.maxConcurrent !== undefined) {
           agent.maxConcurrent = clampInt(msg.maxConcurrent, 1, 8);
@@ -252,6 +277,7 @@ export class WorkCoordinator implements DurableObject {
     const list = this.liveAgents().map(({ agent }) => ({
       username: agent.username,
       caps: agent.caps,
+      taskTypes: agent.taskTypes,
       maxConcurrent: agent.maxConcurrent,
       inFlight: agent.holding.length,
       joinedAt: agent.joinedAt,
@@ -300,23 +326,35 @@ export class WorkCoordinator implements DurableObject {
       headroom += Math.max(0, agent.maxConcurrent - agent.holding.length);
     }
     if (headroom === 0) return { dispatched: 0, agents: live.length };
+    const minimumCaps: Record<WorkTaskType, string> = {
+      metadata: "music-metadata",
+      transcode: "ffmpeg",
+      scrape: "scrape",
+      lossless: "ffmpeg",
+    };
+    const selectedTypes = [...new Set(live.flatMap(({ agent }) =>
+      agent.taskTypes.filter((type) => capsSatisfy(agent.caps, [minimumCaps[type]])),
+    ))];
+    if (selectedTypes.length === 0) return { dispatched: 0, agents: live.length };
 
     // Read a candidate window once, then hand rows out. Claiming is still the
     // atomic UPDATE ... RETURNING used by the poll path, so a browser that
     // polls and one that is pushed to can never receive the same row.
+    const typePlaceholders = selectedTypes.map(() => "?").join(",");
     const candidates = (await this.env.DB.prepare(
-      `SELECT id, required_caps
+      `SELECT id, task_type, required_caps
          FROM work_queue
-        WHERE status = 'queued'
+        WHERE status = 'queued' AND task_type IN (${typePlaceholders})
         ORDER BY priority ASC, created_at ASC
         LIMIT ?`,
-    ).bind(Math.min(headroom * 2, 64)).all<{ id: string; required_caps: string | null }>()).results;
+    ).bind(...selectedTypes, Math.min(headroom * 2, 64)).all<{ id: string; task_type: WorkTaskType; required_caps: string | null }>()).results;
 
     let dispatched = 0;
     for (const row of candidates) {
       const required = parseCaps(row.required_caps);
       const target = live.find(({ agent }) =>
-        agent.holding.length < agent.maxConcurrent && capsSatisfy(agent.caps, required),
+        agent.holding.length < agent.maxConcurrent && agent.taskTypes.includes(row.task_type)
+          && capsSatisfy(agent.caps, [minimumCaps[row.task_type], ...required]),
       );
       if (!target) continue;
 
@@ -340,10 +378,24 @@ export class WorkCoordinator implements DurableObject {
       }>();
       if (!claimed) continue;    // a poller beat us to it
 
+      const payload = safeJsonParse(claimed.payload);
+      if (claimed.task_type === "lossless" && payload && typeof payload === "object") {
+        const data = payload as Record<string, unknown>;
+        const base = `${target.agent.origin}/edgesonic/work/lossless`;
+        const token = await signUploadToken(this.env, claimed.id);
+        const query = new URLSearchParams({
+          id: claimed.id,
+          token,
+          attempts: String(claimed.attempts),
+          claimedAt: String(claimed.claimed_at),
+        });
+        data.streamUrl = `${base}/source?${query}`;
+        data.uploadUrl = `${base}/upload?${query}`;
+      }
       const task = {
         id: claimed.id,
         taskType: claimed.task_type,
-        payload: safeJsonParse(claimed.payload),
+        payload,
         requiredCaps: parseCaps(claimed.required_caps),
         priority: claimed.priority,
         attempts: claimed.attempts,
@@ -401,10 +453,23 @@ function clampInt(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, Math.floor(n)));
 }
 
+function parseAgentOrigin(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if ((url.protocol !== "https:" && url.protocol !== "http:")
+      || url.username || url.password || url.pathname !== "/" || url.search || url.hash) return null;
+    return url.origin;
+  } catch { return null; }
+}
+
 function isAgentState(value: unknown): value is AgentState {
   if (!value || typeof value !== "object") return false;
   const agent = value as Partial<AgentState>;
   return typeof agent.username === "string" && Array.isArray(agent.caps)
+    && Array.isArray(agent.taskTypes) && agent.taskTypes.every((type) =>
+      type === "metadata" || type === "transcode" || type === "scrape" || type === "lossless",
+    ) && typeof agent.origin === "string"
     && typeof agent.maxConcurrent === "number" && typeof agent.joinedAt === "number"
     && Array.isArray(agent.holding)
     && agent.holding.every((claim) => claim && typeof claim.id === "string"
