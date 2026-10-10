@@ -24,3 +24,4 @@
 
 | 574 | [BugFix] Folder delete partial failure recovery | Apply catalog cleanup after each successful R2 deletion and preserve remaining entries for retry after a later failure | Prevent R2 objects from becoming catalog ghosts during partial folder deletion | ✅ 已完成 |
 | 575 | [BugFix] Library tag editor initial metadata race | Wait for complete song metadata before opening the editor and discard stale asynchronous responses | Newly uploaded song album artist and year were missing in the editor | ✅ 已完成 |
+| 576 | [BugFix] Song response album year | Include the joined album year in song query rows and Subsonic child responses | Album year remained blank in single-song editor fetches | ✅ 已完成 |
