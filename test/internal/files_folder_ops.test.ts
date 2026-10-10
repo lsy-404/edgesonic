@@ -14,7 +14,7 @@ interface Entry {
   parent_id: string | null; object_id: string | null; instance_id: string | null;
   physical_key: string | null;
 }
-interface Instance { id: string; master_id: string }
+interface Instance { id: string; master_id: string; storage_object_id?: string | null }
 interface Master { id: string; album_id: string; artist_id: string }
 
 function makeBucket() {
@@ -56,12 +56,18 @@ function makeD1(entries: Entry[], instances: Instance[], masters: Master[]) {
           if (normalized.includes("SELECT COUNT(*) AS n FROM song_instances WHERE master_id = ?")) {
             return { n: instances.filter((i) => i.master_id === stmt.args[0]).length } as T;
           }
+          if (normalized.includes("SELECT COUNT(*) AS n FROM storage_entries WHERE instance_id = ?")) {
+            return { n: entries.filter((e) => e.instance_id === stmt.args[0]).length } as T;
+          }
+          if (normalized.includes("SELECT COUNT(*) AS n FROM storage_entries WHERE object_id = ?")) {
+            return { n: entries.filter((e) => e.object_id === stmt.args[0]).length } as T;
+          }
           if (normalized.includes("SELECT album_id, artist_id FROM song_masters WHERE id = ?")) {
             return (masters.find((m) => m.id === stmt.args[0]) || null) as T | null;
           }
-          if (normalized.includes("SELECT master_id FROM song_instances WHERE id = ?")) {
+          if (normalized.includes("SELECT master_id, storage_object_id FROM song_instances WHERE id = ?")) {
             const item = instances.find((i) => i.id === stmt.args[0]);
-            return (item ? { master_id: item.master_id } : null) as T | null;
+            return (item ? { master_id: item.master_id, storage_object_id: item.storage_object_id ?? null } : null) as T | null;
           }
           return null;
         },
@@ -72,6 +78,9 @@ function makeD1(entries: Entry[], instances: Instance[], masters: Master[]) {
           if (normalized.includes("FROM storage_entries") && normalized.includes("path LIKE ?")) {
             const prefix = String(stmt.args[2]).replace(/%$/, "");
             return { results: entries.filter((e) => e.id === stmt.args[1] || e.path === stmt.args[1] || e.path.startsWith(prefix)) as T[] };
+          }
+          if (normalized.includes("SELECT id FROM song_instances WHERE storage_object_id = ?")) {
+            return { results: instances.filter((i) => i.storage_object_id === stmt.args[0]).map((i) => ({ id: i.id })) as T[] };
           }
           return { results: [] as T[] };
         },
@@ -163,7 +172,7 @@ async function main() {
       { id: "e1", path: "music/kill/a.mp3", display_name: "a.mp3", kind: "file", parent_id: "kill", object_id: "o1", instance_id: "i1", physical_key: "objects/a.mp3" },
       { id: "keep", path: "music/keep.mp3", display_name: "keep.mp3", kind: "file", parent_id: null, object_id: "o2", instance_id: "i2", physical_key: "objects/keep.mp3" },
     ];
-    const instances = [{ id: "i1", master_id: "m1" }, { id: "i2", master_id: "m2" }];
+    const instances = [{ id: "i1", master_id: "m1", storage_object_id: "o1" }, { id: "i2", master_id: "m2", storage_object_id: "o2" }];
     const masters = [{ id: "m1", album_id: "al1", artist_id: "ar1" }, { id: "m2", album_id: "al2", artist_id: "ar2" }];
     const app = makeApp(bucket, entries, instances, masters);
     const r = await app.post("/storage/files/deleteFolder", { path: "music/kill" });
