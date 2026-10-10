@@ -87,29 +87,105 @@ export function inspectIntegerPcmWav(bytes: Uint8Array): WavPcmFormat {
   return { sampleRate, channels, bitsPerSample, dataBytes };
 }
 
-function stable(value: unknown): string {
-  if (value instanceof Uint8Array) return Array.from(value).join(",");
-  if (Array.isArray(value)) return JSON.stringify(value.map((item) => JSON.parse(stable(item))));
+function stableValue(value: unknown): unknown {
+  if (value instanceof Uint8Array) return { __bytes: Array.from(value) };
+  if (Array.isArray(value)) return value.map(stableValue);
   if (value && typeof value === "object") {
     const object = value as Record<string, unknown>;
-    return JSON.stringify(Object.fromEntries(Object.keys(object).sort().map((key) => [key, JSON.parse(stable(object[key]))])));
+    return Object.fromEntries(Object.keys(object).sort().map((key) => [key, stableValue(object[key])]));
   }
-  return JSON.stringify(value ?? null);
+  return value ?? null;
+}
+
+function stable(value: unknown): string {
+  return JSON.stringify(stableValue(value));
 }
 
 const COMMON_TAGS = [
-  "title", "artists", "artist", "album", "albumartist", "albumartists", "year", "date", "originaldate",
-  "track", "disk", "genre", "composer", "lyricist", "writer", "lyrics", "copyright", "publisher",
+  "title", "artists", "artist", "album", "albumartist", "albumartists", "originaldate",
+  "track", "disk", "genre", "composer", "lyricist", "writer", "copyright", "publisher",
   "bpm", "compilation", "grouping", "subtitle", "isrc", "barcode", "catalognumber", "movementIndex",
   "movementTotal", "work", "replaygain_track_gain", "replaygain_album_gain",
 ] as const;
 
-function commentTexts(value: unknown): string[] {
+function commentEntries(value: unknown): Array<{ language: string; descriptor: string; text: string }> {
   const entries = Array.isArray(value) ? value : value === undefined ? [] : [value];
   return entries.map((entry) => {
-    if (entry && typeof entry === "object" && "text" in entry) return String((entry as { text: unknown }).text);
-    return String(entry);
-  }).sort();
+    if (entry && typeof entry === "object" && "text" in entry) {
+      const item = entry as { text: unknown; language?: unknown; descriptor?: unknown };
+      return { language: String(item.language ?? "").toLowerCase(), descriptor: String(item.descriptor ?? ""), text: String(item.text ?? "") };
+    }
+    return { language: "", descriptor: "", text: String(entry) };
+  }).sort((a, b) => stable(a).localeCompare(stable(b)));
+}
+
+interface LyricEntry { language: string; descriptor: string; text: string }
+
+function lyricEntries(commonValue: unknown, nativeTags: Array<{ id: string; value: unknown }>): LyricEntry[] {
+  const entries: LyricEntry[] = [];
+  const add = (value: unknown, language = "", descriptor = "") => {
+    if (value && typeof value === "object" && "text" in value) {
+      const item = value as { text: unknown; language?: unknown; descriptor?: unknown };
+      entries.push({
+        language: String(item.language ?? language).toLowerCase(),
+        descriptor: String(item.descriptor ?? descriptor),
+        text: String(item.text ?? ""),
+      });
+    } else if (value !== undefined && value !== null) {
+      entries.push({ language: language.toLowerCase(), descriptor, text: String(value) });
+    }
+  };
+  for (const item of Array.isArray(commonValue) ? commonValue : commonValue === undefined ? [] : [commonValue]) add(item);
+  for (const tag of nativeTags) {
+    const id = tag.id.toUpperCase();
+    if (id === "SYLT") {
+      throw new WavFlacConversionError("metadata_loss", "Synchronized lyrics cannot be preserved safely.");
+    }
+    if (id === "USLT" || id === "UNSYNCEDLYRICS" || id === "LYRICS") {
+      add(tag.value);
+      continue;
+    }
+    const languageTag = /^LYRICS[-_]([A-Z]{3})$/u.exec(id);
+    if (languageTag) add(tag.value, languageTag[1]);
+  }
+  const unique = new Map(entries.map((entry) => [stable(entry), entry]));
+  return [...unique.values()].sort((a, b) => stable(a).localeCompare(stable(b)));
+}
+
+function assertDatePreserved(source: Record<string, unknown>, output: Record<string, unknown>) {
+  const sourceDate = source.date;
+  const sourceYear = source.year;
+  const outputDate = output.date;
+  const outputYear = output.year;
+  if (sourceDate !== undefined && stable(sourceDate) !== stable(outputDate)) {
+    throw new WavFlacConversionError("metadata_loss", "The date metadata could not be preserved exactly.");
+  }
+  if (sourceYear !== undefined && stable(sourceYear) !== stable(outputYear)) {
+    throw new WavFlacConversionError("metadata_loss", "The year metadata could not be preserved exactly.");
+  }
+  if (sourceDate === undefined && outputDate !== undefined &&
+      (sourceYear === undefined || String(outputDate) !== String(sourceYear))) {
+    throw new WavFlacConversionError("metadata_loss", "The date metadata could not be preserved exactly.");
+  }
+  if (sourceYear === undefined && outputYear !== undefined) {
+    const dateYear = typeof sourceDate === "string" ? /^([0-9]{4})/u.exec(sourceDate)?.[1] : undefined;
+    if (!dateYear || String(outputYear) !== dateYear) {
+      throw new WavFlacConversionError("metadata_loss", "The year metadata could not be preserved exactly.");
+    }
+  }
+}
+
+function pictureIdentity(value: unknown) {
+  const pictures = Array.isArray(value) ? value : [];
+  return pictures.map((picture) => {
+    const item = picture as { format?: unknown; type?: unknown; description?: unknown; data?: unknown };
+    return {
+      format: item.format ?? null,
+      type: item.type ?? null,
+      description: item.description ?? "",
+      data: item.data instanceof Uint8Array ? Array.from(item.data) : item.data ?? null,
+    };
+  });
 }
 
 export async function assertMetadataPreserved(source: Uint8Array, output: Uint8Array) {
@@ -122,32 +198,53 @@ export async function assertMetadataPreserved(source: Uint8Array, output: Uint8A
       throw new WavFlacConversionError("metadata_loss", `The ${key} metadata could not be preserved exactly.`);
     }
   }
-  const sourceComments = commentTexts(sourceTags.comment);
-  const outputComments = commentTexts(outputTags.comment);
-  const outputDescriptions = commentTexts(outputTags.description);
-  for (const tag of Object.values(outputMetadata.native).flat()) {
-    if (tag.id.toUpperCase() === "DESCRIPTION") outputDescriptions.push(...commentTexts(tag.value));
+  assertDatePreserved(sourceTags, outputTags);
+  const sourceCommentEntries = commentEntries(sourceTags.comment);
+  const sourceNative = Object.values(sourceMetadata.native).flat();
+  for (const tag of sourceNative) {
+    if (tag.id.toUpperCase() !== "COMM") continue;
+    const values = Array.isArray(tag.value) ? tag.value : [tag.value];
+    for (const value of values) {
+      if (value && typeof value === "object") {
+        const item = value as { language?: unknown; descriptor?: unknown };
+        if (String(item.language ?? "eng").toLowerCase() !== "eng" || String(item.descriptor ?? "") !== "") {
+          throw new WavFlacConversionError("metadata_loss", "Comment language or descriptor cannot be preserved safely.");
+        }
+      }
+    }
   }
-  if (stable(sourceComments) !== stable([...outputComments, ...outputDescriptions].sort())) {
+  const outputComments = commentEntries(outputTags.comment);
+  const outputDescriptions = commentEntries(outputTags.description);
+  for (const tag of Object.values(outputMetadata.native).flat()) {
+    if (tag.id.toUpperCase() === "DESCRIPTION") outputDescriptions.push(...commentEntries(tag.value));
+  }
+  const outputCommentTexts = [...outputComments, ...outputDescriptions].map((item) => item.text).sort();
+  if (stable(sourceCommentEntries.map((item) => item.text).sort()) !== stable(outputCommentTexts)) {
     throw new WavFlacConversionError("metadata_loss", "The comment metadata could not be preserved exactly.");
+  }
+  const outputNative = Object.values(outputMetadata.native).flat();
+  if (stable(lyricEntries(sourceTags.lyrics, sourceNative)) !== stable(lyricEntries(outputTags.lyrics, outputNative))) {
+    throw new WavFlacConversionError("metadata_loss", "The lyrics metadata could not be preserved exactly.");
   }
   const sourcePictures = sourceMetadata.common.picture ?? [];
   const outputPictures = outputMetadata.common.picture ?? [];
-  if (stable(sourcePictures) !== stable(outputPictures)) {
+  if (stable(pictureIdentity(sourcePictures)) !== stable(pictureIdentity(outputPictures))) {
     throw new WavFlacConversionError("metadata_loss", "Embedded cover art could not be preserved exactly.");
   }
   if (stable(sourceMetadata.format.chapters) !== stable(outputMetadata.format.chapters)) {
     throw new WavFlacConversionError("metadata_loss", "Chapter metadata could not be preserved exactly.");
   }
-  const sourceNative = Object.values(sourceMetadata.native).flat();
-  const outputValues = [
-    ...Object.values(outputMetadata.native).flat().map((tag) => stable(tag.value)),
-    ...Object.values(outputTags).map(stable),
-  ];
-  const commonValues = new Set(Object.values(sourceTags).map(stable));
   for (const tag of sourceNative) {
-    const serialized = stable(tag.value);
-    if (!commonValues.has(serialized) && !outputValues.includes(serialized)) {
+    const id = tag.id.toUpperCase();
+    if (id === "COMM" || id === "USLT" || id === "APIC"
+      || id === "UNSYNCEDLYRICS" || id === "LYRICS" || /^LYRICS[-_][A-Z]{3}$/u.test(id)) continue;
+    if ([
+      "INAM", "IART", "IPRD", "ICRD", "IGNR", "ICMT", "ITRK", "ISFT",
+      "TIT1", "TIT2", "TIT3", "TPE1", "TPE2", "TPE3", "TPE4", "TALB", "TRCK", "TPOS",
+      "TYER", "TDRC", "TDOR", "TCON", "TCOM", "TEXT", "TCOP", "TPUB", "TBPM", "TCMP",
+      "TSRC", "TSSE", "TLAN",
+    ].includes(id)) continue;
+    if (!outputNative.some((candidate) => candidate.id.toUpperCase() === id && stable(candidate.value) === stable(tag.value))) {
       throw new WavFlacConversionError("metadata_loss", `The ${tag.id} metadata field could not be preserved.`);
     }
   }

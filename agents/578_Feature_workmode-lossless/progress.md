@@ -8,3 +8,6 @@
 - Added abort propagation and focused runner coverage. Tests/build/typecheck passed as recorded in findings.
 
 - Merged selectable Work Mode UI changes, removed unreferenced standalone conversion wrapper/worker, and required a complete registered receipt for transcode success.
+- Merged the server claim-bound lossless source/upload endpoints and preserved the coordinator-provided signed stream URL in the runner.
+- Extended the generated browser fixture with negative checks for changed lyrics, cover, date, comments, descriptors, and unknown native tags; the local upload saves generated source WAV and conversion evidence for endpoint testing.
+- Rejected synchronized SYLT lyrics because conversion cannot preserve event timing. Added language-suffixed FLAC lyrics support to browser and server metadata readers.

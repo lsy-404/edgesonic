@@ -19,7 +19,7 @@ class MockWorker extends EventTarget {
   }
 }
 
-test("lossless tasks get an instance-bound stream URL and claim identity", async () => {
+test("lossless tasks retain their signed stream URL and claim identity", async () => {
   const originalWorker = globalThis.Worker;
   let worker: MockWorker | undefined;
   globalThis.Worker = class extends MockWorker {
@@ -29,7 +29,7 @@ test("lossless tasks get an instance-bound stream URL and claim identity", async
     }
   } as unknown as typeof Worker;
   const task: QueuedTask = {
-    id: "work-1", taskType: "lossless", payload: { instanceId: "instance-1", sourceSize: 512 },
+    id: "work-1", taskType: "lossless", payload: { instanceId: "instance-1", sourceSize: 512, streamUrl: "/signed/source?token=claim-bound" },
     requiredCaps: ["lossless"], priority: 0, attempts: 2, maxAttempts: 3,
     claimedAt: 1234, heartbeatAt: 1234,
   };
@@ -44,7 +44,7 @@ test("lossless tasks get an instance-bound stream URL and claim identity", async
       ...task,
       payload: {
         ...task.payload,
-        streamUrl: "/rest/stream?id=instance-1&source=instance-1",
+        streamUrl: "/signed/source?token=claim-bound",
         attempts: 2,
         claimedAt: 1234,
       },
@@ -59,7 +59,7 @@ test("lossless cancellation leaves the claim unsubmitted", async () => {
   const originalWorker = globalThis.Worker;
   globalThis.Worker = class extends MockWorker {} as unknown as typeof Worker;
   const task: QueuedTask = {
-    id: "work-2", taskType: "lossless", payload: { instanceId: "instance-2" },
+    id: "work-2", taskType: "lossless", payload: { instanceId: "instance-2", streamUrl: "/signed/source?token=claim-bound" },
     requiredCaps: ["lossless"], priority: 0, attempts: 1, maxAttempts: 3,
     claimedAt: 4321, heartbeatAt: 4321,
   };

@@ -207,6 +207,8 @@ export function nativeLyricsFallback(
         case "SYNCEDLYRICS": if (!synced) synced = val; break;
         case "LYRICS": if (!plain) plain = val; break;
         case "UNSYNCEDLYRICS": if (!unsynced) unsynced = val; break;
+        default:
+          if (/^LYRICS[-_][A-Z]{3}$/u.test(tag.id.toUpperCase()) && !plain) plain = val;
       }
     }
   }

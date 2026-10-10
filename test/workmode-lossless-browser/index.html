@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Work Mode Lossless Browser Fixture</title>
+  </head>
+  <body>
+    <main>
+      <h1>Work Mode lossless browser fixture</h1>
+      <p>This harness generates its own tagged tone WAV in memory and uses the real queued worker and FFmpeg engine.</p>
+      <button id="start">Start generated WAV conversion</button>
+      <p id="status" role="status">Ready. Nothing has run yet.</p>
+      <h2>Fixture metadata</h2>
+      <pre id="fixture"></pre>
+      <h2>Conversion and upload evidence</h2>
+      <pre id="result">Start the fixture to show evidence.</pre>
+      <a id="download" hidden>Download locally uploaded FLAC</a>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
