@@ -26,3 +26,8 @@ Browser-local WAV to FLAC conversion in Tools, producing a verified downloadable
 - The first extensible PCM fixture used 8 bytes of data for a 24-bit stereo layout, which is not frame-aligned. The fixture now uses 12 bytes; the parser rejects non-frame-aligned data.
 - `pnpm exec tsx test/wav_flac_conversion.test.ts`, `pnpm --dir web run typecheck`, and `pnpm --dir web run build` pass. Build reports existing warnings from `@clamber_l/crypto` browser `url` externalization and the existing >500 kB main chunk.
 - The WAV parser requires the RIFF-declared boundary to match the full file and rejects unexplained trailing bytes; this prevents ignored post-container data from bypassing metadata checks.
+
+## Production smoke follow-up
+- `ffmpeg.writeFile` transfers `Uint8Array.buffer` to the FFmpeg worker. Passing the verification source directly detaches it before metadata validation, causing `music-metadata` to reject the empty buffer with `End-Of-Stream`. Pass a copy to `writeFile` so exact verification can read the original source.
+- The valid tagged WAV parses correctly. RIFF INFO ICMT becomes Vorbis DESCRIPTION under FFmpeg's FLAC muxer, and music-metadata exposes the WAV text as common.comment but not FLAC common.comment. Preserve fail-closed metadata checks while recognizing this explicit cross-container mapping.
+- The FLAC parser does not report `numberOfSamples`; derive it from parsed duration and sample rate for the container property check. The worker's exact decoded-PCM SHA-256 comparison remains the authoritative sample equality check.

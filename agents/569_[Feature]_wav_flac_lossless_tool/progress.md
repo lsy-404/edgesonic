@@ -10,3 +10,8 @@
 - Added seven parser tests under `/test`; all pass. Verified with local FFmpeg that the conversion arguments preserve a representative WAV's exact decoded samples, tags, and stream properties.
 - Verified the browser FFmpeg core JS/WASM assets are reachable with CORS and explicitly configured the worker to use them.
 - `pnpm --dir web run typecheck` and `pnpm --dir web run build` passed. Build output includes the existing main-chunk-size and crypto URL-externalization warnings.
+
+- Reproduced native FFmpeg conversion using the tagged production smoke fixture. WAV and FLAC decoded to the same SHA-256 PCM hash.
+- Changed the worker to pass `copyForTransfer(source)` to FFmpeg. A test transfers that copy with `structuredClone` and confirms the verification source remains attached.
+- Updated metadata validation for RIFF INFO `ICMT` mapping to FLAC Vorbis `DESCRIPTION`, and for FLAC parsers that provide duration/sample rate but omit `numberOfSamples`. The exact PCM hash check still enforces sample equality.
+- `pnpm exec tsx test/wav_flac_conversion.test.ts`, `pnpm --dir web run typecheck`, and `git diff --check` pass.
