@@ -19,3 +19,7 @@
 - Final integration regressions passed: 25 test entries covering new retrieval, queue/submission, retry, provider matching, pagination and lossless runner; Worker/web typechecks passed; diff whitespace/prohibited marker check passed.
 - Browser local workflow passed actual dispatch, Worker/provider search/detail/lyrics, Hono submit apply and full-schema SQLite readback. Unknown Artist/Pending Uploads became Fixture Artist/Fixture Album, year 2024 and exact LRC, queue completed with no pending marker. No production queue or music source mutation was made during verification.
 - Root guard tests passed artist rename between snapshot and batch plus replacement of own apply lease; stale writes left lyrics/year unchanged and did not clear the new owner lease. Compilation test now omits optional provider album artist and still fills Various Artists.
+
+- Main was unprotected on live check and fast-forwarded/pushed to 6e347fec. Existing primary dirty files matched their saved hashes; original task index bytes were preserved with only owned new rows appended.
+- Initial production deploy version 8d541937-aa17-401f-8a98-ceeb63fa8e17 preserved required SSO/Voidcarve Access. Live build info matched, Work Mode showed the explicit action and online socket; queue/claimed/failed and new retrieval task counts were zero, with read-only D1 postflight writing zero rows.
+- Boolean feature switch postflight correction passed enabled/disabled route tests and Worker typecheck; deploy this final correction before completion.

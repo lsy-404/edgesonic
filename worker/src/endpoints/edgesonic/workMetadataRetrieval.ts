@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
-import { getFeatureString } from "../../utils/features";
+import { getFeature, getFeatureString } from "../../utils/features";
 import { albumNameFromSourcePath, recoverMetadataFromStoragePath, sourceFolderLogicalPath } from "../../utils/storageMetadata";
 import { artistInsertStatements, parseAlbumArtistCredit, parseArtistCredits, songArtistStatements } from "../../utils/artistCredits";
 import { md5 } from "../../utils/md5";
@@ -107,7 +107,7 @@ metadataRetrievalRoutes.post("/work/scrape/dispatch", permissionMiddleware("disp
   if (request.after !== undefined && typeof request.after !== "string") {
     return c.json({ ok: false, error: "after must be a master id" }, 400);
   }
-  if ((await getFeatureString(env, "scrape_enabled", "1")) !== "1") return c.json({ ok: false, error: "Metadata retrieval is disabled" }, 409);
+  if (!(await getFeature(env, "scrape_enabled"))) return c.json({ ok: false, error: "Metadata retrieval is disabled" }, 409);
   const sources = await getRetrievalSources(env);
   if (!sources.length) return c.json({ ok: false, error: "No metadata retrieval sources are enabled" }, 409);
   const rows = (await env.DB.prepare(

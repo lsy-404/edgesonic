@@ -22,6 +22,8 @@ function makeDb() {
     );
     CREATE TABLE feature_strings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     INSERT INTO feature_strings VALUES ('scrape_enabled_sources', '["lrc","netease","qmusic","kugou"]');
+    CREATE TABLE features (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
+    INSERT INTO features VALUES ('scrape_enabled', 1);
     CREATE TABLE user_permissions (level INTEGER, permission TEXT, enabled INTEGER, max_rph INTEGER, PRIMARY KEY(level, permission));
     CREATE TABLE artists (id TEXT PRIMARY KEY, name TEXT, sort_name TEXT, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE albums (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT, year INTEGER, genre TEXT,
@@ -104,6 +106,17 @@ async function post(app: Hono, env: Env, url: string, body: unknown) {
 }
 
 async function main() {
+  console.log("disabled retrieval rejects forced dispatch:");
+  {
+    const sqlite = makeDb();
+    sqlite.prepare("UPDATE features SET value=0 WHERE key='scrape_enabled'").run();
+    const { app, env } = appFor(sqlite);
+    const response = await post(app, env, "/edgesonic/work/scrape/dispatch", {});
+    assert(response.status === 409, "retrieval respects the existing master feature switch");
+    assert((sqlite.prepare("SELECT COUNT(*) AS n FROM work_queue").get() as { n: number }).n === 0,
+      "disabled retrieval does not enqueue work");
+  }
+
   console.log("dispatch retrieves only eligible missing masters and leaves active work alone:");
   {
     const sqlite = makeDb();

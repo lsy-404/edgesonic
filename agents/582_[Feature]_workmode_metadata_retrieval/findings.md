@@ -13,3 +13,5 @@
 
 [Server transaction review] -> A master CAS may fail while followup statements still see the same updated_at second -> Requested catalog receipt immediately after successful master update using SQLite changes(), with all remaining D1 writes fenced by that receipt. Sources: https://developers.cloudflare.com/d1/worker-api/d1-database/#batch ; https://www.sqlite.org/lang_corefunc.html#changes .
 [Recovery review] -> Clearing an applying marker before setting retry could lose pending work, and a plain cover lease could lose catalog state -> Server followup retains pending on pre-batch errors and embeds catalog target/mode in stale-recoverable lease. Valid/invalid GIF agreement also reviewed to avoid permanent cover retries.
+
+[Production postflight] -> String settings did not contain scrape_enabled, because the existing master switch belongs to boolean features -> Replaced string-default lookup with getFeature, added disabled switch rejection/no-enqueue test, and verified the full-schema browser fixture defaults. Initial deployment did not dispatch any production retrieval jobs; corrective deployment follows.
