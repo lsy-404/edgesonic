@@ -226,7 +226,9 @@ async function writeRetrievalCover(
   const jpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
   const webp = bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
     String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
-  if (!((mime === "image/png" && png) || (mime === "image/jpeg" && jpeg) || (mime === "image/webp" && webp))) {
+  const gif = bytes.length >= 6 && ["GIF87a", "GIF89a"].includes(String.fromCharCode(...bytes.slice(0, 6)));
+  if (!((mime === "image/png" && png) || (mime === "image/jpeg" && jpeg) ||
+      (mime === "image/webp" && webp) || (mime === "image/gif" && gif))) {
     return "invalid";
   }
   const current = await env.DB.prepare(
@@ -270,7 +272,12 @@ async function finishRetrievalCatalogReceipt(
     const cover = r.cover as { data?: string; mime?: string };
     const status = await writeRetrievalCover(env, String(payload.masterId), albumId,
       String(payload.sourceUri), (payload.sourceEtag as string | null) ?? null, taskId, cover);
-    if (status === "invalid") return { ok: false, reason: "invalid cover data" };
+    if (status === "invalid") {
+      const done = receipt.replace(/:cover$/, ":done");
+      await env.DB.prepare("UPDATE work_queue SET error_message = ? WHERE id = ? AND error_message = ?")
+        .bind(done, taskId, lockMarker).run();
+      return { ok: true, masterId: String(payload.masterId), reason: "invalid cover ignored" };
+    }
     const done = receipt.replace(/:cover$/, ":done");
     await env.DB.prepare("UPDATE work_queue SET error_message = ? WHERE id = ? AND error_message = ?")
       .bind(done, taskId, lockMarker).run();
@@ -376,6 +383,9 @@ export async function applyCompletedRetrieval(
           ).bind(albumId, albumName, albumName.toLowerCase(), yearMissing ? Number(match.year) : null, current.compilation, now, now));
         }
         const masterUpdateIndex = statements.length;
+        const coverQueued = (currentCoverMissing || albumId !== current.album_id) && !!r.cover;
+        const catalogReceipt = `retrieval_apply:catalog:${albumId}:${coverQueued ? "cover" : "done"}`;
+        completedReceipt = catalogReceipt;
         statements.push(env.DB.prepare(
           `UPDATE song_masters SET title = ?, sort_title = ?, artist_id = ?, album_artist_id = ?, album_id = ?,
              lyrics = ?, updated_at = ? WHERE id = ? AND album_id = ? AND title = ? AND lyrics IS ?
@@ -395,42 +405,32 @@ export async function applyCompletedRetrieval(
           current.album_cover_r2_key || "", payload.instanceId, current.id, payload.sourceUri,
           payload.sourceEtag ?? null,
         ));
+        statements.push(env.DB.prepare(
+          "UPDATE work_queue SET error_message = ?, heartbeat_at = unixepoch() WHERE id = ? AND status = 'completed' AND error_message = ? AND changes() = 1"
+        ).bind(catalogReceipt, taskId, applying));
         if (yearMissing && albumId === current.album_id) statements.push(env.DB.prepare(
           `UPDATE albums SET year = ?, updated_at = ? WHERE id = ? AND name = ? AND year IS ?
-             AND EXISTS (SELECT 1 FROM song_masters WHERE id = ? AND album_id = ? AND artist_id = ?
-               AND album_artist_id IS ? AND title = ? AND lyrics IS ? AND updated_at = ?)`,
-        ).bind(Number(match.year), now, current.album_id, current.album_name, current.year,
-          current.id, albumId, primaryArtist?.id ?? current.artist_id, albumArtistCredit?.id ?? current.album_artist_id,
-          title, lyricsMissing ? (match.lyrics as string).trim() : current.lyrics, now));
+             AND EXISTS (SELECT 1 FROM work_queue WHERE id = ? AND error_message = ?)`,
+        ).bind(Number(match.year), now, current.album_id, current.album_name, current.year, taskId, catalogReceipt));
         if (artistMissing && primaryArtist) {
-          statements.push(env.DB.prepare("DELETE FROM song_artists WHERE song_id = ? AND EXISTS (SELECT 1 FROM song_masters WHERE id = ? AND updated_at = ?)")
-            .bind(current.id, current.id, now));
+          statements.push(env.DB.prepare(
+            "DELETE FROM song_artists WHERE song_id = ? AND EXISTS (SELECT 1 FROM work_queue WHERE id = ? AND error_message = ?)"
+          ).bind(current.id, taskId, catalogReceipt));
           for (const credit of artistCredits) statements.push(env.DB.prepare(
             `INSERT OR IGNORE INTO song_artists (song_id, artist_id, position)
-             SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM song_masters WHERE id = ? AND album_id = ?
-               AND artist_id = ? AND album_artist_id IS ? AND title = ? AND lyrics IS ? AND updated_at = ?)`,
-          ).bind(current.id, credit.id, credit.position, current.id, albumId, primaryArtist?.id ?? current.artist_id,
-            albumArtistCredit?.id ?? current.album_artist_id, title,
-            lyricsMissing ? (match.lyrics as string).trim() : current.lyrics, now));
+             SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM work_queue WHERE id = ? AND error_message = ?)`,
+          ).bind(current.id, credit.id, credit.position, taskId, catalogReceipt));
         }
         for (const id of new Set([current.album_id, albumId])) statements.push(env.DB.prepare(
           `UPDATE albums SET song_count = (SELECT COUNT(*) FROM song_masters WHERE album_id = ?),
             duration = (SELECT COALESCE(SUM(duration), 0) FROM song_masters WHERE album_id = ?),
             size = (SELECT COALESCE(SUM(si.size), 0) FROM song_instances si JOIN song_masters sm ON sm.id = si.master_id WHERE sm.album_id = ?)
-           WHERE id = ? AND EXISTS (SELECT 1 FROM song_masters WHERE id = ? AND album_id = ?
-             AND artist_id = ? AND album_artist_id IS ? AND title = ? AND lyrics IS ? AND updated_at = ?)`
-        ).bind(id, id, id, id, current.id, albumId, primaryArtist?.id ?? current.artist_id,
-          albumArtistCredit?.id ?? current.album_artist_id, title,
-          lyricsMissing ? (match.lyrics as string).trim() : current.lyrics, now));
-        const coverQueued = (currentCoverMissing || albumId !== current.album_id) && !!r.cover;
-        const catalogReceipt = `retrieval_apply:catalog:${albumId}:${coverQueued ? "cover" : "done"}`;
-        completedReceipt = catalogReceipt;
-        statements.push(env.DB.prepare(
-          "UPDATE work_queue SET error_message = ?, heartbeat_at = unixepoch() WHERE id = ? AND status = 'completed' AND error_message = ? AND EXISTS (SELECT 1 FROM song_masters WHERE id = ? AND album_id = ? AND updated_at = ?)"
-        ).bind(catalogReceipt, taskId, applying, current.id, albumId, now));
+           WHERE id = ? AND EXISTS (SELECT 1 FROM work_queue WHERE id = ? AND error_message = ?)`
+        ).bind(id, id, id, id, taskId, catalogReceipt));
         const batchResults = await env.DB.batch(statements);
         if (batchResults[masterUpdateIndex]?.meta?.changes !== 1) {
           annotation = { ok: false, reason: "source or metadata changed during retrieval apply" };
+          retry = true;
           if (albumId !== current.album_id) {
             await env.DB.prepare("DELETE FROM albums WHERE id = ? AND NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = ?)")
               .bind(albumId, albumId).run();
@@ -439,6 +439,7 @@ export async function applyCompletedRetrieval(
           annotation = { ok: true, masterId: current.id };
           const coverState = await finishRetrievalCatalogReceipt(env, taskId, payloadJson, result, catalogReceipt, albumId);
           if (!coverState.ok) { retry = true; annotation = { ok: false, reason: coverState.reason }; }
+          else if (coverState.reason) annotation = coverState;
         }
       }
     }
