@@ -6,3 +6,5 @@
 - [x] Keep cancellation/worker termination and FFmpeg asset cleanup correct on success and failure.
 - [x] Add focused tests under `/test` for conversion and queued task behavior.
 - [x] Run the focused checks and commit only scoped implementation and audit records.
+- [x] Merge the selectable Work Mode UI change and remove the unused standalone conversion wrapper and worker.
+- [x] Require a complete registered transcode upload receipt before reporting success.

@@ -502,10 +502,21 @@ async function runTranscode(payload: Record<string, unknown>): Promise<unknown> 
       const body = await uploadResp.text().catch(() => "");
       throw new Error(`upload failed: HTTP ${uploadResp.status} ${body.slice(0, 200)}`);
     }
-    const uploadJson = await uploadResp.json() as { r2Key?: string; size?: number };
+    const uploadJson = await uploadResp.json() as {
+      ok?: boolean;
+      registered?: boolean;
+      r2Key?: string;
+      size?: number;
+      instanceId?: string | null;
+    };
+    if (uploadJson.ok !== true || uploadJson.registered !== true || !uploadJson.r2Key
+      || !uploadJson.instanceId || uploadJson.size !== outBytes.byteLength) {
+      throw new Error("transcode upload was not registered with a complete receipt");
+    }
     return {
-      r2Key: uploadJson.r2Key ?? null,
-      size: uploadJson.size ?? outBytes.byteLength,
+      r2Key: uploadJson.r2Key,
+      size: uploadJson.size,
+      instanceId: uploadJson.instanceId,
     };
   } finally {
     signal?.removeEventListener("abort", terminateOnAbort);

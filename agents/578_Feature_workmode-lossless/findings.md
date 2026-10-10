@@ -6,3 +6,5 @@
 - Extracted the converter into a reusable worker-safe function; queued conversion runs directly inside the existing task worker. Shared FFmpeg loading supplies the known single-thread core assets, checks `exec` exit codes, and runs engine termination plus object URL release in `finally`.
 - Cancellation now reaches source fetch, FFmpeg, and upload. The runner allows the worker a short cleanup window after cancellation, then terminates it; canceled tasks do not submit outcomes.
 - Tests run: `pnpm exec tsx --test test/frontend/workmode_lossless_runner.test.ts`; `pnpm exec tsx test/wav_flac_conversion.test.ts`; `pnpm --dir web run typecheck`; `pnpm --dir web run build`. All passed. The lossless test covers exact instance URL/claim augmentation and cancellation behavior; existing converter tests cover WAV validation and metadata checks.
+
+- Merged the selectable Work Mode UI commit; the former WAV-to-FLAC page wrapper and worker had no remaining references and were removed. Tightened transcode completion to require a successful registered receipt with an output instance ID and exact output byte count.
