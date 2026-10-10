@@ -28,11 +28,12 @@ import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { useWorkSocket } from "../stores/workSocket";
 import { useAuth } from "../api";
+import { taskTypeLabelKey, type WorkTaskType } from "../lib/workTypes";
 
 const { t } = useI18n();
 const router = useRouter();
 const pool = useWorkSocket();
-const { edgesonicFetch, edgesonicPost } = useAuth();
+const { edgesonicFetch, edgesonicPost, isAdmin } = useAuth();
 const progress = ref({ queued: 0, claimed: 0, completed: 0, failed: 0 });
 const retryingFailed = ref(false);
 const retryFailedError = ref<string | null>(null);
@@ -54,6 +55,19 @@ const active = computed(() => pool.enabled);
 const wakeLock = ref<WakeLockSentinel | null>(null);
 const wakeLockError = ref<string | null>(null);
 const wakeLockSupported = typeof navigator !== "undefined" && "wakeLock" in navigator;
+const ffmpegAvailable = computed(() => pool.caps.includes("ffmpeg"));
+const dispatchingLossless = ref(false);
+const losslessDispatchResult = ref<string | null>(null);
+const losslessDispatchError = ref<string | null>(null);
+const canStart = computed(() => pool.eligible && pool.selectedTaskTypes.length > 0);
+
+function supports(type: WorkTaskType): boolean {
+  return type !== "transcode" && type !== "lossless" || ffmpegAvailable.value;
+}
+
+function setSelected(type: WorkTaskType, event: Event): void {
+  pool.setTaskTypeSelected(type, (event.target as HTMLInputElement).checked);
+}
 
 const now = ref(Date.now());
 let tick: number | null = null;
@@ -163,6 +177,22 @@ async function retryFailed(): Promise<void> {
   }
 }
 
+async function dispatchLossless(): Promise<void> {
+  if (!isAdmin.value || !pool.selectedTaskTypes.includes("lossless") || dispatchingLossless.value) return;
+  dispatchingLossless.value = true;
+  losslessDispatchError.value = null;
+  losslessDispatchResult.value = null;
+  try {
+    const data = JSON.parse(await edgesonicPost("work/lossless/dispatch", {})) as { ok?: boolean; enqueued?: number; skipped?: number; error?: string };
+    if (!data.ok) throw new Error(data.error || "Dispatch failed");
+    losslessDispatchResult.value = t("workMode.losslessDispatchResult", { enqueued: data.enqueued ?? 0, skipped: data.skipped ?? 0 });
+  } catch (error) {
+    losslessDispatchError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    dispatchingLossless.value = false;
+  }
+}
+
 onMounted(async () => {
   mounted = true;
   tick = window.setInterval(() => { now.value = Date.now(); }, 1000);
@@ -201,7 +231,7 @@ onBeforeUnmount(() => {
         <span class="dot" :class="pool.linkState"></span>
         <h1>{{ t("workMode.title") }}</h1>
       </div>
-      <button class="toggle" :class="{ on: active }" :disabled="!pool.eligible" :aria-pressed="active" @click="toggle">
+      <button class="toggle" :class="{ on: active }" :disabled="!active && !canStart" :aria-pressed="active" @click="toggle">
         <span class="toggle-indicator" aria-hidden="true"></span>
         {{ active ? t("workMode.stop") : t("workMode.start") }}
       </button>
@@ -210,11 +240,21 @@ onBeforeUnmount(() => {
 
     <p v-if="!pool.eligible" class="notice">{{ t("workMode.ineligible") }}</p>
     <p class="intro">{{ t("workMode.description") }}</p>
-    <ul class="task-kinds">
-      <li>{{ t("workMode.tasks.metadata") }}</li>
-      <li>{{ t("workMode.tasks.enrich") }}</li>
-      <li>{{ t("workMode.tasks.upstream") }}</li>
-    </ul>
+    <fieldset class="task-options">
+      <legend>{{ t("workMode.selectTasks") }}</legend>
+      <label v-for="type in (['metadata', 'transcode', 'scrape', 'lossless'] as const)" :key="type" class="task-option" :class="{ unavailable: !supports(type) }">
+        <input type="checkbox" :checked="pool.selectedTaskTypes.includes(type)" :disabled="!supports(type)" @change="setSelected(type, $event)" />
+        <span>{{ t(taskTypeLabelKey(type)) }}</span>
+        <small v-if="!supports(type)">{{ t("workMode.ffmpegUnavailable") }}</small>
+      </label>
+      <p v-if="pool.selectedTaskTypes.length === 0" class="notice">{{ t("workMode.chooseTask") }}</p>
+    </fieldset>
+    <section v-if="isAdmin && pool.selectedTaskTypes.includes('lossless')" class="lossless-dispatch">
+      <p>{{ t("workMode.losslessDispatchHelp") }}</p>
+      <button type="button" :disabled="dispatchingLossless" @click="dispatchLossless">{{ t("workMode.losslessDispatch") }}</button>
+      <p v-if="losslessDispatchResult" role="status">{{ losslessDispatchResult }}</p>
+      <p v-if="losslessDispatchError" class="notice">{{ losslessDispatchError }}</p>
+    </section>
 
     <section class="gauge">
       <div class="gauge-value">{{ progress.completed }}<span class="of">/{{ totalTasks }}</span></div>
@@ -238,7 +278,7 @@ onBeforeUnmount(() => {
     <section class="slots">
       <div v-for="(slot, i) in slots" :key="i" class="slot" :class="{ busy: !!slot }">
         <template v-if="slot">
-          <span class="slot-type">{{ slot.taskType }}</span>
+          <span class="slot-type">{{ t(taskTypeLabelKey(slot.taskType)) }}</span>
           <span class="slot-name">{{ slot.fileName }}</span>
         </template>
         <span v-else class="slot-idle">{{ t("workMode.idle") }}</span>
@@ -318,8 +358,14 @@ h1 { font-size: 1.1rem; font-weight: 600; margin: 0; }
 .retry-failed:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .intro { margin: 1.5rem 0 0.75rem; color: var(--color-text-secondary); line-height: 1.55; }
-.task-kinds { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; padding: 0; margin: 0; }
-.task-kinds li { padding: 0.3rem 0.55rem; border: 1px solid var(--color-border-subtle); border-radius: 999px; color: var(--color-text-secondary); font-size: 0.75rem; }
+.task-options { display: grid; gap: 0.55rem; border: 1px solid var(--color-border-subtle); padding: 0.8rem; margin: 1rem 0; }
+.task-options legend { color: var(--color-text-secondary); font-size: 0.82rem; padding: 0 0.35rem; }
+.task-option { display: flex; align-items: center; gap: 0.55rem; font-size: 0.9rem; }
+.task-option small { color: var(--color-text-secondary); margin-left: auto; }
+.task-option.unavailable { opacity: 0.65; }
+.lossless-dispatch { border: 1px solid var(--color-border-subtle); padding: 0.75rem; margin: 1rem 0; font-size: 0.85rem; }
+.lossless-dispatch button { border: 1px solid var(--color-border-subtle); background: var(--color-bg-secondary); color: var(--color-text-primary); border-radius: 0.3rem; padding: 0.4rem 0.65rem; cursor: pointer; }
+.lossless-dispatch button:disabled { opacity: 0.5; }
 .gauge { margin: 1.75rem 0 1.5rem; }
 .gauge-value { font-size: 3.5rem; line-height: 1; font-weight: 300; }
 .of { font-size: 1.5rem; color: var(--color-text-secondary); }
