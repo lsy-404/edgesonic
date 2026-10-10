@@ -9,5 +9,6 @@
 - Wired the three-minute scheduled trigger and immediate scan after enabling; added the retrieval operations note in `docs/METADATA_RETRIEVAL.md`.
 - Read current Cloudflare Worker best-practices documentation for scheduled handlers and `waitUntil`; changes use the existing scheduled handler and awaitable execution context.
 - Added regressions for opt-in behavior, parsed/manual dispatch, queue capacity and partial-page cursor, completeness counts, pending/kept task handling, manual approval recovery, worker approval forgery, and explicit retry after exhaustion with refreshed snapshots.
+- Refreshed retrieval identity, query, and album folder from the current storage path on explicit retry and stale manual-apply recovery; added moved-folder regressions for both paths and candidate artist shape checks.
 - Verification run: `pnpm exec tsx test/internal/workmode_metadata_retrieval.test.ts` and `pnpm --dir worker run typecheck` both passed; `git diff --check` returned no whitespace errors.
 - Patch attempts: two combined file patches were rejected because a path was repeated or expected context had changed; they made no edits and were reapplied as smaller patches.

@@ -451,7 +451,7 @@ async function main() {
       sourceUri: "r2://music/known.flac", sourceEtag: "etag-k", sources: ["netease"],
       identity: { title: "Known Track" },
       snapshot: { title: "Known Track", artist: "Unknown Artist", album: "Unknown Album", albumArtist: null,
-        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100 }, query: "Known Track" };
+        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100, albumFolder: "Known Record" }, query: "Known Track" };
     const match = { source: "netease", songId: "91", title: "Known Track", artist: "Recovered Artist", album: "Recovered Album", lyrics: "approved lyrics" };
     const approved = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known", status: "matched", match,
       manualReview: { candidateIndex: 0, pendingResult: { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
@@ -469,26 +469,71 @@ async function main() {
   console.log("review retry refreshes the snapshot and extends exhausted claims without resetting attempts:");
   {
     const sqlite = makeDb();
-    const payload = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
-      sourceUri: "r2://music/known.flac", sourceEtag: "etag-k", sources: ["netease"],
-      identity: { title: "Known Track", artist: "Known Artist", album: "Known Record" },
-      snapshot: { title: "Known Track", artist: "Known Artist", album: "Known Record", albumArtist: null,
-        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100 }, query: "Known Track" };
-    sqlite.prepare("UPDATE song_masters SET updated_at=101 WHERE id='sg-known'").run();
+    const payload = { kind: "metadata-retrieval", masterId: "sg-a", instanceId: "si-a",
+      sourceUri: "r2://music/a.flac", sourceEtag: "etag-a", sources: ["netease"],
+      identity: { title: "Track A", artist: "Unknown Artist", album: "Folder A" },
+      snapshot: { title: "Track A", artist: "Unknown Artist", album: "Pending Uploads", albumArtist: null,
+        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100, albumFolder: "Folder A" }, query: "Track A Unknown Artist Folder A" };
+    sqlite.prepare("UPDATE song_masters SET updated_at=101 WHERE id='sg-a'").run();
+    sqlite.prepare("UPDATE storage_entries SET path='Artist/专辑/Folder B/01 Track A.flac' WHERE instance_id='si-a'").run();
     sqlite.prepare(`INSERT INTO work_queue (id, task_type, payload, status, attempts, max_attempts, result_json, error_message)
-      VALUES ('wt-scrape-retrieve:sg-known', 'scrape', ?, 'completed', 4, 4, ?, 'retrieval_review:pending')`)
-      .run(JSON.stringify(payload), JSON.stringify({ kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
+      VALUES ('wt-scrape-retrieve:sg-a', 'scrape', ?, 'completed', 4, 4, ?, 'retrieval_review:pending')`)
+      .run(JSON.stringify(payload), JSON.stringify({ kind: "metadata-retrieval", masterId: "sg-a", instanceId: "si-a",
         status: "pending", reason: "no-credible-match", candidates: [] }));
     const { app, env } = appFor(sqlite);
     const response = await post(app, env, "/edgesonic/work/scrape/review", {
-      taskId: "wt-scrape-retrieve:sg-known", attempts: 4, decision: "retry",
+      taskId: "wt-scrape-retrieve:sg-a", attempts: 4, decision: "retry",
     });
-    const row = sqlite.prepare("SELECT status, attempts, max_attempts, payload FROM work_queue WHERE id='wt-scrape-retrieve:sg-known'").get() as any;
+    const row = sqlite.prepare("SELECT status, attempts, max_attempts, payload FROM work_queue WHERE id='wt-scrape-retrieve:sg-a'").get() as any;
     const refreshed = JSON.parse(row.payload);
     assert(response.status === 200 && row.status === "queued" && row.attempts === 4 && row.max_attempts === 7,
       "an explicit review retry can proceed after the prior task budget is exhausted without resetting attempts");
-    assert(refreshed.snapshot.masterUpdatedAt === 101,
-      "retry refreshes the payload to the current catalog snapshot");
+    assert(refreshed.snapshot.masterUpdatedAt === 101 && refreshed.snapshot.albumFolder === "Folder B" &&
+      refreshed.identity.album === "Folder B" && refreshed.query.endsWith("Folder B"),
+      "retry refreshes current catalog and moved-folder retrieval hints");
+  }
+
+  console.log("pending results require a string artist while accepting unknown artist text:");
+  {
+    const payload = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
+      sources: ["netease"], identity: { title: "Known Track" },
+      snapshot: { title: "Known Track", artist: "Unknown Artist", album: "Unknown Album" } };
+    const result = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known", status: "pending",
+      reason: "ambiguous", candidates: [{ source: "netease", songId: "1", title: "Known Track", artist: "" }] };
+    assert(isValidMetadataRetrievalResult(payload, result), "blank artist remains a valid candidate when artist identity is unknown");
+    delete (result.candidates[0] as { artist?: string }).artist;
+    assert(!isValidMetadataRetrievalResult(payload, result), "missing artist is rejected to preserve the review-page contract");
+  }
+
+  console.log("stale manual apply refreshes a moved source folder before returning to review:");
+  {
+    const sqlite = makeDb();
+    const payload = { kind: "metadata-retrieval", masterId: "sg-a", instanceId: "si-a",
+      sourceUri: "r2://music/a.flac", sourceEtag: "etag-a", sources: ["netease"],
+      identity: { title: "Track A" },
+      snapshot: { title: "Track A", artist: "Unknown Artist", album: "Pending Uploads", albumArtist: null,
+        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100, albumFolder: "Folder A" }, query: "Track A" };
+    sqlite.prepare("UPDATE storage_entries SET path='Artist/专辑/Folder B/01 Track A.flac' WHERE instance_id='si-a'").run();
+    sqlite.prepare(`INSERT INTO work_queue (id, task_type, payload, status, attempts, max_attempts, result_json, error_message)
+      VALUES ('wt-scrape-retrieve:sg-a', 'scrape', ?, 'completed', 1, 3, ?, 'retrieval_review:pending')`)
+      .run(JSON.stringify(payload), JSON.stringify({ kind: "metadata-retrieval", masterId: "sg-a", instanceId: "si-a",
+        status: "pending", reason: "no-credible-match", candidates: [{ source: "netease", songId: "77",
+          title: "Track A", artist: "Recovered Artist", album: "Folder A" }] }));
+    const { app, env } = appFor(sqlite);
+    const response = await post(app, env, "/edgesonic/work/scrape/review", {
+      taskId: "wt-scrape-retrieve:sg-a", attempts: 1, decision: "apply", candidateIndex: 0,
+      result: { kind: "metadata-retrieval", masterId: "sg-a", instanceId: "si-a", status: "matched",
+        match: { source: "netease", songId: "77", title: "Track A", artist: "Recovered Artist", album: "Folder A" } },
+    });
+    const row = sqlite.prepare("SELECT payload, error_message FROM work_queue WHERE id='wt-scrape-retrieve:sg-a'").get() as any;
+    const refreshed = JSON.parse(row.payload);
+    assert(response.status === 409 && row.error_message === "retrieval_review:pending",
+      "stale manual application returns to the pending review queue");
+    assert(refreshed.snapshot.masterUpdatedAt === 100 && refreshed.snapshot.albumFolder === "Folder B" &&
+      refreshed.identity.album === "Folder B" && refreshed.query.endsWith("Folder B"),
+      "a path-only change is fenced and the pending payload contains current folder-derived hints");
+    assert((sqlite.prepare("SELECT album_id FROM song_masters WHERE id='sg-a'").get() as any).album_id === "al-pending",
+      "the stale folder candidate cannot alter the catalog");
   }
 
   console.log("scheduled recovery finishes an atomic catalog receipt without replaying its old snapshot:");

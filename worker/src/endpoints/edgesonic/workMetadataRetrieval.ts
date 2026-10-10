@@ -55,6 +55,31 @@ function isMetadataIdentityRecord(value: unknown): value is { title?: unknown; a
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
+async function retrieveCurrentHints(
+  db: D1Database,
+  instanceId: string,
+  current: { title: string; artist: string; album: string; albumArtist: string | null },
+): Promise<{ identity: { title: string; artist: string; album: string }; query: string; albumFolder: string | null }> {
+  const path = await sourceFolderLogicalPath(db, instanceId);
+  const recovered = recoverMetadataFromStoragePath(path, {
+    title: metadataMissing(current.title, "title") ? "??" : current.title,
+    artist: metadataMissing(current.artist, "artist") ? "??" : current.artist,
+    album: metadataMissing(current.album, "album") ? "??" : current.album,
+    albumArtist: current.albumArtist || undefined,
+  });
+  const albumFolder = path ? albumNameFromSourcePath(path) : null;
+  const identity = {
+    title: recovered.title,
+    artist: recovered.artist,
+    album: isKnownMetadataIdentity(recovered.album) ? recovered.album : albumFolder || recovered.album,
+  };
+  return {
+    identity,
+    query: [identity.title, identity.artist, identity.album].filter(isKnownMetadataIdentity).join(" "),
+    albumFolder,
+  };
+}
+
 function parseConfiguredRetrievalSources(raw: string): string[] {
   try {
     const value: unknown = JSON.parse(raw);
@@ -307,25 +332,22 @@ async function refreshRetrievalPayload(env: Env, payload: Record<string, unknown
     source_etag: string | null; missing: number; source_type: string;
   }>();
   if (!row || row.missing !== 0 || row.source_type !== "original") return null;
-  const priorIdentity = payload.identity && typeof payload.identity === "object" ? payload.identity as Record<string, unknown> : {};
-  const identity = {
-    title: isKnownMetadataIdentity(row.title) ? row.title : priorIdentity.title,
-    artist: isKnownMetadataIdentity(row.artist_name) ? row.artist_name : priorIdentity.artist,
-    album: isKnownMetadataIdentity(row.album_name) ? row.album_name : priorIdentity.album,
-  };
-  const query = [identity.title, identity.artist, identity.album].filter(isKnownMetadataIdentity).join(" ");
-  if (!query) return null;
+  const hints = await retrieveCurrentHints(env.DB, instanceId, {
+    title: row.title, artist: row.artist_name, album: row.album_name, albumArtist: row.album_artist_name,
+  });
+  if (!hints.query) return null;
   const priorSnapshot = payload.snapshot && typeof payload.snapshot === "object" ? payload.snapshot as RetrievalSnapshot : null;
   return {
     ...payload,
     sourceUri: row.storage_uri,
     sourceEtag: row.source_etag,
-    identity,
-    query,
+    identity: hints.identity,
+    query: hints.query,
     snapshot: {
       ...(priorSnapshot ?? {}),
       title: row.title, artist: row.artist_name, album: row.album_name, albumArtist: row.album_artist_name,
-      year: row.year, lyrics: row.lyrics, coverR2Key: row.song_cover || row.album_cover, masterUpdatedAt: row.updated_at,
+      year: row.year, lyrics: row.lyrics, coverR2Key: row.song_cover || row.album_cover,
+      masterUpdatedAt: row.updated_at, albumFolder: hints.albumFolder,
     },
   };
 }
@@ -417,7 +439,7 @@ export function isValidMetadataRetrievalResult(payload: Record<string, unknown>,
       return typeof item.source === "string" && sources.includes(item.source) &&
         typeof item.songId === "string" && !!item.songId.trim() &&
         typeof item.title === "string" && !!item.title.trim() &&
-        (item.artist === undefined || typeof item.artist === "string") &&
+        typeof item.artist === "string" &&
         (item.album === undefined || typeof item.album === "string") &&
         (item.albumArtist === undefined || typeof item.albumArtist === "string") &&
         (item.year === undefined || (Number.isInteger(item.year) && Number(item.year) > 0)) &&
@@ -581,33 +603,37 @@ export async function applyCompletedRetrieval(
         storage_uri: string; source_etag: string | null; missing: number; source_type: string;
       }>();
       const sourceList = Array.isArray(payload.sources) ? payload.sources : [];
+      const currentPath = current ? await sourceFolderLogicalPath(env.DB, String(payload.instanceId)) : null;
+      const currentAlbumFolder = currentPath ? albumNameFromSourcePath(currentPath) : null;
+      const folderChanged = metadataMissing(snapshot.album, "album") &&
+        (snapshot.albumFolder ?? null) !== currentAlbumFolder;
       const fieldsCurrent = current && current.title === snapshot.title && current.artist_name === snapshot.artist &&
         current.album_name === snapshot.album && current.album_artist_name === snapshot.albumArtist &&
         current.year === snapshot.year && current.lyrics === snapshot.lyrics &&
         current.updated_at === snapshot.masterUpdatedAt &&
         (current.song_cover_r2_key || current.album_cover_r2_key) === snapshot.coverR2Key;
       if (!current || current.storage_uri !== payload.sourceUri || current.source_etag !== (payload.sourceEtag ?? null) ||
-          current.missing !== 0 || current.source_type !== "original" || !fieldsCurrent) {
+          current.missing !== 0 || current.source_type !== "original" || !fieldsCurrent || folderChanged) {
         annotation = { ok: false, reason: "source or metadata changed since retrieval was queued" };
         if (manuallyReviewed) {
           retry = true;
           if (current && current.missing === 0 && current.source_type === "original") {
-            const identity = payload.identity && typeof payload.identity === "object" ? payload.identity as Record<string, unknown> : {};
+            const hints = await retrieveCurrentHints(env.DB, String(payload.instanceId), {
+              title: current.title, artist: current.artist_name, album: current.album_name,
+              albumArtist: current.album_artist_name,
+            });
             const refreshed = {
               ...payload,
               sourceUri: current.storage_uri,
               sourceEtag: current.source_etag,
-              identity: {
-                title: isKnownMetadataIdentity(current.title) ? current.title : identity.title,
-                artist: isKnownMetadataIdentity(current.artist_name) ? current.artist_name : identity.artist,
-                album: isKnownMetadataIdentity(current.album_name) ? current.album_name : identity.album,
-              },
+              identity: hints.identity,
+              query: hints.query,
               snapshot: {
                 ...snapshot,
                 title: current.title, artist: current.artist_name, album: current.album_name,
                 albumArtist: current.album_artist_name, year: current.year, lyrics: current.lyrics,
                 coverR2Key: current.song_cover_r2_key || current.album_cover_r2_key,
-                masterUpdatedAt: current.updated_at,
+                masterUpdatedAt: current.updated_at, albumFolder: hints.albumFolder,
               },
             };
             refreshedPayloadJson = JSON.stringify(refreshed);
