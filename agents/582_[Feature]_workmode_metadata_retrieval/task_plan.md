@@ -5,4 +5,4 @@
 - [x] Delegate server, queued executor and Work Mode interface in isolated worktrees.
 - [x] Integrate scoped commits and validate restart, active claim, matching and catalog behavior.
 - [x] Merge and push main under live protection status while preserving unrelated edits.
-- [ ] Deploy preserving SSO settings and verify production Work Mode action.
+- [x] Deploy preserving SSO settings and verify production Work Mode action.

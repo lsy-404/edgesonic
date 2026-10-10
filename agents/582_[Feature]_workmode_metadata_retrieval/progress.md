@@ -23,3 +23,7 @@
 - Main was unprotected on live check and fast-forwarded/pushed to 6e347fec. Existing primary dirty files matched their saved hashes; original task index bytes were preserved with only owned new rows appended.
 - Initial production deploy version 8d541937-aa17-401f-8a98-ceeb63fa8e17 preserved required SSO/Voidcarve Access. Live build info matched, Work Mode showed the explicit action and online socket; queue/claimed/failed and new retrieval task counts were zero, with read-only D1 postflight writing zero rows.
 - Boolean feature switch postflight correction passed enabled/disabled route tests and Worker typecheck; deploy this final correction before completion.
+
+- Final production deploy: 1a1b2c2a-2b05-47a9-aa9a-056ccd36ba5c, public build 1.4.0-dev.ac6277ca / 2026-10-10T17:49:39.5816126Z. Required SSO/Voidcarve Access variables retained with keep-vars and no container rollout.
+- Final primary D1 readback: scrape_enabled boolean=1, active/claimed/failed aggregate=0, forced retrieval jobs=0, all queries wrote zero rows. No library retrieval batch was automatically dispatched.
+- Final production browser Work Mode shows four task choices and explicit force missing-metadata button; socket online, queued=0, claimed=0, completed=9701, failed=0. Screenshot saved outside Git; local fixture service stopped after successful browser catalog proof.
