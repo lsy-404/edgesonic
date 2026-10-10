@@ -7,7 +7,6 @@ import { useAuth } from "../api";
 import { mapConcurrent } from "../lib/concurrency";
 import { canRebuildLibraryStats, type LibraryStatsResponse } from "../lib/libraryStats";
 import Icon from "../components/Icon.vue";
-import WavFlacTool from "../components/WavFlacTool.vue";
 import { normalizeForMatch } from "../lib/trackMatch";
 import { FluentSwitch } from "@platform-kit/fluent/vue";
 
@@ -1578,8 +1577,6 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
     </div>
 
     <template v-else>
-      <WavFlacTool />
-
       <section v-if="hasPerm('participate_work')" class="settings-section card work-mode-entry">
         <RouterLink to="/work" class="work-mode-entry-link">
           <span>
