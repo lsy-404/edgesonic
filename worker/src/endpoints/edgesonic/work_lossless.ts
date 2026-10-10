@@ -165,13 +165,13 @@ workLosslessRoutes.post("/work/lossless/upload", async (c) => {
   try {
     written = await env.MUSIC_BUCKET.put(key, replay, { httpMetadata: { contentType: "audio/flac" } });
   } catch {
-    await deleteUnreferencedObject(env, objectId, key);
+    await cleanupLosslessOutput(env, objectId, key);
     return c.json({ ok: false, error: "Unable to store verified FLAC output" }, 502);
   }
   const actualOutputSha = toHex(await digest.digest);
   if (bodySize.value !== evidence.outputBytes || written.size !== evidence.outputBytes
     || actualOutputSha !== outputSha || written.size >= payload.sourceSize) {
-    await deleteUnreferencedObject(env, objectId, key);
+    await cleanupLosslessOutput(env, objectId, key);
     return c.json({ ok: false, error: "FLAC body does not match its verification evidence" }, 422);
   }
   try {
@@ -183,7 +183,7 @@ workLosslessRoutes.post("/work/lossless/upload", async (c) => {
     ).bind(objectId, key, written.size, written.etag).run();
     if (registered.meta.changes !== 1) throw new Error("Output object identity already exists");
   } catch {
-    await deleteUnreferencedObject(env, objectId, key);
+    await cleanupLosslessOutput(env, objectId, key);
     return c.json({ ok: false, error: "Unable to register verified FLAC output" }, 500);
   }
 
@@ -195,11 +195,11 @@ workLosslessRoutes.post("/work/lossless/upload", async (c) => {
       pcmSha256: sourcePcmSha, evidence,
     });
   } catch {
-    await deleteUnreferencedObject(env, objectId, key);
+    await cleanupLosslessOutput(env, objectId, key);
     return c.json({ ok: false, error: "Catalog replacement failed; source remains available" }, 500);
   }
   if (!applied) {
-    await deleteUnreferencedObject(env, objectId, key);
+    await cleanupLosslessOutput(env, objectId, key);
     return c.json({ ok: false, error: "Claim or catalog source changed before replacement" }, 409);
   }
   try { await retireOldObject(env, payload.sourceObjectId, payload.sourceUri); }
@@ -370,6 +370,24 @@ async function switchCatalogToFlac(
       payload.instanceId, newUri, output.objectId, output.objectId, output.key),
   ]);
   return results[2].meta.changes === 1;
+}
+
+async function cleanupLosslessOutput(env: Env, objectId: string, key: string): Promise<void> {
+  const existing = await env.DB.prepare(
+    "SELECT id, physical_key FROM storage_objects WHERE id = ? OR physical_key = ? LIMIT 1",
+  ).bind(objectId, key).first<{ id: string; physical_key: string }>();
+  if (existing) {
+    if (existing.id === objectId && existing.physical_key === key) {
+      await deleteUnreferencedObject(env, objectId, key);
+    }
+    return;
+  }
+  const referenced = await env.DB.prepare(
+    `SELECT 1 AS used WHERE EXISTS (
+       SELECT 1 FROM song_instances WHERE storage_object_id = ? OR storage_uri = ?
+     ) OR EXISTS (SELECT 1 FROM storage_entries WHERE object_id = ?)`,
+  ).bind(objectId, `r2://${key}`, objectId).first<{ used: number }>();
+  if (!referenced) await env.MUSIC_BUCKET.delete(key).catch(() => {});
 }
 
 async function deleteUnreferencedObject(env: Env, objectId: string, key: string): Promise<void> {
