@@ -238,24 +238,33 @@ async function main() {
   console.log("failed master compare-and-set leaves year and artist links unchanged:");
   {
     const sqlite = makeDb();
+    sqlite.prepare("INSERT INTO artists VALUES ('ar-user', 'User Singer', 'user singer', 1, 1)").run();
+    sqlite.prepare("UPDATE song_masters SET artist_id='ar-unknown', updated_at=? WHERE id='sg-known'")
+      .run(Math.floor(Date.now() / 1000));
+    sqlite.prepare("INSERT INTO song_artists VALUES ('sg-known', 'ar-unknown', 0)").run();
     sqlite.exec("CREATE TRIGGER hold_master_update BEFORE UPDATE ON song_masters WHEN NEW.id='sg-known' BEGIN SELECT RAISE(IGNORE); END;");
     const payload = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
       sourceUri: "r2://music/known.flac", sourceEtag: "etag-k", sources: ["netease"],
-      identity: { title: "Known Track", artist: "Known Artist", album: "Known Record" },
-      snapshot: { title: "Known Track", artist: "Known Artist", album: "Known Record", albumArtist: null,
-        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100 }, query: "Known Track Known Artist Known Record" };
-    sqlite.prepare("UPDATE song_masters SET album_artist_id=NULL WHERE id='sg-known'").run();
+      identity: { title: "Known Track", artist: "Unknown Artist", album: "Known Record" },
+      snapshot: { title: "Known Track", artist: "Unknown Artist", album: "Known Record", albumArtist: null,
+        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: Math.floor(Date.now() / 1000) }, query: "Known Track Known Record" };
     sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status, claimed_by, claimed_at, attempts) VALUES (?, 'scrape', ?, 'claimed', 'admin', 889, 1)")
       .run("wt-scrape-retrieve:sg-known", JSON.stringify(payload));
     const { app, env } = appFor(sqlite);
     await post(app, env, "/edgesonic/work/submit", { id: "wt-scrape-retrieve:sg-known", attempts: 1, claimedAt: 889,
       result: { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known", status: "matched",
-        match: { source: "netease", songId: "7", title: "Known Track", artist: "Known Artist", album: "Known Record",
-          albumArtist: "Album Artist", year: 2024, lyrics: "must not write" } } });
+        match: { source: "netease", songId: "7", title: "Known Track", artist: "New Singer", album: "Known Record",
+          year: 2024, lyrics: "must not write" } } });
     assert((sqlite.prepare("SELECT year FROM albums WHERE id='al-known'").get() as any).year === null,
       "album year waits for the master compare-and-set");
     assert((sqlite.prepare("SELECT lyrics FROM song_masters WHERE id='sg-known'").get() as any).lyrics === null,
       "failed master compare-and-set does not mutate lyrics");
+    assert((sqlite.prepare("SELECT artist_id FROM song_masters WHERE id='sg-known'").get() as any).artist_id === "ar-unknown",
+      "failed master compare-and-set preserves the concurrent singer edit");
+    assert((sqlite.prepare("SELECT artist_id FROM song_artists WHERE song_id='sg-known'").get() as any).artist_id === "ar-unknown",
+      "song artist links are gated by the catalog receipt");
+    assert(!(sqlite.prepare("SELECT error_message FROM work_queue WHERE id='wt-scrape-retrieve:sg-known'").get() as any).error_message?.startsWith("retrieval_apply:catalog:"),
+      "a failed compare-and-set cannot create a catalog receipt");
   }
 
   console.log("stale source and ambiguous matches are recorded without catalog edits:");
@@ -333,7 +342,7 @@ async function main() {
         year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100 }, query: "Known Track" };
     const result = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known", status: "matched",
       match: { source: "netease", songId: "4", title: "Known Track", artist: "Known Artist", album: "Known Record" },
-      cover: { data: "iVBORw0KGgo=", mime: "image/png" } };
+      cover: { data: "R0lGODlh", mime: "image/gif" } };
     sqlite.prepare(`INSERT INTO work_queue (id, task_type, payload, status, result_json, error_message, heartbeat_at)
       VALUES (?, 'scrape', ?, 'completed', ?, 'retrieval_apply:catalog:al-known:cover', 1)`)
       .run("wt-scrape-retrieve:sg-known", JSON.stringify(payload), JSON.stringify(result));
@@ -343,6 +352,30 @@ async function main() {
       "recovery attaches cover to the receipt album despite the old snapshot");
     assert((sqlite.prepare("SELECT error_message FROM work_queue WHERE id='wt-scrape-retrieve:sg-known'").get() as any).error_message === null,
       "catalog receipt is cleared after cover completion");
+  }
+
+  console.log("invalid covers are ignored terminally after catalog metadata is applied:");
+  {
+    const sqlite = makeDb();
+    const payload = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known",
+      sourceUri: "r2://music/known.flac", sourceEtag: "etag-k", sources: ["netease"],
+      identity: { title: "Known Track", artist: "Known Artist", album: "Known Record" },
+      snapshot: { title: "Known Track", artist: "Known Artist", album: "Known Record", albumArtist: null,
+        year: null, lyrics: null, coverR2Key: null, masterUpdatedAt: 100 }, query: "Known Track" };
+    const result = { kind: "metadata-retrieval", masterId: "sg-known", instanceId: "si-known", status: "matched",
+      match: { source: "netease", songId: "8", title: "Known Track", artist: "Known Artist", album: "Known Record", lyrics: "saved" },
+      cover: { data: "PHN2Zz48L3N2Zz4=", mime: "image/svg+xml" } };
+    sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status, claimed_by, claimed_at, attempts) VALUES (?, 'scrape', ?, 'claimed', 'admin', 890, 1)")
+      .run("wt-scrape-retrieve:sg-known", JSON.stringify(payload));
+    const { app, env } = appFor(sqlite);
+    const response = await post(app, env, "/edgesonic/work/submit", { id: "wt-scrape-retrieve:sg-known", attempts: 1, claimedAt: 890, result });
+    const body = await response.json() as { applied?: { ok: boolean; reason?: string } };
+    assert(body.applied?.ok === true && body.applied.reason === "invalid cover ignored",
+      `invalid cover data does not retry or strand the matched result (${JSON.stringify(body)})`);
+    assert((sqlite.prepare("SELECT lyrics FROM song_masters WHERE id='sg-known'").get() as any).lyrics === "saved",
+      "metadata fields remain applied when an untrusted cover is ignored");
+    assert((sqlite.prepare("SELECT error_message FROM work_queue WHERE id='wt-scrape-retrieve:sg-known'").get() as any).error_message === null,
+      "invalid cover marker is cleared terminally");
   }
 
   console.log("scheduled recovery clears a no-cover catalog receipt without repeating catalog writes:");
