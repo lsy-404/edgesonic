@@ -29,11 +29,12 @@ import { useRouter } from "vue-router";
 import { useWorkSocket } from "../stores/workSocket";
 import { useAuth } from "../api";
 import { taskTypeLabelKey, type WorkTaskType } from "../lib/workTypes";
+import { dispatchMissingMetadataPages } from "../lib/missingMetadataDispatch";
 
 const { t } = useI18n();
 const router = useRouter();
 const pool = useWorkSocket();
-const { edgesonicFetch, edgesonicPost, isAdmin } = useAuth();
+const { edgesonicFetch, edgesonicPost, isAdmin, hasPerm } = useAuth();
 const progress = ref({ queued: 0, claimed: 0, completed: 0, failed: 0 });
 const retryingFailed = ref(false);
 const retryFailedError = ref<string | null>(null);
@@ -59,7 +60,14 @@ const ffmpegAvailable = computed(() => pool.caps.includes("ffmpeg"));
 const dispatchingLossless = ref(false);
 const losslessDispatchResult = ref<string | null>(null);
 const losslessDispatchError = ref<string | null>(null);
+const dispatchingMissingMetadata = ref(false);
+const missingMetadataProgress = ref<string | null>(null);
+const missingMetadataResult = ref<string | null>(null);
+const missingMetadataError = ref<string | null>(null);
+let missingMetadataCursor: string | undefined;
+let missingMetadataController: AbortController | null = null;
 const canStart = computed(() => pool.eligible && pool.selectedTaskTypes.length > 0);
+const canDispatchMissingMetadata = computed(() => hasPerm("dispatch_work") && pool.selectedTaskTypes.includes("scrape"));
 
 function supports(type: WorkTaskType): boolean {
   return type !== "transcode" && type !== "lossless" || ffmpegAvailable.value;
@@ -193,6 +201,50 @@ async function dispatchLossless(): Promise<void> {
   }
 }
 
+async function dispatchMissingMetadata(): Promise<void> {
+  if (!canDispatchMissingMetadata.value || dispatchingMissingMetadata.value) return;
+  dispatchingMissingMetadata.value = true;
+  missingMetadataError.value = null;
+  missingMetadataResult.value = null;
+  missingMetadataProgress.value = t("workMode.missingMetadataDispatchStarting");
+  const controller = new AbortController();
+  missingMetadataController = controller;
+  let scanned = 0;
+  let enqueued = 0;
+  let skipped = 0;
+  try {
+    const result = await dispatchMissingMetadataPages({
+      after: missingMetadataCursor,
+      signal: controller.signal,
+      request: async (after, signal) => {
+        const body = after === undefined ? {} : { after };
+        return JSON.parse(await edgesonicPost("work/scrape/dispatch", body, signal)) as unknown;
+      },
+      onPage: (pageProgress) => {
+        scanned = pageProgress.scanned;
+        enqueued = pageProgress.enqueued;
+        skipped = pageProgress.skipped;
+        missingMetadataCursor = pageProgress.nextCursor;
+        missingMetadataProgress.value = t("workMode.missingMetadataDispatchProgress", { scanned, enqueued, skipped });
+      },
+    });
+    if (controller.signal.aborted || !mounted) return;
+    missingMetadataCursor = result.nextCursor;
+    missingMetadataResult.value = t("workMode.missingMetadataDispatchResult", { scanned, enqueued, skipped });
+  } catch (error) {
+    if (controller.signal.aborted || !mounted) return;
+    if (scanned > 0) missingMetadataResult.value = t("workMode.missingMetadataDispatchPartial", { scanned, enqueued, skipped });
+    missingMetadataError.value = t("workMode.missingMetadataDispatchError", { reason: error instanceof Error ? error.message : String(error) });
+  } finally {
+    if (missingMetadataController === controller) missingMetadataController = null;
+    if (mounted) {
+      missingMetadataProgress.value = null;
+      dispatchingMissingMetadata.value = false;
+      await loadProgress();
+    }
+  }
+}
+
 onMounted(async () => {
   mounted = true;
   tick = window.setInterval(() => { now.value = Date.now(); }, 1000);
@@ -215,6 +267,7 @@ onBeforeUnmount(() => {
   if (tick !== null) window.clearInterval(tick);
   if (progressPoll !== null) window.clearTimeout(progressPoll);
   progressController?.abort();
+  missingMetadataController?.abort();
   document.removeEventListener("visibilitychange", onVisibility);
   // Deliberately does NOT stop the pool. The store is a singleton shared with
   // the rest of the app, and the opt-in is persisted — navigating away from
@@ -254,6 +307,15 @@ onBeforeUnmount(() => {
       <button type="button" :disabled="dispatchingLossless" @click="dispatchLossless">{{ t("workMode.losslessDispatch") }}</button>
       <p v-if="losslessDispatchResult" role="status">{{ losslessDispatchResult }}</p>
       <p v-if="losslessDispatchError" class="notice">{{ losslessDispatchError }}</p>
+    </section>
+    <section v-if="canDispatchMissingMetadata" class="lossless-dispatch">
+      <p>{{ t("workMode.missingMetadataDispatchHelp") }}</p>
+      <button type="button" :disabled="dispatchingMissingMetadata" @click="dispatchMissingMetadata">
+        {{ t("workMode.missingMetadataDispatch") }}
+      </button>
+      <p v-if="missingMetadataProgress" role="status" aria-live="polite">{{ missingMetadataProgress }}</p>
+      <p v-if="missingMetadataResult" role="status">{{ missingMetadataResult }}</p>
+      <p v-if="missingMetadataError" class="notice">{{ missingMetadataError }}</p>
     </section>
 
     <section class="gauge">
