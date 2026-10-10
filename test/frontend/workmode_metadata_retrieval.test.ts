@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { runMetadataRetrieval } from "../../web/src/lib/workmodeMetadataRetrieval";
+import { isKnownMetadataIdentity } from "../../shared/metadataRetrievalMatch";
 import { fileNameFrom, prepareWorkerTask, type QueuedTask, type RunnerDeps } from "../../web/src/lib/taskRunner";
 import type { ScrapeResult, ScrapeSource } from "../../web/src/lib/scrape";
 
@@ -53,6 +54,13 @@ test("retrieval refuses live or instrumental variants and candidates with no kno
   const missingAnchor = await runMetadataRetrieval(unknowns, "https://app.example/tag/scrape", new AbortController().signal, noFetch,
     adapters([result({ album: "A Different Album" })]));
   assert.deepEqual([missingAnchor.status, missingAnchor.reason], ["no-match", "no-credible-match"]);
+});
+
+test("compact placeholders and opaque object IDs are not identity anchors", () => {
+  for (const value of ["UnknownArtist", "UnknownAlbum", "PendingUploads", "obj_0123456789abcdef.mp3"]) {
+    assert.equal(isKnownMetadataIdentity(value), false, value);
+  }
+  assert.equal(isKnownMetadataIdentity("Fixture Song"), true);
 });
 
 test("known raw snapshot fields constrain derived identity hints", async () => {
@@ -179,4 +187,5 @@ test("runner injects the same-origin management scrape route without changing cl
   assert.deepEqual(calls, []);
   assert.equal(task.payload.scrapeProxyUrl, undefined);
   assert.equal(fileNameFrom(task), "Blue Sky");
+  assert.equal(fileNameFrom({ ...task, payload: { ...BASE, snapshot: { title: "obj_0123456789abcdef.mp3" } } }), "song.mp3");
 });

@@ -13,38 +13,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// ---------------------------------------------------------------------------
-// Runs as a dedicated Worker (module type) instantiated by lib/taskRunner.ts
-// for each claimed task. Receives one task via postMessage, runs it, posts
-// {ok, result}|{ok:false, error} back, terminates.
-//
-// Long-running tasks (transcode) emit periodic {progress:..} messages so the
-// main thread can dispatch /work/heartbeat between phases. Short tasks
-// (metadata, scrape) finish well within the default 60s claim TTL and don't
-// need heartbeats.
-//
-// Why a Worker at all when most tasks are I/O bound? Because we already
-// proved that `music-metadata` decode pegs the main thread for several
-// hundred ms per file on slower hardware (FLAC + APIC bigger than 10MB). The
-// player UI MUST stay responsive; offloading is the cheap insurance.
 
 import { parseBuffer } from "music-metadata";
 import { commonArtistsToTag, lyricsTagsToText, nativeLyricsFallback } from "../lib/metadata";
 import { convertIntegerPcmWav, loadFfmpeg } from "../lib/wavFlacConvertEngine";
 import { runMetadataRetrieval } from "../lib/workmodeMetadataRetrieval";
 
-// Wire shape — matches the task frame the coordinator pushes down the
-// socket. Kept
-// minimal here because the worker can only trust what the Worker handed it
-// (any extra columns leaked from D1 are just ignored).
 interface Task {
   id: string;
   taskType: "metadata" | "transcode" | "scrape" | "lossless";
   payload: Record<string, unknown>;
 }
 
-// truncates again to 500 in taskRunner.ts → /work/submit truncates again to
-// 500 in work.ts. Doing it here too keeps each postMessage cheap.
 const ERR_LIMIT = 500;
 function clampMsg(s: string): string {
   return s.length > ERR_LIMIT ? s.slice(0, ERR_LIMIT) : s;
@@ -88,12 +68,6 @@ self.addEventListener("message", async (e: MessageEvent<Task>) => {
 
 let activeTaskController: AbortController | null = null;
 
-// import (e.g. @ffmpeg/ffmpeg) or an unhandled rejection inside a then-chain
-// that escapes the handler above would only surface as an `ErrorEvent` on the
-// main thread — which Chromium often delivers with an empty `.message` for
-// cross-origin/module workers. The main thread would then fall back to the
-// hard-coded "worker errored" string. We catch both here and convert them to
-// the same {ok:false, error} wire shape the main thread already handles.
 self.addEventListener("error", (e: ErrorEvent) => {
   const msg = e.message || (e.error instanceof Error ? e.error.message : "")
     || "worker fired error event (no message)";
@@ -108,12 +82,7 @@ self.addEventListener("unhandledrejection", (e: PromiseRejectionEvent) => {
   (self as unknown as Worker).postMessage({ ok: false, error: clampMsg(msg) });
 });
 
-// Locate the first `moof` (movie fragment) box in an MP4 buffer.
-// Returns the byte offset where that box STARTS (its 4-byte size field, i.e.
-// 4 bytes before the "moof" 4CC), or -1 when no fragment is present. Used by
-// the fMP4 parse fallback in runMetadata.
 function firstMoofBoxStart(buf: Uint8Array): number {
-  // 'm','o','o','f'
   for (let i = 4; i < buf.length - 3; i++) {
     if (buf[i] === 0x6d && buf[i + 1] === 0x6f && buf[i + 2] === 0x6f && buf[i + 3] === 0x66) {
       return i - 4;
@@ -129,12 +98,6 @@ function detectedMimeType(buf: Uint8Array, suffix: string, hinted?: string): str
   return suffix === "mp4" ? "video/mp4" : "audio/mp4";
 }
 
-// True when a parsed result has no usable metadata at all — no text tags,
-// no embedded picture, no lyrics. Used to decide whether the last-resort
-// full-file fetch in runMetadata is worth attempting. Exported for direct
-// unit testing (test/metadata_full_file_fallback.test.ts) — the rest of this
-// module runs `self.addEventListener(...)` at load time, which requires a
-// real Worker global and can't be exercised end-to-end under plain Node.
 export function isMetaEmpty(m: Awaited<ReturnType<typeof parseBuffer>>): boolean {
   const c = m.common;
   const hasText = !!(c.title || c.artist || (c.artists && c.artists.length) || c.album || c.albumartist ||
@@ -187,41 +150,19 @@ function declaredPcmWavMetrics(bytes: Uint8Array, fileSize: number): { duration:
   return undefined;
 }
 
-// ---------------------------------------------------------------------------
-// metadata — fetch the first 512KB of the source URI, parseBuffer it, return
-// the compact tag set that endpoints/tag/submit.ts expects.
-// ---------------------------------------------------------------------------
 export async function runMetadata(payload: Record<string, unknown>): Promise<unknown> {
   const sourceUri = String(payload.sourceUri || "");
   const instanceId = String(payload.instanceId || "");
   if (!sourceUri) throw new Error("metadata task missing sourceUri");
   if (!instanceId) throw new Error("metadata task missing instanceId");
 
-  // sourceUri is a logical EdgeSonic URI (r2://…, webdav://…, url://…). We
-  // can't fetch those directly — but the /rest/stream endpoint resolves the
-  // URI server-side using the same instanceId. To stay storage-agnostic we
-  // request the first 512KB via stream which honours Range headers.
-  // The session signing is added by the main thread before postMessage
-  // see lib/taskRunner.ts, which builds the signed stream URL.
   const streamUrl = String(payload.streamUrl || "");
   if (!streamUrl) throw new Error("metadata task missing streamUrl (main thread should populate)");
 
-  // anywhere in the file — often AFTER the data chunk (which can be 70+ MB).
-  // A 512KB head only covers the start; the ID3 block at the tail is missed.
-  // Strategy: fetch head (2MB for large ID3v2 headers with artwork) + tail
-  // (2MB for trailing id3/INFO chunks). Concatenate with a gap so
-  // music-metadata sees both regions. For non-WAV the tail fetch is skipped
-  // (FLAC/MP3/M4A tags are at the head).
   const suffix = String(payload.suffix || "").toLowerCase();
   const isWav = suffix === "wav";
   const isMp4Family = ["m4a", "m4b", "mp4", "alac"].includes(suffix);
   const HEAD_BYTES = 2 * 1024 * 1024; // 2MB — covers large ID3v2 + APIC
-  // 512KB used to be enough for a text-only trailing id3 chunk, but when that
-  // same chunk also embeds cover art (very common) the chunk can run several
-  // hundred KB to a few MB, pushing the TITLE/ARTIST frames — usually ordered
-  // before APIC — outside a 512KB tail window entirely. Match the 2MB tail
-  // worker/src/utils/slices.ts already uses for the equivalent server-side
-  // path (same bug class fixed there).
   const TAIL_BYTES = 2 * 1024 * 1024; // 2MB — trailing id3/INFO chunk (may include embedded art)
 
   const headResp = await fetch(streamUrl, {
@@ -244,10 +185,6 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
   const FULL_FETCH_CAP_BYTES = 300 * 1024 * 1024;
   let durationReadFromCompleteFile = !isPartialMp3 && (!isMp4Family || headAlreadyHadWholeFile);
 
-  // music-metadata's WaveParser only reads from the head buffer, but the
-  // ID3v2 parser inside it scans for "id3 " chunks which can be at the end.
-  // We append the tail bytes to the head buffer with a zero gap so the parser
-  // can find trailing chunks via offset arithmetic.
   if (isWav && totalSize > buf.length) {
     try {
       const tailStart = Math.max(buf.length, totalSize - TAIL_BYTES);
@@ -256,14 +193,10 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
       });
       if (tailResp.ok || tailResp.status === 206) {
         const tailBuf = new Uint8Array(await tailResp.arrayBuffer());
-        // Concatenate: head + gap (zeros) + tail. The gap is filled with zeros
-        // so the WAV parser sees a valid (if padded) stream. music-metadata's
-        // tokenizer will read chunk headers from both regions.
         const gap = totalSize - buf.length - tailBuf.length;
         if (gap >= 0 && gap < 100 * 1024 * 1024) { // sanity: don't alloc >100MB
           const combined = new Uint8Array(buf.length + gap + tailBuf.length);
           combined.set(buf, 0);
-          // gap region stays zero-filled
           combined.set(tailBuf, buf.length + gap);
           buf = combined;
         }
@@ -271,13 +204,6 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
     } catch { /* tail fetch optional — head alone still works for duration */ }
   }
 
-  // Parse with covers so we can extract embedded album art and
-  // ship it back to the worker for R2 storage + album.cover_r2_key update.
-  // skipCovers was previously true, which left every album with cover_r2_key
-  // NULL → getCoverArt 404 for the whole library.
-  // and no defaultSampleDuration in track fragment header" when the moof
-  // fragment is incomplete (we only fetched a head slice). Wrap in try/catch
-  // and fallback to basic atom parsing for the title/artist/album tags.
   const mimeType = detectedMimeType(buf, suffix, headResp.headers.get("content-type") || undefined);
   const partialWavMetrics = isWav && totalSize > buf.length
     ? declaredPcmWavMetrics(buf, totalSize)
@@ -289,40 +215,24 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
       size: totalSize > buf.length ? totalSize : undefined,
     }, { duration: !isPartialMp3, skipCovers: false });
   } catch (parseErr) {
-    // fMP4 crash — try without duration (avoids reading sample tables)
     try {
       meta = await parseBuffer(buf, {
         mimeType,
         size: totalSize > buf.length ? totalSize : undefined,
       }, { duration: false, skipCovers: false });
     } catch {
-      // Fragmented-MP4 fallback. music-metadata (≤11.13.0) throws
-      // "Missing sampleDuration and no defaultSampleDuration in track
-      // fragment header" while walking `moof` fragments of some fMP4 .m4a
-      // files — AFTER it has already read the complete tag set (moov/udta/
-      // ilst, including ©lyr lyrics) that physically precedes the first
-      // fragment. Verified on a production sample: truncating the buffer
-      // just before the first `moof` box lets the same parser return
-      // title/artist/album/lyrics cleanly. Gated on actually finding a
-      // `moof` box (the fMP4 discriminator) rather than on the error
-      // message text, which is brittle across library versions. Duration
-      // is intentionally not requested here — fMP4 duration lives in the
-      // fragments we just cut off.
       const cut = firstMoofBoxStart(buf);
       if (cut <= 16) {
-        // Not fragmented MP4 → not our case, propagate the original error.
         throw new Error(`metadata parse failed: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
       }
       try {
         meta = await parseBuffer(buf.slice(0, cut), { mimeType, size: cut }, { duration: false, skipCovers: false });
       } catch {
-        // Total failure — return minimal result with just the error
         throw new Error(`metadata parse failed: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
       }
     }
   }
 
-  // Partial MP4-family reads can misreport physical metrics, so accept them only after a full read.
   const needsCompleteDurationRead = isPartialMp3 || (isMp4Family && !headAlreadyHadWholeFile);
   if (needsCompleteDurationRead && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
     try {
@@ -343,8 +253,6 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
     } catch { /* retain ranged tags and omit the unverified duration */ }
   }
 
-  // Other formats may hide tags outside both requested ranges. Fetch the complete
-  // object only when the ranged parse found no usable metadata.
   if (!isMp4Family && !isPartialMp3 && isMetaEmpty(meta) &&
       !headAlreadyHadWholeFile && totalSize > 0 && totalSize <= FULL_FETCH_CAP_BYTES) {
     try {
@@ -365,10 +273,6 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
     } catch { /* full-file fetch/parse failed — keep the original (empty) result */ }
   }
 
-  // Extract first embedded picture (APIC for ID3, PICTURE for FLAC, etc).
-  // Cap at 200KB so result_json stays under the column cap. If the picture is
-  // bigger than 200KB we skip it — the album just stays coverless until an
-  // admin curates one via the TagEditor cover slot.
   let coverData: string | null = null;
   let coverMime: string | null = null;
   const pic: { data?: Uint8Array; format?: string } | undefined =
@@ -376,8 +280,6 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
   if (pic && pic.data) {
     const bytes = pic.data instanceof Uint8Array ? pic.data : new Uint8Array(pic.data as ArrayBuffer);
     if (bytes.byteLength > 0 && bytes.byteLength <= 200_000) {
-      // Base64-encode without chunking (Node's Buffer is not in Worker scope;
-      // use btoa on a binary string).
       let bin = "";
       for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
       coverData = btoa(bin);
@@ -385,10 +287,6 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
     }
   }
 
-  // Flatten the compact wire shape that endpoints/tag/submit.ts expects.
-  // We strip the giant common.picture / native.* fields — they'd inflate the
-  // result_json column past the 100KB cap in /work/submit. The cover goes in
-  // a separate `cover` field (base64) so the worker can write it to R2.
   const duration = isWav && totalSize > buf.length
     ? partialWavMetrics?.duration ? Math.round(partialWavMetrics.duration) : undefined
     : (isPartialMp3 || isMp4Family ? durationReadFromCompleteFile : true) && meta.format.duration
@@ -405,9 +303,6 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
       year:        meta.common.year ? String(meta.common.year) : "",
       track:       meta.common.track?.no ? String(meta.common.track.no) : "",
       disc:        meta.common.disk?.no ? String(meta.common.disk.no) : "",
-      // this; songs scanned via work_queue (the primary multi-format path)
-      // never got embedded lyrics into D1. lyricsTagsToText is
-      // shared with the local-scan path (web/src/lib/metadata.ts).
       lyrics:      lyricsTagsToText(meta.common.lyrics) || nativeLyricsFallback(meta.native) || "",
       ...(duration ? { duration } : {}),
       ...((isMp4Family && !durationReadFromCompleteFile) ? {} : {
@@ -423,23 +318,10 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
       container:   meta.format.container || "",
       codec:       meta.format.codec || "",
     },
-    // Embedded cover art. Worker decodes base64, writes to
-    // covers/al-{albumId}, and updates albums.cover_r2_key. null when
-    // the file has no embedded picture or the picture exceeds 200KB.
     cover: coverData ? { data: coverData, mime: coverMime } : null,
   };
 }
 
-// ---------------------------------------------------------------------------
-// transcode — pull the source bytes, run ffmpeg.wasm with the pre-built argv,
-// POST the encoded body to the one-shot uploadUrl. The Worker treats the
-// upload response as the source of truth: r2Key and size come back from
-// /edgesonic/work/upload (so the row in work_queue.result_json carries the
-// canonical R2 path, not whatever the browser claims).
-//
-// Uses the bundled-compatible single-thread core so queued work does not need
-// cross-origin isolation or SharedArrayBuffer.
-// ---------------------------------------------------------------------------
 async function runTranscode(payload: Record<string, unknown>): Promise<unknown> {
   const sourceUri = String(payload.sourceUri || "");
   const uploadUrl = String(payload.uploadUrl || "");
@@ -452,8 +334,6 @@ async function runTranscode(payload: Record<string, unknown>): Promise<unknown> 
   if (!outputSuffix) throw new Error("transcode task missing outputSuffix");
   if (ffmpegArgs.length === 0) throw new Error("transcode task missing ffmpegArgs");
 
-  // Dynamic import — keeps ffmpeg.wasm out of the page-load bundle; only
-  // browsers that volunteer for the work pool pay the ~5MB download.
   const { FFmpeg } = await import("@ffmpeg/ffmpeg");
   const ff = new FFmpeg();
   let releaseAssets: (() => void) | undefined;
@@ -467,10 +347,6 @@ async function runTranscode(payload: Record<string, unknown>): Promise<unknown> 
     if (!resp.ok) throw new Error(`source fetch failed: HTTP ${resp.status}`);
     const inputBuf = new Uint8Array(await resp.arrayBuffer());
 
-  // ffmpeg.wasm exposes a virtual filesystem; input must be written before
-  // the exec() call, and the argv we got from the Worker uses "pipe:0" /
-  // "pipe:1" placeholders — patch them onto real virtual files so we can
-  // read the output back with readFile().
     const inputName = "in.src";
     const outputName = "out." + outputSuffix;
     await ff.writeFile(inputName, inputBuf);
@@ -481,16 +357,9 @@ async function runTranscode(payload: Record<string, unknown>): Promise<unknown> 
     const exitCode = await ff.exec(patchedArgs);
     if (exitCode !== 0) throw new Error(`transcode failed with exit code ${exitCode}`);
     const out = await ff.readFile(outputName);
-  // readFile's type is Uint8Array | string (string only when an encoding is
-  // passed, which we don't). Narrow defensively; if a future API drift hands
-  // us a string we'd corrupt the upload, so fail loud instead.
     if (typeof out === "string") {
       throw new Error("ffmpeg readFile returned string; expected Uint8Array");
     }
-  // Copy into a fresh Uint8Array backed by a standard ArrayBuffer so the type
-  // satisfies BodyInit (which rejects Uint8Array<ArrayBufferLike> because
-  // ArrayBufferLike may be SharedArrayBuffer). The copy is O(n) but ffmpeg
-  // outputs are typically a few MB — negligible vs. the upload itself.
     const outBytes: Uint8Array<ArrayBuffer> = new Uint8Array(out);
 
     const uploadResp = await fetch(uploadUrl, {
@@ -586,10 +455,6 @@ async function runLossless(payload: Record<string, unknown>): Promise<unknown> {
   return { ...registered, evidence };
 }
 
-// ---------------------------------------------------------------------------
-// scrape — search configured providers, verify candidate identity, and return
-// compact metadata for the server-side guarded apply step.
-// ---------------------------------------------------------------------------
 async function runScrape(payload: Record<string, unknown>): Promise<unknown> {
   if (payload.kind !== "metadata-retrieval") throw new Error("unsupported scrape task kind");
   const proxyUrl = String(payload.scrapeProxyUrl || "");
@@ -597,5 +462,4 @@ async function runScrape(payload: Record<string, unknown>): Promise<unknown> {
   return runMetadataRetrieval(payload, proxyUrl, activeTaskController?.signal || new AbortController().signal);
 }
 
-// Hint to TS that we're in a Worker scope (no DOM globals).
 export {};

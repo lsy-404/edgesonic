@@ -15,31 +15,13 @@ start.addEventListener("click", async () => {
   status.textContent = "Running the real task runner and browser worker against local provider fixtures…";
   try {
     await fetch("/fixture/reset", { method: "POST" });
-    const task: QueuedTask = {
-      id: "fixture-metadata-task",
-      taskType: "scrape",
-      payload: {
-        kind: "metadata-retrieval",
-        masterId: "fixture-master",
-        instanceId: "fixture-instance",
-        sourceUri: "r2://fixture/fixture-source.mp3",
-        sourceEtag: "fixture-etag",
-        identity: { title: "Fixture Song", artist: "Fixture Artist", album: "Fixture Album" },
-        snapshot: { title: "Fixture Song", artist: "Fixture Artist", coverR2Key: null },
-        sources: ["netease"],
-        query: "Fixture Song Fixture Artist Fixture Album",
-      },
-      requiredCaps: ["metadata-retrieval"],
-      priority: 0,
-      attempts: 1,
-      maxAttempts: 3,
-      claimedAt: Math.floor(Date.now() / 1000),
-      heartbeatAt: Math.floor(Date.now() / 1000),
-    };
+    const queued = await fetch("/fixture/dispatch", { method: "POST" }).then((response) => response.json()) as { task?: QueuedTask; error?: string };
+    if (!queued.task) throw new Error(queued.error || "The real dispatch route did not queue a task.");
+    const task = queued.task;
     const outcome = await runTask(task, {
       restUrl: (path) => `/rest/${path}`,
       edgesonicPost: async (path, body, signal) => {
-        const endpoint = path === "work/heartbeat" ? "/fixture/work/heartbeat" : "/fixture/work/submit";
+        const endpoint = `/fixture/work/${path.endsWith("heartbeat") ? "heartbeat" : "submit"}`;
         const response = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -52,8 +34,8 @@ start.addEventListener("click", async () => {
     }, new AbortController().signal);
     await refreshReport();
     const report = JSON.parse(reportView.textContent || "{}");
-    if (outcome.status === "ok" && report.submission?.accepted === true && report.protocol?.complete === true) {
-      status.textContent = "PASS: search, detail, lyrics, worker result, and mocked submit receipt completed.";
+    if (outcome.status === "ok" && report.submission?.accepted === true && report.complete === true) {
+      status.textContent = "PASS: real dispatch, search, detail, lyrics, catalog apply, and SQLite readback completed.";
     } else {
       status.textContent = `FAILED: ${outcome.status === "failed" ? outcome.error : "fixture protocol evidence was incomplete"}`;
     }

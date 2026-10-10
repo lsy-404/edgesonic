@@ -1,8 +1,8 @@
 # Work Mode metadata retrieval browser fixture
 
-This loopback-only page runs the actual `runTask`, Vite module worker, `searchAll`, NetEase search/detail/lyric adapter, and same-origin `/tag/scrape` transport. The fixture replies locally for every provider request and records the compact result submitted to the mocked task endpoint.
+This loopback-only page runs the actual `runTask`, Vite module worker, `searchAll`, NetEase search/detail/lyric adapter, same-origin `/tag/scrape` transport, and the server's Hono dispatch/submit handlers. It seeds a fresh in-memory SQLite database from `worker/migrations/Schema.sql`, queues a fixture song, and reads the catalog back after server-side apply.
 
-The submit receipt is mocked. The fixture does not connect to D1 or R2 and does not claim catalog readback. No real provider or music files are used.
+The D1 binding and coordinator claim are local test shims, and R2 writes are disabled. No real provider or music files are used. Before server changes are integrated into the repository, set `WORKMODE_SERVER_SOURCE_ROOT` to the server worktree path to run this fixture against that source.
 
 Run from the repository root:
 
@@ -10,4 +10,6 @@ Run from the repository root:
 pnpm exec vite --config test/workmode-metadata-retrieval-browser/vite.config.mts
 ```
 
-Open `http://127.0.0.1:4181/` and click **Run metadata retrieval fixture**. The report shows which provider intents ran, the submitted result, and the explicit absence of catalog readback.
+For a not-yet-integrated server worktree, set `$env:WORKMODE_SERVER_SOURCE_ROOT` to its repository root before starting Vite.
+
+Open `http://127.0.0.1:4181/` and click **Run metadata retrieval fixture**. The report shows provider intents, the server apply receipt, queue state, and the SQLite catalog readback.
