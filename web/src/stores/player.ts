@@ -16,7 +16,7 @@
 import { defineStore } from "pinia";
 import { ref, computed, watch } from "vue";
 import { useAuth, parseXmlAttrs } from "../api";
-import { getTrackMetadataXml, preloadTrack } from "../lib/trackPrefetch";
+import { preloadTrack } from "../lib/trackPrefetch";
 import { getCachedTrack, putCachedTrack, deleteCachedTrack } from "../lib/audioCache";
 import { setPlaybackActive } from "../lib/requestBudget";
 import { beginAudioRequest, beginRequest, describeAudio, endAudioRequest } from "../lib/netDiag";
@@ -220,14 +220,11 @@ export const usePlayerStore = defineStore("player", () => {
 
   watch(playing, setPlaybackActive, { immediate: true });
 
-  // ---- Favorite (Subsonic star/unstar) ----
-  // Queue entries (built ad hoc by each view from search3/getAlbum/etc. XML)
-  // don't carry a `starred` field, so we look it up fresh per track via
-  // getSong rather than threading it through every call site that builds a
-  // Track. `current.value?.id !== id` guards against a stale response
-  // landing after the user has already skipped to another track.
   const starred = ref(false);
+  const starBusy = ref(false);
   let starredRequest = 0;
+  let starMutation = 0;
+  let starMutationId: string | null = null;
 
   function applyStarred(id: string, value: boolean) {
     for (const track of queue.value) {
@@ -237,38 +234,51 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   function setStarred(id: string, value: boolean) {
-    starredRequest++;
+    if (current.value && catalogId(current.value) === id) starredRequest++;
+    if (starMutationId === id) starMutation++;
     applyStarred(id, value);
   }
 
   async function _refreshStarred(id: string) {
     const request = ++starredRequest;
     try {
-      const { authFetch, username } = useAuth();
-      const xml = await getTrackMetadataXml({ id }, { authFetch, scope: username.value });
+      const { authFetch } = useAuth();
+      const xml = await authFetch("getSong", { id });
       if (request !== starredRequest || !current.value || catalogId(current.value) !== id) return;
-      applyStarred(id, !!parseXmlAttrs(xml, "song")[0]?.starred);
+      if (starMutationId === id) return;
+      const song = parseXmlAttrs(xml, "song")[0];
+      if (song) applyStarred(id, !!song.starred);
     } catch {
-      if (request === starredRequest && current.value && catalogId(current.value) === id) applyStarred(id, false);
+      // Preserve the known favorite when metadata is unavailable.
     }
   }
   watch(current, (tr) => {
-    if (!tr) { starredRequest++; starred.value = false; return; }
-    void _refreshStarred(catalogId(tr));
+    starredRequest++;
+    starred.value = !!tr?.starred;
+    if (tr) void _refreshStarred(catalogId(tr));
   }, { immediate: true });
 
   async function toggleStar() {
     const tr = current.value;
-    if (!tr) return;
+    if (!tr || starBusy.value) return;
     const next = !starred.value;
-    const request = ++starredRequest;
     const id = catalogId(tr);
-    applyStarred(id, next); // optimistic
+    const mutation = ++starMutation;
+    starMutationId = id;
+    starredRequest++;
+    starBusy.value = true;
+    applyStarred(id, next);
     try {
       const { authFetch } = useAuth();
-      await authFetch(next ? "star" : "unstar", { id });
+      const xml = await authFetch(next ? "star" : "unstar", { id });
+      if (parseXmlAttrs(xml, "subsonic-response")[0]?.status !== "ok") throw new Error("star update failed");
+      if (mutation === starMutation) setStarred(id, next);
     } catch {
-      if (request === starredRequest && current.value && catalogId(current.value) === id) applyStarred(id, !next); // revert on failure
+      if (mutation === starMutation) setStarred(id, !next);
+      showError(i18n.global.t("library.starUpdateFailed"));
+    } finally {
+      starMutationId = null;
+      starBusy.value = false;
     }
   }
 
@@ -1465,7 +1475,7 @@ export const usePlayerStore = defineStore("player", () => {
 
   return {
     queue, index, playing, currentTime, duration, volume, bufferedRanges,
-    current, hasTrack, playMode, starred, localCoverUrl, playbackQuality,
+    current, hasTrack, playMode, starred, starBusy, localCoverUrl, playbackQuality,
     setQueue, hydrateTrack, playNext, playAt, toggle, next, prev, seek, setVolume,
     cyclePlayMode, toggleStar, setStarred, clear, resumePlaybackIfNeeded, reportCoverMissing,
   };

@@ -176,8 +176,8 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
     <!-- Controls + progress -->
     <div class="pb-center">
       <div class="pb-controls">
-        <button class="pb-btn pb-fav" :class="{ active: player.starred }" :disabled="!player.hasTrack" :title="player.starred ? t('player.unlike') : t('player.like')" @click="player.toggleStar()">
-          <Icon name="heart" :size="16" />
+        <button class="pb-btn pb-fav" :class="{ active: player.starred }" :disabled="!player.hasTrack || player.starBusy" :aria-pressed="player.starred" :aria-label="player.starred ? t('player.unlike') : t('player.like')" :title="player.starred ? t('player.unlike') : t('player.like')" @click="player.toggleStar()">
+          <Icon name="heart" :size="16" :fill="player.starred ? 'currentColor' : 'none'" />
         </button>
         <button class="pb-btn" :disabled="!player.hasTrack" :title="`${t('player.previous')} (Shift+P)`" @click="player.prev()">
           <Icon name="previous" :size="16" />
@@ -352,7 +352,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
   transform: translateY(-50%);
   margin-left: 0.6rem;
 }
-.pb-mode:active:not(:disabled) { transform: translateY(calc(-50% + 1px)); }
+.pb-mode:active:not(:disabled), .pb-fav:active:not(:disabled) { transform: translateY(calc(-50% + 1px)); }
 /* pb-fav mirrors pb-mode on the opposite side, same reasoning. */
 .pb-fav {
   position: absolute;

@@ -1577,18 +1577,17 @@ onMounted(() => {
   setTimeout(() => { songsHintFaded.value = true; }, 5000);
 });
 
-watch(() => player.starred, () => {
-  const currentId = player.current?.id;
+watch([() => player.current?.libraryId || player.current?.id, () => player.starred, () => player.starBusy], ([currentId, value, busy]) => {
   if (currentId) {
     const rows = [
       ...allSongs.value,
+      ...songs.value,
       ...starredLists.value.songs,
       ...(searchResults.value?.songs ?? []),
     ];
-    const row = rows.find((item) => item.id === currentId);
-    if (row) row.starred = player.starred;
+    for (const row of rows) if (row.id === currentId) row.starred = value;
   }
-  if (starredOnly) void loadStarred(true);
+  if (starredOnly && !busy) void loadStarred(true);
 });
 watch(() => player.current?.id, () => { locateRetryId = null; });
 
