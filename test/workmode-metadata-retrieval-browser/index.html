@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Work Mode Metadata Retrieval Fixture</title>
+  </head>
+  <body>
+    <main>
+      <h1>Work Mode metadata retrieval fixture</h1>
+      <p>Runs the real queued task runner, browser worker, NetEase adapter, and same-origin proxy route against local fixture responses.</p>
+      <button id="start">Run metadata retrieval fixture</button>
+      <p id="status" role="status">Ready. Nothing has run yet.</p>
+      <h2>Mock protocol receipt</h2>
+      <pre id="report">Press the button to run the isolated fixture.</pre>
+      <p>This fixture records a mocked submit receipt. It does not connect to D1 or R2 and does not represent a catalog readback.</p>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
