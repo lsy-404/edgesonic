@@ -25,6 +25,7 @@ import { refreshAllChannels } from "./utils/podcastSync";
 import { maybeRunScheduledScan } from "./utils/scheduledScan";
 import { reclaimStaleWork } from "./utils/workReclaim";
 import { recoverPendingMetadataApplies } from "./endpoints/edgesonic/work";
+import { recoverPendingRetrievalApplies } from "./endpoints/edgesonic/workMetadataRetrieval";
 import { recoverPendingUploadMetadata } from "./utils/uploadMetadataRecovery";
 import { maybeRunMetadataRecheck } from "./utils/metadataRecheck";
 import { maybeRunLrcBackfill } from "./utils/lrcBackfill";
@@ -197,6 +198,11 @@ export default {
     ctx.waitUntil(
       recoverPendingMetadataApplies(env).catch((e) => {
         console.error("scheduled recoverPendingMetadataApplies failed:", e);
+      }),
+    );
+    ctx.waitUntil(
+      recoverPendingRetrievalApplies(env).catch((e) => {
+        console.error("scheduled recoverPendingRetrievalApplies failed:", e);
       }),
     );
     // worker's embedded parser couldn't read (other formats) or that are

@@ -46,11 +46,17 @@ import { acquireUploadMetadataLease, releaseUploadMetadataLease, uploadMetadataM
 import { notifyCoordinator } from "../../coordinator/workCoordinator";
 import { parseWorkTaskTypes } from "../../coordinator/workTaskTypes";
 import type { User } from "../../types/entities";
+import {
+  applyCompletedRetrieval, isMetadataRetrievalPayload, isValidMetadataRetrievalResult,
+  metadataRetrievalRoutes, RETRIEVAL_APPLY_PENDING,
+} from "./workMetadataRetrieval";
 
 export const workRoutes = new Hono<{
   Bindings: Env;
   Variables: { user: User };
 }>();
+
+workRoutes.route("/", metadataRetrievalRoutes);
 
 async function applyQueuedMetadata(
   db: D1Database,
@@ -294,7 +300,7 @@ workRoutes.post("/work/submit", async (c) => {
   }
 
   const row = await env.DB.prepare(
-    "SELECT status, claimed_by, attempts, claimed_at, max_attempts, task_type, payload, result_json FROM work_queue WHERE id = ?",
+    "SELECT status, claimed_by, attempts, claimed_at, max_attempts, task_type, payload, result_json, error_message FROM work_queue WHERE id = ?",
   ).bind(body.id).first<{
     status: string;
     claimed_by: string | null;
@@ -304,6 +310,7 @@ workRoutes.post("/work/submit", async (c) => {
     task_type: string;
     payload: string;
     result_json: string | null;
+    error_message: string | null;
   }>();
   if (!row) return c.json({ ok: false, error: "Task not found" }, 404);
   if (row.task_type === "lossless" && row.status === "completed") {
@@ -312,6 +319,19 @@ workRoutes.post("/work/submit", async (c) => {
     if (receipt?.serverVerified === "lossless" && row.claimed_by === user.username
       && row.attempts === body.attempts && row.claimed_at === body.claimedAt) {
       return c.json({ ok: true, status: "completed", replayed: true });
+    }
+  }
+  if (row.task_type === "scrape" && row.status === "completed" && row.claimed_by === user.username
+      && row.attempts === body.attempts && row.claimed_at === body.claimedAt) {
+    let payload: Record<string, unknown> = {};
+    let saved: unknown = null;
+    try { payload = JSON.parse(row.payload) as Record<string, unknown>; } catch { /* invalid queue payload */ }
+    try { saved = row.result_json ? JSON.parse(row.result_json) : null; } catch { /* invalid saved result */ }
+    if (isMetadataRetrievalPayload(payload) && JSON.stringify(saved) === JSON.stringify(body.result)) {
+      const applied = row.error_message === RETRIEVAL_APPLY_PENDING
+        ? await applyCompletedRetrieval(env, body.id, row.payload, saved)
+        : undefined;
+      return c.json({ ok: true, status: "completed", replayed: true, ...(applied ? { applied } : {}) });
     }
   }
   if (row.status !== "claimed") {
@@ -352,22 +372,34 @@ workRoutes.post("/work/submit", async (c) => {
   if (resultJson && resultJson.length > 500_000) {
     return c.json({ ok: false, error: "Result is too large" }, 413);
   }
+  let taskPayload: Record<string, unknown> = {};
+  try { taskPayload = JSON.parse(row.payload) as Record<string, unknown>; } catch { /* invalid payload is applied as an error */ }
+  const retrievalResult = body.result;
+  const isRetrievalTask = row.task_type === "scrape" && isMetadataRetrievalPayload(taskPayload);
+  if (isRetrievalTask && !isValidMetadataRetrievalResult(taskPayload, retrievalResult)) {
+    return c.json({ ok: false, error: "Invalid metadata retrieval result" }, 400);
+  }
+  const retrievalPending = isRetrievalTask;
   const completed = await env.DB.prepare(
     `UPDATE work_queue
      SET status = 'completed', result_json = ?, error_message = ?,
          heartbeat_at = ?
      WHERE id = ? AND status = 'claimed' AND claimed_by = ?
        AND attempts = ? AND claimed_at = ?`,
-  ).bind(resultJson, row.task_type === "metadata" ? APPLY_PENDING : null,
+  ).bind(resultJson, row.task_type === "metadata" ? APPLY_PENDING : retrievalPending ? RETRIEVAL_APPLY_PENDING : null,
     now, body.id, user.username, body.attempts, body.claimedAt).run();
   if (completed.meta.changes === 0) return c.json({ ok: false, error: "Claim has changed" }, 409);
   const applyAnnotation = row.task_type === "metadata"
     ? await applyCompletedMetadata(env, body.id, row.payload, body.result)
     : undefined;
+  const retrievalAnnotation = retrievalPending
+    ? await applyCompletedRetrieval(env, body.id, row.payload, body.result)
+    : undefined;
   return c.json({
     ok: true,
     status: "completed",
     ...(applyAnnotation ? { applied: applyAnnotation } : {}),
+    ...(retrievalAnnotation ? { applied: retrievalAnnotation } : {}),
   });
 });
 
