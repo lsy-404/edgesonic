@@ -20,6 +20,7 @@ let app: Hono | undefined;
 let env: Env | undefined;
 let loading: Promise<void> | undefined;
 let lastSubmission: Record<string, unknown> | undefined;
+let fixtureMode: "unique" | "ambiguous" = "unique";
 
 function json(res: any, body: unknown, status = 200) {
   res.statusCode = status;
@@ -85,6 +86,15 @@ async function ensureServer(viteServer: any) {
         VALUES ('fixture-entry', 'fixture-source', 'Fixture Artist/专辑/Fixture Album/01 Fixture Song.mp3', '01 Fixture Song.mp3', 'file', 'fixture-object', 'fixture-instance');
       UPDATE feature_strings SET value='["netease"]' WHERE key='scrape_enabled_sources';
     `);
+    database.exec("UPDATE song_instances SET tag_scanned=1 WHERE id='fixture-instance'");
+    if (fixtureMode === "ambiguous") {
+      database.exec(`
+        UPDATE song_masters SET artist_id='fixture-known-artist' WHERE id='fixture-master';
+        UPDATE storage_entries SET path='01 Fixture Song.mp3' WHERE id='fixture-entry';
+        INSERT INTO work_queue (id, task_type, payload, status)
+          VALUES ('fixture-parsing-completed', 'metadata', '{}', 'completed');
+      `);
+    }
     const server = new Hono();
     server.use("*", async (c: any, next: () => Promise<void>) => {
       c.set("user", { username: "fixture-admin", level: 3 });
@@ -102,9 +112,17 @@ async function ensureServer(viteServer: any) {
 
 async function callRoute(path: string, body: unknown, viteServer: any) {
   await ensureServer(viteServer);
+  const background: Promise<unknown>[] = [];
   const response = await app!.fetch(new Request(`http://fixture${path}`, {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
-  }), env);
+  }), env, { waitUntil(promise) { background.push(promise); }, passThroughOnException() {}, props: {} });
+  await Promise.all(background);
+  return { response, body: await response.json() as Record<string, unknown> };
+}
+
+async function getRoute(path: string, viteServer: any) {
+  await ensureServer(viteServer);
+  const response = await app!.fetch(new Request(`http://fixture${path}`), env);
   return { response, body: await response.json() as Record<string, unknown> };
 }
 
@@ -126,12 +144,36 @@ const fixturePlugin: Plugin = {
       const path = (req.url || "").split("?", 1)[0];
       try {
         if (req.method === "POST" && path === "/fixture/reset") {
+          const body = await readJson(req);
+          fixtureMode = body.mode === "ambiguous" ? "ambiguous" : "unique";
           await resetFixture(server);
           return json(res, { ok: true });
         }
-        if (req.method === "POST" && path === "/fixture/dispatch") {
-          const { response, body } = await callRoute("/edgesonic/work/scrape/dispatch", {}, server);
+        if (req.method === "GET" && path === "/fixture/metadata-status") {
+          const { response, body } = await getRoute("/edgesonic/work/scrape/status", server);
+          return json(res, body, response.status);
+        }
+        if (req.method === "POST" && path === "/fixture/review") {
+          const { response, body } = await callRoute("/edgesonic/work/scrape/review", await readJson(req), server);
+          return json(res, body, response.status);
+        }
+        if (req.method === "POST" && path === "/fixture/automatic") {
+          const { response, body } = await callRoute("/edgesonic/work/scrape/auto", { enabled: true }, server);
           if (!response.ok) return json(res, body, response.status);
+          const loaded = await server.ssrLoadModule(resolve(serverRepository, "worker/src/endpoints/edgesonic/workMetadataRetrieval.ts"));
+          await loaded.maybeRunAutomaticMetadataRetrieval(env);
+          const queue = sqlite!.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND status='queued'").get() as { count: number };
+          await loaded.maybeRunAutomaticMetadataRetrieval(env);
+          const gated = sqlite!.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND status='queued'").get() as { count: number };
+          return json(res, { ok: true, queued: queue.count, afterImmediateRepeat: gated.count });
+        }
+        if (req.method === "POST" && (path === "/fixture/dispatch" || path === "/fixture/claim")) {
+          let body: Record<string, unknown> = {};
+          if (path === "/fixture/dispatch") {
+            const route = await callRoute("/edgesonic/work/scrape/dispatch", {}, server);
+            if (!route.response.ok) return json(res, route.body, route.response.status);
+            body = route.body;
+          } else await ensureServer(server);
           const row = sqlite!.prepare("SELECT id, payload FROM work_queue WHERE id='wt-scrape-retrieve:fixture-master'").get() as { id: string; payload: string } | undefined;
           if (!row) return json(res, { ok: false, error: "dispatch created no fixture task", dispatch: body }, 500);
           const claimedAt = Math.floor(Date.now() / 1000);
@@ -190,7 +232,12 @@ const fixturePlugin: Plugin = {
           const body = await readJson(req);
           if (body.source !== "netease") return json(res, { ok: false, error: "only the local NetEase fixture is enabled" }, 400);
           events.push({ type: "proxy", body });
-          if (body.intent === "search") return json(res, { ok: true, source: "netease", intent: "search", data: { result: { songs: [song] } } });
+          if (body.intent === "search") {
+            const songs = fixtureMode === "ambiguous" ? [song, {
+              ...song, id: 724002, album: { ...song.album, name: "Alternate Fixture Album" },
+            }] : [song];
+            return json(res, { ok: true, source: "netease", intent: "search", data: { result: { songs } } });
+          }
           if (body.intent === "detail") return json(res, { ok: true, source: "netease", intent: "detail", data: { songs: [song] } });
           if (body.intent === "lyric") return json(res, { ok: true, source: "netease", intent: "lyric", data: { lrc: { lyric: JSON.stringify([{ t: 1200, c: [{ tx: "Fixture lyric line" }] }]) } } });
           return json(res, { ok: false, error: "unsupported fixture intent" }, 400);

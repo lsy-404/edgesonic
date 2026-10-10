@@ -12,4 +12,6 @@ pnpm exec vite --config test/workmode-metadata-retrieval-browser/vite.config.mts
 
 For a not-yet-integrated server worktree, set `$env:WORKMODE_SERVER_SOURCE_ROOT` to its repository root before starting Vite.
 
-Open `http://127.0.0.1:4181/` and click **Run metadata retrieval fixture**. The report shows provider intents, the server apply receipt, queue state, and the SQLite catalog readback.
+Open `http://127.0.0.1:4181/` and click **Run automatic metadata retrieval fixture**. The report verifies automatic dispatch and its cadence gate, provider intents, the server apply receipt, queue state, and the SQLite catalog readback.
+
+Click **Run pending review fixture** to verify a parsed song whose parsing task has finished but whose metadata is still incomplete. Two album candidates must remain pending without changing the catalog. An explicit candidate decision then resolves details and applies them through the real review route. A missing cover must still count as incomplete afterward.

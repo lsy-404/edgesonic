@@ -86,6 +86,7 @@ function cleanAlbumName(value: string): string {
 }
 
 function rootAlbumName(segments: string[]): string {
+  if (segments.length < 2) return "";
   const root = segments[0] || "";
   if (!root || ["music", "covers", "cache", "transcoded"].includes(root.toLowerCase())) return "";
   return cleanAlbumName(root);

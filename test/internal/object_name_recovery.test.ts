@@ -37,6 +37,12 @@ assert(clean.title === "Correct Title" && clean.album === "Correct Album" && cle
 const noPath = recoverMetadataFromStoragePath(null, { title: "??", album: "??" });
 assert(noPath.title === "??" && noPath.album === "??", "missing logical path leaves metadata untouched");
 
+const rootTrack = recoverMetadataFromStoragePath("01 Fixture Song.mp3", { title: "??", album: "??" });
+assert(rootTrack.title === "Fixture Song" && rootTrack.album === "??", "root-level song filename does not become an album hint");
+
+const albumTrack = recoverMetadataFromStoragePath("Fixture Album/01 Fixture Song.mp3", { title: "??", album: "??" });
+assert(albumTrack.title === "Fixture Song" && albumTrack.album === "Fixture Album", "parent album folder remains a usable metadata hint");
+
 function fakeDb(paths: string[]): D1Database {
   return {
     prepare: () => ({
