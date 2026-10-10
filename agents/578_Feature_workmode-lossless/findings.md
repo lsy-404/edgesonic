@@ -12,3 +12,6 @@
 - `music-metadata` exposes FFmpeg's FLAC `LYRICS-ENG` as a native tag rather than `common.lyrics`; browser extraction and server embedded-tag parsing recognize language-suffixed lyric keys.
 - Synchronized ID3 `SYLT` carries event timestamps that the FLAC mapping does not preserve. The verifier rejects it safely. COMM comments with a non-English language or nonempty descriptor are also rejected because the output mapping carries only text.
 - Unknown native fields are verified by tag identity and value. The generated browser fixture checks altered lyric, cover, date, comment, descriptor, and custom TXXX cases.
+- Source common metadata is compared field by field, so known native mappings such as ID3 conductor, remixer, and language cannot be waived without the corresponding common value matching. Encoder/tool fields are excluded because FFmpeg records its own output encoder.
+- The browser fixture has a second button that uses the local Worker endpoint's seed response, signed stream/upload/submit URLs, and D1/R2 state readback rather than the loopback upload adapter.
+- Signed runtime URLs are rewritten to the harness's same-origin `/runtime` proxy path; this keeps browser worker fetches same-origin while preserving the endpoint's signed path and query.
