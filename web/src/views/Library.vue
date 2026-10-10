@@ -8,6 +8,7 @@ import { useAuth, parseXmlAttrs, parseXmlInner, formatDuration } from "../api";
 import { usePlayerStore, type Track } from "../stores/player";
 import { useDetailStore } from "../stores/detail";
 import TagEditor from "../components/TagEditor.vue";
+import { createRequestEpoch } from "../lib/requestEpoch";
 import Icon from "../components/Icon.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
 import SongRowMenu from "../components/SongRowMenu.vue";
@@ -1370,6 +1371,7 @@ const editBusy = ref(false);
 const editMsg = ref("");
 const editErr = ref(false);
 const editorOpen = ref(false);
+const editorRequestEpoch = createRequestEpoch();
 const editorMode = computed<"single" | "batch">(() => editTargets.value.length > 1 ? "batch" : "single");
 const editExistingCoverUrl = computed(() => {
   if (editorMode.value !== "single") return undefined;
@@ -1384,16 +1386,16 @@ function toggleEditMode() {
 }
 
 async function openEditor(s: Track) {
+  const requestEpoch = editorRequestEpoch.begin();
+  editorOpen.value = false;
   editTargets.value = [s];
   editMsg.value = ""; editErr.value = false;
-  // seed with the list-row data, then enrich from getSong for genre/year/track
-  editInitial.value = { title: s.title, artist: s.artist, album: s.album };
-  editorOpen.value = true;
+  let initial: Record<string, string | number> = { title: s.title, artist: s.artist, album: s.album };
   try {
     const xml = await authFetch("getSong", { id: s.id });
     const full = parseXmlAttrs(xml, "song")[0];
-    if (full && editTargets.value[0]?.id === s.id) {
-      editInitial.value = {
+    if (full) {
+      initial = {
         title: full.title || s.title,
         artist: full.artist || s.artist,
         album: full.album || s.album,
@@ -1405,10 +1407,14 @@ async function openEditor(s: Track) {
       };
     }
   } catch { /* prefill stays partial */ }
+  if (!editorRequestEpoch.isCurrent(requestEpoch) || editTargets.value[0]?.id !== s.id) return;
+  editInitial.value = initial;
+  editorOpen.value = true;
 }
 
 function openBatchEditor() {
   if (!selectedIds.value.length) return;
+  editorRequestEpoch.invalidate();
   const lookup = new Map(allSongs.value.map((s) => [s.id, s]));
   editTargets.value = selectedIds.value.map((id) => lookup.get(id)).filter(Boolean) as Track[];
   editInitial.value = {};
@@ -1438,6 +1444,7 @@ async function batchRescan() {
 }
 
 function closeEditor() {
+  editorRequestEpoch.invalidate();
   editorOpen.value = false;
   // keep targets briefly so the modal slide-out reads consistent state; reset on next open.
 }
