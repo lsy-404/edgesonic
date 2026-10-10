@@ -7,6 +7,7 @@ installer/wrangler.toml
 .wrangler/
 worker/.wrangler/
 installer/.wrangler/
+test/workmode-lossless-runtime/.wrangler*/
 # wrangler 本地机密
 .dev.vars
 worker/.dev.vars
