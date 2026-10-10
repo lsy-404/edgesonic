@@ -30,6 +30,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { useAuth } from "../api";
 import { runTask, fileNameFrom, type QueuedTask } from "../lib/taskRunner";
+import { encodeWorkTaskTypes, parseWorkTaskTypes, WORK_TASK_TYPES, WORK_TASK_TYPES_STORAGE_KEY, supportsBrowserFfmpeg, type WorkTaskType } from "../lib/workTypes";
 
 const STORAGE_KEY = "participate_work";
 const STORAGE_KEY_CONCURRENCY = "edgesonic:worker_max_concurrent";
@@ -89,6 +90,7 @@ export const useWorkSocket = defineStore("workSocket", () => {
   // Opt-in, persisted: a work-mode machine that reloads or crashes comes back
   // working instead of sitting idle waiting for somebody to click Start.
   const enabled = ref(localStorage.getItem(STORAGE_KEY) !== "false");
+  const selectedTaskTypes = ref<WorkTaskType[]>(parseWorkTaskTypes(localStorage.getItem(WORK_TASK_TYPES_STORAGE_KEY)));
   // Ceiling (per-browser, from the settings slider). `currentConcurrency` is
   // the adaptive value actually advertised to the coordinator.
   const maxConcurrent = ref(
@@ -154,19 +156,10 @@ export const useWorkSocket = defineStore("workSocket", () => {
     if (recent.value.length > RECENT_LIMIT) recent.value.length = RECENT_LIMIT;
   }
 
-  // What this browser can actually execute — the server filters dispatch on it.
-  // ffmpeg.wasm needs SharedArrayBuffer, which needs the page to be
-  // cross-origin isolated; we check both the symbol (engine support) and the
-  // runtime flag (page actually isolated). A computed rather than a function
-  // so the settings UI can bind to it.
+  // Runtime capabilities are independent from the selected kinds of work.
   const caps = computed<string[]>(() => {
     const c = ["music-metadata", "scrape"];
-    if (
-      typeof SharedArrayBuffer !== "undefined" &&
-      (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === true
-    ) {
-      c.push("ffmpeg");
-    }
+    if (supportsBrowserFfmpeg()) c.push("ffmpeg");
     return c;
   });
 
@@ -174,6 +167,7 @@ export const useWorkSocket = defineStore("workSocket", () => {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const params = new URLSearchParams({
       caps: caps.value.join(","),
+      taskTypes: encodeWorkTaskTypes(selectedTaskTypes.value),
       concurrency: String(currentConcurrency.value),
     });
     return `${proto}//${location.host}/edgesonic/work/socket?${params}`;
@@ -261,6 +255,10 @@ export const useWorkSocket = defineStore("workSocket", () => {
       send({ type: "release", id: task.id, attempts: task.attempts, claimedAt: task.claimedAt });
       return;
     }
+    if (!selectedTaskTypes.value.includes(task.taskType as WorkTaskType)) {
+      send({ type: "release", id: task.id, attempts: task.attempts, claimedAt: task.claimedAt });
+      return;
+    }
     const fileName = fileNameFrom(task);
     running.value.set(task.id, { taskType: task.taskType, fileName, startedAt: Date.now() });
     // Reassign so Vue sees the mutation — a Map's own mutations aren't tracked.
@@ -289,7 +287,7 @@ export const useWorkSocket = defineStore("workSocket", () => {
       });
       if (next !== currentConcurrency.value) {
         currentConcurrency.value = next;
-        send({ type: "config", caps: caps.value, maxConcurrent: next });
+        send({ type: "config", caps: caps.value, taskTypes: selectedTaskTypes.value, maxConcurrent: next });
       }
     }
 
@@ -378,7 +376,7 @@ export const useWorkSocket = defineStore("workSocket", () => {
   // coordinator re-run dispatch.
   function nudge(): void {
     if (linkState.value === "online") {
-      send({ type: "config", caps: caps.value, maxConcurrent: currentConcurrency.value });
+      send({ type: "config", caps: caps.value, taskTypes: selectedTaskTypes.value, maxConcurrent: currentConcurrency.value });
       return;
     }
     backoff = BACKOFF_MIN_MS;
@@ -391,7 +389,15 @@ export const useWorkSocket = defineStore("workSocket", () => {
     localStorage.setItem(STORAGE_KEY_CONCURRENCY, String(mc));
     // The adaptive value can't exceed a ceiling that just came down.
     if (currentConcurrency.value > mc) currentConcurrency.value = mc;
-    send({ type: "config", caps: caps.value, maxConcurrent: currentConcurrency.value });
+    send({ type: "config", caps: caps.value, taskTypes: selectedTaskTypes.value, maxConcurrent: currentConcurrency.value });
+  }
+
+  function setTaskTypeSelected(type: WorkTaskType, selected: boolean): void {
+    const next = new Set(selectedTaskTypes.value);
+    if (selected) next.add(type); else next.delete(type);
+    selectedTaskTypes.value = WORK_TASK_TYPES.filter((candidate) => next.has(candidate));
+    localStorage.setItem(WORK_TASK_TYPES_STORAGE_KEY, JSON.stringify(selectedTaskTypes.value));
+    send({ type: "config", caps: caps.value, taskTypes: selectedTaskTypes.value, maxConcurrent: currentConcurrency.value });
   }
 
   // Pull the admin's global default for the concurrency ceiling. A value saved
@@ -427,9 +433,9 @@ export const useWorkSocket = defineStore("workSocket", () => {
 
   return {
     linkState, lastError, connectedAt, reconnects,
-    stats, running, recent, enabled,
+    stats, running, recent, enabled, selectedTaskTypes,
     maxConcurrent, currentConcurrency,
     eligible, inFlight, utilisation, isWorking, speedPerMin, caps,
-    start, stop, setEnabled, nudge, setMaxConcurrent, hydrateConfig, reset,
+    start, stop, setEnabled, nudge, setMaxConcurrent, setTaskTypeSelected, hydrateConfig, reset,
   };
 });

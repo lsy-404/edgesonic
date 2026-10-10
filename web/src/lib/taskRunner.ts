@@ -116,11 +116,15 @@ export async function runTask(
     // hand it a signed /rest/stream URL built on the main thread — the
     // credentials stay in the main-thread origin.
     const augmented: QueuedTask = JSON.parse(JSON.stringify(task));
-    if (task.taskType === "metadata") {
+    if (task.taskType === "metadata" || task.taskType === "lossless") {
       const instanceId = String(task.payload.instanceId || "");
       if (instanceId) {
         augmented.payload.streamUrl = deps.restUrl("stream", { id: instanceId, source: instanceId });
       }
+    }
+    if (task.taskType === "lossless") {
+      augmented.payload.attempts = task.attempts;
+      augmented.payload.claimedAt = task.claimedAt;
     }
 
     let result: unknown;
@@ -223,10 +227,15 @@ export function runWorkerOnce(
       cleanup();
     };
     const onAbort = () => {
-      reject(new DOMException("aborted", "AbortError"));
-      cleanup();
+      worker.postMessage({ cancel: true });
+      cancelTimer = setTimeout(() => {
+        reject(new DOMException("aborted", "AbortError"));
+        cleanup();
+      }, 3000);
     };
+    let cancelTimer: ReturnType<typeof setTimeout> | undefined;
     function cleanup() {
+      if (cancelTimer) clearTimeout(cancelTimer);
       worker.removeEventListener("message", onMessage);
       worker.removeEventListener("error", onError);
       signal.removeEventListener("abort", onAbort);

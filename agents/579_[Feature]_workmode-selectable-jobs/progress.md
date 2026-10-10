@@ -1,0 +1,2 @@
+- Read agent-mode instructions and prior WAV converter audit.
+- Created the requested isolated worktree from `origin/main` after checking the worktree list.

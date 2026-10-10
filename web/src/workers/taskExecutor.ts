@@ -30,6 +30,7 @@
 
 import { parseBuffer } from "music-metadata";
 import { commonArtistsToTag, lyricsTagsToText, nativeLyricsFallback } from "../lib/metadata";
+import { convertIntegerPcmWav, loadFfmpeg } from "../lib/wavFlacConvertEngine";
 
 // Wire shape — matches the task frame the coordinator pushes down the
 // socket. Kept
@@ -37,7 +38,7 @@ import { commonArtistsToTag, lyricsTagsToText, nativeLyricsFallback } from "../l
 // (any extra columns leaked from D1 are just ignored).
 interface Task {
   id: string;
-  taskType: "metadata" | "transcode" | "scrape";
+  taskType: "metadata" | "transcode" | "scrape" | "lossless";
   payload: Record<string, unknown>;
 }
 
@@ -49,7 +50,12 @@ function clampMsg(s: string): string {
 }
 
 self.addEventListener("message", async (e: MessageEvent<Task>) => {
+  if ((e.data as unknown as { cancel?: boolean }).cancel) {
+    activeTaskController?.abort();
+    return;
+  }
   const task = e.data;
+  activeTaskController = new AbortController();
   try {
     let result: unknown;
     switch (task.taskType) {
@@ -62,6 +68,9 @@ self.addEventListener("message", async (e: MessageEvent<Task>) => {
       case "scrape":
         result = await runScrape(task.payload);
         break;
+      case "lossless":
+        result = await runLossless(task.payload);
+        break;
       default:
         throw new Error(`unknown task_type: ${task.taskType}`);
     }
@@ -71,8 +80,12 @@ self.addEventListener("message", async (e: MessageEvent<Task>) => {
       ? (e.message || e.toString())
       : String(e);
     (self as unknown as Worker).postMessage({ ok: false, error: clampMsg(raw) });
+  } finally {
+    activeTaskController = null;
   }
 });
+
+let activeTaskController: AbortController | null = null;
 
 // import (e.g. @ffmpeg/ffmpeg) or an unhandled rejection inside a then-chain
 // that escapes the handler above would only surface as an `ErrorEvent` on the
@@ -423,10 +436,8 @@ export async function runMetadata(payload: Record<string, unknown>): Promise<unk
 // /edgesonic/work/upload (so the row in work_queue.result_json carries the
 // canonical R2 path, not whatever the browser claims).
 //
-// NOTE: ffmpeg.wasm v0.12 prefers crossOriginIsolation (SharedArrayBuffer +
-// COOP/COEP). EdgeSonic does not enable those yet. On non-isolated
-// pages ff.load() falls back to a slower single-thread build; if it errors
-// at all, we surface the message and let /work/submit mark the task failed.
+// Uses the bundled-compatible single-thread core so queued work does not need
+// cross-origin isolation or SharedArrayBuffer.
 // ---------------------------------------------------------------------------
 async function runTranscode(payload: Record<string, unknown>): Promise<unknown> {
   const sourceUri = String(payload.sourceUri || "");
@@ -444,53 +455,133 @@ async function runTranscode(payload: Record<string, unknown>): Promise<unknown> 
   // browsers that volunteer for the work pool pay the ~5MB download.
   const { FFmpeg } = await import("@ffmpeg/ffmpeg");
   const ff = new FFmpeg();
-  await ff.load();
+  let releaseAssets: (() => void) | undefined;
+  const signal = activeTaskController?.signal;
+  const terminateOnAbort = () => ff.terminate();
+  signal?.addEventListener("abort", terminateOnAbort, { once: true });
+  try {
+    releaseAssets = await loadFfmpeg(ff, signal);
 
-  // Pull the whole source. The browser-pool engine hands us a same-origin
-  // /rest/stream URL, so cookies / session auth ride along automatically.
-  const resp = await fetch(sourceUri);
-  if (!resp.ok) throw new Error(`source fetch failed: HTTP ${resp.status}`);
-  const inputBuf = new Uint8Array(await resp.arrayBuffer());
+    const resp = await fetch(sourceUri, { signal });
+    if (!resp.ok) throw new Error(`source fetch failed: HTTP ${resp.status}`);
+    const inputBuf = new Uint8Array(await resp.arrayBuffer());
 
   // ffmpeg.wasm exposes a virtual filesystem; input must be written before
   // the exec() call, and the argv we got from the Worker uses "pipe:0" /
   // "pipe:1" placeholders — patch them onto real virtual files so we can
   // read the output back with readFile().
-  const inputName = "in.src";
-  const outputName = "out." + outputSuffix;
-  await ff.writeFile(inputName, inputBuf);
-  const patchedArgs = ffmpegArgs.map((a) =>
-    a === "pipe:0" ? inputName : a === "pipe:1" ? outputName : a,
-  );
+    const inputName = "in.src";
+    const outputName = "out." + outputSuffix;
+    await ff.writeFile(inputName, inputBuf);
+    const patchedArgs = ffmpegArgs.map((a) =>
+      a === "pipe:0" ? inputName : a === "pipe:1" ? outputName : a,
+    );
 
-  await ff.exec(patchedArgs);
-  const out = await ff.readFile(outputName);
+    const exitCode = await ff.exec(patchedArgs);
+    if (exitCode !== 0) throw new Error(`transcode failed with exit code ${exitCode}`);
+    const out = await ff.readFile(outputName);
   // readFile's type is Uint8Array | string (string only when an encoding is
   // passed, which we don't). Narrow defensively; if a future API drift hands
   // us a string we'd corrupt the upload, so fail loud instead.
-  if (typeof out === "string") {
-    throw new Error("ffmpeg readFile returned string; expected Uint8Array");
-  }
+    if (typeof out === "string") {
+      throw new Error("ffmpeg readFile returned string; expected Uint8Array");
+    }
   // Copy into a fresh Uint8Array backed by a standard ArrayBuffer so the type
   // satisfies BodyInit (which rejects Uint8Array<ArrayBufferLike> because
   // ArrayBufferLike may be SharedArrayBuffer). The copy is O(n) but ffmpeg
   // outputs are typically a few MB — negligible vs. the upload itself.
-  const outBytes: Uint8Array<ArrayBuffer> = new Uint8Array(out);
+    const outBytes: Uint8Array<ArrayBuffer> = new Uint8Array(out);
 
-  const uploadResp = await fetch(uploadUrl, {
-    method: "POST",
-    body: outBytes,
-    headers: { "Content-Type": "application/octet-stream" },
-  });
-  if (!uploadResp.ok) {
-    const body = await uploadResp.text().catch(() => "");
-    throw new Error(`upload failed: HTTP ${uploadResp.status} ${body.slice(0, 200)}`);
+    const uploadResp = await fetch(uploadUrl, {
+      method: "POST",
+      body: outBytes,
+      headers: { "Content-Type": "application/octet-stream" },
+      signal,
+    });
+    if (!uploadResp.ok) {
+      const body = await uploadResp.text().catch(() => "");
+      throw new Error(`upload failed: HTTP ${uploadResp.status} ${body.slice(0, 200)}`);
+    }
+    const uploadJson = await uploadResp.json() as {
+      ok?: boolean;
+      registered?: boolean;
+      r2Key?: string;
+      size?: number;
+      instanceId?: string | null;
+    };
+    if (uploadJson.ok !== true || uploadJson.registered !== true || !uploadJson.r2Key
+      || !uploadJson.instanceId || uploadJson.size !== outBytes.byteLength) {
+      throw new Error("transcode upload was not registered with a complete receipt");
+    }
+    return {
+      r2Key: uploadJson.r2Key,
+      size: uploadJson.size,
+      instanceId: uploadJson.instanceId,
+    };
+  } finally {
+    signal?.removeEventListener("abort", terminateOnAbort);
+    ff.terminate();
+    releaseAssets?.();
   }
-  const uploadJson = await uploadResp.json() as { r2Key?: string; size?: number };
-  return {
-    r2Key: uploadJson.r2Key ?? null,
-    size: uploadJson.size ?? outBytes.byteLength,
-  };
+}
+
+async function runLossless(payload: Record<string, unknown>): Promise<unknown> {
+  const sourceUri = String(payload.streamUrl || "");
+  const uploadUrl = String(payload.uploadUrl || "");
+  const instanceId = String(payload.instanceId || "");
+  if (!sourceUri || !instanceId) throw new Error("lossless task missing source instance stream");
+  if (!uploadUrl) throw new Error("lossless task missing signed upload URL");
+
+  const signal = activeTaskController?.signal;
+  const response = await fetch(sourceUri, { signal });
+  if (!response.ok) throw new Error(`source fetch failed: HTTP ${response.status}`);
+  const source = new Uint8Array(await response.arrayBuffer());
+  const expectedSize = payload.sourceSize ?? payload.size;
+  if (expectedSize !== undefined && Number(expectedSize) !== source.byteLength) {
+    throw new Error("source size no longer matches the queued snapshot; conversion was discarded");
+  }
+
+  const { flac, evidence } = await convertIntegerPcmWav(source, (percent) => {
+    (self as unknown as Worker).postMessage({ progress: percent });
+  }, signal);
+  if (flac.byteLength >= source.byteLength) {
+    throw new Error("FLAC output is not smaller than the source; no upload was made");
+  }
+  const expectedHash = String(payload.sourceSha256 || payload.sha256 || "").toLowerCase();
+  if (expectedHash && expectedHash !== evidence.sourceSha256) {
+    throw new Error("source hash no longer matches the queued snapshot; conversion was discarded");
+  }
+
+  (self as unknown as Worker).postMessage({ progress: 99 });
+  const upload = await fetch(uploadUrl, {
+    method: "POST",
+    body: flac,
+    signal,
+    headers: {
+      "Content-Type": "audio/flac",
+      "X-Source-SHA256": evidence.sourceSha256,
+      "X-Output-SHA256": evidence.outputSha256,
+      "X-Source-PCM-SHA256": evidence.sourcePcmSha256,
+      "X-Output-PCM-SHA256": evidence.outputPcmSha256,
+      "X-Verification-JSON": JSON.stringify({
+        ...evidence.format,
+        sourceBytes: evidence.sourceBytes,
+        outputBytes: evidence.outputBytes,
+        metadataPreserved: evidence.metadataPreserved,
+      }),
+      "X-Work-Attempt": String(payload.attempts || ""),
+      "X-Work-Claimed-At": String(payload.claimedAt || ""),
+    },
+  });
+  if (!upload.ok) {
+    const body = await upload.text().catch(() => "");
+    throw new Error(`verified FLAC upload failed: HTTP ${upload.status} ${body.slice(0, 200)}`);
+  }
+  const registered = await upload.json() as { ok?: boolean; registered?: boolean; r2Key?: string; size?: number; instanceId?: string };
+  if (registered.ok !== true || registered.registered !== true || registered.instanceId !== instanceId) {
+    throw new Error("upload was not registered against the source instance; no success was reported");
+  }
+  return { ...registered, evidence };
 }
 
 // ---------------------------------------------------------------------------
