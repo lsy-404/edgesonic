@@ -30,6 +30,7 @@
 import express from "express";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { registerMediaRoutes } from "./media.js";
 
 const PORT = parseInt(process.env.PORT || "8080", 10);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -107,6 +108,8 @@ function authGate(req, res, next) {
   }
   next();
 }
+
+registerMediaRoutes(app, authGate);
 
 app.get("/health", authGate, (_req, res) => {
   res.type("text/plain").send("ok");
