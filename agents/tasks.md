@@ -40,4 +40,6 @@
 | 589 | [Feature] Metadata review UI | Separate task progress and metadata status and expose pending decisions | Let users decide uncertain metadata | ✅ 已完成 |
 | 590 | [Feature] KTV rooms and video media | Temporary named song requests, fair/FIFO queues, bound library audio and video, external media loader and Subsonic video | User requested shared KTV playback and Subsonic video support | ✅ 已完成 |
 | 591 | [Feature] Karaoke player integration | Mode entry, popup settings, public guest page, fullscreen media and production deployment | Refine the room into an integrated singing mode with anonymous guest access | ✅ 已完成 |
+| 592 | [BugFix] Catalog object titles | Restore object-like song titles and return logical filenames from search3 | Object storage ids must not become display names | 🔄 进行中 |
 | 593 | [BugFix] Object title parsing | Recover empty or generated object placeholder titles from original logical filenames across apply and Subsonic reads | R2 physical object keys were leaking into song title handling | ✅ 已完成 |
+| 594 | [Audit] Object title repair | Verify original path evidence and title-only repair eligibility | Protect existing catalog identities while fixing object path display | ✅ 已完成 |

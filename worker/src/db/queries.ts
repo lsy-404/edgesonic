@@ -403,7 +403,7 @@ export function createQueries(db: D1Database) {
            JOIN song_instances si ON si.master_id = sm.id AND si.missing = 0
            WHERE sm.album_id = a.id
            ORDER BY CASE WHEN si.storage_uri LIKE 'r2://%' THEN 0 ELSE 1 END ASC,
-                    si.bit_rate DESC
+                    si.bit_rate DESC, si.id ASC
            LIMIT 1) AS storage_uri,
           (SELECT CASE WHEN COUNT(*) = 1 THEN MIN(se.path) END
            FROM song_masters sm JOIN song_instances si ON si.master_id = sm.id AND si.missing = 0
@@ -413,7 +413,7 @@ export function createQueries(db: D1Database) {
                           JOIN song_instances si2 ON si2.master_id = sm2.id AND si2.missing = 0
                           WHERE sm2.album_id = a.id
                           ORDER BY CASE WHEN si2.storage_uri LIKE 'r2://%' THEN 0 ELSE 1 END ASC,
-                                   si2.bit_rate DESC LIMIT 1)) AS logical_path,
+                                   si2.bit_rate DESC, si2.id ASC LIMIT 1)) AS logical_path,
           COALESCE((SELECT AVG(an.rating) FROM annotations an
                     WHERE an.item_id = a.id AND an.item_type = 'album' AND an.rating IS NOT NULL), 0) AS avg_rating,
           ${listeningStats},
