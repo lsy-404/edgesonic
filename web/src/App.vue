@@ -174,7 +174,7 @@ watch(() => route.query.q, (q) => {
 }, { immediate: true });
 window.addEventListener("keydown", onGlobalSearchShortcut);
 const onPlayerKeyboardShortcut = createPlayerKeyboardShortcutHandler({
-  hasTrack: () => isLoggedIn.value && !isBare.value && !route.meta.ktv && player.hasTrack,
+  hasTrack: () => isLoggedIn.value && !isBare.value && !route.meta.ktv && !route.meta.media && player.hasTrack,
   currentTime: () => player.currentTime,
   duration: () => player.duration,
   volume: () => player.volume,
@@ -346,7 +346,7 @@ onBeforeUnmount(() => {
   </Transition>
 
   <!-- 未登录：全屏渲染（Login）；bare 路由同样全屏，不套框架 -->
-  <router-view v-if="!isLoggedIn || isBare" />
+  <router-view v-if="!isLoggedIn || isBare" :key="route.path.startsWith('/ktv/join/') ? route.fullPath : undefined" />
 
   <div
     v-else
@@ -354,6 +354,8 @@ onBeforeUnmount(() => {
     :class="{
       'details-open': detail.isOpen,
       'demo-shell': demoMode.enabled,
+      'media-shell': route.meta.ktv || route.meta.media,
+      'ktv-shell': route.meta.ktv,
     }"
   >
     <nav class="navbar">
@@ -427,7 +429,7 @@ onBeforeUnmount(() => {
     </main>
 
     <DetailHost />
-    <PlayerBar v-if="!route.meta.ktv" />
+    <PlayerBar v-if="!route.meta.ktv && !route.meta.media" />
     <MobileNavigation v-if="!route.meta.ktv" :groups="groups" @navigate="detail.close()" />
   </div>
   </FluentTheme>
@@ -446,6 +448,8 @@ onBeforeUnmount(() => {
   z-index: 1;
 }
 .shell { min-height: 100vh; }
+.media-shell { --player-h: 0px; }
+.ktv-shell { --bottom-nav-space: 0px; }
 .app-toast {
   display: flex;
   align-items: center;

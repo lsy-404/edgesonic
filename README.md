@@ -47,6 +47,9 @@ EdgeSonic serves two roles simultaneously:
 - **Browser worker pool** — distributed metadata parsing and transcoding via Web Workers; concurrency is tunable and pauses automatically during playback
 - **Server-side transcoding** — Sandbox DO container (ffmpeg) with on-demand or pre-bake strategy; browser pool engine for zero-backend-CPU transcoding
 - **Full Subsonic API** — playlists, bookmarks, play queue, annotations (star/rating/scrobble), sharing, internet radio, podcasts, Last.fm integration, now playing, cover art, lyrics
+- **Temporary KTV rooms** — a QR request page for the current player, guest display names, per-person rotation or FIFO; requests stop when the room closes or its host lease expires.
+- **Independent video library** — import videos or explicitly save Bilibili / YouTube references; audio/video links are many-to-many with a separate synchronization offset for each pair. Temporary requests are never saved automatically.
+- **Watch or listen to videos** — use a video's own audio track, or pair muted video with library audio; Subsonic video browsing, details, streaming, HLS and captions are supported.
 - **Migrate from / push to another Subsonic server** — browser-driven clone pulls metadata, audio bytes, user accounts (with each user's own starred items and playlists), playlists, and stars from an upstream Subsonic-compatible server; resumable via a local browser cache so a cancelled or interrupted run picks up where it left off instead of starting over. The reverse direction pushes local stars/playlists back upstream.
 - **Tag editor** — read/write ID3v2 (MP3), VORBIS_COMMENT (FLAC/OGG), batch operations, keyword semantics (`{null}` / `{write}` / `{export}`)
 - **Metadata scraping** — NetEase / QQ Music / Kugou public APIs, frontend-driven, results submitted back to the server
@@ -59,6 +62,14 @@ EdgeSonic serves two roles simultaneously:
 - **Persistent audio cache** — completed tracks are cached in IndexedDB for offline-friendly replay; capacity and eviction are configurable in Settings
 
 ## Quick start
+
+### KTV and video requirements
+
+Enable KTV in Settings. The deployment needs a `KTV_ROOMS` → `KtvRoom` SQLite Durable Object binding and migration, as shown in `worker/wrangler.toml.example`. Apply `worker/migrations/0043_videos.sql` to an existing database; fresh installations already include these tables in `Schema.sql`.
+
+Video processing uses the media service in `docker/external-transcoder` (ffmpeg and yt-dlp). Configure its direct address and matching `SHARED_KEY` in the external transcoder settings. The service needs writable temporary disk and network access to the platforms; native video preparation accepts files up to 1 GiB. Platform login, regional restrictions and unavailable links can prevent playback.
+
+Initial setup of these resources currently requires the CLI; the existing in-app updater preserves configured Durable Object bindings. Release database patches and installer resource declarations must also be checked when packaging a release.
 
 ### Deploy (recommended): Overture deployment wizard
 

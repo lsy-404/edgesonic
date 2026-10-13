@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { useAuth, parseXmlAttrs } from "../api";
-import Icon from "../components/Icon.vue";
+import { usePlayerStore } from "../stores/player";
 import MediaSurface from "../components/MediaSurface.vue";
 import { getVideoPlayback, importVideoFile, listVideoLinks, listVideos, removeVideoLink, resolveExternalVideo, saveExternalVideo, saveVideoLink, type MediaSession, type VideoAudioLink, type VideoSummary } from "../lib/videoApi";
 
@@ -14,10 +14,10 @@ interface StorageSource { id: string; name: string }
 const { t } = useI18n();
 const auth = useAuth();
 const router = useRouter();
+const player = usePlayerStore();
 const query = ref("");
 const videos = ref<VideoSummary[]>([]);
 const total = ref(0);
-const offset = ref(0);
 const loading = ref(false);
 const error = ref("");
 const selectedVideo = ref<VideoSummary | null>(null);
@@ -25,6 +25,7 @@ const session = ref<MediaSession | null>(null);
 const previewAudioOnly = ref(false);
 const mediaTime = ref(0);
 const mediaPlaying = ref(false);
+const preparing = ref(false);
 const externalUrl = ref("");
 const saveBusy = ref(false);
 const importSourceId = ref("r2");
@@ -38,19 +39,19 @@ const audioBusy = ref(false);
 const offsetMs = ref(0);
 const linkBusyId = ref("");
 const pageSize = 40;
+let playbackGeneration = 0;
 
-const canLoadMore = computed(() => offset.value + videos.value.length < total.value);
+const canLoadMore = computed(() => videos.value.length < total.value);
 const selectedLinks = computed(() => links.value.filter((link) => link.videoId === selectedVideo.value?.id));
 
 async function loadVideos(reset = true) {
   if (loading.value) return;
   loading.value = true;
   error.value = "";
-  const start = reset ? 0 : offset.value + videos.value.length;
+  const start = reset ? 0 : videos.value.length;
   try {
     const result = await listVideos(query.value.trim(), start, pageSize);
     videos.value = reset ? result.videos : [...videos.value, ...result.videos];
-    offset.value = start;
     total.value = result.total;
   } catch (cause) { error.value = cause instanceof Error ? cause.message : "Video library is unavailable."; }
   finally { loading.value = false; }
@@ -69,28 +70,44 @@ async function loadLinks(video: VideoSummary) {
 }
 
 async function playVideo(video: VideoSummary, audioOnly = false) {
+  const generation = ++playbackGeneration;
+  preparing.value = true;
   selectedVideo.value = video;
   previewAudioOnly.value = audioOnly;
   error.value = "";
   try {
     const result = await getVideoPlayback(video.id);
+    if (generation !== playbackGeneration) {
+      void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
+      return;
+    }
+    if (player.playing) player.toggle();
     session.value = result.session;
     mediaTime.value = 0;
-    mediaPlaying.value = false;
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : "Video playback is unavailable."; }
+    mediaPlaying.value = true;
+  } catch (cause) { if (generation === playbackGeneration) error.value = cause instanceof Error ? cause.message : "Video playback is unavailable."; }
+  finally { if (generation === playbackGeneration) preparing.value = false; }
 }
 
 async function resolveTemporary() {
   if (!externalUrl.value.trim()) return;
+  const generation = ++playbackGeneration;
+  preparing.value = true;
   error.value = "";
   try {
     const result = await resolveExternalVideo(externalUrl.value.trim());
+    if (generation !== playbackGeneration) {
+      void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
+      return;
+    }
+    if (player.playing) player.toggle();
     selectedVideo.value = null;
     session.value = result.session;
     previewAudioOnly.value = false;
     mediaTime.value = 0;
-    mediaPlaying.value = false;
-  } catch (cause) { error.value = cause instanceof Error ? cause.message : "This video could not be prepared."; }
+    mediaPlaying.value = true;
+  } catch (cause) { if (generation === playbackGeneration) error.value = cause instanceof Error ? cause.message : "This video could not be prepared."; }
+  finally { if (generation === playbackGeneration) preparing.value = false; }
 }
 
 async function saveExternal() {
@@ -170,7 +187,7 @@ async function updateOffset(link: VideoAudioLink) {
 
 function useFilePage() { void router.push({ path: "/files", query: { source: importSourceId.value } }); }
 function videoProvider(provider: VideoSummary["provider"]) { return provider === "file" ? "FILE" : provider === "youtube" ? "YOUTUBE" : "BILIBILI"; }
-watch(query, () => { void loadVideos(); });
+onBeforeUnmount(() => { playbackGeneration++; });
 onMounted(() => { void loadSources(); void loadVideos(); });
 </script>
 
@@ -182,16 +199,16 @@ onMounted(() => { void loadSources(); void loadVideos(); });
         <h1 class="page-title">{{ t("videos.title") }}</h1>
         <p class="page-description">{{ t("videos.intro") }}</p>
       </div>
-      <router-link class="btn-secondary btn-sm" :to="{ path: '/files', query: { source: importSourceId } }">{{ t("videos.fileImport") }}</router-link>
+      <router-link v-if="auth.hasPerm('manage_files')" class="btn-secondary btn-sm" :to="{ path: '/files', query: { source: importSourceId } }">{{ t("videos.fileImport") }}</router-link>
     </header>
 
     <section class="card source-tools">
       <form class="external-form" @submit.prevent="saveExternal">
         <label class="field-grow"><span class="mono-label">{{ t("videos.saveExternal") }}</span><input v-model="externalUrl" class="form-input" :placeholder="t('videos.externalPlaceholder')" /></label>
-        <button class="btn-primary" :disabled="saveBusy || !externalUrl.trim()">{{ saveBusy ? t("common.loading") : t("videos.save") }}</button>
-        <button type="button" class="btn-secondary" :disabled="!externalUrl.trim()" @click="resolveTemporary">{{ t("videos.preview") }}</button>
+        <button v-if="auth.hasPerm('upload')" class="btn-primary" :disabled="saveBusy || !externalUrl.trim()">{{ saveBusy ? t("common.loading") : t("videos.save") }}</button>
+        <button v-if="auth.hasPerm('stream')" type="button" class="btn-secondary" :disabled="preparing || !externalUrl.trim()" @click="resolveTemporary">{{ preparing ? t("common.loading") : t("videos.preview") }}</button>
       </form>
-      <form class="import-form" @submit.prevent="importFile">
+      <form v-if="auth.hasPerm('upload')" class="import-form" @submit.prevent="importFile">
         <div class="import-title">
           <div><div class="mono-label">{{ t("videos.fileImport") }}</div><p class="feature-desc">{{ t("videos.fileImportHint") }}</p></div>
           <button type="button" class="btn-secondary btn-sm" @click="useFilePage">{{ t("app.menu.files") }}</button>
@@ -217,9 +234,9 @@ onMounted(() => { void loadSources(); void loadVideos(); });
               <strong>{{ video.title }}</strong>
               <small>{{ video.duration ? `${Math.floor(video.duration / 60)}:${String(Math.floor(video.duration % 60)).padStart(2, '0')}` : "—" }}<template v-if="video.width && video.height"> · {{ video.width }}×{{ video.height }}</template></small>
             </button>
-            <div class="video-card-actions">
-              <button class="btn-secondary btn-sm" @click="playVideo(video)">{{ t("videos.watch") }}</button>
-              <button class="btn-secondary btn-sm" @click="playVideo(video, true)">{{ t("videos.listen") }}</button>
+            <div v-if="auth.hasPerm('stream')" class="video-card-actions">
+              <button class="btn-secondary btn-sm" :disabled="preparing" @click="playVideo(video)">{{ t("videos.watch") }}</button>
+              <button class="btn-secondary btn-sm" :disabled="preparing" @click="playVideo(video, true)">{{ t("videos.listen") }}</button>
             </div>
           </article>
         </div>
@@ -244,13 +261,13 @@ onMounted(() => { void loadSources(); void loadVideos(); });
             <div class="linked-audio">
               <div v-for="link in selectedLinks" :key="link.audioId" class="audio-link-row">
                 <span><strong>{{ link.audioTitle }}</strong></span>
-                <label class="offset-editor"><span>{{ t("videos.offset") }}</span><input v-model.number="link.offsetMs" class="form-input" type="number" step="10" /></label>
-                <button class="btn-secondary btn-sm" :disabled="linkBusyId === link.audioId" @click="updateOffset(link)">{{ t("common.save") }}</button>
-                <button class="btn-secondary btn-sm" :disabled="linkBusyId === link.audioId" @click="detachAudio(link)">{{ t("videos.removeLink") }}</button>
+                <label class="offset-editor"><span>{{ t("videos.offset") }}</span><input v-model.number="link.offsetMs" :readonly="!auth.hasPerm('edit_tags')" class="form-input" type="number" step="10" /></label>
+                <button v-if="auth.hasPerm('edit_tags')" class="btn-secondary btn-sm" :disabled="linkBusyId === link.audioId" @click="updateOffset(link)">{{ t("common.save") }}</button>
+                <button v-if="auth.hasPerm('edit_tags')" class="btn-secondary btn-sm" :disabled="linkBusyId === link.audioId" @click="detachAudio(link)">{{ t("videos.removeLink") }}</button>
               </div>
               <p v-if="!selectedLinks.length" class="feature-desc">{{ t("videos.noneLinked") }}</p>
             </div>
-            <form class="audio-search-form" @submit.prevent="searchAudio">
+            <form v-if="auth.hasPerm('edit_tags')" class="audio-search-form" @submit.prevent="searchAudio">
               <label><span class="mono-label">{{ t("videos.audioSearch") }}</span><input v-model="audioQuery" class="form-input" :placeholder="t('videos.audioPlaceholder')" /></label>
               <label><span class="tc-key">{{ t("videos.offset") }}</span><input v-model.number="offsetMs" class="form-input" type="number" step="10" /></label>
               <button class="btn-secondary btn-sm" :disabled="audioBusy || !audioQuery.trim()">{{ audioBusy ? t("common.loading") : t("videos.search") }}</button>

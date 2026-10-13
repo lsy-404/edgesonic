@@ -27,9 +27,9 @@ const currentTime = ref(0);
 const selectedCaption = ref("");
 let hls: Hls | null = null;
 let hlsGeneration = 0;
-let syncTimer: number | undefined;
 let activeSessionId = "";
 let resumeAfterReload = false;
+let resumeTime = 0;
 let danmakuController: AbortController | null = null;
 let danmakuRequestId = 0;
 let danmakuSessionId = "";
@@ -38,8 +38,10 @@ const activeDanmaku = computed(() => danmaku.value.filter((entry) => Math.abs(en
 const danmakuState = ref<"loading" | "available" | "empty" | "failed">("loading");
 
 function releaseSession(sessionId: string) {
-  void fetch(`/edgesonic/media/${encodeURIComponent(sessionId)}`, { method: "DELETE", credentials: "same-origin" }).catch(() => {});
+  void fetch(`/edgesonic/media/${encodeURIComponent(sessionId)}`, { method: "DELETE", credentials: "same-origin", keepalive: true }).catch(() => {});
 }
+function onPageHide(event: PageTransitionEvent) { if (!event.persisted) releaseSession(props.session.id); }
+window.addEventListener("pagehide", onPageHide);
 
 function releaseHls() {
   hlsGeneration++;
@@ -87,12 +89,13 @@ watch(() => props.session.id, (next, previous) => {
 
 watch([media, () => props.session.id, () => props.audioOnly], async ([element, sessionId, audioOnly]) => {
   if (!element || !sessionId) return;
-  resumeAfterReload = sessionId === activeSessionId && !element.paused;
+  resumeAfterReload = sessionId === activeSessionId ? !element.paused : props.startPlaying;
+  resumeTime = sessionId === activeSessionId ? element.currentTime : props.initialTime;
   activeSessionId = sessionId;
   releaseHls();
   const generation = hlsGeneration;
   hlsError.value = "";
-  currentTime.value = 0;
+  currentTime.value = resumeTime;
   element.muted = props.muted;
   if (audioOnly && !props.session.audioTracks.length) {
     hlsError.value = t("media.audioTrackUnavailable");
@@ -101,16 +104,16 @@ watch([media, () => props.session.id, () => props.audioOnly], async ([element, s
   }
   const url = mediaManifestUrl(sessionId, audioOnly);
   const nativeHls = element.canPlayType("application/vnd.apple.mpegurl") !== "";
-  if (nativeHls) {
-    element.src = url;
-  } else if (Hls.isSupported()) {
-    const instance = new Hls();
+  if (Hls.isSupported()) {
+    const instance = new Hls({ startPosition: Math.max(0, resumeTime) });
     hls = instance;
     instance.on(Hls.Events.ERROR, (_event, data) => {
       if (data.fatal && generation === hlsGeneration) hlsError.value = "This stream could not be played in this browser.";
     });
     instance.attachMedia(element);
     instance.loadSource(url);
+  } else if (nativeHls) {
+    element.src = url;
   } else {
     hlsError.value = "This browser does not support HLS playback.";
     emit("error", hlsError.value);
@@ -123,6 +126,11 @@ watch(() => props.muted, (muted) => { if (media.value) media.value.muted = muted
 watch(() => [props.syncTime, props.syncPlaying] as const, async ([time, playing]) => {
   const element = media.value;
   if (!element || props.syncTime === undefined) return;
+  if (typeof time === "number" && time < 0) {
+    element.pause();
+    if (element.readyState) element.currentTime = 0;
+    return;
+  }
   if (typeof time === "number" && Number.isFinite(time) && Math.abs(element.currentTime - time) > 0.65) {
     try { element.currentTime = Math.max(0, time); } catch { /* metadata is not ready */ }
   }
@@ -141,15 +149,16 @@ watch(selectedCaption, (trackId) => {
 });
 
 watch(currentTime, (time) => emit("time", time));
-function onTime() { currentTime.value = media.value?.currentTime ?? 0; }
-function onDuration() { const duration = media.value?.duration; if (duration && Number.isFinite(duration)) emit("duration", duration); }
-function onMetadata() { onDuration(); void restoreInitialTime(); }
+function onTime() { if (media.value?.readyState && resumeTime <= 0) currentTime.value = media.value.currentTime; }
+function onDuration() { const duration = media.value?.duration; if (duration && Number.isFinite(duration)) emit("duration", duration); void restoreInitialTime(); }
+function onMetadata() { onDuration(); }
 async function restoreInitialTime() {
   if (!media.value) return;
-  if (props.initialTime > 0 && Number.isFinite(media.value.duration)) {
-    try { media.value.currentTime = Math.min(props.initialTime, Math.max(0, media.value.duration - 0.25)); } catch { /* stream is not seekable yet */ }
+  if (resumeTime > 0) {
+    if (!Number.isFinite(media.value.duration) || media.value.duration < resumeTime) return;
+    try { media.value.currentTime = resumeTime; resumeTime = 0; } catch { return; }
   }
-  const shouldResume = resumeAfterReload || props.startPlaying;
+  const shouldResume = resumeAfterReload || (props.syncPlaying === true && (props.syncTime ?? 0) >= 0);
   resumeAfterReload = false;
   if (shouldResume) {
     try { await media.value.play(); } catch { emit("autoplayBlocked"); }
@@ -159,18 +168,7 @@ function onEnded() { emit("ended"); }
 function onPlay() { emit("playing", true); }
 function onPause() { emit("playing", false); }
 function onError() { if (!hlsError.value) hlsError.value = "The media session could not be loaded."; emit("error", hlsError.value); }
-function resetSyncTimer() { if (syncTimer !== undefined) window.clearInterval(syncTimer); syncTimer = undefined; }
-watch(() => props.syncTime, (time) => {
-  resetSyncTimer();
-  if (time === undefined) return;
-  syncTimer = window.setInterval(() => {
-    const element = media.value;
-    if (element && props.syncTime !== undefined && Math.abs(element.currentTime - props.syncTime) > 1.25) {
-      try { element.currentTime = Math.max(0, props.syncTime); } catch { /* metadata is not ready */ }
-    }
-  }, 1000);
-}, { immediate: true });
-onBeforeUnmount(() => { resetSyncTimer(); danmakuController?.abort(); danmakuRequestId++; releaseHls(); releaseSession(props.session.id); });
+onBeforeUnmount(() => { window.removeEventListener("pagehide", onPageHide); danmakuController?.abort(); danmakuRequestId++; releaseHls(); releaseSession(props.session.id); });
 </script>
 
 <template>

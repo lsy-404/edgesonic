@@ -222,13 +222,10 @@ jobs:
             edgesonic-release/worker/wrangler.toml.example > edgesonic-release/worker/wrangler.toml
           # No custom domain — use edgesonic.<account>.workers.dev.
           sed -i '/^routes/,/^\]/d' edgesonic-release/worker/wrangler.toml
-          # Containers need the Workers Paid plan. The demo account is on Free,
-          # so drop the container app together with the Sandbox DO binding and
-          # its migration — the three tables are contiguous at the end of the
-          # template. Demo transcoding falls back to the browser work queue.
+          # Remove the paid Sandbox stack while retaining SQLite room bindings.
           sed -i '/^\[\[containers\]\]/,/^new_sqlite_classes/d' edgesonic-release/worker/wrangler.toml
-          if grep -qE '^\[\[(containers|durable_objects\.bindings|migrations)\]\]' edgesonic-release/worker/wrangler.toml; then
-            echo "::error::wrangler.toml still declares a container/Durable Object stack the demo account cannot deploy."
+          if grep -qE '^\[\[containers\]\]|class_name = "Sandbox"|new_sqlite_classes = \["Sandbox"\]' edgesonic-release/worker/wrangler.toml; then
+            echo "::error::wrangler.toml still declares the paid Sandbox stack."
             exit 1
           fi
 

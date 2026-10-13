@@ -89,6 +89,7 @@ const INT_KEYS = new Set([
   "offset", "totalHits", "code", "folder", "maxBitRate", "minutes",
   "avatarLastChanged", "start",
   "end", "byteStart", "byteEnd", "index",
+  "originalWidth", "originalHeight", "width", "height",
 ]);
 
 const FLOAT_KEYS = new Set(["averageRating"]);

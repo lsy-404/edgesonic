@@ -17,6 +17,7 @@ import { Hono } from "hono";
 import { authMiddleware, subsonicError } from "./auth";
 import { replaceSubsonicServerVersion } from "./utils/xml";
 import { registerRoutes } from "./router";
+import { ktvHostRoutes, ktvPublicRoutes } from "./ktv/routes";
 import { formPostMiddleware } from "./middleware/form_post";
 import { formatMiddleware, xmlToJson } from "./middleware/format";
 import { crossOriginIsolationMiddleware } from "./middleware/cross_origin_isolation";
@@ -47,6 +48,7 @@ export { Sandbox } from "@cloudflare/sandbox";
 // page hold a socket here; newly queued tasks are handed straight down it
 // the moment they are queued.
 export { WorkCoordinator } from "./coordinator/workCoordinator";
+export { KtvRoom } from "./ktv/room";
 
 const app = new Hono();
 
@@ -89,6 +91,7 @@ app.route("/", webLoginRoutes);
 
 // anonymous visitors can press play on a share link without credentials.
 app.route("/", sharePublicRoutes);
+app.route("/ktv", ktvPublicRoutes);
 
 // OR application/x-www-form-urlencoded body. Merge any form body fields into
 // the URL query BEFORE auth & route handlers run, so all existing
@@ -129,6 +132,7 @@ app.use("/tag/*", apiRateLimitMiddleware);
 app.use("/storage/*", apiRateLimitMiddleware);
 app.use("/edgesonic/*", apiRateLimitMiddleware);
 
+app.route("/edgesonic/ktv", ktvHostRoutes);
 registerRoutes(app);
 
 app.onError((err, c) => {

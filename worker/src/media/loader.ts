@@ -35,7 +35,12 @@ export async function requestMedia(env: Env, path: string, init: RequestInit = {
   if (!base || !secret?.value) throw new MediaLoaderError("Media loader is not configured", 503);
   const headers = new Headers(init.headers);
   headers.set("X-EdgeSonic-Container-Key", secret.value);
-  return fetch(`${base.replace(/\/+$/, "")}${path}`, { ...init, headers, redirect: "error" });
+  const response = await fetch(`${base.replace(/\/+$/, "")}${path}`, { ...init, headers, redirect: "manual" });
+  if (response.status >= 300 && response.status < 400) {
+    await response.body?.cancel();
+    throw new MediaLoaderError("Media loader must use its direct service address");
+  }
+  return response;
 }
 
 export async function readMediaSession(response: Response): Promise<MediaSession> {

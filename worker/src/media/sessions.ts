@@ -54,7 +54,7 @@ export async function mediaArtifactResponse(
   }
   const headers = new Headers();
   const range = request.headers.get("Range");
-  if (range) headers.set("Range", range);
+  if (range && !artifact.endsWith(".m3u8")) headers.set("Range", range);
   const path = `/media/sessions/${id}/${artifact}`;
   const upstream = await requestMedia(env, `${path}${query.size ? `?${query}` : ""}`, {
     method: request.method === "HEAD" ? "HEAD" : "GET", headers, signal: request.signal,
@@ -94,6 +94,9 @@ export async function mediaArtifactResponse(
       return rewrite(line.trim());
     }).join("\n");
     responseHeaders.delete("Content-Length");
+    responseHeaders.delete("Content-Range");
+    responseHeaders.delete("Accept-Ranges");
+    responseHeaders.delete("ETag");
     responseHeaders.set("Content-Type", "application/vnd.apple.mpegurl");
     return new Response(rewritten, { status: upstream.status, headers: responseHeaders });
   }

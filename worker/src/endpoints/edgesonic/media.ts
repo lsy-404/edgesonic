@@ -3,8 +3,8 @@
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import type { User } from "../../types/entities";
-import { MediaLoaderError, resolveExternalMedia } from "../../media/loader";
-import { mediaArtifactResponse, rememberMediaSession } from "../../media/sessions";
+import { MediaLoaderError, requestMedia, resolveExternalMedia } from "../../media/loader";
+import { findMediaSession, forgetMediaSession, mediaArtifactResponse, rememberMediaSession } from "../../media/sessions";
 
 export const videoMediaRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
 
@@ -30,4 +30,14 @@ videoMediaRoutes.get("/media/:session/*", (c) => {
   const prefix = `/edgesonic/media/${c.req.param("session")}/`;
   const artifact = new URL(c.req.url).pathname.slice(prefix.length);
   return mediaArtifactResponse(c.env, c.get("user").username, c.req.param("session"), artifact, c.req.raw);
+});
+
+videoMediaRoutes.delete("/media/:session", async (c) => {
+  const id = c.req.param("session");
+  if (!await findMediaSession(c.env, c.get("user").username, id)) return c.body(null, 204);
+  const response = await requestMedia(c.env, `/media/sessions/${id}`, { method: "DELETE", signal: c.req.raw.signal });
+  await response.body?.cancel();
+  if (!response.ok && response.status !== 404) throw new MediaLoaderError("Media session could not be released");
+  await forgetMediaSession(c.env, id);
+  return c.body(null, 204);
 });

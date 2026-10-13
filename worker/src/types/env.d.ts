@@ -15,6 +15,7 @@
 
 interface Env {
   DB: D1Database;
+  KTV_ROOMS: DurableObjectNamespace;
   // Optional while deployments transition to the Rate Limiting bindings.
   AUTH_RATE_LIMITER?: RateLimit;
   API_RATE_LIMITER?: RateLimit;

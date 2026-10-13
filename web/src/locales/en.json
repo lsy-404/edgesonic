@@ -161,6 +161,7 @@
     "audio": "Audio library",
     "video": "Video library",
     "linkAudioVideo": "Linked video choices",
+    "boundAudio": "Use library audio",
     "addAudio": "Request audio",
     "addVideo": "Request video",
     "addPair": "Request with linked video",

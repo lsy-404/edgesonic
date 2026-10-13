@@ -10,7 +10,7 @@ import { useKtvSettingsStore } from "../stores/ktvSettings";
 import NowPlaying from "./NowPlaying.vue";
 import MediaSurface from "../components/MediaSurface.vue";
 import { createKtvRoom, getKtvLinks, getKtvRoom, hostStorageKey, ktvRoomAction, openKtvSocket, playerIdentityKey, searchKtvRoom, type KtvSearchAudio, type KtvSearchVideo } from "../lib/ktvApi";
-import { getVideoPlayback, resolveExternalVideo, type MediaSession } from "../lib/videoApi";
+import { getVideoPlayback, resolveExternalVideo, saveExternalVideo, type MediaSession } from "../lib/videoApi";
 
 const { t } = useI18n();
 const auth = useAuth();
@@ -41,6 +41,8 @@ const mediaDuration = ref(0);
 const mediaPlaying = ref(false);
 const listenOnly = ref(false);
 const mediaLoading = ref(false);
+const savingVideo = ref(false);
+const savedVideoItemId = ref("");
 const playerSnapshotKey = "edgesonic:ktv:previous-player";
 let socket: WebSocket | null = null;
 let heartbeatTimer: number | undefined;
@@ -48,10 +50,11 @@ let playbackTimer: number | undefined;
 let socketRetryTimer: number | undefined;
 let lastFinishedId = "";
 let itemGeneration = 0;
+let deliberateClose = false;
 
 const current = computed(() => room.value?.current ?? null);
-const currentAudio = computed(() => !!current.value?.audioId && !listenOnly.value);
-const canAdvance = computed(() => room.value?.queue[0]?.status === "queued");
+const currentAudio = computed(() => !!current.value?.audioId);
+const canAdvance = computed(() => !!current.value || room.value?.queue[0]?.status === "queued");
 const linkedOffset = computed(() => current.value?.offsetMs ?? 0);
 const activeComments = computed(() => comments.value.filter((item) => !current.value || item.itemId === current.value.id));
 const fullInviteUrl = computed(() => new URL(inviteUrl.value, window.location.href).toString());
@@ -87,8 +90,9 @@ function persistHost() {
 }
 
 function stopSocket() {
-  socket?.close();
+  const previous = socket;
   socket = null;
+  previous?.close();
   if (socketRetryTimer !== undefined) clearTimeout(socketRetryTimer);
   socketRetryTimer = undefined;
 }
@@ -96,26 +100,29 @@ function stopSocket() {
 function connectSocket() {
   if (!roomId.value || !controllerToken.value || !room.value?.open) return;
   stopSocket();
-  socket = openKtvSocket(roomId.value, { kind: "controller", token: controllerToken.value }, (raw) => {
+  const connection = openKtvSocket(roomId.value, { kind: "controller", token: controllerToken.value }, (raw) => {
+    if (socket !== connection) return;
     const event = raw as { type?: string; room?: KtvRoomSnapshot; comment?: KtvComment };
     if (event.type === "state" && event.room) room.value = event.room;
-    if (event.type === "comment" && event.comment) comments.value.push(event.comment);
+    if (event.type === "comment" && event.comment) comments.value = [...comments.value.slice(-99), event.comment];
     if (event.type === "closed") handleClosed();
   }, () => {
-    if (room.value?.open && !document.hidden) socketRetryTimer = window.setTimeout(connectSocket, 2500);
+    if (socket !== connection) return;
+    if (room.value?.open) socketRetryTimer = window.setTimeout(connectSocket, 2500);
   });
+  socket = connection;
 }
 
 function startHeartbeat() {
   if (heartbeatTimer !== undefined) clearInterval(heartbeatTimer);
   heartbeatTimer = window.setInterval(() => {
-    if (!room.value?.open || document.hidden) return;
+    if (!room.value?.open) return;
     if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ action: "heartbeat" }));
     else void perform({ action: "heartbeat" }, false);
   }, 20_000);
   if (playbackTimer !== undefined) clearInterval(playbackTimer);
   playbackTimer = window.setInterval(() => {
-    if (!room.value?.open || !room.value.current || document.hidden) return;
+    if (!room.value?.open || !room.value.current) return;
     const position = currentAudio.value ? player.currentTime : mediaTime.value;
     const playing = currentAudio.value ? player.playing : mediaPlaying.value;
     const payload = { action: "playback", currentId: room.value.current.id, playing, position } as const;
@@ -140,6 +147,7 @@ async function startRoom() {
   if (!settings.enabled || busy.value) return;
   busy.value = true;
   error.value = "";
+  deliberateClose = false;
   savePreviousPlayer();
   try {
     const result = await createKtvRoom({ playerId: playerId(), mode: settings.mode, displayName: displayName.value.trim() || "Host" });
@@ -194,8 +202,10 @@ async function perform(action: KtvAction, showError = true) {
 
 async function closeRoom() {
   if (!confirm(t("ktv.closeConfirm"))) return;
-  await perform({ action: "close" });
-  handleClosed();
+  deliberateClose = true;
+  const result = await perform({ action: "close" });
+  if (result) handleClosed();
+  else deliberateClose = false;
 }
 
 function handleClosed() {
@@ -209,7 +219,7 @@ function handleClosed() {
   mediaSession.value = null;
   if (player.playing) player.toggle();
   restorePreviousPlayer();
-  error.value = t("ktv.roomUnavailable");
+  error.value = deliberateClose ? "" : t("ktv.roomUnavailable");
 }
 
 async function copyInvite() {
@@ -221,8 +231,6 @@ async function search() {
   if (!room.value || !searchText.value.trim()) return;
   searchBusy.value = true;
   error.value = "";
-  selectedAudio.value = null;
-  linkedVideos.value = [];
   try {
     const result = await searchKtvRoom(room.value.id, { kind: "controller", token: controllerToken.value }, searchText.value.trim());
     audioResults.value = result.audio;
@@ -244,7 +252,7 @@ async function enqueue(selection: KtvSelection) {
   await perform({ action: "enqueue", selection });
 }
 function addAudio(audio: KtvSearchAudio) { void enqueue({ audioId: audio.id }); }
-function addVideo(video: KtvSearchVideo) { void enqueue({ videoId: video.id }); }
+function addVideo(video: KtvSearchVideo) { void enqueue({ audioId: selectedAudio.value?.id, videoId: video.id }); }
 function normalizeExternal(value: string) {
   const clean = value.trim();
   if (/^BV[0-9A-Za-z]+$/.test(clean)) return `https://www.bilibili.com/video/${clean}`;
@@ -270,21 +278,24 @@ async function loadCurrentMedia(item: KtvQueueItem | null) {
   mediaSession.value = null;
   mediaError.value = "";
   autoplayBlocked.value = false;
-  listenOnly.value = item?.listenOnly === true;
-  mediaTime.value = 0;
+  listenOnly.value = !item?.audioId && item?.listenOnly === true;
+  mediaTime.value = room.value?.playback.position ?? 0;
   mediaDuration.value = item?.duration ?? 0;
-  mediaPlaying.value = false;
+  mediaPlaying.value = room.value?.playback.playing ?? false;
+  mediaLoading.value = false;
   if (!item) return;
-  if (item.audioId && !item.listenOnly) {
-    if (player.current?.id !== item.audioId) {
-      player.setQueue([{ id: item.audioId, title: item.title, artist: item.artist || "", album: "", duration: item.duration ?? 0 }]);
-    } else if (!player.playing) player.toggle();
+  if (item.audioId) {
+    player.setQueue([{ id: item.audioId, title: item.title, artist: item.artist || "", album: "", duration: item.duration ?? 0 }], 0,
+      { autoplay: mediaPlaying.value, startTime: mediaTime.value });
   } else if (player.playing) player.toggle();
   if (!item.videoId && !item.externalUrl) return;
   mediaLoading.value = true;
   try {
     const result = item.videoId ? await getVideoPlayback(item.videoId) : await resolveExternalVideo(item.externalUrl!);
-    if (generation !== itemGeneration) return;
+    if (generation !== itemGeneration) {
+      void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
+      return;
+    }
     mediaSession.value = result.session;
     mediaDuration.value = result.session.duration ?? item.duration ?? 0;
   } catch (cause) {
@@ -294,25 +305,27 @@ async function loadCurrentMedia(item: KtvQueueItem | null) {
 
 watch(() => room.value?.current?.id, () => { void loadCurrentMedia(current.value); }, { immediate: true });
 watch(() => player.endedSequence, (sequence, previous) => {
-  if (sequence === previous || !current.value?.audioId || current.value.listenOnly || current.value.id === lastFinishedId) return;
+  if (sequence === previous || !current.value?.audioId || current.value.id === lastFinishedId) return;
   lastFinishedId = current.value.id;
   void perform({ action: "next", currentId: current.value.id });
 });
 
 function updateMediaClock(time: number) { mediaTime.value = time; }
 function updateMediaPlaying(value: boolean) { mediaPlaying.value = value; }
+async function saveCurrentVideo() {
+  const item = current.value;
+  if (!item?.externalUrl || savingVideo.value) return;
+  savingVideo.value = true;
+  try {
+    await saveExternalVideo(item.externalUrl);
+    savedVideoItemId.value = item.id;
+  } catch (cause) { error.value = cause instanceof Error ? cause.message : t("videos.saveFailed"); }
+  finally { savingVideo.value = false; }
+}
 function videoSyncTime() { return player.currentTime + linkedOffset.value / 1000; }
 function toggleListenOnly() {
-  if (!current.value?.videoId && !current.value?.externalUrl) return;
-  const switchingToListen = !listenOnly.value;
-  if (switchingToListen && current.value.audioId) {
-    mediaTime.value = player.currentTime + linkedOffset.value / 1000;
-    if (player.playing) player.toggle();
-  } else if (!switchingToListen && current.value.audioId) {
-    player.seek(Math.max(0, mediaTime.value - linkedOffset.value / 1000));
-    player.toggle();
-  }
-  listenOnly.value = switchingToListen;
+  if (current.value?.audioId || (!current.value?.videoId && !current.value?.externalUrl)) return;
+  listenOnly.value = !listenOnly.value;
 }
 
 function onVisibilityChange() {
@@ -330,6 +343,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  itemGeneration++;
   document.removeEventListener("visibilitychange", onVisibilityChange);
   stopSocket();
   if (heartbeatTimer !== undefined) clearInterval(heartbeatTimer);
@@ -357,9 +371,8 @@ onBeforeUnmount(() => {
     <div v-else-if="!room" class="card ktv-start-card">
       <label class="form-row">
         <span class="tc-key">{{ t("ktv.nickname") }}</span>
-        <input v-model="displayName" class="form-input" maxlength="48" />
+        <input v-model="displayName" class="form-input" maxlength="32" />
       </label>
-      <p v-if="error" class="error-text" role="alert">{{ error }}</p>
       <button class="btn-primary" :disabled="busy" @click="startRoom">{{ busy ? t("ktv.starting") : t("ktv.startRoom") }}</button>
     </div>
 
@@ -388,7 +401,7 @@ onBeforeUnmount(() => {
             <span v-for="person in room.participants" :key="person.id" class="participant-chip">{{ person.displayName }}<small v-if="person.host">HOST</small></span>
           </div>
           <form class="host-rename" @submit.prevent="perform({ action: 'rename', displayName: displayName.trim() })">
-            <input v-model="displayName" class="form-input" maxlength="48" :placeholder="t('ktv.nickname')" />
+            <input v-model="displayName" class="form-input" maxlength="32" :placeholder="t('ktv.nickname')" />
             <button class="btn-secondary btn-sm" :disabled="!displayName.trim()">{{ t("ktv.rename") }}</button>
           </form>
         </section>
@@ -426,10 +439,11 @@ onBeforeUnmount(() => {
                 <button v-if="currentAudio" class="btn-secondary btn-sm" @click="player.toggle()">{{ player.playing ? t("ktv.pause") : t("ktv.play") }}</button>
                 <button v-if="currentAudio" class="btn-secondary btn-sm" @click="perform({ action: 'next', currentId: current.id })">{{ t("ktv.next") }}</button>
                 <button v-if="mediaSession && !current.audioId" class="btn-secondary btn-sm" :disabled="!listenOnly && !mediaSession.audioTracks.length" @click="toggleListenOnly">{{ listenOnly ? t("ktv.watchVideo") : t("ktv.listenOnly") }}</button>
+                <button v-if="current.externalUrl && auth.hasPerm('upload')" class="btn-secondary btn-sm" :disabled="savingVideo || savedVideoItemId === current.id" @click="saveCurrentVideo">{{ savedVideoItemId === current.id ? t("videos.saved") : t("videos.save") }}</button>
                 <p v-if="mediaSession && !current.audioId && !mediaSession.audioTracks.length" class="feature-desc">{{ t("media.audioTrackUnavailable") }}</p>
               </div>
               <label v-if="currentAudio && player.duration > 0" class="ktv-seek">
-                <input type="range" min="0" :max="player.duration" :value="player.currentTime" @input="player.seek(Number(($event.target as HTMLInputElement).value))" />
+                <input type="range" min="0" step="0.1" :max="player.duration" :value="player.currentTime" @input="player.seek(Number(($event.target as HTMLInputElement).value))" />
                 <span>{{ Math.floor(player.currentTime / 60) }}:{{ String(Math.floor(player.currentTime % 60)).padStart(2, '0') }} / {{ Math.floor(player.duration / 60) }}:{{ String(Math.floor(player.duration % 60)).padStart(2, '0') }}</span>
               </label>
             </div>
@@ -459,7 +473,7 @@ onBeforeUnmount(() => {
               <p v-if="!activeComments.length" class="feature-desc">—</p>
             </div>
             <form class="comment-form" @submit.prevent="sendComment">
-              <input v-model="commentText" class="form-input" maxlength="240" :placeholder="t('ktv.commentPlaceholder')" />
+              <input v-model="commentText" class="form-input" maxlength="120" :placeholder="t('ktv.commentPlaceholder')" />
               <button class="btn-secondary btn-sm" :disabled="!commentText.trim()">{{ t("ktv.sendComment") }}</button>
             </form>
           </div>
@@ -486,12 +500,13 @@ onBeforeUnmount(() => {
             <p v-if="!videoResults.length" class="feature-desc">—</p>
             <div v-for="video in videoResults" :key="video.id" class="search-result">
               <strong>{{ video.title }}</strong>
-              <button class="btn-secondary btn-sm" @click="addVideo(video)">{{ t("ktv.addVideo") }}</button>
+              <button class="btn-secondary btn-sm" @click="addVideo(video)">{{ selectedAudio ? t("ktv.addPair") : t("ktv.addVideo") }}</button>
             </div>
           </div>
         </div>
-        <div v-if="linkedVideos.length" class="linked-choices">
-          <h3>{{ t("ktv.linkAudioVideo") }} · {{ selectedAudio?.title }}</h3>
+        <div v-if="selectedAudio" class="linked-choices">
+          <h3>{{ t("ktv.boundAudio") }} · {{ selectedAudio.title }}</h3>
+          <button class="btn-secondary btn-sm" @click="selectedAudio = null; linkedVideos = []">{{ t("common.clear") }}</button>
           <button v-for="video in linkedVideos" :key="video.videoId" class="btn-secondary btn-sm" @click="enqueue({ audioId: selectedAudio?.id, videoId: video.videoId, offsetMs: video.offsetMs })">{{ video.videoTitle }} · {{ t("ktv.addPair") }}</button>
         </div>
         <form class="external-row" @submit.prevent="requestExternal">

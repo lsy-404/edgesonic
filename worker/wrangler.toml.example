@@ -143,6 +143,14 @@ name = "Sandbox"
 tag = "v1-sandbox"
 new_sqlite_classes = ["Sandbox"]
 
+[[durable_objects.bindings]]
+class_name = "KtvRoom"
+name = "KTV_ROOMS"
+
+[[migrations]]
+tag = "v2-ktv"
+new_sqlite_classes = ["KtvRoom"]
+
 # ---------------------------------------------------------------------------
 # Cron 触发器由 Cloudflare API 动态管理，此处不声明静态 [triggers]，
 # 以免 `wrangler deploy` 覆盖运行时配置的计划任务。部署后到

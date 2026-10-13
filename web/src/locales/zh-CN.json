@@ -162,6 +162,7 @@
     "audio": "音频库",
     "video": "视频库",
     "linkAudioVideo": "已关联的视频",
+    "boundAudio": "使用曲库音频",
     "addAudio": "点播音频",
     "addVideo": "点播视频",
     "addPair": "点播关联视频",

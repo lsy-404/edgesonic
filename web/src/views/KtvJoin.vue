@@ -46,24 +46,38 @@ function saveToken(token: string) {
   sessionStorage.setItem(participantStorageKey(roomId), token);
 }
 function stopSocket() {
-  socket?.close(); socket = null;
+  const previous = socket;
+  socket = null;
+  previous?.close();
   if (retryTimer !== undefined) clearTimeout(retryTimer);
   retryTimer = undefined;
 }
 function connectSocket() {
   if (!canRequest.value || !participantToken.value) return;
   stopSocket();
-  socket = openKtvSocket(roomId, { kind: "participant", token: participantToken.value }, (raw) => {
+  const connection = openKtvSocket(roomId, { kind: "participant", token: participantToken.value }, (raw) => {
+    if (socket !== connection) return;
     const event = raw as { type?: string; room?: KtvRoomSnapshot; comment?: KtvComment };
     if (event.type === "state" && event.room) {
       room.value = event.room;
       if (!event.room.open) roomUnavailable();
     }
-    if (event.type === "comment" && event.comment) comments.value.push(event.comment);
+    if (event.type === "comment" && event.comment) comments.value = [...comments.value.slice(-99), event.comment];
     if (event.type === "closed") roomUnavailable();
-  }, () => {
-    if (canRequest.value && !document.hidden) retryTimer = window.setTimeout(connectSocket, 2500);
+  }, async () => {
+    if (socket !== connection || !canRequest.value) return;
+    try {
+      const state = await getGuestKtvState(roomId, participantToken.value);
+      if (socket !== connection) return;
+      if (!state.room.open) { roomUnavailable(); return; }
+      room.value = state.room;
+    } catch (cause) {
+      if (socket !== connection) return;
+      if ([401, 403, 404, 410].includes((cause as { status?: number }).status || 0)) { roomUnavailable(); return; }
+    }
+    if (socket === connection && canRequest.value) retryTimer = window.setTimeout(connectSocket, 2500);
   });
+  socket = connection;
 }
 function roomUnavailable() {
   unavailable.value = true;
@@ -109,8 +123,6 @@ async function perform(action: KtvAction) {
 async function search() {
   if (!canRequest.value || !searchText.value.trim()) return;
   searchBusy.value = true;
-  selectedAudio.value = null;
-  linkedVideos.value = [];
   try {
     const result = await searchKtvRoom(roomId, { kind: "participant", token: participantToken.value }, searchText.value.trim());
     audioResults.value = result.audio;
@@ -139,7 +151,7 @@ function normalizeExternal(value: string) {
 function requestExternal() {
   const url = normalizeExternal(externalUrl.value);
   if (!url) return;
-  void perform({ action: "enqueue", selection: { ...(selectedAudio.value ? { audioId: selectedAudio.value.id } : {}), externalUrl: url } });
+  void perform({ action: "enqueue", selection: { audioId: selectedAudio.value?.id, externalUrl: url, listenOnly: !selectedAudio.value && listenOnly.value } });
   externalUrl.value = "";
 }
 function sendComment() {
@@ -203,7 +215,7 @@ onBeforeUnmount(stopSocket);
     <template v-else>
       <section v-if="!joined" class="guest-card join-card">
         <p>{{ t("ktv.chooseSource") }}</p>
-        <label class="guest-field"><span>{{ t("ktv.nickname") }}</span><input v-model="displayName" class="form-input" maxlength="48" /></label>
+        <label class="guest-field"><span>{{ t("ktv.nickname") }}</span><input v-model="displayName" class="form-input" maxlength="32" /></label>
         <button class="btn-primary" :disabled="busy || !displayName.trim()" @click="join">{{ busy ? t("ktv.joining") : t("ktv.join") }}</button>
       </section>
 
@@ -214,7 +226,7 @@ onBeforeUnmount(stopSocket);
             <span class="participant-count">{{ room.participants.length }}</span>
           </div>
           <form class="rename-row" @submit.prevent="rename">
-            <input v-model="displayName" class="form-input" maxlength="48" :placeholder="t('ktv.nickname')" />
+            <input v-model="displayName" class="form-input" maxlength="32" :placeholder="t('ktv.nickname')" />
             <button class="btn-secondary btn-sm" :disabled="busy || !displayName.trim()">{{ t("ktv.rename") }}</button>
           </form>
           <ol class="guest-queue">
@@ -228,7 +240,7 @@ onBeforeUnmount(stopSocket);
             <div class="mono-label">{{ t("ktv.comments") }}</div>
             <p v-for="comment in comments.slice(-4)" :key="comment.id"><strong>{{ comment.displayName }}:</strong> {{ comment.text }}</p>
             <form class="comment-form" @submit.prevent="sendComment">
-              <input v-model="commentText" class="form-input" maxlength="240" :placeholder="t('ktv.commentPlaceholder')" />
+              <input v-model="commentText" class="form-input" maxlength="120" :placeholder="t('ktv.commentPlaceholder')" />
               <button class="btn-secondary btn-sm" :disabled="busy || !commentText.trim()">{{ t("ktv.sendComment") }}</button>
             </form>
           </div>
@@ -253,19 +265,20 @@ onBeforeUnmount(stopSocket);
             <div v-for="video in videoResults" :key="video.id" class="result-row">
               <strong>{{ video.title }}</strong>
               <div class="result-actions">
-                <button class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { videoId: video.id, ...(listenOnly ? { listenOnly: true } : {}) } })">{{ t("ktv.addVideo") }}</button>
-                <label class="listen-option"><input v-model="listenOnly" type="checkbox" />{{ t("ktv.listenOnly") }}</label>
+                <button class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { audioId: selectedAudio?.id, videoId: video.id, listenOnly: !selectedAudio && listenOnly } })">{{ selectedAudio ? t("ktv.addPair") : t("ktv.addVideo") }}</button>
               </div>
             </div>
           </div>
-          <div v-if="linkedVideos.length" class="linked-row">
-            <h3>{{ t("ktv.linkAudioVideo") }} · {{ selectedAudio?.title }}</h3>
+          <div v-if="selectedAudio" class="linked-row">
+            <h3>{{ t("ktv.boundAudio") }} · {{ selectedAudio.title }}</h3>
+            <button class="btn-secondary btn-sm" @click="selectedAudio = null; linkedVideos = []">{{ t("common.clear") }}</button>
             <button v-for="video in linkedVideos" :key="video.videoId" class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { audioId: selectedAudio?.id, videoId: video.videoId, offsetMs: video.offsetMs } })">{{ video.videoTitle }} · {{ t("ktv.addPair") }}</button>
           </div>
           <form class="external-row" @submit.prevent="requestExternal">
             <input v-model="externalUrl" class="form-input" :placeholder="t('ktv.externalPlaceholder')" />
             <button class="btn-secondary" :disabled="busy || !externalUrl.trim()">{{ t("ktv.requestExternal") }}</button>
           </form>
+          <label v-if="!selectedAudio" class="listen-option"><input v-model="listenOnly" type="checkbox" />{{ t("ktv.listenOnly") }}</label>
         </section>
       </template>
     </template>

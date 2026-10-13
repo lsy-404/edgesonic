@@ -5,7 +5,7 @@ import { parseStorageUri } from "../adapters/index";
 import { createR2Adapter } from "../adapters/r2";
 import { urlAdapter } from "../adapters/url";
 import { createWebDAVAdapter } from "../adapters/webdav";
-import { resolveExternalMedia, uploadVideoMedia, type MediaSession } from "./loader";
+import { requestMedia, resolveExternalMedia, uploadVideoMedia, type MediaSession } from "./loader";
 import { findMediaSession, forgetMediaSession, rememberMediaSession } from "./sessions";
 
 export type VideoProvider = "file" | "youtube" | "bilibili";
@@ -198,10 +198,10 @@ export async function invalidateVideoSession(env: Env, username: string, video: 
 }
 
 function normalizeExternalVideoReference(input: string): { provider: "youtube" | "bilibili"; url: string } {
-  const value = input.trim();
+  const value = input.trim().replace(/^av\s+(\d+)$/i, "av$1");
   if (/^BV[0-9A-Za-z]{10}$/i.test(value) || /^av\d+$/i.test(value)) {
     const ref = /^BV/i.test(value) ? value : value.toLowerCase();
-    return { provider: "bilibili", url: `https://www.bilibili.com/video/${ref}` };
+    return { provider: "bilibili", url: `https://www.bilibili.com/video/${ref}?p=1` };
   }
   let parsed: URL;
   try { parsed = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`); }
@@ -217,7 +217,11 @@ function normalizeExternalVideoReference(input: string): { provider: "youtube" |
   }
   if (host === "bilibili.com" || host.endsWith(".bilibili.com")) {
     const videoId = parsed.pathname.match(/\/video\/(BV[0-9A-Za-z]{10}|av\d+)/i)?.[1];
-    if (videoId) return { provider: "bilibili", url: `https://www.bilibili.com/video/${/^BV/i.test(videoId) ? videoId : videoId.toLowerCase()}` };
+    if (videoId) {
+      const parts = parsed.searchParams.getAll("p");
+      if (parts.length > 1 || (parts.length === 1 && !/^[1-9][0-9]*$/.test(parts[0]))) throw new Error("Invalid Bilibili part");
+      return { provider: "bilibili", url: `https://www.bilibili.com/video/${/^BV/i.test(videoId) ? videoId : videoId.toLowerCase()}?p=${parts[0] || "1"}` };
+    }
   }
   if (host === "b23.tv" && parsed.pathname !== "/") {
     return { provider: "bilibili", url: `https://b23.tv${parsed.pathname}` };
@@ -225,36 +229,33 @@ function normalizeExternalVideoReference(input: string): { provider: "youtube" |
   throw new Error("Only YouTube and Bilibili URLs are supported");
 }
 
-export async function saveExternalVideo(env: Env, url: string, username: string, signal?: AbortSignal): Promise<Video> {
+export async function saveExternalVideo(env: Env, url: string, signal?: AbortSignal): Promise<Video> {
   if (url.length > 2048) throw new Error("Video URL is too long");
   const normalized = normalizeExternalVideoReference(url);
   const existing = await env.DB.prepare(`${SELECT_VIDEO} WHERE v.provider = ? AND v.external_url = ?`)
     .bind(normalized.provider, normalized.url).first<VideoRow>();
-  if (existing) {
-    const video = toVideo(existing);
-    if (await cachedVideoSession(env, username, video)) return video;
-    const refreshed = await resolveExternalMedia(env, normalized.url, signal);
-    await rememberVideoSession(env, username, video, refreshed);
-    return video;
-  }
+  if (existing) return toVideo(existing);
   const session = await resolveExternalMedia(env, normalized.url, signal);
-  const now = Math.floor(Date.now() / 1000);
-  const videoId = id();
-  const revision = crypto.randomUUID();
-  await env.DB.prepare(
-    `INSERT INTO videos (id, provider, title, duration, width, height, external_url, revision, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(provider, external_url) WHERE external_url IS NOT NULL DO UPDATE SET title = excluded.title,
-       duration = excluded.duration, width = excluded.width, height = excluded.height,
-       revision = excluded.revision, updated_at = excluded.updated_at`,
-  ).bind(videoId, normalized.provider, session.title, session.duration, session.width, session.height,
-    normalized.url, revision, now, now).run();
-  const saved = await env.DB.prepare(`${SELECT_VIDEO} WHERE v.provider = ? AND v.external_url = ?`)
-    .bind(normalized.provider, normalized.url).first<VideoRow>();
-  if (!saved) throw new Error("Video could not be saved");
-  const video = toVideo(saved);
-  await rememberVideoSession(env, username, video, session);
-  return video;
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const videoId = id();
+    const revision = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO videos (id, provider, title, duration, width, height, external_url, revision, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(provider, external_url) WHERE external_url IS NOT NULL DO UPDATE SET title = excluded.title,
+         duration = excluded.duration, width = excluded.width, height = excluded.height,
+         revision = excluded.revision, updated_at = excluded.updated_at`,
+    ).bind(videoId, normalized.provider, session.title, session.duration, session.width, session.height,
+      normalized.url, revision, now, now).run();
+    const saved = await env.DB.prepare(`${SELECT_VIDEO} WHERE v.provider = ? AND v.external_url = ?`)
+      .bind(normalized.provider, normalized.url).first<VideoRow>();
+    if (!saved) throw new Error("Video could not be saved");
+    return toVideo(saved);
+  } finally {
+    await requestMedia(env, `/media/sessions/${session.id}`, { method: "DELETE", signal: AbortSignal.timeout(5000) })
+      .then((response) => response.body?.cancel()).catch(() => undefined);
+  }
 }
 
 interface StorageFileRow {
@@ -463,25 +464,26 @@ export async function prepareVideoMedia(
   video: Video,
   username: string,
   signal?: AbortSignal,
+  reuseSession = true,
 ): Promise<MediaSession> {
+  const cached = reuseSession ? await cachedVideoSession(env, username, video) : null;
+  if (cached) return cached;
   if (video.provider === "file") {
     if (!video.storageUri) throw new Error("Video file is unavailable");
-    const cached = await cachedVideoSession(env, username, video);
-    if (cached) return cached;
     const source = await openVideoSource(env, video.storageUri);
     const session = await uploadVideoMedia(env, source.body, video.title, video.suffix || "mp4", signal);
     await env.DB.prepare("UPDATE videos SET duration = ?, width = ?, height = ? WHERE id = ?")
       .bind(session.duration, session.width, session.height, video.id).run();
-    await rememberVideoSession(env, username, video, session);
+    if (reuseSession) await rememberVideoSession(env, username, video, session);
+    else await rememberMediaSession(env, username, session);
     return session;
   }
   if (!video.externalUrl) throw new Error("External video is unavailable");
-  const cached = await cachedVideoSession(env, username, video);
-  if (cached) return cached;
   const session = await resolveExternalMedia(env, video.externalUrl, signal);
   await env.DB.prepare("UPDATE videos SET title = ?, duration = ?, width = ?, height = ? WHERE id = ?")
     .bind(session.title, session.duration, session.width, session.height, video.id).run();
-  await rememberVideoSession(env, username, video, session);
+  if (reuseSession) await rememberVideoSession(env, username, video, session);
+  else await rememberMediaSession(env, username, session);
   return session;
 }
 

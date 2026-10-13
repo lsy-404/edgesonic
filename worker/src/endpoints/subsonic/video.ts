@@ -33,7 +33,7 @@ function videoChild(video: Video | VideoSummary) {
     id: video.id,
     isDir: false,
     title: video.title,
-    duration: video.duration ?? undefined,
+    duration: video.duration == null ? undefined : Math.round(video.duration),
     size: video.size ?? undefined,
     contentType: video.contentType ?? undefined,
     suffix: video.suffix ?? undefined,
@@ -87,7 +87,7 @@ function videoError(c: Context, error: unknown, unavailable: string): Response {
 
 function requestWithServiceBitRate(request: Request, rawMaxBitRate: string | null, removeFormat: boolean): Request {
   const url = new URL(request.url);
-  if (rawMaxBitRate !== null) {
+  if (rawMaxBitRate !== null && Number(rawMaxBitRate) > 0) {
     url.searchParams.set("bitRate", rawMaxBitRate);
   }
   url.searchParams.delete("maxBitRate");
