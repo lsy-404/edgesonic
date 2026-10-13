@@ -30,8 +30,9 @@ function recoverMetadata<T extends StorageMetadata>(
 
   const segments = path.split("/").map(decodeSegment);
   const filename = segments.at(-1) || "";
-  if ((!isLogicalPath && (segments[0]?.toLowerCase() === "objects" || /^obj_[0-9a-f]{16,64}(?:\.[^./]+)?$/i.test(filename))) ||
-      (isLogicalPath && isPhysicalObjectAddress(segments, filename))) {
+  const basename = cleanTrackName(filename);
+  if ((!isLogicalPath && segments[0]?.toLowerCase() === "objects") ||
+      (isLogicalPath && isPhysicalObjectAddress(segments, filename)) || isObjectTitle(basename)) {
     return result;
   }
   const albumAt = segments.indexOf("专辑");
@@ -120,7 +121,9 @@ function looksLossy(value: string | undefined): boolean {
 }
 
 export function isObjectTitle(value: string | undefined): boolean {
-  return !!value && /^obj(?:_[0-9a-f]{16,64})?$/i.test(value.trim());
+  if (!value) return false;
+  const title = value.trim().replace(/\.[^./]+$/, "");
+  return /^obj(?:_[0-9a-f]{16,64})?$/i.test(title);
 }
 
 export function hasReadableLogicalTrackTitle(path: string | null): boolean {
@@ -131,7 +134,7 @@ export function hasReadableLogicalTrackTitle(path: string | null): boolean {
   const filename = segments.at(-1) || "";
   if (isPhysicalObjectAddress(segments, filename)) return false;
   const title = cleanTrackName(filename);
-  return !!title && !/^obj_[0-9a-f]{16,64}$/i.test(title);
+  return !!title && !isObjectTitle(title);
 }
 
 export function canRecoverLogicalTrackTitle(path: string | null, currentTitle: string | undefined): boolean {

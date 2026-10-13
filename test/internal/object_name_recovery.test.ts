@@ -34,7 +34,16 @@ const objectsFolder = recoverMetadataFromLogicalPath("objects/Album/08 Logical S
 assert(objectsFolder.title === "Logical Song", "a logical folder named objects still uses its original filename");
 assert(hasReadableLogicalTrackTitle("Artist/Album/08 Logical Song.flac"), "a real logical filename enables filename-only metadata");
 assert(!hasReadableLogicalTrackTitle("objects/obj_abcdef0123456789.flac"), "a physical object key is not a readable logical filename");
+assert(!hasReadableLogicalTrackTitle("Album/obj.wav"), "the exact obj basename is not a readable logical filename");
+assert(!hasReadableLogicalTrackTitle("Album/obj_abcdef0123456789.wav"), "generated hash basenames are not readable logical filenames");
+assert(hasReadableLogicalTrackTitle("Album/Objective.wav"), "Objective remains a readable logical title");
 assert(!hasReadableLogicalTrackTitle(null), "missing logical path does not enable filename-only metadata");
+assert(recoverMetadataFromLogicalPath("Album/obj_abcdef0123456789.wav", { title: "obj" }).title === "obj",
+  "a different generated hash basename cannot replace an obj placeholder");
+assert(recoverMetadataFromLogicalPath("Album/Objective.wav", { title: "obj" }).title === "Objective",
+  "Objective is not mistaken for a generated object title");
+assert(recoverMetadataFromLogicalPath("Album/Real Song.wav", { title: "obj_abcdef0123456789.mp3" }).title === "Real Song",
+  "hash placeholders with an audio extension are still recognized");
 
 const objectUri = "r2://objects/obj_abcdef0123456789.wav";
 const physical = recoverMetadataFromStoragePath(objectUri, { title: "??", album: "??" });

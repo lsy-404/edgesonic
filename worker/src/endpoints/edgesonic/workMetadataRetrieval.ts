@@ -143,12 +143,9 @@ async function restartRetrievalTask(
 
 function missingIdentitySql(column: string): string {
   const value = `LOWER(REPLACE(REPLACE(TRIM(COALESCE(${column}, '')), '_', ' '), '-', ' '))`;
-  const normalized = `LOWER(TRIM(COALESCE(${column}, '')))`;
   return `(TRIM(COALESCE(${column}, '')) IN ('', '??') OR ${value} IN
     ('unknown','unknown artist','unknownartist','unknown album','unknownalbum','pending uploads','pendinguploads')
-    OR ${normalized} = 'obj'
-    OR (SUBSTR(${normalized}, 1, 4) = 'obj_' AND LENGTH(${normalized}) = 20
-        AND SUBSTR(${normalized}, 5) NOT GLOB '*[^0-9a-f]*'))`;
+    OR LOWER(TRIM(COALESCE(${column}, ''))) GLOB 'obj_[0-9a-f]*')`;
 }
 
 function metadataIncompleteSql(): string {

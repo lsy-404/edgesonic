@@ -7,6 +7,7 @@ import { Hono } from "hono";
 import { tagEditRoutes } from "../../worker/src/endpoints/tag/write";
 import { tagReadRoutes } from "../../worker/src/endpoints/tag/read";
 import { subsonicRoutes } from "../../worker/src/endpoints/subsonic";
+import { formatMiddleware } from "../../worker/src/middleware/format";
 import { createQueries } from "../../worker/src/db/queries";
 import { applyMetadataResult } from "../../worker/src/utils/metadataApply";
 import { md5 } from "../../worker/src/utils/md5";
@@ -68,6 +69,7 @@ function buildDb(): DatabaseSync {
 
 function appFor(sqlite: DatabaseSync) {
   const app = new Hono<{ Bindings: any; Variables: any }>();
+  app.use("/rest/*", formatMiddleware);
   app.use("*", async (c, next) => {
     c.set("user", { username: "alice", level: 2, enabled: 1, password: "x" });
     c.set("authMethod", "session");
@@ -142,6 +144,38 @@ async function main() {
   const searchXml = await search.text();
   assert(search.status === 200 && /albumArtist="Singer A, Singer B, Singer C"/.test(searchXml), "search3 returns album artist");
   assert((searchXml.match(/title="Same Title"/g) ?? []).length === 2, "search3 keeps both same-title songs");
+
+  const logicalPathDb = buildDb();
+  logicalPathDb.exec(`
+    INSERT INTO song_masters(id,album_id,artist_id,title,sort_title,track,disc,duration,created_at,updated_at)
+      VALUES ('sg-object','al-old','ar-track-a','obj_abcdef0123456789','obj_abcdef0123456789',9,1,10,3,3);
+    INSERT INTO song_instances(id,master_id,source_id,source_type,storage_uri,suffix,content_type,size,bit_rate,duration,created_at,updated_at)
+      VALUES ('inst-object','sg-object','r2-local','original','r2://objects/obj_abcdef0123456789.mp3','mp3','audio/mpeg',4,128,10,3,3);
+    INSERT INTO storage_entries(id,source_id,path,kind,instance_id) VALUES
+      ('entry-a','r2-local','Known Artist/Old Album/08 Original Filename.mp3','file','inst-a'),
+      ('entry-object','r2-local','Known Artist/Old Album/09 Real Search Name.mp3','file','inst-object');
+  `);
+  const logicalPathCall = appFor(logicalPathDb);
+  const objectSearch = await logicalPathCall("/rest/search3?query=&songCount=10&artistCount=0&albumCount=0");
+  const objectSearchXml = await objectSearch.text();
+  assert(objectSearch.status === 200 && /id="sg-object"[^>]*title="Real Search Name"/.test(objectSearchXml),
+    "search3 XML recovers an object-backed placeholder title from its logical filename");
+  assert(/id="sg-object"[^>]*path="Known Artist\/Old Album\/09 Real Search Name\.mp3"/.test(objectSearchXml),
+    "search3 XML emits the original logical filename as Child.path");
+  assert(/id="sg-a"[^>]*title="Same Title"[^>]*path="Known Artist\/Old Album\/08 Original Filename\.mp3"/.test(objectSearchXml),
+    "search3 XML retains known titles and emits their original logical path");
+
+  const objectSearchJson = await logicalPathCall("/rest/search3?query=&songCount=10&artistCount=0&albumCount=0&f=json");
+  const objectJson = await objectSearchJson.json() as any;
+  const jsonSongs = objectJson["subsonic-response"]?.searchResult3?.song as Array<Record<string, unknown>>;
+  const objectSong = jsonSongs?.find((song) => song.id === "sg-object");
+  const knownSong = jsonSongs?.find((song) => song.id === "sg-a");
+  assert(objectSearchJson.status === 200 && objectSong?.title === "Real Search Name" &&
+    objectSong?.path === "Known Artist/Old Album/09 Real Search Name.mp3",
+  "search3 JSON recovers the placeholder title and emits the logical filename");
+  assert(knownSong?.title === "Same Title" && knownSong?.path === "Known Artist/Old Album/08 Original Filename.mp3",
+    "search3 JSON preserves known titles while emitting the logical filename");
+  logicalPathDb.close();
 
   const albumSearch = await call("/rest/search3?query=Old%20Album&songCount=0&artistCount=0");
   const albumSearchXml = await albumSearch.text();

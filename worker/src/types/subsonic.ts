@@ -147,7 +147,7 @@ export function mapSong(
     contentType: s.inst_content_type ?? undefined,
     bitRate: s.inst_bit_rate ?? undefined,
     size: s.inst_size ?? undefined,
-    path: pathFromStorageUri(s.inst_storage_uri),
+    path: s.inst_logical_path ?? pathFromStorageUri(s.inst_storage_uri),
     created: formatISODate(s.created_at),
     type: "music",
     isVideo: false,
