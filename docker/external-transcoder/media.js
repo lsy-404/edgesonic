@@ -14,6 +14,8 @@ const MAX_ACTIVE_JOBS = 3;
 const MAX_ACTIVE_UPLOADS = 2;
 const MAX_UPLOAD_BYTES = 1024 * 1024 * 1024;
 const MAX_SESSION_DISK_BYTES = 2 * 1024 * 1024 * 1024;
+const MAX_SESSION_HLS_VARIANTS = 8;
+const MAX_SESSION_HLS_QUEUED_JOBS = 4;
 const MAX_DANMAKU_BYTES = 4 * 1024 * 1024;
 const MAX_SUBTITLE_BYTES = 16 * 1024 * 1024;
 const ID_PATTERN = /^[a-f0-9]{48}$/;
@@ -83,9 +85,9 @@ function isSecureVideoUrl(url) {
 async function normalizeSource(value) {
   const trimmed = value.trim();
   const bv = /^BV[0-9A-Za-z]{10}$/.test(trimmed) ? trimmed : null;
-  const avMatch = /^av\s+([0-9]{1,20})$/i.exec(trimmed) || /^av([0-9]{1,20})$/i.exec(trimmed);
+  const avMatch = /^av\s*([0-9]{1,20})$/i.exec(trimmed);
   const av = avMatch ? `av${avMatch[1]}` : null;
-  if (bv || av) return `https://www.bilibili.com/video/${bv || av}/`;
+  if (bv || av) return `https://www.bilibili.com/video/${bv || av}/?p=1`;
   let url;
   try { url = new URL(trimmed); } catch { throw new Error("invalid URL"); }
   if (!isSecureVideoUrl(url)) throw new Error("unsupported URL");
@@ -97,10 +99,20 @@ async function normalizeSource(value) {
     const avPath = /^\/(?:video\/)?av(?:%20|\s)([0-9]{1,20})\/?$/i.exec(url.pathname);
     if (avPath) url.pathname = `/video/av${avPath[1]}/`;
   }
+  const isYoutube = url.hostname.includes("youtube") || url.hostname === "youtu.be";
   if (url.hostname.endsWith("youtube.com") && !["/watch", "/shorts/", "/embed/", "/live/"].some((part) => url.pathname.startsWith(part))) throw new Error("unsupported URL");
-  if (url.searchParams.has("list") || url.pathname.startsWith("/playlist/")) throw new Error("unsupported URL");
+  if (url.pathname.startsWith("/playlist/")) throw new Error("unsupported URL");
+  if (isYoutube && url.searchParams.has("list")) {
+    if (url.pathname !== "/watch" || !url.searchParams.has("v")) throw new Error("unsupported URL");
+    url.searchParams.delete("list");
+  }
   if (url.hostname === "youtu.be" && url.pathname.length < 2) throw new Error("unsupported URL");
-  if (!url.hostname.includes("youtube") && !url.hostname.includes("youtu.be") && !/^\/(video\/)?(BV[0-9A-Za-z]{10}|av[0-9]{1,20})/.test(url.pathname)) throw new Error("unsupported URL");
+  if (!isYoutube) {
+    if (!/^\/(video\/)?(BV[0-9A-Za-z]{10}|av[0-9]{1,20})(?:\/|$)/.test(url.pathname)) throw new Error("unsupported URL");
+    const parts = url.searchParams.getAll("p");
+    if (parts.length > 1 || (parts.length === 1 && !/^[1-9][0-9]*$/.test(parts[0]))) throw new Error("invalid part");
+    if (!parts.length) url.searchParams.set("p", "1");
+  }
   return url.href;
 }
 
@@ -126,8 +138,16 @@ function runJson(command, args) {
   return run(command, args, { maxOutput: 32 * 1024 * 1024 }).then((bytes) => JSON.parse(bytes.toString("utf8")));
 }
 
+function nativeDemuxer(file) {
+  const extension = path.extname(file).toLowerCase();
+  if ([".mp4", ".mov", ".m4v"].includes(extension)) return "mov";
+  if ([".mkv", ".webm"].includes(extension)) return "matroska";
+  if (extension === ".avi") return "avi";
+  throw new Error("unsupported native container");
+}
+
 function ffprobe(file) {
-  return runJson("ffprobe", ["-v", "error", "-show_streams", "-show_format", "-of", "json", file]);
+  return runJson("ffprobe", ["-v", "error", "-protocol_whitelist", "file,pipe", "-f", nativeDemuxer(file), "-show_streams", "-show_format", "-of", "json", file]);
 }
 
 function sessionShape(session) {
@@ -145,7 +165,7 @@ function sessionShape(session) {
 
 function createRecord(data) {
   const id = randomBytes(24).toString("hex");
-  const session = { ...data, id, createdAt: Date.now(), expiresAt: Date.now() + SESSION_TTL_MS, jobs: new Set(), generatingVariants: new Map(), timer: null };
+  const session = { ...data, id, createdAt: Date.now(), expiresAt: Date.now() + SESSION_TTL_MS, jobs: new Set(), generatingVariants: new Map(), hlsVariantKeys: new Set(), timer: null };
   session.timer = setTimeout(() => removeSession(session), SESSION_TTL_MS).unref();
   sessions.set(id, session);
   return session;
@@ -176,7 +196,7 @@ function getSession(req, res) {
 }
 
 function createJob(session) {
-  const job = { child: null, controller: new AbortController() };
+  const job = { child: null, session, controller: new AbortController() };
   session.jobs.add(job);
   return job;
 }
@@ -212,6 +232,7 @@ function waitForJobSlot(job) {
     activeJobs.add(job);
     return Promise.resolve();
   }
+  if (job.kind === "hls" && jobWaiters.filter((waiting) => waiting.session === job.session && waiting.kind === "hls").length >= MAX_SESSION_HLS_QUEUED_JOBS) return Promise.reject(new Error("too many queued HLS jobs"));
   return new Promise((resolve, reject) => {
     job.waiterResolve = resolve;
     job.waiterReject = reject;
@@ -297,14 +318,14 @@ function addHeaderArgs(args, headers) {
 function ffmpegInputs(session, selected) {
   const args = ["-hide_banner", "-loglevel", "error", "-nostdin"];
   if (selected.video) { addHeaderArgs(args, selected.video.headers); args.push("-i", selected.video.url); addHeaderArgs(args, selected.audio.headers); args.push("-i", selected.audio.url); }
-  else args.push("-i", session.file);
+  else args.push("-protocol_whitelist", "file,pipe", "-f", nativeDemuxer(session.file), "-i", session.file);
   return args;
 }
 
 function ffmpegAudioInputs(session, selected) {
   const args = ["-hide_banner", "-loglevel", "error", "-nostdin"];
   if (selected.video) { addHeaderArgs(args, selected.audio.headers); args.push("-i", selected.audio.url); }
-  else args.push("-i", session.file);
+  else args.push("-protocol_whitelist", "file,pipe", "-f", nativeDemuxer(session.file), "-i", session.file);
   return args;
 }
 
@@ -431,7 +452,7 @@ async function handleUpload(req, res) {
   if (Number.isFinite(length) && length > MAX_UPLOAD_BYTES) return publicError(res, 413, "video too large");
   const rawSuffix = String(req.query.suffix || "").trim().toLowerCase();
   const suffix = rawSuffix ? (rawSuffix.startsWith(".") ? rawSuffix : `.${rawSuffix}`) : "";
-  if (suffix && ![".mp4", ".mkv", ".webm", ".mov", ".m4v", ".avi"].includes(suffix)) return publicError(res, 400, "invalid suffix");
+  if (![".mp4", ".mkv", ".webm", ".mov", ".m4v", ".avi"].includes(suffix)) return publicError(res, 400, "invalid suffix");
   activeUploads += 1;
   let dir;
   let written = 0;
@@ -544,6 +565,8 @@ function validateVariants(values, session, options, res) {
     if (variants.some((item) => item.key === variant.key)) { publicError(res, 400, "duplicate HLS variant"); return null; }
     variants.push(variant);
   }
+  const newKeys = variants.filter((variant) => !session.hlsVariantKeys.has(variant.key));
+  if (session.hlsVariantKeys.size + newKeys.length > MAX_SESSION_HLS_VARIANTS) { publicError(res, 429, "too many HLS variants"); return null; }
   return variants;
 }
 
@@ -563,6 +586,8 @@ function ensureHlsVariant(session, variant, options) {
   if (current) return current.ready;
   const outDir = path.join(session.dir, variant.key);
   try { if (statSync(path.join(outDir, "index.m3u8")).size > 0) return Promise.resolve(); } catch {}
+  if (!session.hlsVariantKeys.has(variant.key) && session.hlsVariantKeys.size >= MAX_SESSION_HLS_VARIANTS) return Promise.reject(new Error("too many HLS variants"));
+  session.hlsVariantKeys.add(variant.key);
   const state = {};
   state.ready = new Promise((resolve, reject) => { state.resolve = resolve; state.reject = reject; });
   state.ready.catch(() => {});
@@ -573,6 +598,7 @@ function ensureHlsVariant(session, variant, options) {
 
 async function generateHlsVariant(session, variant, options, outDir, state) {
   const job = createJob(session);
+  job.kind = "hls";
   state.job = job;
   let child;
   let playlistReady = false;
@@ -622,7 +648,10 @@ async function generateHlsVariant(session, variant, options, outDir, state) {
     child?.kill("SIGKILL");
     if (child) await waitForChild(child);
     await rm(outDir, { recursive: true, force: true }).catch(() => {});
-    if (!playlistReady) state.reject(error);
+    if (!playlistReady) {
+      session.hlsVariantKeys.delete(variant.key);
+      state.reject(error);
+    }
   } finally {
     finishJob(session, job);
     if (session.generatingVariants.get(variant.key) === state) session.generatingVariants.delete(variant.key);
@@ -664,7 +693,7 @@ async function serveCaption(req, res, session) {
   if (native?.streamIndex != null) {
     const codec = format === "vtt" ? "webvtt" : "srt";
     try {
-      const bytes = await run("ffmpeg", ["-hide_banner", "-loglevel", "error", "-i", session.file, "-map", `0:${native.streamIndex}`, "-f", codec, "pipe:1"], { maxOutput: MAX_SUBTITLE_BYTES, onChild: (child) => { job.child = child; } });
+      const bytes = await run("ffmpeg", ["-hide_banner", "-loglevel", "error", "-protocol_whitelist", "file,pipe", "-f", nativeDemuxer(session.file), "-i", session.file, "-map", `0:${native.streamIndex}`, "-f", codec, "pipe:1"], { maxOutput: MAX_SUBTITLE_BYTES, onChild: (child) => { job.child = child; } });
       return res.type(format === "vtt" ? "text/vtt" : "application/x-subrip").send(bytes);
     } catch { return publicError(res, 404, "caption unavailable"); }
   }
