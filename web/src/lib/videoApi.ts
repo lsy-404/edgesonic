@@ -11,6 +11,9 @@ export interface VideoSummary {
   size: number | null;
 }
 export interface MediaSession {
+  transport: "hls" | "file" | "iframe";
+  sourceUrl?: string;
+  provider?: "youtube" | "bilibili";
   id: string;
   title: string;
   duration: number | null;

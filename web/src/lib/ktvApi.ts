@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { KtvAction, KtvQueueMode, KtvRoomSnapshot } from "../../../shared/ktv";
+import type { KtvAction, KtvQueueMode, KtvMediaMode, KtvRoomSnapshot } from "../../../shared/ktv";
 
-export interface KtvSettings { enabled: boolean; mode: KtvQueueMode }
+export interface KtvSettings { enabled: boolean; mode: KtvQueueMode; mediaMode: KtvMediaMode; allowEmbeddedVideo: boolean; canUseContainer: boolean }
 export interface KtvRoomResult { room: KtvRoomSnapshot; inviteUrl?: string }
 export interface KtvSearchAudio { id: string; title: string; artist: string; duration: number | null }
 export interface KtvSearchVideo { id: string; title: string; duration: number | null; provider: string }
@@ -23,8 +23,8 @@ function json(body: unknown, headers?: HeadersInit): RequestInit {
   return { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) };
 }
 
-export function fetchKtvSettings() { return request<{ enabled: boolean; mode: KtvQueueMode; ok: true }>("/edgesonic/ktv/settings"); }
-export function saveKtvSettings(settings: Partial<KtvSettings>) { return request<{ enabled: boolean; mode: KtvQueueMode; ok: true }>("/edgesonic/ktv/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings) }); }
+export function fetchKtvSettings() { return request<KtvSettings & { ok: true }>("/edgesonic/ktv/settings"); }
+export function saveKtvSettings(settings: Partial<KtvSettings>) { return request<KtvSettings & { ok: true }>("/edgesonic/ktv/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings) }); }
 
 export function createKtvRoom(input: { playerId: string; mode: KtvQueueMode; displayName: string }) {
   return request<{ ok: true; room: KtvRoomSnapshot; controllerToken: string; inviteUrl: string }>("/edgesonic/ktv/rooms", json(input));

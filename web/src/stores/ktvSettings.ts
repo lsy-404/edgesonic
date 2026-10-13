@@ -6,6 +6,9 @@ import { fetchKtvSettings, saveKtvSettings, type KtvSettings } from "../lib/ktvA
 export const useKtvSettingsStore = defineStore("ktvSettings", () => {
   const enabled = ref(false);
   const mode = ref<KtvSettings["mode"]>("fair");
+  const mediaMode = ref<KtvSettings["mediaMode"]>("compatible");
+  const allowEmbeddedVideo = ref(false);
+  const canUseContainer = ref(false);
   const loaded = ref(false);
   const busy = ref(false);
   const error = ref("");
@@ -18,6 +21,9 @@ export const useKtvSettingsStore = defineStore("ktvSettings", () => {
       const data = await fetchKtvSettings();
       enabled.value = data.enabled;
       mode.value = data.mode;
+      mediaMode.value = data.mediaMode;
+      allowEmbeddedVideo.value = data.allowEmbeddedVideo;
+      canUseContainer.value = data.canUseContainer;
       loaded.value = true;
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : "KTV settings are unavailable.";
@@ -31,6 +37,9 @@ export const useKtvSettingsStore = defineStore("ktvSettings", () => {
       const data = await saveKtvSettings(next);
       enabled.value = data.enabled;
       mode.value = data.mode;
+      mediaMode.value = data.mediaMode;
+      allowEmbeddedVideo.value = data.allowEmbeddedVideo;
+      canUseContainer.value = data.canUseContainer;
       loaded.value = true;
       return true;
     } catch (cause) {
@@ -39,5 +48,5 @@ export const useKtvSettingsStore = defineStore("ktvSettings", () => {
     } finally { busy.value = false; }
   }
 
-  return { enabled, mode, loaded, busy, error, load, save };
+  return { enabled, mode, mediaMode, allowEmbeddedVideo, canUseContainer, loaded, busy, error, load, save };
 });

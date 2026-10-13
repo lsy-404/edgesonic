@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 export type KtvQueueMode = "fair" | "fifo";
+export type KtvMediaMode = "full" | "compatible";
 
 export interface KtvSelection {
   audioId?: string;
@@ -27,6 +28,8 @@ export interface KtvRoomSnapshot {
   version: number;
   open: boolean;
   mode: KtvQueueMode;
+  mediaMode: KtvMediaMode;
+  allowEmbeddedVideo: boolean;
   current: KtvQueueItem | null;
   queue: KtvQueueItem[];
   participants: { id: string; displayName: string; host: boolean }[];
