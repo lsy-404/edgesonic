@@ -3,7 +3,8 @@
 - Loaded the agent-mode workflow and inspected project instructions.
 - Read schema definitions for song masters, song instances, storage objects, and storage entries.
 - Read title-recovery and scan-time basename behavior.
-- Read original and expanded production inventories; each selected group returned zero rows with no DB writes.
-- Traced Subsonic mapping: song queries use physical `storage_uri`, not logical `storage_entries.path/display_name`.
-- Reviewed parser changes on the refreshed `821b1cd8` baseline and reported empty-upload and no-tag scan behavior changes to the parent agent.
-- No production operation, media-source access, or repair-tool implementation performed.
+- Read initial and expanded production inventories; the title/path groups were empty and read-only queries wrote no rows.
+- Reviewed the production search3 sample: object-like song titles were absent, physical object-key paths were common, and original object-backed instances had indexed logical paths.
+- Rebased this audit to `821b1cd8` and reviewed both parser commits on that baseline.
+- Confirmed the empty-upload guard and no-tag fallback gate were corrected; reviewed query projection bounds, shared path mapping, and XML/JSON regression coverage.
+- No production operation, media-source access, repair-tool implementation, or test execution performed.
