@@ -366,10 +366,13 @@ function mapSubtitleTracks(info) {
   const tracks = [];
   for (const [language, entries] of Object.entries(info.subtitles || {})) {
     if (language.toLowerCase() === "danmaku") continue;
-    for (const entry of entries) {
-      if (!validExternalUrl(entry.url)) continue;
-      tracks.push({ id: `sub-${tracks.length}`, language, title: entry.name || entry.ext || language, ext: entry.ext, url: entry.url, headers: info.http_headers || {} });
-    }
+    const entry = entries
+      .filter((item) => ["srt", "vtt"].includes(String(item.ext || "").toLowerCase()))
+      .filter((item) => typeof item.data === "string" || validExternalUrl(item.url))
+      .filter((item) => typeof item.data !== "string" || Buffer.byteLength(item.data) <= MAX_SUBTITLE_BYTES)
+      .sort((left, right) => Number(String(right.ext).toLowerCase() === "srt") - Number(String(left.ext).toLowerCase() === "srt"))[0];
+    if (!entry) continue;
+    tracks.push({ id: `sub-${tracks.length}`, language, title: entry.name || entry.ext || language, ext: String(entry.ext).toLowerCase(), ...(typeof entry.data === "string" ? { data: entry.data } : { url: entry.url, headers: info.http_headers || {} }) });
   }
   return tracks;
 }
@@ -426,7 +429,7 @@ async function handleResolve(req, res) {
     if (sessions.size + activeResolvers + activeUploads > MAX_SESSIONS) return publicError(res, 429, "too many media sessions");
     let source;
     try { source = await normalizeSource(req.body.url.trim()); } catch { return publicError(res, 400, "unsupported media URL"); }
-    const info = await runJson("yt-dlp", ["--ignore-config", "--no-warnings", "--no-playlist", "--skip-download", "--no-progress", "--js-runtimes", "node", "--dump-single-json", source]);
+    const info = await runJson("yt-dlp", ["--ignore-config", "--no-warnings", "--no-playlist", "--skip-download", "--write-subs", "--simulate", "--no-progress", "--js-runtimes", "node", "--dump-single-json", source]);
     if (!info || info._type === "playlist" || info.entries || info.is_live || ["is_live", "is_upcoming"].includes(info.live_status) || !info.title) return publicError(res, 400, "unsupported media");
     const sources = mapAudioFormats(info);
     if (!sources.video || !sources.audioTracks.length) return publicError(res, 422, "video stream unavailable");
@@ -688,27 +691,26 @@ async function serveCaption(req, res, session) {
   const job = acquireJob(session, res);
   if (!job) return;
   cancelOnDisconnect(req, res, job);
+  let input;
   try {
-  const native = session.captions.find((track) => track.id === id);
-  if (native?.streamIndex != null) {
-    const codec = format === "vtt" ? "webvtt" : "srt";
-    try {
+    const native = session.captions.find((track) => track.id === id);
+    if (native?.streamIndex != null) {
+      const codec = format === "vtt" ? "webvtt" : "srt";
       const bytes = await run("ffmpeg", ["-hide_banner", "-loglevel", "error", "-protocol_whitelist", "file,pipe", "-f", nativeDemuxer(session.file), "-i", session.file, "-map", `0:${native.streamIndex}`, "-f", codec, "pipe:1"], { maxOutput: MAX_SUBTITLE_BYTES, onChild: (child) => { job.child = child; } });
       return res.type(format === "vtt" ? "text/vtt" : "application/x-subrip").send(bytes);
-    } catch { return publicError(res, 404, "caption unavailable"); }
-  }
-  const external = session.sourceCaptions?.find((track) => track.id === id);
-  if (!external) return publicError(res, 404, "caption unavailable");
-  try {
-    const bytes = await fetchLimited(external.url, external.headers, MAX_SUBTITLE_BYTES, job.controller.signal);
-    const input = path.join(session.dir, `caption-${randomBytes(8).toString("hex")}.${external.ext || "vtt"}`);
+    }
+    const external = session.sourceCaptions?.find((track) => track.id === id);
+    if (!external || !["srt", "vtt"].includes(external.ext)) return publicError(res, 404, "caption unavailable");
+    const bytes = typeof external.data === "string" ? Buffer.from(external.data, "utf8") : await fetchLimited(external.url, external.headers, MAX_SUBTITLE_BYTES, job.controller.signal);
+    if (bytes.length > MAX_SUBTITLE_BYTES) return publicError(res, 404, "caption unavailable");
+    input = path.join(session.dir, `caption-${randomBytes(8).toString("hex")}.${external.ext}`);
     await pipeline((await import("node:stream")).Readable.from(bytes), createWriteStream(input, { flags: "wx" }));
-    const args = ["-hide_banner", "-loglevel", "error", "-i", input, "-f", format === "vtt" ? "webvtt" : "srt", "pipe:1"];
+    const inputFormat = external.ext === "vtt" ? "webvtt" : "srt";
+    const args = ["-hide_banner", "-loglevel", "error", "-protocol_whitelist", "file,pipe", "-f", inputFormat, "-i", input, "-f", format === "vtt" ? "webvtt" : "srt", "pipe:1"];
     const converted = await run("ffmpeg", args, { maxOutput: MAX_SUBTITLE_BYTES, onChild: (child) => { job.child = child; } });
-    await unlink(input).catch(() => {});
     return res.type(format === "vtt" ? "text/vtt" : "application/x-subrip").send(converted);
-  } catch { return publicError(res, 404, "caption unavailable"); }
-  } finally {
+  } catch { return publicError(res, 404, "caption unavailable"); } finally {
+    if (input) await unlink(input).catch(() => {});
     finishJob(session, job);
   }
 }
