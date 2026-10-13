@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-const SW_VERSION = "5";
+const SW_VERSION = "6";
 const PRECACHE = `edgesonic-shell-v${SW_VERSION}`;
 const RUNTIME = `edgesonic-runtime-v${SW_VERSION}`;
 const OPAQUE = `edgesonic-opaque-v${SW_VERSION}`;
@@ -22,6 +22,7 @@ const NEVER_CACHE_PATH_PREFIXES = [
   "/edgesonic/",
   "/storage/",
   "/tag/",
+  "/ktv/",
 ];
 
 self.addEventListener("install", (event) => {

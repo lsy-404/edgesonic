@@ -9,6 +9,12 @@
 /index.html
   Content-Type: text/html; charset=utf-8
   Cache-Control: no-cache
+/ktv/
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: no-store
+/ktv/index.html
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: no-store
 /sw.js
   Content-Type: text/javascript; charset=utf-8
 /assets/*.js

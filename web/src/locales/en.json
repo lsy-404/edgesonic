@@ -135,8 +135,8 @@
   "ktv": {
     "hostTitle": "Karaoke mode",
     "intro": "Start a song request room. It closes 5 minutes after the host disconnects and has a 12-hour maximum lifetime.",
-    "disabled": "Karaoke mode is off. Enable it in Tools to start a room.",
-    "openSettings": "Open Tools",
+    "disabled": "Karaoke mode is off. Enable it in detailed settings to start a room.",
+    "openSettings": "Detailed settings",
     "enterPrep": "Open preparation",
     "enterStage": "Open singing stage",
     "fullscreen": "Enter fullscreen",
@@ -918,6 +918,7 @@
     "intro": "Import, synchronize, and maintain your music library.",
     "workMode": "Work Mode",
     "workModeDesc": "Choose which background tasks this device can process",
+    "karaokeModeDesc": "Open a song request room and enter the fullscreen stage",
     "superAdminOnly": "This page requires super-admin (level 3)",
     "signInRequired": "Sign in to use the tools",
     "tabClone": "Clone (upstream → local)",

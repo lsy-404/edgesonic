@@ -136,8 +136,8 @@
   "ktv": {
     "hostTitle": "K歌模式",
     "intro": "开启点歌房间。房主断开连接 5 分钟后房间关闭，最长存续 12 小时。",
-    "disabled": "K歌模式已关闭。请先在工具中启用。",
-    "openSettings": "打开工具",
+    "disabled": "K歌模式已关闭。请在详细设置中启用。",
+    "openSettings": "详细设置",
     "enterPrep": "进入准备页",
     "enterStage": "进入演唱舞台",
     "fullscreen": "进入全屏",
@@ -915,6 +915,7 @@
     "intro": "导入、同步并维护你的音乐库。",
     "workMode": "工作模式",
     "workModeDesc": "选择此设备可处理的后台任务",
+    "karaokeModeDesc": "开启扫码点歌房间，进入全屏演唱舞台",
     "superAdminOnly": "此页面需要超级管理员（等级 3）",
     "signInRequired": "登录后即可使用工具",
     "tabClone": "克隆（上游 → 本地）",

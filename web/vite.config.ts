@@ -15,11 +15,20 @@
 
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+import { fileURLToPath } from "node:url";
 import { getBuildInfo } from "../scripts/build-info.mjs";
 
 const { version, buildTime } = getBuildInfo();
 
 export default defineConfig({
+  build: {
+    rolldownOptions: {
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        ktv: fileURLToPath(new URL("./ktv/index.html", import.meta.url)),
+      },
+    },
+  },
   plugins: [
     vue(),
     {

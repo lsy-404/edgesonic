@@ -92,6 +92,7 @@ app.route("/", webLoginRoutes);
 
 // anonymous visitors can press play on a share link without credentials.
 app.route("/", sharePublicRoutes);
+app.on("GET", ["/ktv", "/ktv/", "/ktv/index.html"], (c) => (c.env as Env).ASSETS.fetch(c.req.raw));
 app.route("/ktv", ktvPublicRoutes);
 
 // OR application/x-www-form-urlencoded body. Merge any form body fields into

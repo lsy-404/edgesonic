@@ -9,8 +9,6 @@ import { canRebuildLibraryStats, type LibraryStatsResponse } from "../lib/librar
 import Icon from "../components/Icon.vue";
 import { normalizeForMatch } from "../lib/trackMatch";
 import { FluentSwitch } from "@platform-kit/fluent/vue";
-import MediaAccountsCard from "../components/MediaAccountsCard.vue";
-import KtvSettingsCard from "../components/KtvSettingsCard.vue";
 
 const { t } = useI18n();
 const { isSuperAdmin, isAdmin, isUser, isGuest, hasPerm, username: currentUsername, edgesonicPost, edgesonicFetch, rescanSongs, md5, signedParams, restUrl } = useAuth();
@@ -1576,18 +1574,25 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
     </div>
 
     <template v-else>
-      <section v-if="hasPerm('participate_work')" class="settings-section card work-mode-entry">
-        <RouterLink to="/work" class="work-mode-entry-link">
+      <section v-if="hasPerm('participate_work')" class="settings-section card tool-mode-entry">
+        <RouterLink to="/work" class="tool-mode-entry-link">
           <span>
             <span class="section-title">{{ t("tools.workMode") }}</span>
-            <span class="work-mode-entry-desc">{{ t("tools.workModeDesc") }}</span>
+            <span class="tool-mode-entry-desc">{{ t("tools.workModeDesc") }}</span>
           </span>
           <span aria-hidden="true">→</span>
         </RouterLink>
       </section>
 
-      <KtvSettingsCard />
-      <MediaAccountsCard />
+      <section v-if="hasPerm('stream')" class="settings-section card tool-mode-entry">
+        <RouterLink to="/ktv" class="tool-mode-entry-link">
+          <span>
+            <span class="section-title">{{ t("ktv.hostTitle") }}</span>
+            <span class="tool-mode-entry-desc">{{ t("tools.karaokeModeDesc") }}</span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </RouterLink>
+      </section>
 
       <section v-if="canRepairLibraryStats" class="settings-section card" :class="{ open: open.libraryStats }">
         <button type="button" class="section-header" :aria-expanded="open.libraryStats" aria-controls="tools-panel-library-stats" @click="toggleSection('libraryStats')">
@@ -2169,10 +2174,10 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
   font-size: var(--fs-sm);
 }
 .tools-toast.error { border-color: #e5484d; }
-.work-mode-entry { margin-bottom: 1rem; }
-.work-mode-entry-link { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.2rem; color: inherit; text-decoration: none; }
-.work-mode-entry-link:hover { color: var(--color-accent-primary); }
-.work-mode-entry-desc { display: block; margin-top: 0.25rem; color: var(--color-text-secondary); font-size: var(--fs-sm); }
+.tool-mode-entry { margin-bottom: 1rem; }
+.tool-mode-entry-link { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.2rem; color: inherit; text-decoration: none; }
+.tool-mode-entry-link:hover { color: var(--color-accent-primary); }
+.tool-mode-entry-desc { display: block; margin-top: 0.25rem; color: var(--color-text-secondary); font-size: var(--fs-sm); }
 .toast-enter-active, .toast-leave-active { transition: opacity 0.2s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; }
 

@@ -4,7 +4,6 @@ import { computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { FluentSwitch } from "@platform-kit/fluent/vue";
 import Icon from "./Icon.vue";
-import { RouterLink } from "vue-router";
 import { useKtvSettingsStore } from "../stores/ktvSettings";
 
 const { t } = useI18n();
@@ -52,7 +51,6 @@ async function setEmbeddedVideo(allowEmbeddedVideo: boolean) { await settings.sa
         <FluentSwitch :model-value="settings.allowEmbeddedVideo" :disabled="settings.busy" :aria-label="t('settings.ktv.embeddedVideo')" @update:model-value="setEmbeddedVideo" />
       </label>
       <p v-if="effectiveMediaMode === 'compatible'" class="feature-desc">{{ settings.allowEmbeddedVideo ? t("settings.ktv.compatibilityHint") : t("settings.ktv.compatibilityDisabled") }}</p>
-      <RouterLink v-if="settings.enabled" class="btn-primary ktv-entry" to="/ktv">{{ t("ktv.enterPrep") }}</RouterLink>
       <p v-if="settings.error" class="ktv-settings-error" role="alert">{{ settings.error }}</p>
     </div>
   </section>
@@ -67,7 +65,6 @@ async function setEmbeddedVideo(allowEmbeddedVideo: boolean) { await settings.sa
 .ktv-enable-row, .ktv-mode-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-top: 1px solid var(--color-border-subtle); }
 .tc-key { color: var(--color-text-primary); }
 .ktv-mode-options { display: flex; gap: .45rem; }
-.ktv-entry { width: fit-content; margin-top: .85rem; text-decoration: none; }
 .selected { border-color: var(--color-accent-primary); color: var(--color-accent-primary); }
 .ktv-settings-error { color: var(--color-danger, #d13438); margin: .5rem 0 0; }
 </style>

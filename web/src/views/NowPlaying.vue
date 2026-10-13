@@ -10,6 +10,7 @@ import { getTrackLyrics } from "../lib/trackPrefetch";
 import { cuePlaybackProgress } from "../lib/lyricProgress";
 
 const player = usePlayerStore();
+const props = defineProps<{ media?: { title: string; artist?: string; album?: string } }>();
 const { t } = useI18n();
 const { coverArtUrl, authFetch, username } = useAuth();
 
@@ -258,7 +259,7 @@ function resetLyricsScroll() {
   lyricsViewerRef.value?.scrollTo({ top: 0, behavior: "auto" });
 }
 
-watch(() => [player.current?.id, player.current?.libraryId] as const, async ([id, libraryId]) => {
+watch(() => [props.media ? undefined : player.current?.id, props.media ? undefined : player.current?.libraryId] as const, async ([id, libraryId]) => {
   lyricsController?.abort();
   const controller = new AbortController();
   lyricsController = controller;
@@ -373,20 +374,20 @@ function onLyricClick(line: LyricLine) {
 }
 
 const coverFailed = ref(false);
-const track = computed(() => player.current);
+const track = computed(() => props.media || player.current);
 const coverSrc = computed(() => {
-  const tr = track.value;
+  const tr = props.media ? undefined : player.current;
   return tr?.coverArt ? coverArtUrl(tr.coverArt, 512) : "";
 });
 // Server cover 404: fall back to embedded art extracted from buffered audio.
-const displayCoverSrc = computed(() => (!coverFailed.value && coverSrc.value) || player.localCoverUrl || "");
+const displayCoverSrc = computed(() => props.media ? "" : (!coverFailed.value && coverSrc.value) || player.localCoverUrl || "");
 function onCoverError() {
   coverFailed.value = true;
-  void player.reportCoverMissing();
+  if (!props.media) void player.reportCoverMissing();
 }
 watch(coverSrc, (src) => {
   coverFailed.value = false;
-  if (!src && player.hasTrack) void player.reportCoverMissing();
+  if (!props.media && !src && player.hasTrack) void player.reportCoverMissing();
 }, { immediate: true });
 
 </script>

@@ -1,23 +1,18 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import type { KtvAction, KtvComment, KtvRoomSnapshot } from "../../../shared/ktv";
 import { getGuestKtvState, resolveKtvInvite, getParticipantKtvLinks, guestKtvAction, joinKtvRoom, openKtvSocket, participantStorageKey, searchKtvRoom, type KtvSearchAudio, type KtvSearchVideo, type KtvSearchExternal } from "../lib/ktvApi";
-import { useAuth } from "../api";
 
-const route = useRoute();
-const router = useRouter();
 const { t } = useI18n();
-const auth = useAuth();
 let roomId = "";
-const invite = typeof route.query.c === "string" ? route.query.c : "";
+const invite = new URLSearchParams(window.location.search).get("c") || "";
 const enteredCode = ref(invite);
 const room = ref<KtvRoomSnapshot | null>(null);
 const participantId = ref("");
 const participantToken = ref("");
-const displayName = ref(auth.displayName.value || "");
+const displayName = ref("");
 const joined = ref(false);
 const unavailable = ref(false);
 const loading = ref(true);
@@ -184,7 +179,7 @@ async function openRoom() {
       try {
         const state = await getGuestKtvState(roomId, token);
         if (!state.room.open) { roomUnavailable(); return; }
-        const display = displayName.value.trim() || auth.displayName.value || "Guest";
+        const display = displayName.value.trim() || "Guest";
         const joinedResult = await joinKtvRoom(roomId, { invite, displayName: display, participantToken: token });
         applyRoom(joinedResult.room);
         participantId.value = joinedResult.participantId;
@@ -208,7 +203,7 @@ async function openRoom() {
 function enterRoomCode() {
   const code = enteredCode.value.trim();
   if (!/^[0-9]{6}$/.test(code)) return;
-  void router.replace({ path: "/k", query: { c: code } });
+  window.location.assign(`/ktv/?${new URLSearchParams({ c: code })}`);
 }
 
 onMounted(() => { void openRoom(); });

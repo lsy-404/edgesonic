@@ -191,7 +191,7 @@ export class KtvRoom implements DurableObject {
   }
 
   private inviteUrl(room: Room): string {
-    return `${room.origin}/#/k?c=${room.invite}`;
+    return `${room.origin}/ktv/?c=${room.invite}`;
   }
 
   private async registerInvite(initial: Room): Promise<Room> {

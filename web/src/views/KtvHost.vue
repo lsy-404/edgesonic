@@ -9,7 +9,7 @@ import { usePlayerStore, type Track } from "../stores/player";
 import { useKtvSettingsStore } from "../stores/ktvSettings";
 import NowPlaying from "./NowPlaying.vue";
 import Icon from "../components/Icon.vue";
-import MediaAccountsCard from "../components/MediaAccountsCard.vue";
+import KtvSettingsDialog from "../components/KtvSettingsDialog.vue";
 import MediaSurface from "../components/MediaSurface.vue";
 import { createKtvRoom, getKtvLinks, getKtvRoom, hostStorageKey, ktvRoomAction, openKtvSocket, playerIdentityKey, searchKtvRoom, type KtvSearchAudio, type KtvSearchVideo } from "../lib/ktvApi";
 import { getVideoPlayback, resolveExternalVideo, saveExternalVideo, type MediaSession } from "../lib/videoApi";
@@ -39,6 +39,7 @@ const comments = ref<KtvComment[]>([]);
 const commentText = ref("");
 const mediaSession = ref<MediaSession | null>(null);
 const page = ref<HTMLDivElement | null>(null);
+const settingsDialog = ref<InstanceType<typeof KtvSettingsDialog> | null>(null);
 const mediaSurface = ref<InstanceType<typeof MediaSurface> | null>(null);
 const stage = ref(false);
 const stageControlsVisible = ref(false);
@@ -65,6 +66,7 @@ let stageControlsTimer: number | undefined;
 
 const current = computed(() => room.value?.current ?? null);
 const currentAudio = computed(() => !!current.value?.audioId);
+const audioPresentation = computed(() => currentAudio.value ? !current.value?.videoId && !current.value?.externalUrl : listenOnly.value);
 const iframeTransport = computed(() => mediaSession.value?.transport === "iframe");
 const iframeAudioMismatch = computed(() => iframeTransport.value && currentAudio.value);
 const iframeVideoUncontrolled = computed(() => iframeTransport.value && !currentAudio.value);
@@ -75,7 +77,7 @@ const embeddedVideoAllowed = computed(() => room.value
 const canAdvance = computed(() => !!current.value || room.value?.queue[0]?.status === "queued");
 const linkedOffset = computed(() => current.value?.offsetMs ?? 0);
 const activeComments = computed(() => comments.value.filter((item) => !current.value || item.itemId === current.value.id));
-const roomCode = computed(() => inviteUrl.value ? new URLSearchParams(new URL(inviteUrl.value, window.location.href).hash.split("?")[1] || "").get("c") || "" : "");
+const roomCode = computed(() => inviteUrl.value ? new URL(inviteUrl.value, window.location.href).searchParams.get("c") || "" : "");
 const fullInviteUrl = computed(() => new URL(inviteUrl.value, window.location.href).toString());
 const stagePosition = computed(() => currentAudio.value ? player.currentTime : mediaTime.value);
 const stageDuration = computed(() => currentAudio.value ? player.duration : mediaDuration.value);
@@ -503,13 +505,14 @@ onBeforeUnmount(() => {
       </div>
       <button v-if="room" type="button" class="btn-danger btn-sm" @click="closeRoom">{{ t("ktv.closeRoom") }}</button>
       <button v-if="room && !stage" type="button" class="btn-primary btn-sm" @click="enterStage">{{ t("ktv.enterStage") }}</button>
+      <button v-if="!stage" type="button" class="btn-secondary ktv-settings-button" :aria-label="t('ktv.openSettings')" :title="t('ktv.openSettings')" @click="settingsDialog?.open()"><Icon name="settings" :size="20" /></button>
     </header>
 
-    <MediaAccountsCard v-if="!stage && settings.mediaMode === 'full'" />
+    <KtvSettingsDialog ref="settingsDialog" />
 
     <div v-if="!settings.enabled" class="card ktv-notice">
       <p>{{ t("ktv.disabled") }}</p>
-      <router-link class="btn-primary" to="/tools">{{ t("ktv.openSettings") }}</router-link>
+      <button class="btn-primary" type="button" @click="settingsDialog?.open()">{{ t("ktv.openSettings") }}</button>
     </div>
 
     <div v-else-if="!room" class="card ktv-start-card">
@@ -553,7 +556,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="ktv-main-grid">
-        <section class="card current-card" :class="{ 'with-lyrics': currentAudio }">
+        <section class="card current-card" :class="{ 'with-lyrics': currentAudio && !audioPresentation, 'audio-presentation': audioPresentation }">
           <div v-if="stage && stageControlsVisible" class="stage-toolbar" role="toolbar" :aria-label="t('ktv.playbackControls')" @focusin="clearStageControlsTimer" @focusout="onStageControlsFocusOut">
             <label v-if="current && !iframeVideoUncontrolled" class="stage-seek">
               <span>{{ Math.floor(stagePosition / 60) }}:{{ String(Math.floor(stagePosition % 60)).padStart(2, '0') }}</span>
@@ -567,11 +570,13 @@ onBeforeUnmount(() => {
           </div>
           <img v-if="stage && showStageQr && stageQrData" class="stage-qr-image" :style="{ '--qr-modules': qrModules }" tabindex="0" :src="stageQrData" :alt="t('ktv.joinQrAlt')" />
           <div class="mono-label stage-mode-label">{{ current ? t("ktv.status.playing") : t("ktv.chooseSource") }}</div>
-          <div v-if="current" class="current-layout" :class="{ 'stage-audio-only': stage && currentAudio && !mediaSession }">
+          <NowPlaying v-if="current && audioPresentation && (!currentAudio || player.current?.id === current.audioId)" class="ktv-audio-detail" :media="currentAudio ? undefined : current" />
+          <div v-if="current" class="current-layout" :class="{ 'stage-audio-only': stage && audioPresentation }">
             <MediaSurface
               v-if="mediaSession"
+              v-show="!audioPresentation"
               ref="mediaSurface"
-              :controls-visible="!stage"
+              :controls-visible="!stage && !audioPresentation"
               :session="mediaSession"
               :audio-only="listenOnly"
               :muted="currentAudio && !listenOnly"
@@ -594,27 +599,22 @@ onBeforeUnmount(() => {
             <p v-else-if="!stage && iframeVideoUncontrolled" class="feature-desc" role="status">{{ t("ktv.iframeVideoUncontrolled") }}</p>
             <div class="current-copy">
               <div class="mono-label">{{ t("ktv.requester", { name: current.displayName }) }}</div>
-              <h2>{{ current.title }}</h2>
-              <p v-if="current.artist" class="feature-desc">{{ current.artist }}</p>
+              <h2 v-if="!audioPresentation">{{ current.title }}</h2>
+              <p v-if="!audioPresentation && current.artist" class="feature-desc">{{ current.artist }}</p>
               <div class="current-actions">
-                <button v-if="currentAudio" class="btn-secondary btn-sm" @click="player.toggle()">{{ player.playing ? t("ktv.pause") : t("ktv.play") }}</button>
-                <button v-if="currentAudio" class="btn-secondary btn-sm" @click="perform({ action: 'next', currentId: current.id })">{{ t("ktv.next") }}</button>
+                <button v-if="currentAudio || audioPresentation" class="btn-secondary btn-sm" @click="toggleStagePlayback">{{ stagePlaying ? t("ktv.pause") : t("ktv.play") }}</button>
+                <button v-if="currentAudio || audioPresentation" class="btn-secondary btn-sm" @click="perform({ action: 'next', currentId: current.id })">{{ t("ktv.next") }}</button>
                 <button v-if="mediaSession && !current.audioId && !iframeTransport" class="btn-secondary btn-sm" :disabled="!listenOnly && !mediaSession.audioTracks.length" @click="toggleListenOnly">{{ listenOnly ? t("ktv.watchVideo") : t("ktv.listenOnly") }}</button>
                 <button v-if="current.externalUrl && auth.hasPerm('upload')" class="btn-secondary btn-sm" :disabled="savingVideo || savedVideoItemId === current.id" @click="saveCurrentVideo">{{ savedVideoItemId === current.id ? t("videos.saved") : t("videos.save") }}</button>
                 <p v-if="mediaSession && !current.audioId && !iframeTransport && !mediaSession.audioTracks.length" class="feature-desc">{{ t("media.audioTrackUnavailable") }}</p>
               </div>
-              <label v-if="currentAudio && player.duration > 0" class="ktv-seek">
-                <input type="range" min="0" step="0.1" :max="player.duration" :value="player.currentTime" @input="player.seek(Number(($event.target as HTMLInputElement).value))" />
-                <span>{{ Math.floor(player.currentTime / 60) }}:{{ String(Math.floor(player.currentTime % 60)).padStart(2, '0') }} / {{ Math.floor(player.duration / 60) }}:{{ String(Math.floor(player.duration % 60)).padStart(2, '0') }}</span>
+              <label v-if="(currentAudio || audioPresentation) && stageDuration > 0" class="ktv-seek">
+                <input type="range" min="0" step="0.1" :max="stageDuration" :value="stagePosition" :aria-label="t('ktv.seek')" @input="seekStageTo(Number(($event.target as HTMLInputElement).value))" />
+                <span>{{ Math.floor(stagePosition / 60) }}:{{ String(Math.floor(stagePosition % 60)).padStart(2, '0') }} / {{ Math.floor(stageDuration / 60) }}:{{ String(Math.floor(stageDuration % 60)).padStart(2, '0') }}</span>
               </label>
             </div>
           </div>
-          <div v-if="stage && currentAudio && !mediaSession" class="stage-audio-content">
-            <strong>{{ current?.title }}</strong>
-            <span v-if="current?.artist">{{ current.artist }}</span>
-            <button v-if="!player.playing" type="button" class="btn-primary" @click="toggleStagePlayback">{{ t("ktv.play") }}</button>
-          </div>
-          <NowPlaying v-if="currentAudio && player.current?.id === current?.audioId" class="ktv-lyrics" />
+          <NowPlaying v-if="currentAudio && !audioPresentation && player.current?.id === current?.audioId" class="ktv-lyrics" />
           <div v-if="!current" class="empty-current">{{ t("ktv.emptyQueue") }}</div>
 
         </section>
@@ -691,6 +691,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .ktv-page { display: grid; gap: 1rem; max-width: 1440px; margin: 0 auto; }
 .ktv-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.ktv-header > div { flex: 1; }
+.ktv-settings-button { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; flex: 0 0 auto; }
 .card { padding: 1rem; }
 .ktv-notice, .ktv-start-card { display: grid; gap: 1rem; max-width: 560px; }
 .form-row { display: grid; gap: .5rem; }
@@ -718,9 +720,10 @@ onBeforeUnmount(() => {
 .ktv-seek { display: flex; align-items: center; gap: .65rem; font-size: .8rem; color: var(--color-text-muted); }
 .ktv-seek input { flex: 1; min-width: 0; accent-color: var(--color-accent-primary); }
 .ktv-lyrics { height: 240px; min-height: 220px; margin-top: 1rem; overflow: hidden; border-top: 1px solid var(--color-border-subtle); }
-.ktv-lyrics :deep(.nowplaying) { height: 230px; min-height: 0; padding: .5rem; grid-template-columns: minmax(0, 1fr); }
+.ktv-lyrics.nowplaying { min-height: 0; padding: .5rem; grid-template-columns: minmax(0, 1fr); }
 .ktv-lyrics :deep(.np-left) { display: none; }
 .ktv-lyrics :deep(.np-right) { padding: 0; }
+.ktv-audio-detail { height: min(60dvh, 600px); min-height: 360px; margin-top: .75rem; }
 .queue-card { min-width: 0; }
 .queue-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
 .queue-list { display: grid; gap: .65rem; list-style: none; margin: .75rem 0; padding: 0; max-height: 420px; overflow: auto; }
@@ -757,9 +760,8 @@ onBeforeUnmount(() => {
 .is-stage .current-layout :deep(.media-surface) { width: min(100%, calc((100dvh - 2rem) * 16 / 9)); height: auto; max-width: 100%; max-height: calc(100dvh - 2rem); min-height: 0; aspect-ratio: 16 / 9; margin: auto; }
 .is-stage .current-card.with-lyrics .current-layout :deep(.media-surface) { width: min(100%, calc((100dvh - 260px) * 16 / 9)); max-height: calc(100dvh - 260px); }
 .is-stage .current-layout :deep(.media-surface.audio-only) { width: min(100%, 900px); height: auto; min-height: 210px; }
-.is-stage .stage-audio-content { display: grid; flex: 1 1 auto; align-content: center; justify-items: center; gap: .75rem; min-height: 0; padding: 1rem; text-align: center; }
-.is-stage .stage-audio-content strong { font-size: clamp(1.4rem, 3vw, 2.4rem); }
-.is-stage .stage-audio-content span { color: #bdc2ca; }
+.is-stage .current-card.audio-presentation { background: var(--color-bg-secondary); color: var(--color-text-primary); }
+.is-stage .ktv-audio-detail { flex: 1; width: min(100%, 1440px); height: 100%; min-height: 0; margin: 0; padding-block: 2rem 6rem; }
 .is-stage .ktv-lyrics { flex: 0 0 min(24vh, 220px); width: min(100%, 1100px); height: min(24vh, 220px); min-height: 100px; margin: 0 auto; border: 0; }
 .is-stage .ktv-lyrics :deep(.nowplaying) { height: 100%; }
 .is-stage .stage-toolbar { position: fixed; z-index: 3; left: 50%; bottom: 1.25rem; width: min(560px, calc(100vw - 3rem)); transform: translateX(-50%); display: flex; justify-content: center; flex-wrap: wrap; gap: .5rem; padding: .75rem; border: 1px solid #ffffff26; border-radius: 16px; background: #15171dbd; box-shadow: 0 12px 40px #0005; backdrop-filter: blur(16px); }

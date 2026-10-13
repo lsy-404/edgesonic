@@ -50,7 +50,6 @@ const routes = [
   { path: "/starred", component: Library, props: { starredOnly: true }, meta: { title: "Liked" } },
   { path: "/videos", component: () => import("./views/Videos.vue"), meta: { title: "Videos", media: true } },
   { path: "/ktv", component: () => import("./views/KtvHost.vue"), meta: { title: "Karaoke mode", ktv: true } },
-  { path: "/k", component: () => import("./views/KtvJoin.vue"), meta: { title: "Join Karaoke", public: true, bare: true } },
   { path: "/sources", component: Sources, meta: { title: "Sources", perm: "manage_sources" } },
   { path: "/files", component: Files, meta: { title: "Files", perm: "manage_files" } },
   { path: "/users", component: Users, meta: { title: "Users", perm: "manage_users" } },
