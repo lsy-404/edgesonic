@@ -95,6 +95,7 @@ export const usePlayerStore = defineStore("player", () => {
   const playing = ref(false);
   const currentTime = ref(0);
   const duration = ref(0);
+  const endedSequence = ref(0);
   const volume = ref(parseFloat(
     localStorage.getItem("edgesonic:volume") ||
     localStorage.getItem("edgesonic_volume") ||
@@ -993,6 +994,7 @@ export const usePlayerStore = defineStore("player", () => {
           }
           return;
         }
+        endedSequence.value++;
         if (playMode.value === "single") listeningProgress.reset();
         next();
       }
@@ -1253,13 +1255,13 @@ export const usePlayerStore = defineStore("player", () => {
   }
 
   /** Replace queue and start playing at startIndex. */
-  function setQueue(tracks: Track[], startIndex = 0) {
+  function setQueue(tracks: Track[], startIndex = 0, options: { autoplay?: boolean; startTime?: number } = {}) {
     listeningProgress.reset();
-    _pendingRestoreTime = null; // cancel any page-reload restore when user starts a new queue
+    _pendingRestoreTime = Number.isFinite(options.startTime) && (options.startTime ?? 0) > 0 ? options.startTime! : null;
     invalidatePreload();
     queue.value = tracks;
     index.value = tracks.length ? Math.min(Math.max(startIndex, 0), tracks.length - 1) : -1;
-    loadCurrent();
+    loadCurrent(options.autoplay ?? true);
   }
 
   /**
@@ -1488,7 +1490,7 @@ export const usePlayerStore = defineStore("player", () => {
   watch(volume, (v) => localStorage.setItem("edgesonic:volume", String(v)));
 
   return {
-    queue, index, playing, currentTime, duration, volume, bufferedRanges,
+    queue, index, playing, currentTime, duration, volume, bufferedRanges, endedSequence,
     current, hasTrack, playMode, starred, starBusy, localCoverUrl, playbackQuality,
     setQueue, hydrateTrack, playNext, removeAt, playAt, toggle, next, prev, seek, setVolume,
     cyclePlayMode, toggleStar, setStarred, clear, resumePlaybackIfNeeded, reportCoverMissing,

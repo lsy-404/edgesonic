@@ -1,0 +1,305 @@
+<script setup lang="ts">
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
+import type { KtvAction, KtvComment, KtvRoomSnapshot } from "../../../shared/ktv";
+import { getGuestKtvState, getPublicKtvRoom, getParticipantKtvLinks, guestKtvAction, joinKtvRoom, openKtvSocket, participantStorageKey, searchKtvRoom, type KtvSearchAudio, type KtvSearchVideo } from "../lib/ktvApi";
+import { useAuth } from "../api";
+
+const route = useRoute();
+const { t } = useI18n();
+const auth = useAuth();
+const roomId = String(route.params.id || "");
+const invite = typeof route.query.invite === "string" ? route.query.invite : "";
+const room = ref<KtvRoomSnapshot | null>(null);
+const participantId = ref("");
+const participantToken = ref("");
+const displayName = ref(sessionStorage.getItem(`edgesonic:ktv:name:${roomId}`) || auth.displayName.value || "");
+const joined = ref(false);
+const unavailable = ref(false);
+const loading = ref(true);
+const busy = ref(false);
+const error = ref("");
+const searchText = ref("");
+const searchBusy = ref(false);
+const audioResults = ref<KtvSearchAudio[]>([]);
+const videoResults = ref<KtvSearchVideo[]>([]);
+const linkedVideos = ref<Array<{ videoId: string; videoTitle: string; offsetMs: number }>>([]);
+const selectedAudio = ref<KtvSearchAudio | null>(null);
+const externalUrl = ref("");
+const listenOnly = ref(false);
+const commentText = ref("");
+const comments = ref<KtvComment[]>([]);
+let socket: WebSocket | null = null;
+let retryTimer: number | undefined;
+
+const canRequest = computed(() => joined.value && !!room.value?.open && !unavailable.value);
+const queue = computed(() => room.value?.queue ?? []);
+
+function savedToken() {
+  try { return sessionStorage.getItem(participantStorageKey(roomId)) || ""; }
+  catch { return ""; }
+}
+function saveToken(token: string) {
+  participantToken.value = token;
+  sessionStorage.setItem(participantStorageKey(roomId), token);
+}
+function stopSocket() {
+  socket?.close(); socket = null;
+  if (retryTimer !== undefined) clearTimeout(retryTimer);
+  retryTimer = undefined;
+}
+function connectSocket() {
+  if (!canRequest.value || !participantToken.value) return;
+  stopSocket();
+  socket = openKtvSocket(roomId, { kind: "participant", token: participantToken.value }, (raw) => {
+    const event = raw as { type?: string; room?: KtvRoomSnapshot; comment?: KtvComment };
+    if (event.type === "state" && event.room) {
+      room.value = event.room;
+      if (!event.room.open) roomUnavailable();
+    }
+    if (event.type === "comment" && event.comment) comments.value.push(event.comment);
+    if (event.type === "closed") roomUnavailable();
+  }, () => {
+    if (canRequest.value && !document.hidden) retryTimer = window.setTimeout(connectSocket, 2500);
+  });
+}
+function roomUnavailable() {
+  unavailable.value = true;
+  joined.value = false;
+  room.value = null;
+  sessionStorage.removeItem(participantStorageKey(roomId));
+  stopSocket();
+}
+
+async function join() {
+  if (!invite || !displayName.value.trim()) return;
+  busy.value = true;
+  error.value = "";
+  try {
+    const result = await joinKtvRoom(roomId, { invite, displayName: displayName.value.trim(), ...(savedToken() ? { participantToken: savedToken() } : {}) });
+    room.value = result.room;
+    participantId.value = result.participantId;
+    saveToken(result.participantToken);
+    joined.value = true;
+    sessionStorage.setItem(`edgesonic:ktv:name:${roomId}`, displayName.value.trim());
+    connectSocket();
+  } catch (cause) {
+    const status = (cause as { status?: number }).status;
+    if (status === 404 || status === 410) roomUnavailable();
+    else error.value = cause instanceof Error ? cause.message : t("ktv.serviceUnavailable");
+  } finally { busy.value = false; }
+}
+
+async function perform(action: KtvAction) {
+  if (!canRequest.value) return;
+  busy.value = true;
+  error.value = "";
+  try {
+    const result = await guestKtvAction(roomId, participantToken.value, action);
+    room.value = result.room;
+  } catch (cause) {
+    const status = (cause as { status?: number }).status;
+    if (status === 404 || status === 410) roomUnavailable();
+    else error.value = cause instanceof Error ? cause.message : t("ktv.serviceUnavailable");
+  } finally { busy.value = false; }
+}
+
+async function search() {
+  if (!canRequest.value || !searchText.value.trim()) return;
+  searchBusy.value = true;
+  selectedAudio.value = null;
+  linkedVideos.value = [];
+  try {
+    const result = await searchKtvRoom(roomId, { kind: "participant", token: participantToken.value }, searchText.value.trim());
+    audioResults.value = result.audio;
+    videoResults.value = result.videos;
+  } catch (cause) {
+    if ([404, 410].includes((cause as { status?: number }).status || 0)) roomUnavailable();
+    else error.value = cause instanceof Error ? cause.message : t("ktv.serviceUnavailable");
+  } finally { searchBusy.value = false; }
+}
+
+async function selectAudio(audio: KtvSearchAudio) {
+  selectedAudio.value = audio;
+  linkedVideos.value = [];
+  try {
+    const result = await getParticipantKtvLinks(roomId, participantToken.value, audio.id);
+    linkedVideos.value = result.links.map((link) => ({ videoId: link.videoId, videoTitle: link.videoTitle, offsetMs: link.offsetMs }));
+  } catch (cause) { error.value = cause instanceof Error ? cause.message : t("ktv.serviceUnavailable"); }
+}
+
+function normalizeExternal(value: string) {
+  const clean = value.trim();
+  if (/^BV[0-9A-Za-z]+$/.test(clean)) return `https://www.bilibili.com/video/${clean}`;
+  if (/^av\d+$/i.test(clean)) return `https://www.bilibili.com/video/${clean}`;
+  return clean;
+}
+function requestExternal() {
+  const url = normalizeExternal(externalUrl.value);
+  if (!url) return;
+  void perform({ action: "enqueue", selection: { ...(selectedAudio.value ? { audioId: selectedAudio.value.id } : {}), externalUrl: url } });
+  externalUrl.value = "";
+}
+function sendComment() {
+  const text = commentText.value.trim();
+  if (!text) return;
+  commentText.value = "";
+  void perform({ action: "comment", text });
+}
+function rename() {
+  const name = displayName.value.trim();
+  if (!name) return;
+  sessionStorage.setItem(`edgesonic:ktv:name:${roomId}`, name);
+  void perform({ action: "rename", displayName: name });
+}
+function canRemove(item: { participantId: string }) { return item.participantId === participantId.value; }
+
+async function openRoom() {
+  try {
+    const result = await getPublicKtvRoom(roomId, invite);
+    room.value = result.room;
+    const token = savedToken();
+    if (token) {
+      try {
+        const state = await getGuestKtvState(roomId, token);
+        if (!state.room.open) { roomUnavailable(); return; }
+        const display = displayName.value.trim() || auth.displayName.value || "Guest";
+        const joinedResult = await joinKtvRoom(roomId, { invite, displayName: display, participantToken: token });
+        room.value = joinedResult.room;
+        participantId.value = joinedResult.participantId;
+        saveToken(joinedResult.participantToken);
+        joined.value = true;
+        connectSocket();
+      } catch (cause) {
+        const status = (cause as { status?: number }).status;
+        if (status === 404 || status === 410) roomUnavailable();
+        else if (status === 401 || status === 403) sessionStorage.removeItem(participantStorageKey(roomId));
+        else error.value = cause instanceof Error ? cause.message : t("ktv.serviceUnavailable");
+      }
+    }
+  } catch (cause) {
+    const status = (cause as { status?: number }).status;
+    if (status === 404 || status === 410 || !invite) roomUnavailable();
+    else error.value = cause instanceof Error ? cause.message : t("ktv.roomUnavailable");
+  } finally { loading.value = false; }
+}
+
+onMounted(() => { void openRoom(); });
+onBeforeUnmount(stopSocket);
+</script>
+
+<template>
+  <main class="guest-page">
+    <header class="guest-header">
+      <div class="mono-label">EDGE SONIC / KTV</div>
+      <h1>{{ t("ktv.hostTitle") }}</h1>
+    </header>
+    <section v-if="loading" class="guest-card"><p>{{ t("common.loading") }}</p></section>
+    <section v-else-if="unavailable || !room" class="guest-card unavailable" role="status">
+      <h2>{{ t("ktv.roomUnavailable") }}</h2>
+    </section>
+    <template v-else>
+      <section v-if="!joined" class="guest-card join-card">
+        <p>{{ t("ktv.chooseSource") }}</p>
+        <label class="guest-field"><span>{{ t("ktv.nickname") }}</span><input v-model="displayName" class="form-input" maxlength="48" /></label>
+        <button class="btn-primary" :disabled="busy || !displayName.trim()" @click="join">{{ busy ? t("ktv.joining") : t("ktv.join") }}</button>
+      </section>
+
+      <template v-else-if="canRequest">
+        <section class="guest-card">
+          <div class="guest-room-head">
+            <div><div class="mono-label">{{ t("ktv.queue") }} · {{ room.mode === 'fair' ? t("ktv.fair") : t("ktv.fifo") }}</div><h2>{{ room.current?.title || t("ktv.emptyQueue") }}</h2></div>
+            <span class="participant-count">{{ room.participants.length }}</span>
+          </div>
+          <form class="rename-row" @submit.prevent="rename">
+            <input v-model="displayName" class="form-input" maxlength="48" :placeholder="t('ktv.nickname')" />
+            <button class="btn-secondary btn-sm" :disabled="busy || !displayName.trim()">{{ t("ktv.rename") }}</button>
+          </form>
+          <ol class="guest-queue">
+            <li v-for="item in queue" :key="item.id">
+              <div><strong>{{ item.title }}</strong><small>{{ t("ktv.requester", { name: item.displayName }) }}</small></div>
+              <span class="queue-status">{{ t(`ktv.status.${item.status}`) }}</span>
+              <button v-if="canRemove(item)" class="btn-secondary btn-sm" :disabled="busy" @click="perform({ action: 'remove', itemId: item.id })">{{ t("ktv.remove") }}</button>
+            </li>
+          </ol>
+          <div class="comment-section">
+            <div class="mono-label">{{ t("ktv.comments") }}</div>
+            <p v-for="comment in comments.slice(-4)" :key="comment.id"><strong>{{ comment.displayName }}:</strong> {{ comment.text }}</p>
+            <form class="comment-form" @submit.prevent="sendComment">
+              <input v-model="commentText" class="form-input" maxlength="240" :placeholder="t('ktv.commentPlaceholder')" />
+              <button class="btn-secondary btn-sm" :disabled="busy || !commentText.trim()">{{ t("ktv.sendComment") }}</button>
+            </form>
+          </div>
+        </section>
+
+        <section class="guest-card request-card">
+          <div class="mono-label">{{ t("ktv.search") }}</div>
+          <form class="search-row" @submit.prevent="search">
+            <input v-model="searchText" class="form-input" :placeholder="t('ktv.searchPlaceholder')" />
+            <button class="btn-primary" :disabled="searchBusy || !searchText.trim()">{{ t("ktv.searchButton") }}</button>
+          </form>
+          <p v-if="searchBusy">{{ t("common.loading") }}</p>
+          <div class="result-group">
+            <h3>{{ t("ktv.audio") }}</h3>
+            <div v-for="audio in audioResults" :key="audio.id" class="result-row">
+              <button class="result-copy" @click="selectAudio(audio)"><strong>{{ audio.title }}</strong><small>{{ audio.artist }}</small></button>
+              <button class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { audioId: audio.id } })">{{ t("ktv.addAudio") }}</button>
+            </div>
+          </div>
+          <div class="result-group">
+            <h3>{{ t("ktv.video") }}</h3>
+            <div v-for="video in videoResults" :key="video.id" class="result-row">
+              <strong>{{ video.title }}</strong>
+              <div class="result-actions">
+                <button class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { videoId: video.id, ...(listenOnly ? { listenOnly: true } : {}) } })">{{ t("ktv.addVideo") }}</button>
+                <label class="listen-option"><input v-model="listenOnly" type="checkbox" />{{ t("ktv.listenOnly") }}</label>
+              </div>
+            </div>
+          </div>
+          <div v-if="linkedVideos.length" class="linked-row">
+            <h3>{{ t("ktv.linkAudioVideo") }} · {{ selectedAudio?.title }}</h3>
+            <button v-for="video in linkedVideos" :key="video.videoId" class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { audioId: selectedAudio?.id, videoId: video.videoId, offsetMs: video.offsetMs } })">{{ video.videoTitle }} · {{ t("ktv.addPair") }}</button>
+          </div>
+          <form class="external-row" @submit.prevent="requestExternal">
+            <input v-model="externalUrl" class="form-input" :placeholder="t('ktv.externalPlaceholder')" />
+            <button class="btn-secondary" :disabled="busy || !externalUrl.trim()">{{ t("ktv.requestExternal") }}</button>
+          </form>
+        </section>
+      </template>
+    </template>
+    <p v-if="error && !unavailable" class="guest-error" role="alert">{{ error }}</p>
+  </main>
+</template>
+
+<style scoped>
+.guest-page { min-height: 100vh; padding: clamp(1rem, 4vw, 2.5rem); color: var(--color-text-primary); background: var(--color-bg-primary); }
+.guest-header, .guest-card { width: min(100%, 760px); margin: 0 auto 1rem; }
+.guest-header h1 { margin: .35rem 0 1rem; font-size: clamp(1.45rem, 5vw, 2.2rem); }
+.guest-card { padding: 1rem; border: 1px solid var(--color-border-subtle); border-radius: 16px; background: var(--color-bg-secondary); box-shadow: 0 12px 40px #0002; }
+.join-card { display: grid; gap: .85rem; }
+.guest-field { display: grid; gap: .4rem; }
+.guest-room-head { display: flex; justify-content: space-between; gap: .75rem; align-items: flex-start; }
+.guest-room-head h2 { margin: .35rem 0; font-size: 1.2rem; }
+.participant-count { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--color-bg-tertiary); }
+.rename-row, .search-row, .comment-form, .external-row { display: flex; gap: .5rem; margin-top: .7rem; }
+.rename-row input, .search-row input, .comment-form input, .external-row input { min-width: 0; flex: 1; }
+.guest-queue { display: grid; gap: .4rem; list-style: none; padding: 0; max-height: 300px; overflow: auto; }
+.guest-queue li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: .45rem; border-top: 1px solid var(--color-border-subtle); padding: .55rem 0; }
+.guest-queue small, .result-copy small { display: block; color: var(--color-text-muted); margin-top: .2rem; }
+.queue-status { color: var(--color-text-muted); font-size: .8rem; }
+.comment-section, .result-group, .linked-row { margin-top: .85rem; padding-top: .7rem; border-top: 1px solid var(--color-border-subtle); }
+.comment-section p { margin: .35rem 0; font-size: .9rem; }
+.result-group h3, .linked-row h3 { margin: 0 0 .5rem; font-size: .95rem; }
+.result-row { display: flex; justify-content: space-between; gap: .5rem; align-items: center; padding: .5rem 0; border-top: 1px solid var(--color-border-subtle); }
+.result-copy { color: inherit; text-align: left; border: 0; background: transparent; cursor: pointer; }
+.result-copy strong, .result-row > strong { overflow-wrap: anywhere; }
+.result-actions { display: flex; align-items: center; gap: .5rem; }
+.listen-option { display: flex; align-items: center; gap: .25rem; font-size: .72rem; color: var(--color-text-muted); }
+.linked-row { display: flex; flex-wrap: wrap; gap: .45rem; }
+.linked-row h3 { flex-basis: 100%; }
+.unavailable { text-align: center; padding: 2rem 1rem; }
+.guest-error { width: min(100%,760px); margin: 0 auto; color: var(--color-danger, #d13438); }
+@media (max-width: 520px) { .guest-page { padding: .75rem; } .guest-queue li { grid-template-columns: 1fr auto; } .queue-status { display: none; } .result-row { align-items: flex-start; flex-direction: column; } .result-actions { width: 100%; justify-content: space-between; } .rename-row, .search-row, .comment-form, .external-row { flex-direction: column; } }
+</style>
