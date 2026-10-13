@@ -95,14 +95,19 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   }
 
   const suffix = name.split(".").pop() || "bin";
-  const isVideo = isVideoSuffix(suffix);
+  const declaredContentType = (c.req.header("Content-Type") || "")
+    .split(";", 1)[0].trim().toLowerCase();
+  // MP4 is shared by audio and video; only an explicit audio MIME opts into
+  // the audio pipeline. Generic MP4 uploads remain in the video catalog.
+  const audioMp4 = suffix.toLowerCase() === "mp4" && declaredContentType.startsWith("audio/");
+  const isVideo = isVideoSuffix(suffix) && !audioMp4;
   const contentType = isVideo
     ? videoContentType(suffix)
     : normalizeUploadContentType(c.req.header("Content-Type"), suffix);
   // Lyric sidecars, text and images ride along with the music they belong to;
   // everything else about this request (D1 rows, tag parsing, transcodes) is
   // audio-only.
-  const isAudio = isAudioSuffix(suffix);
+  const isAudio = isAudioSuffix(suffix) && (!isVideo || audioMp4);
   // D1 owns the logical path. R2 receives a fresh immutable object key.
   const requestedPath = (cleanPath ? cleanPath + "/" : "") + name;
 

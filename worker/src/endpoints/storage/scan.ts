@@ -681,7 +681,7 @@ export async function asyncScanS3Source(
 
     // Collect playable media objects separately from the audio work queue.
     const audio: Array<{ key: string; size: number; etag: string | null; lastModified: number | null }> = [];
-    const videos: Array<{ path: string; size: number }> = [];
+    const videos: Array<{ path: string; size: number; etag: string | null; lastModified: number | null }> = [];
     let listingHadItems = false;
     let nextToken: string | undefined;
     let pages = 0;
@@ -694,7 +694,7 @@ export async function asyncScanS3Source(
         if (AUDIO_EXT.has(extOf(obj.key))) {
           audio.push(obj);
         } else if (isVideoSuffix(extOf(obj.key))) {
-          videos.push({ path: obj.key, size: obj.size });
+          videos.push({ path: obj.key, size: obj.size, etag: obj.etag, lastModified: obj.lastModified });
         }
       }
       nextToken = result.nextToken ?? undefined;
@@ -922,7 +922,7 @@ export async function asyncScanR2Source(
 
   try {
     const audio: Array<{ key: string; size: number; etag: string | null; lastModified: number | null }> = [];
-    const videos: Array<{ path: string; size: number }> = [];
+    const videos: Array<{ path: string; size: number; etag: string | null; lastModified: number | null }> = [];
     let listingHadItems = false;
     let cursor: string | undefined;
     let pages = 0;
@@ -939,7 +939,12 @@ export async function asyncScanR2Source(
             lastModified: o.uploaded ? Math.floor(o.uploaded.getTime() / 1000) : null,
           });
         } else if (isVideoSuffix(extOf(o.key))) {
-          videos.push({ path: o.key, size: o.size });
+          videos.push({
+            path: o.key,
+            size: o.size,
+            etag: o.etag || null,
+            lastModified: o.uploaded ? Math.floor(o.uploaded.getTime() / 1000) : null,
+          });
         }
       }
       cursor = listing.truncated ? listing.cursor : undefined;

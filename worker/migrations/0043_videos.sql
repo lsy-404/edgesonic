@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS videos (
   storage_entry_id TEXT UNIQUE REFERENCES storage_entries(id) ON DELETE CASCADE,
   storage_uri TEXT,
   external_url TEXT,
+  revision TEXT NOT NULL DEFAULT '',
   missing INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
@@ -32,5 +33,4 @@ CREATE TABLE IF NOT EXISTS video_audio_links (
   FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
   FOREIGN KEY (audio_id) REFERENCES song_masters(id) ON DELETE CASCADE
 ) WITHOUT ROWID;
-CREATE INDEX IF NOT EXISTS idx_video_audio_links_audio ON video_audio_links(audio_id, video_id);
 CREATE INDEX IF NOT EXISTS idx_video_audio_links_audio ON video_audio_links(audio_id, video_id);

@@ -30,7 +30,7 @@ videoRoutes.post("/videos/external", permissionMiddleware("upload"), async (c) =
     return c.json({ ok: false, error: "Missing video URL" }, 400);
   }
   try {
-    const video = await saveExternalVideo(c.env, body.url.trim(), c.req.raw.signal);
+    const video = await saveExternalVideo(c.env, body.url.trim(), c.get("user").username, c.req.raw.signal);
     return c.json({ ok: true, video: videoSummary(video) });
   } catch (error) {
     return errorResponse(error);

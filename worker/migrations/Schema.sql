@@ -603,6 +603,7 @@ CREATE TABLE IF NOT EXISTS videos (
   storage_entry_id TEXT UNIQUE REFERENCES storage_entries(id) ON DELETE CASCADE,
   storage_uri TEXT,
   external_url TEXT,
+  revision TEXT NOT NULL DEFAULT '',
   missing INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL DEFAULT (unixepoch()),
   updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
