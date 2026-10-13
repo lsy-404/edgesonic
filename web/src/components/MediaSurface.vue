@@ -14,8 +14,9 @@ const props = withDefaults(defineProps<{
   syncPlaying?: boolean;
   initialTime?: number;
   startPlaying?: boolean;
+  controlsVisible?: boolean;
   comments?: OverlayComment[];
-}>(), { audioOnly: false, muted: false, syncTime: undefined, syncPlaying: undefined, initialTime: 0, startPlaying: false, comments: () => [] });
+}>(), { audioOnly: false, muted: false, syncTime: undefined, syncPlaying: undefined, initialTime: 0, startPlaying: false, controlsVisible: true, comments: () => [] });
 const { t } = useI18n();
 const emit = defineEmits<{
   time: [value: number]; duration: [value: number]; playing: [value: boolean]; ended: []; error: [message: string]; autoplayBlocked: [];
@@ -34,13 +35,20 @@ let danmakuController: AbortController | null = null;
 let danmakuRequestId = 0;
 let danmakuSessionId = "";
 const captionOptions = computed(() => props.session.captions ?? []);
+const embeddedUrl = computed(() => {
+  if (props.session.transport !== "iframe" || !props.session.sourceUrl) return "";
+  const url = new URL(props.session.sourceUrl);
+  url.searchParams.set(props.session.provider === "bilibili" ? "muted" : "mute", props.muted ? "1" : "0");
+  return url.href;
+});
 const activeDanmaku = computed(() => danmaku.value.filter((entry) => Math.abs(entry.time - currentTime.value) < 4).slice(-5));
 const danmakuState = ref<"loading" | "available" | "empty" | "failed">("loading");
 
-function releaseSession(sessionId: string) {
-  void fetch(`/edgesonic/media/${encodeURIComponent(sessionId)}`, { method: "DELETE", credentials: "same-origin", keepalive: true }).catch(() => {});
+function releaseSession(session: MediaSession) {
+  if (session.transport !== "hls") return;
+  void fetch(`/edgesonic/media/${encodeURIComponent(session.id)}`, { method: "DELETE", credentials: "same-origin", keepalive: true }).catch(() => {});
 }
-function onPageHide(event: PageTransitionEvent) { if (!event.persisted) releaseSession(props.session.id); }
+function onPageHide(event: PageTransitionEvent) { if (!event.persisted) releaseSession(props.session); }
 window.addEventListener("pagehide", onPageHide);
 
 function releaseHls() {
@@ -55,6 +63,13 @@ function releaseHls() {
 }
 
 function loadDanmaku(session: MediaSession) {
+  if (session.transport !== "hls") {
+    danmakuController?.abort();
+    danmakuRequestId++;
+    danmaku.value = [];
+    danmakuState.value = "empty";
+    return;
+  }
   if (danmakuSessionId === session.id) return;
   danmakuController?.abort();
   danmakuController = new AbortController();
@@ -83,12 +98,12 @@ function loadDanmaku(session: MediaSession) {
     });
 }
 
-watch(() => props.session.id, (next, previous) => {
-  if (previous && previous !== next) releaseSession(previous);
+watch(() => props.session, (next, previous) => {
+  if (previous && previous.id !== next.id) releaseSession(previous);
 });
 
 watch([media, () => props.session.id, () => props.audioOnly], async ([element, sessionId, audioOnly]) => {
-  if (!element || !sessionId) return;
+  if (!element || !sessionId) { releaseHls(); return; }
   resumeAfterReload = sessionId === activeSessionId ? !element.paused : props.startPlaying;
   resumeTime = sessionId === activeSessionId ? element.currentTime : props.initialTime;
   activeSessionId = sessionId;
@@ -104,7 +119,9 @@ watch([media, () => props.session.id, () => props.audioOnly], async ([element, s
   }
   const url = mediaManifestUrl(sessionId, audioOnly);
   const nativeHls = element.canPlayType("application/vnd.apple.mpegurl") !== "";
-  if (Hls.isSupported()) {
+  if (props.session.transport === "file") {
+    element.src = props.session.sourceUrl || "";
+  } else if (Hls.isSupported()) {
     const instance = new Hls({ startPosition: Math.max(0, resumeTime) });
     hls = instance;
     instance.on(Hls.Events.ERROR, (_event, data) => {
@@ -168,15 +185,28 @@ function onEnded() { emit("ended"); }
 function onPlay() { emit("playing", true); }
 function onPause() { emit("playing", false); }
 function onError() { if (!hlsError.value) hlsError.value = "The media session could not be loaded."; emit("error", hlsError.value); }
-onBeforeUnmount(() => { window.removeEventListener("pagehide", onPageHide); danmakuController?.abort(); danmakuRequestId++; releaseHls(); releaseSession(props.session.id); });
+async function togglePlayback(): Promise<void> {
+  if (!media.value) return;
+  if (media.value.paused) {
+    try { await media.value.play(); } catch { emit("autoplayBlocked"); }
+  } else media.value.pause();
+}
+function seekTo(seconds: number): void {
+  if (!media.value || !Number.isFinite(seconds)) return;
+  media.value.currentTime = Math.max(0, Math.min(seconds, Number.isFinite(media.value.duration) ? media.value.duration : seconds));
+}
+function getPosition(): number { return media.value?.currentTime ?? 0; }
+defineExpose({ togglePlayback, seekTo, getPosition });
+onBeforeUnmount(() => { window.removeEventListener("pagehide", onPageHide); danmakuController?.abort(); danmakuRequestId++; releaseHls(); releaseSession(props.session); });
 </script>
 
 <template>
   <div class="media-surface" :class="{ 'audio-only': audioOnly }">
-    <video
+    <iframe v-if="session.transport === 'iframe'" :key="session.id" :src="embeddedUrl" :title="session.title" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" />
+    <video v-else
       ref="media"
       :muted="muted"
-      :controls="syncTime === undefined"
+      :controls="controlsVisible && syncTime === undefined"
       playsinline
       preload="metadata"
       @timeupdate="onTime"
@@ -189,12 +219,12 @@ onBeforeUnmount(() => { window.removeEventListener("pagehide", onPageHide); danm
     >
       <track v-for="track in captionOptions" :key="track.id" :kind="'captions'" :label="track.title || track.language || track.id" :srclang="track.language || 'und'" :src="captionTrackUrl(session.id, track.id)" />
     </video>
-    <div v-if="!audioOnly" class="danmaku-layer" aria-live="off">
+    <div v-if="!audioOnly && session.transport !== 'iframe'" class="danmaku-layer" aria-live="off">
       <span v-for="entry in activeDanmaku" :key="`${entry.time}:${entry.text}`">{{ entry.text }}</span>
       <span v-for="comment in comments.slice(-3)" :key="comment.id" class="room-comment">{{ comment.displayName ? `${comment.displayName}: ` : "" }}{{ comment.text }}</span>
     </div>
-    <p v-if="danmakuState === 'failed'" class="danmaku-warning" role="status">{{ t("media.danmakuFailure") }}</p>
-    <label v-if="captionOptions.length && syncTime === undefined" class="caption-select">
+    <p v-if="controlsVisible && session.transport === 'hls' && danmakuState === 'failed'" class="danmaku-warning" role="status">{{ t("media.danmakuFailure") }}</p>
+    <label v-if="controlsVisible && captionOptions.length && syncTime === undefined" class="caption-select">
       <span>{{ t("media.captions") }}</span>
       <select v-model="selectedCaption" :aria-label="t('media.captions')">
         <option value="">{{ t("media.captionsOff") }}</option>
@@ -208,6 +238,7 @@ onBeforeUnmount(() => { window.removeEventListener("pagehide", onPageHide); danm
 <style scoped>
 .media-surface { position: relative; overflow: hidden; border: 1px solid var(--color-border-subtle); border-radius: 16px; background: #050608; aspect-ratio: 16 / 9; min-height: 180px; }
 video { display: block; width: 100%; height: 100%; object-fit: contain; background: #050608; }
+iframe { display: block; width: 100%; height: 100%; border: 0; }
 .audio-only { height: 78px; min-height: 78px; aspect-ratio: auto; background: var(--color-bg-secondary); }
 .audio-only video { height: 78px; }
 .danmaku-layer { pointer-events: none; position: absolute; inset: 0; overflow: hidden; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; gap: .5rem; padding: 1rem; color: white; text-shadow: 0 1px 4px #000, 0 0 8px #000; font-size: clamp(.85rem, 2vw, 1.4rem); }
