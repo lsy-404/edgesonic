@@ -1,0 +1,28 @@
+# Progress
+
+- Read prior KTV design, current source and upstream media documentation.
+- Fetched origin and inspected attached/registered worktrees.
+- Created /Users/user/.codex/worktrees/edgesonic/ktv-video on codex/ktv-video from origin/main (205a746e).
+- Loaded Agent Mode, Cloudflare, Durable Objects, Workers best practices and Wrangler guidance.
+- Inspected primary-checkout dirty-file ages; all tracked changes predate this task and remain untouched.
+- Confirmed external video persistence requires an explicit host save, and permanent audio/video relationships are many-to-many with per-pair offsets.
+- Started the independent media-loader implementation in codex/ktv-media-loader; parent owns and reviews the shared API contract.
+- Installed workspace dependencies with the frozen pnpm lockfile; completion still to be checked.
+- Frozen dependency installation completed successfully (pnpm 10.34.6).
+- Preserved 18 inactive primary-checkout files in local branch codex/preserve-storage-root-20260918, commit 580077d6ece932642428f361375ad35f0f71e9ad, using a temporary Git index. The primary working files and index were not changed.
+- Extended the media contract with audio-only video playback; the service task has received the added requirement.
+- Reviewed and locally integrated the initial media-service and video-catalog commits (ad72de8d and f990434c). They are not accepted as end-to-end complete; integration fixes are in progress.
+- Implemented room persistence, invitation and participant credentials, fair/FIFO queue scheduling, asynchronous ordered resolution, host lease expiry, room comments and host/public routes.
+- Frontend implementation runs independently on codex/ktv-video-ui using the shared protocol and backend endpoint contracts.
+- Reviewed and integrated all three implementation branches and their follow-up repairs. No new automated test cases were added.
+- Existing r2_scan, incremental_scan, files_delete, upload_conflicts and Subsonic format checks passed. Existing media_session, player_keyboard_shortcuts and player_session_storage checks passed.
+- Worker and Vue type checking, the production web build, node --check and git diff --check passed. The web build retains the existing crypto URL externalization notice and reports a large lazy HLS chunk.
+- A real local D1/R2/SQLite-DO Worker and authenticated Node media service verified upload classification, 206 raw video ranges, getVideos/getVideoInfo/getSong JSON shapes, video HLS variants, audio-only HLS, MP3 output and embedded-caption VTT conversion.
+- Four audio/video pairs verified many-to-many behavior. Removing one pair preserved the audio object, video object and other pair.
+- Actual room requests verified fair A/B/A ordering, FIFO A/A/B ordering, stable identity on rename, rejection of guest host-only actions, and 404 after room close.
+- Browser checks verified guest requests arriving in the host queue, QR/link presentation, watch/listen/watch progress retention with no video track during audio-only playback, paired muted video following library audio, synchronized pause, and paused-position recovery after host refresh.
+- Bilibili p1 played in the browser; the catalog contained no p1 entry before explicit host save and one entry afterward. YouTube Me at the zoo played through its 19-second duration. The final Worker media endpoint returned Bilibili XML with 1,200 timed entries.
+- Dark and light video views and a 390px guest viewport were inspected; the guest page had no horizontal overflow. Local screenshots and disposable runtime fixtures remain in test/ktv-video-runtime and are excluded from commits.
+- The final pre-delivery fetch still had origin/main at 205a746e; GitHub reported main unprotected and no rulesets. Focused product commits were pushed to remote main through 5b33a939. The EdgeSonic application Worker was not deployed.
+- Final browser verification confirmed that a guest refresh retained the same two-person room, and a new invitation opened correctly in the existing guest tab.
+- GitHub Frontend checks and Subsonic API Coverage completed successfully for 5b33a939. The frontend workflow also built and exercised both transcoder Docker images successfully, covering the local Docker-daemon limitation. The repository's automatic Deploy Installer workflow also completed successfully.

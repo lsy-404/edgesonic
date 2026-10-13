@@ -1,5 +1,5 @@
 # EdgeSonic 任务追踪
-> 准则版本: v0.2.2
+> 准则版本: v0.2.3
 
 | 编号 | 任务名称 | 任务描述 | 变更动机 | 状态 |
 | :--: | :------: | :------: | :------: | :--: |
@@ -38,3 +38,4 @@
 | 587 | [Feature] Metadata automatic server | Bounded automatic dispatch and guarded pending review APIs | Retain incomplete and ambiguous results for user decisions | ✅ 已完成 |
 | 588 | [Feature] Metadata candidate executor | Preserve review candidates and resolve user-selected provider results | Avoid silently finishing ambiguous metadata searches | ✅ 已完成 |
 | 589 | [Feature] Metadata review UI | Separate task progress and metadata status and expose pending decisions | Let users decide uncertain metadata | ✅ 已完成 |
+| 590 | [Feature] KTV rooms and video media | Temporary named song requests, fair/FIFO queues, bound library audio and video, external media loader and Subsonic video | User requested shared KTV playback and Subsonic video support | ✅ 已完成 |
