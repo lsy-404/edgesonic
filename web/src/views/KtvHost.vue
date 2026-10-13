@@ -75,7 +75,7 @@ const embeddedVideoAllowed = computed(() => room.value
 const canAdvance = computed(() => !!current.value || room.value?.queue[0]?.status === "queued");
 const linkedOffset = computed(() => current.value?.offsetMs ?? 0);
 const activeComments = computed(() => comments.value.filter((item) => !current.value || item.itemId === current.value.id));
-const roomCode = computed(() => inviteUrl.value ? new URL(inviteUrl.value, window.location.href).searchParams.get("c") || "" : "");
+const roomCode = computed(() => inviteUrl.value ? new URLSearchParams(new URL(inviteUrl.value, window.location.href).hash.split("?")[1] || "").get("c") || "" : "");
 const fullInviteUrl = computed(() => new URL(inviteUrl.value, window.location.href).toString());
 const stagePosition = computed(() => currentAudio.value ? player.currentTime : mediaTime.value);
 const stageDuration = computed(() => currentAudio.value ? player.duration : mediaDuration.value);
