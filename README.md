@@ -47,7 +47,7 @@ EdgeSonic serves two roles simultaneously:
 - **Browser worker pool** — distributed metadata parsing and transcoding via Web Workers; concurrency is tunable and pauses automatically during playback
 - **Server-side transcoding** — Sandbox DO container (ffmpeg) with on-demand or pre-bake strategy; browser pool engine for zero-backend-CPU transcoding
 - **Full Subsonic API** — playlists, bookmarks, play queue, annotations (star/rating/scrobble), sharing, internet radio, podcasts, Last.fm integration, now playing, cover art, lyrics
-- **Temporary KTV rooms** — a QR request page for the current player, guest display names, per-person rotation or FIFO; requests stop when the room closes or its host lease expires.
+- **Temporary karaoke rooms** — a QR request page for the current player, guest display names, per-person rotation or FIFO; requests stop when the room closes or its host lease expires.
 - **Independent video library** — import videos or explicitly save Bilibili / YouTube references; audio/video links are many-to-many with a separate synchronization offset for each pair. Temporary requests are never saved automatically.
 - **Watch or listen to videos** — use a video's own audio track, or pair muted video with library audio; Subsonic video browsing, details, streaming, HLS and captions are supported.
 - **Migrate from / push to another Subsonic server** — browser-driven clone pulls metadata, audio bytes, user accounts (with each user's own starred items and playlists), playlists, and stars from an upstream Subsonic-compatible server; resumable via a local browser cache so a cancelled or interrupted run picks up where it left off instead of starting over. The reverse direction pushes local stars/playlists back upstream.
@@ -63,11 +63,15 @@ EdgeSonic serves two roles simultaneously:
 
 ## Quick start
 
-### KTV and video requirements
+### Karaoke and video requirements
 
-Enable KTV in Settings. The deployment needs a `KTV_ROOMS` → `KtvRoom` SQLite Durable Object binding and migration, as shown in `worker/wrangler.toml.example`. Apply `worker/migrations/0043_videos.sql` to an existing database; fresh installations already include these tables in `Schema.sql`.
+Open **Tools → K歌模式 / Karaoke mode**. The deployment needs a `KTV_ROOMS` → `KtvRoom` SQLite Durable Object binding and migration, as shown in `worker/wrangler.toml.example`. Apply `worker/migrations/0043_videos.sql` to an existing database; fresh installations include these tables in `Schema.sql`. Rooms expire after twelve hours or five minutes without a controller heartbeat. Fullscreen stage controls are hidden until interaction; the bare, translucent upper-right QR is shown by default and can be toggled independently. It uses H error correction and a short `/#/k?c=123456` link; guests can also open `/#/k` and type the six-digit room code.
 
-Video processing uses the media service in `docker/external-transcoder` (ffmpeg and yt-dlp). Configure its direct address and matching `SHARED_KEY` in the external transcoder settings. The service needs writable temporary disk and network access to the platforms; native video preparation accepts files up to 1 GiB. Platform login, regional restrictions and unavailable links can prevent playback.
+Full playback uses the optional **MediaContainer** binding and the included ffmpeg/yt-dlp image. It is deployed with the Worker, without a separate public media service or shared-key configuration. The container needs temporary disk and platform network access; native video preparation accepts files up to 1 GiB. The release includes the image context and publishes an immutable media image for container-aware installation. Existing installations need the new binding and migration provisioned through Wrangler before code-only updates can use full mode.
+
+Without the container, compatibility mode plays library audio and browser-supported video files. Its optional iframe switch also accepts standalone YouTube/Bilibili videos or library audio plus muted iframe. Switching destroys the iframe; EdgeSonic cannot control its timeline, infer its ending or guarantee audio/video synchronization. The embedded player may limit quality, login, autoplay or playback. Browser isolation/privacy settings can further restrict embeds.
+
+Mobile guests can search the library, search YouTube/Bilibili in full mode, and paste video URLs, short links or BV/AV IDs. External requests stay in the room until the host explicitly saves them. Full mode supports Bilibili QR authorization and explicit Netscape cookie-file import (including YouTube). Credentials are scoped to the host, encrypted through the private container Durable Object and never exposed to guests. Account benefits depend on actual platform entitlements; authentication does not bypass DRM or every playback restriction. Disconnecting or replacing authorization invalidates prepared streams. See [yt-dlp authentication support](https://github.com/yt-dlp/yt-dlp/wiki/Extractors).
 
 Initial setup of these resources currently requires the CLI; the existing in-app updater preserves configured Durable Object bindings. Release database patches and installer resource declarations must also be checked when packaging a release.
 

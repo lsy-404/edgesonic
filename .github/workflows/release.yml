@@ -94,6 +94,16 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.tag.outputs.tag }}
 
+      - name: Build and publish media image
+        id: media_image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/external-transcoder
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/edgesonic-media:${{ steps.tag.outputs.tag }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/edgesonic-media:${{ steps.tag.outputs.tag }}
+
       - name: Install monorepo dependencies (build tooling)
         run: pnpm install --frozen-lockfile
 
@@ -114,6 +124,9 @@ jobs:
           mkdir -p "$STAGE/web"
           cp -r web/dist "$STAGE/web/dist"
           cp -r shared "$STAGE/shared"
+          mkdir -p "$STAGE/docker"
+          cp -r docker/external-transcoder "$STAGE/docker/external-transcoder"
+          rm -rf "$STAGE/docker/external-transcoder/node_modules"
           cp docs/DEPLOY_BY_AGENT.md "$STAGE/"
           test -d "$STAGE/worker/node_modules/hono"
           test -d "$STAGE/worker/node_modules/@cloudflare/sandbox"
@@ -133,13 +146,15 @@ jobs:
           ALLOW_MAJOR: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_major_update || false }}
           IMAGE_REPOSITORY: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/edgesonic-transcoder
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          MEDIA_IMAGE_REPOSITORY: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/edgesonic-media
+          MEDIA_IMAGE_DIGEST: ${{ steps.media_image.outputs.digest }}
         run: |
           set -euo pipefail
           BUILD_INFO=$(cat web/dist/build-info.json)
           VERSION=$(node -e 'console.log(JSON.parse(process.argv[1]).version.replace(/-dev\.[^-]+(?:-dirty)?$|-dirty$/, ""))' "$BUILD_INFO")
           BUILD_TIME=$(node -e 'console.log(JSON.parse(process.argv[1]).buildTime)' "$BUILD_INFO")
           API_STAGE="${RUNNER_TEMP}/edgesonic-update-stage"
-          node scripts/build-update-bundle.mjs "$API_STAGE" "$VERSION" "$BUILD_TIME" "$ALLOW_MAJOR" "$TAG" "$IMAGE_REPOSITORY" "$IMAGE_DIGEST"
+          node scripts/build-update-bundle.mjs "$API_STAGE" "$VERSION" "$BUILD_TIME" "$ALLOW_MAJOR" "$TAG" "$IMAGE_REPOSITORY" "$IMAGE_DIGEST" "$MEDIA_IMAGE_REPOSITORY" "$MEDIA_IMAGE_DIGEST"
           cp "${RUNNER_TEMP}/edgesonic-update.tar.gz" .
           cp "${RUNNER_TEMP}/edgesonic-update.tar.gz.sha256" .
           cp "${RUNNER_TEMP}/edgesonic-update-manifest.json" .

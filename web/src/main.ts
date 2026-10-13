@@ -50,7 +50,7 @@ const routes = [
   { path: "/starred", component: Library, props: { starredOnly: true }, meta: { title: "Liked" } },
   { path: "/videos", component: () => import("./views/Videos.vue"), meta: { title: "Videos", media: true } },
   { path: "/ktv", component: () => import("./views/KtvHost.vue"), meta: { title: "Karaoke mode", ktv: true } },
-  { path: "/ktv/join/:id", component: () => import("./views/KtvJoin.vue"), meta: { title: "Join KTV", public: true, bare: true } },
+  { path: "/k", component: () => import("./views/KtvJoin.vue"), meta: { title: "Join Karaoke", public: true, bare: true } },
   { path: "/sources", component: Sources, meta: { title: "Sources", perm: "manage_sources" } },
   { path: "/files", component: Files, meta: { title: "Files", perm: "manage_files" } },
   { path: "/users", component: Users, meta: { title: "Users", perm: "manage_users" } },
@@ -74,6 +74,19 @@ const routes = [
 
 const router = createRouter({ history: createWebHashHistory(), routes });
 
+let pendingRoute = "";
+window.addEventListener("vite:preloadError", (event) => {
+  const key = "edgesonic:asset-reload";
+  try {
+    if (sessionStorage.getItem(key) === __EDGESONIC_BUILD_TIME__) return;
+    sessionStorage.setItem(key, __EDGESONIC_BUILD_TIME__);
+  } catch { return; }
+  event.preventDefault();
+  const target = pendingRoute || router.currentRoute.value.fullPath;
+  window.history.replaceState(window.history.state, "", router.resolve(target).href);
+  window.location.reload();
+});
+
 let activeRouteTitle = "";
 function syncDocumentTitle(title: unknown) {
   activeRouteTitle = typeof title === "string" ? title : "";
@@ -82,11 +95,12 @@ function syncDocumentTitle(title: unknown) {
     : "EdgeSonic";
   document.title = pageTitle === "EdgeSonic" ? pageTitle : `${pageTitle} · EdgeSonic`;
 }
-router.afterEach((to) => syncDocumentTitle(to.meta.title));
+router.afterEach((to) => { pendingRoute = ""; syncDocumentTitle(to.meta.title); });
 watch(() => i18n.global.locale.value, () => syncDocumentTitle(activeRouteTitle));
 
 // 导航守卫：未登录跳 /login
 router.beforeEach((to) => {
+  pendingRoute = to.fullPath;
   // After the httpOnly-cookie upgrade the SPA no longer keeps the session
   // token in localStorage, only a non-secret "logged in" flag — see
   // api.ts's login(). If the cookie has actually expired server-side, the

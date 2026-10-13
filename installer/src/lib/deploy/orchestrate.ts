@@ -195,8 +195,8 @@ export async function runDeploy(
   // Read while the live script is still there — a rebuild is about to delete it.
   const facts =
     target.mode === "overwrite"
-      ? await readScriptFacts(apiToken, accountId, script).catch(() => ({ instanceId: "", hasSandboxContainer: false }))
-      : { instanceId: "", hasSandboxContainer: false };
+      ? await readScriptFacts(apiToken, accountId, script).catch(() => ({ instanceId: "", hasSandboxContainer: false, hasMediaContainer: false }))
+      : { instanceId: "", hasSandboxContainer: false, hasMediaContainer: false };
   // "keep" mirrors the live script; a rebuild deletes it, so there is nothing
   // left to mirror and only an explicit "deploy" declares the container again.
   const declareContainer =
@@ -229,6 +229,7 @@ export async function runDeploy(
       compatibilityFlags: manifest.compatibilityFlags,
       mode: rebuilding ? "fresh" : target.mode,
       declareContainer,
+      declareMediaContainer: facts.hasMediaContainer && !rebuilding,
       sso: sso.runtime,
       fresh:
         target.mode === "fresh" || rebuilding

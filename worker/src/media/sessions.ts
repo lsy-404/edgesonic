@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { accountRevision } from "./accounts";
 import { MediaLoaderError, requestMedia, type MediaSession } from "./loader";
 
 function sessionKey(id: string): string {
@@ -25,7 +26,7 @@ export async function findMediaSession(env: Env, username: string, id: string): 
   if (!row) return null;
   const value = JSON.parse(row.value) as { username: string; session: MediaSession };
   if (value.username !== username) return null;
-  if (value.session.expiresAt <= Date.now() / 1000) {
+  if (value.session.expiresAt <= Date.now() / 1000 || (value.session.provider && value.session.credentialRevision !== await accountRevision(env, username, value.session.provider))) {
     await env.DB.prepare("DELETE FROM kv_store WHERE key = ?").bind(key).run();
     return null;
   }

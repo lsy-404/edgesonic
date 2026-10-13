@@ -5,7 +5,8 @@ import { parseStorageUri } from "../adapters/index";
 import { createR2Adapter } from "../adapters/r2";
 import { urlAdapter } from "../adapters/url";
 import { createWebDAVAdapter } from "../adapters/webdav";
-import { requestMedia, resolveExternalMedia, uploadVideoMedia, type MediaSession } from "./loader";
+import { MediaLoaderError, requestMedia, resolveExternalMedia, uploadVideoMedia, type MediaSession } from "./loader";
+import { videoReference, embeddedVideoSession } from "./references";
 import { findMediaSession, forgetMediaSession, rememberMediaSession } from "./sessions";
 
 export type VideoProvider = "file" | "youtube" | "bilibili";
@@ -197,45 +198,13 @@ export async function invalidateVideoSession(env: Env, username: string, video: 
   await forgetMediaSession(env, session.id);
 }
 
-function normalizeExternalVideoReference(input: string): { provider: "youtube" | "bilibili"; url: string } {
-  const value = input.trim().replace(/^av\s+(\d+)$/i, "av$1");
-  if (/^BV[0-9A-Za-z]{10}$/i.test(value) || /^av\d+$/i.test(value)) {
-    const ref = /^BV/i.test(value) ? value : value.toLowerCase();
-    return { provider: "bilibili", url: `https://www.bilibili.com/video/${ref}?p=1` };
-  }
-  let parsed: URL;
-  try { parsed = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`); }
-  catch { throw new Error("Invalid video URL"); }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("Invalid video URL");
-  const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
-  if (host === "youtube.com" || host.endsWith(".youtube.com") || host === "youtube-nocookie.com" || host === "youtu.be") {
-    const parts = parsed.pathname.split("/").filter(Boolean);
-    const videoId = host === "youtu.be" ? parts[0]
-      : parsed.searchParams.get("v") || (parts[0] === "embed" || parts[0] === "shorts" || parts[0] === "live" ? parts[1] : null);
-    if (!videoId || !/^[A-Za-z0-9_-]{6,20}$/.test(videoId)) throw new Error("Invalid YouTube video reference");
-    return { provider: "youtube", url: `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}` };
-  }
-  if (host === "bilibili.com" || host.endsWith(".bilibili.com")) {
-    const videoId = parsed.pathname.match(/\/video\/(BV[0-9A-Za-z]{10}|av\d+)/i)?.[1];
-    if (videoId) {
-      const parts = parsed.searchParams.getAll("p");
-      if (parts.length > 1 || (parts.length === 1 && !/^[1-9][0-9]*$/.test(parts[0]))) throw new Error("Invalid Bilibili part");
-      return { provider: "bilibili", url: `https://www.bilibili.com/video/${/^BV/i.test(videoId) ? videoId : videoId.toLowerCase()}?p=${parts[0] || "1"}` };
-    }
-  }
-  if (host === "b23.tv" && parsed.pathname !== "/") {
-    return { provider: "bilibili", url: `https://b23.tv${parsed.pathname}` };
-  }
-  throw new Error("Only YouTube and Bilibili URLs are supported");
-}
-
-export async function saveExternalVideo(env: Env, url: string, signal?: AbortSignal): Promise<Video> {
+export async function saveExternalVideo(env: Env, url: string, signal?: AbortSignal, username?: string): Promise<Video> {
   if (url.length > 2048) throw new Error("Video URL is too long");
-  const normalized = normalizeExternalVideoReference(url);
+  const normalized = await videoReference(url);
   const existing = await env.DB.prepare(`${SELECT_VIDEO} WHERE v.provider = ? AND v.external_url = ?`)
     .bind(normalized.provider, normalized.url).first<VideoRow>();
   if (existing) return toVideo(existing);
-  const session = await resolveExternalMedia(env, normalized.url, signal);
+  const session = env.MediaContainer ? await resolveExternalMedia(env, normalized.url, signal, username) : await embeddedVideoSession(normalized.url);
   try {
     const now = Math.floor(Date.now() / 1000);
     const videoId = id();
@@ -253,7 +222,7 @@ export async function saveExternalVideo(env: Env, url: string, signal?: AbortSig
     if (!saved) throw new Error("Video could not be saved");
     return toVideo(saved);
   } finally {
-    await requestMedia(env, `/media/sessions/${session.id}`, { method: "DELETE", signal: AbortSignal.timeout(5000) })
+    if (session.transport === "hls") await requestMedia(env, `/media/sessions/${session.id}`, { method: "DELETE", signal: AbortSignal.timeout(5000) })
       .then((response) => response.body?.cancel()).catch(() => undefined);
   }
 }
@@ -466,6 +435,7 @@ export async function prepareVideoMedia(
   signal?: AbortSignal,
   reuseSession = true,
 ): Promise<MediaSession> {
+  if (!env.MediaContainer) throw new MediaLoaderError("Video conversion requires the integrated media container", 503);
   const cached = reuseSession ? await cachedVideoSession(env, username, video) : null;
   if (cached) return cached;
   if (video.provider === "file") {
@@ -479,7 +449,7 @@ export async function prepareVideoMedia(
     return session;
   }
   if (!video.externalUrl) throw new Error("External video is unavailable");
-  const session = await resolveExternalMedia(env, video.externalUrl, signal);
+  const session = await resolveExternalMedia(env, video.externalUrl, signal, username);
   await env.DB.prepare("UPDATE videos SET title = ?, duration = ?, width = ?, height = ? WHERE id = ?")
     .bind(session.title, session.duration, session.width, session.height, video.id).run();
   if (reuseSession) await rememberVideoSession(env, username, video, session);

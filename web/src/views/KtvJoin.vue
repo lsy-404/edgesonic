@@ -1,21 +1,23 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useI18n } from "vue-i18n";
 import type { KtvAction, KtvComment, KtvRoomSnapshot } from "../../../shared/ktv";
-import { getGuestKtvState, getPublicKtvRoom, getParticipantKtvLinks, guestKtvAction, joinKtvRoom, openKtvSocket, participantStorageKey, searchKtvRoom, type KtvSearchAudio, type KtvSearchVideo } from "../lib/ktvApi";
+import { getGuestKtvState, resolveKtvInvite, getParticipantKtvLinks, guestKtvAction, joinKtvRoom, openKtvSocket, participantStorageKey, searchKtvRoom, type KtvSearchAudio, type KtvSearchVideo, type KtvSearchExternal } from "../lib/ktvApi";
 import { useAuth } from "../api";
 
 const route = useRoute();
+const router = useRouter();
 const { t } = useI18n();
 const auth = useAuth();
-const roomId = String(route.params.id || "");
-const invite = typeof route.query.invite === "string" ? route.query.invite : "";
+let roomId = "";
+const invite = typeof route.query.c === "string" ? route.query.c : "";
+const enteredCode = ref(invite);
 const room = ref<KtvRoomSnapshot | null>(null);
 const participantId = ref("");
 const participantToken = ref("");
-const displayName = ref(sessionStorage.getItem(`edgesonic:ktv:name:${roomId}`) || auth.displayName.value || "");
+const displayName = ref(auth.displayName.value || "");
 const joined = ref(false);
 const unavailable = ref(false);
 const loading = ref(true);
@@ -23,6 +25,8 @@ const busy = ref(false);
 const error = ref("");
 const searchText = ref("");
 const searchBusy = ref(false);
+const searchProvider = ref<"library" | "youtube" | "bilibili">("library");
+const externalResults = ref<KtvSearchExternal[]>([]);
 const audioResults = ref<KtvSearchAudio[]>([]);
 const videoResults = ref<KtvSearchVideo[]>([]);
 const linkedVideos = ref<Array<{ videoId: string; videoTitle: string; offsetMs: number }>>([]);
@@ -35,6 +39,7 @@ let socket: WebSocket | null = null;
 let retryTimer: number | undefined;
 
 const canRequest = computed(() => joined.value && !!room.value?.open && !unavailable.value);
+const externalAllowed = computed(() => room.value?.mediaMode === "full" || room.value?.allowEmbeddedVideo);
 const queue = computed(() => room.value?.queue ?? []);
 
 function savedToken() {
@@ -45,6 +50,10 @@ function saveToken(token: string) {
   participantToken.value = token;
   sessionStorage.setItem(participantStorageKey(roomId), token);
 }
+function applyRoom(next: KtvRoomSnapshot) {
+  if (!room.value || room.value.id !== next.id || next.version >= room.value.version) room.value = next;
+}
+
 function stopSocket() {
   const previous = socket;
   socket = null;
@@ -59,7 +68,7 @@ function connectSocket() {
     if (socket !== connection) return;
     const event = raw as { type?: string; room?: KtvRoomSnapshot; comment?: KtvComment };
     if (event.type === "state" && event.room) {
-      room.value = event.room;
+      applyRoom(event.room);
       if (!event.room.open) roomUnavailable();
     }
     if (event.type === "comment" && event.comment) comments.value = [...comments.value.slice(-99), event.comment];
@@ -70,7 +79,7 @@ function connectSocket() {
       const state = await getGuestKtvState(roomId, participantToken.value);
       if (socket !== connection) return;
       if (!state.room.open) { roomUnavailable(); return; }
-      room.value = state.room;
+      applyRoom(state.room);
     } catch (cause) {
       if (socket !== connection) return;
       if ([401, 403, 404, 410].includes((cause as { status?: number }).status || 0)) { roomUnavailable(); return; }
@@ -93,7 +102,7 @@ async function join() {
   error.value = "";
   try {
     const result = await joinKtvRoom(roomId, { invite, displayName: displayName.value.trim(), ...(savedToken() ? { participantToken: savedToken() } : {}) });
-    room.value = result.room;
+    applyRoom(result.room);
     participantId.value = result.participantId;
     saveToken(result.participantToken);
     joined.value = true;
@@ -112,7 +121,8 @@ async function perform(action: KtvAction) {
   error.value = "";
   try {
     const result = await guestKtvAction(roomId, participantToken.value, action);
-    room.value = result.room;
+    applyRoom(result.room);
+    return true;
   } catch (cause) {
     const status = (cause as { status?: number }).status;
     if (status === 404 || status === 410) roomUnavailable();
@@ -124,9 +134,10 @@ async function search() {
   if (!canRequest.value || !searchText.value.trim()) return;
   searchBusy.value = true;
   try {
-    const result = await searchKtvRoom(roomId, { kind: "participant", token: participantToken.value }, searchText.value.trim());
+    const result = await searchKtvRoom(roomId, { kind: "participant", token: participantToken.value }, searchText.value.trim(), searchProvider.value);
     audioResults.value = result.audio;
     videoResults.value = result.videos;
+    externalResults.value = result.external;
   } catch (cause) {
     if ([404, 410].includes((cause as { status?: number }).status || 0)) roomUnavailable();
     else error.value = cause instanceof Error ? cause.message : t("ktv.serviceUnavailable");
@@ -142,17 +153,10 @@ async function selectAudio(audio: KtvSearchAudio) {
   } catch (cause) { error.value = cause instanceof Error ? cause.message : t("ktv.serviceUnavailable"); }
 }
 
-function normalizeExternal(value: string) {
-  const clean = value.trim();
-  if (/^BV[0-9A-Za-z]+$/.test(clean)) return `https://www.bilibili.com/video/${clean}`;
-  if (/^av\d+$/i.test(clean)) return `https://www.bilibili.com/video/${clean}`;
-  return clean;
-}
-function requestExternal() {
-  const url = normalizeExternal(externalUrl.value);
-  if (!url) return;
-  void perform({ action: "enqueue", selection: { audioId: selectedAudio.value?.id, externalUrl: url, listenOnly: !selectedAudio.value && listenOnly.value } });
-  externalUrl.value = "";
+async function requestExternal(url = externalUrl.value, bindAudio = true) {
+  if (!url.trim() || !externalAllowed.value) return;
+  const added = await perform({ action: "enqueue", selection: { audioId: bindAudio ? selectedAudio.value?.id : undefined, externalUrl: url.trim(), listenOnly: room.value?.mediaMode === "full" && !selectedAudio.value && listenOnly.value } });
+  if (added) externalUrl.value = "";
 }
 function sendComment() {
   const text = commentText.value.trim();
@@ -169,9 +173,12 @@ function rename() {
 function canRemove(item: { participantId: string }) { return item.participantId === participantId.value; }
 
 async function openRoom() {
+  if (!invite) { loading.value = false; return; }
   try {
-    const result = await getPublicKtvRoom(roomId, invite);
-    room.value = result.room;
+    const result = await resolveKtvInvite(invite);
+    roomId = result.room.id;
+    displayName.value = sessionStorage.getItem(`edgesonic:ktv:name:${roomId}`) || displayName.value;
+    applyRoom(result.room);
     const token = savedToken();
     if (token) {
       try {
@@ -179,7 +186,7 @@ async function openRoom() {
         if (!state.room.open) { roomUnavailable(); return; }
         const display = displayName.value.trim() || auth.displayName.value || "Guest";
         const joinedResult = await joinKtvRoom(roomId, { invite, displayName: display, participantToken: token });
-        room.value = joinedResult.room;
+        applyRoom(joinedResult.room);
         participantId.value = joinedResult.participantId;
         saveToken(joinedResult.participantToken);
         joined.value = true;
@@ -198,6 +205,12 @@ async function openRoom() {
   } finally { loading.value = false; }
 }
 
+function enterRoomCode() {
+  const code = enteredCode.value.trim();
+  if (!/^[0-9]{6}$/.test(code)) return;
+  void router.replace({ path: "/k", query: { c: code } });
+}
+
 onMounted(() => { void openRoom(); });
 onBeforeUnmount(stopSocket);
 </script>
@@ -205,11 +218,18 @@ onBeforeUnmount(stopSocket);
 <template>
   <main class="guest-page">
     <header class="guest-header">
-      <div class="mono-label">EDGE SONIC / KTV</div>
+      <div class="mono-label">EDGE SONIC / KARAOKE</div>
       <h1>{{ t("ktv.hostTitle") }}</h1>
     </header>
-    <section v-if="loading" class="guest-card"><p>{{ t("common.loading") }}</p></section>
-    <section v-else-if="unavailable || !room" class="guest-card unavailable" role="status">
+    <section v-if="!invite || unavailable" class="guest-card">
+      <form class="join-card" @submit.prevent="enterRoomCode">
+        <label class="guest-field"><span>{{ t("ktv.roomCode") }}</span><input v-model="enteredCode" class="form-input room-code-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" :placeholder="t('ktv.roomCodePlaceholder')" /></label>
+        <button class="btn-primary" :disabled="!/^[0-9]{6}$/.test(enteredCode.trim())">{{ t("ktv.openRoomCode") }}</button>
+        <p v-if="unavailable" role="status">{{ t("ktv.roomUnavailable") }}</p>
+      </form>
+    </section>
+    <section v-else-if="loading" class="guest-card"><p>{{ t("common.loading") }}</p></section>
+    <section v-else-if="!room" class="guest-card unavailable" role="status">
       <h2>{{ t("ktv.roomUnavailable") }}</h2>
     </section>
     <template v-else>
@@ -248,25 +268,35 @@ onBeforeUnmount(stopSocket);
 
         <section class="guest-card request-card">
           <div class="mono-label">{{ t("ktv.search") }}</div>
+          <select v-if="room.mediaMode === 'full'" v-model="searchProvider" class="form-input" :aria-label="t('ktv.searchSource')">
+            <option value="library">{{ t("ktv.librarySource") }}</option><option value="bilibili">Bilibili</option><option value="youtube">YouTube</option>
+          </select>
           <form class="search-row" @submit.prevent="search">
             <input v-model="searchText" class="form-input" :placeholder="t('ktv.searchPlaceholder')" />
             <button class="btn-primary" :disabled="searchBusy || !searchText.trim()">{{ t("ktv.searchButton") }}</button>
           </form>
           <p v-if="searchBusy">{{ t("common.loading") }}</p>
-          <div class="result-group">
+          <div v-if="audioResults.length" class="result-group">
             <h3>{{ t("ktv.audio") }}</h3>
             <div v-for="audio in audioResults" :key="audio.id" class="result-row">
               <button class="result-copy" @click="selectAudio(audio)"><strong>{{ audio.title }}</strong><small>{{ audio.artist }}</small></button>
               <button class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { audioId: audio.id } })">{{ t("ktv.addAudio") }}</button>
             </div>
           </div>
-          <div class="result-group">
+          <div v-if="videoResults.length" class="result-group">
             <h3>{{ t("ktv.video") }}</h3>
             <div v-for="video in videoResults" :key="video.id" class="result-row">
               <strong>{{ video.title }}</strong>
               <div class="result-actions">
-                <button class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { audioId: selectedAudio?.id, videoId: video.id, listenOnly: !selectedAudio && listenOnly } })">{{ selectedAudio ? t("ktv.addPair") : t("ktv.addVideo") }}</button>
+                <button class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { videoId: video.id, listenOnly: room.mediaMode === 'full' && listenOnly } })">{{ t("ktv.addVideo") }}</button>
+                <button v-if="selectedAudio" class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { audioId: selectedAudio.id, videoId: video.id } })">{{ t("ktv.addPair") }}</button>
               </div>
+            </div>
+          </div>
+          <div v-for="video in externalResults" :key="video.url" class="result-row">
+            <strong>{{ video.title }}</strong><div class="result-actions">
+              <button class="btn-secondary btn-sm" :disabled="busy" @click="requestExternal(video.url, false)">{{ t("ktv.addVideo") }}</button>
+              <button v-if="selectedAudio" class="btn-secondary btn-sm" :disabled="busy" @click="requestExternal(video.url)">{{ t("ktv.addPair") }}</button>
             </div>
           </div>
           <div v-if="selectedAudio" class="linked-row">
@@ -274,11 +304,12 @@ onBeforeUnmount(stopSocket);
             <button class="btn-secondary btn-sm" @click="selectedAudio = null; linkedVideos = []">{{ t("common.clear") }}</button>
             <button v-for="video in linkedVideos" :key="video.videoId" class="btn-secondary btn-sm" @click="perform({ action: 'enqueue', selection: { audioId: selectedAudio?.id, videoId: video.videoId, offsetMs: video.offsetMs } })">{{ video.videoTitle }} · {{ t("ktv.addPair") }}</button>
           </div>
-          <form class="external-row" @submit.prevent="requestExternal">
+          <form v-if="externalAllowed" class="external-row" @submit.prevent="requestExternal()">
             <input v-model="externalUrl" class="form-input" :placeholder="t('ktv.externalPlaceholder')" />
             <button class="btn-secondary" :disabled="busy || !externalUrl.trim()">{{ t("ktv.requestExternal") }}</button>
           </form>
-          <label v-if="!selectedAudio" class="listen-option"><input v-model="listenOnly" type="checkbox" />{{ t("ktv.listenOnly") }}</label>
+          <p v-if="room.mediaMode === 'compatible'" class="compatibility-hint">{{ room.allowEmbeddedVideo ? t('settings.ktv.compatibilityHint') : t('settings.ktv.compatibilityDisabled') }}</p>
+          <label v-if="!selectedAudio && room.mediaMode === 'full'" class="listen-option"><input v-model="listenOnly" type="checkbox" />{{ t("ktv.listenOnly") }}</label>
         </section>
       </template>
     </template>
@@ -309,6 +340,7 @@ onBeforeUnmount(stopSocket);
 .result-copy { color: inherit; text-align: left; border: 0; background: transparent; cursor: pointer; }
 .result-copy strong, .result-row > strong { overflow-wrap: anywhere; }
 .result-actions { display: flex; align-items: center; gap: .5rem; }
+.compatibility-hint { color: var(--color-text-muted); font-size: .85rem; }
 .listen-option { display: flex; align-items: center; gap: .25rem; font-size: .72rem; color: var(--color-text-muted); }
 .linked-row { display: flex; flex-wrap: wrap; gap: .45rem; }
 .linked-row h3 { flex-basis: 100%; }

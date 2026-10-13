@@ -151,6 +151,21 @@ name = "KTV_ROOMS"
 tag = "v2-ktv"
 new_sqlite_classes = ["KtvRoom"]
 
+# Optional full video playback; omit this container/binding/migration for compatibility mode.
+[[containers]]
+class_name = "MediaContainer"
+image = "../docker/external-transcoder/Dockerfile"
+instance_type = "standard-2"
+max_instances = 1
+
+[[durable_objects.bindings]]
+class_name = "MediaContainer"
+name = "MediaContainer"
+
+[[migrations]]
+tag = "v3-media"
+new_sqlite_classes = ["MediaContainer"]
+
 # ---------------------------------------------------------------------------
 # Cron 触发器由 Cloudflare API 动态管理，此处不声明静态 [triggers]，
 # 以免 `wrangler deploy` 覆盖运行时配置的计划任务。部署后到

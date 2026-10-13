@@ -49,6 +49,7 @@ export { Sandbox } from "@cloudflare/sandbox";
 // the moment they are queued.
 export { WorkCoordinator } from "./coordinator/workCoordinator";
 export { KtvRoom } from "./ktv/room";
+export { MediaContainer } from "./media/container";
 
 const app = new Hono();
 

@@ -608,7 +608,7 @@ export async function executeUpdate(
         { type: "assets", name: "ASSETS" },
       ],
       keep_bindings: ["plain_text", "json", "secret_text", "secret_key", "kv_namespace", "d1", "r2_bucket", "durable_object_namespace", "images", "assets"],
-      containers: [{ class_name: "Sandbox" }],
+      containers: [...("Sandbox" in env && env.Sandbox ? [{ class_name: "Sandbox" }] : []), ...(env.MediaContainer ? [{ class_name: "MediaContainer" }] : [])],
       compatibility_date: manifest.compatibilityDate || "2025-05-24",
       compatibility_flags: manifest.compatibilityFlags || ["nodejs_compat"],
       assets: assetMetadata,

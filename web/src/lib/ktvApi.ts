@@ -4,6 +4,7 @@ import type { KtvAction, KtvQueueMode, KtvMediaMode, KtvRoomSnapshot } from "../
 export interface KtvSettings { enabled: boolean; mode: KtvQueueMode; mediaMode: KtvMediaMode; allowEmbeddedVideo: boolean; canUseContainer: boolean }
 export interface KtvRoomResult { room: KtvRoomSnapshot; inviteUrl?: string }
 export interface KtvSearchAudio { id: string; title: string; artist: string; duration: number | null }
+export interface KtvSearchExternal { url: string; title: string; duration: number | null }
 export interface KtvSearchVideo { id: string; title: string; duration: number | null; provider: string }
 
 export class KtvRequestError extends Error {
@@ -35,11 +36,11 @@ export function getKtvRoom(roomId: string, controllerToken: string) {
 export function ktvRoomAction(roomId: string, controllerToken: string, action: KtvAction) {
   return request<{ ok: true; room: KtvRoomSnapshot; inviteUrl?: string }>(`/edgesonic/ktv/rooms/${encodeURIComponent(roomId)}/actions`, json(action, { "X-KTV-Controller": controllerToken }));
 }
-export function searchKtvRoom(roomId: string, auth: { kind: "controller"; token: string } | { kind: "participant"; token: string }, query: string) {
-  const params = new URLSearchParams({ q: query });
+export function searchKtvRoom(roomId: string, auth: { kind: "controller"; token: string } | { kind: "participant"; token: string }, query: string, provider: "library" | "youtube" | "bilibili" = "library") {
+  const params = new URLSearchParams({ q: query, provider });
   const headers: Record<string, string> = auth.kind === "controller" ? { "X-KTV-Controller": auth.token } : { Authorization: `Bearer ${auth.token}` };
   const prefix = auth.kind === "controller" ? "/edgesonic/ktv" : "/ktv";
-  return request<{ ok: true; audio: KtvSearchAudio[]; videos: KtvSearchVideo[] }>(`${prefix}/rooms/${encodeURIComponent(roomId)}/search?${params}`, { headers });
+  return request<{ ok: true; audio: KtvSearchAudio[]; videos: KtvSearchVideo[]; external: KtvSearchExternal[] }>(`${prefix}/rooms/${encodeURIComponent(roomId)}/search?${params}`, { headers });
 }
 export function getKtvLinks(roomId: string, controllerToken: string, audioId: string) {
   return request<{ ok: true; links: Array<{ audioId: string; videoId: string; audioTitle: string; videoTitle: string; offsetMs: number }> }>(`/edgesonic/ktv/rooms/${encodeURIComponent(roomId)}/links?${new URLSearchParams({ audioId })}`, { headers: { "X-KTV-Controller": controllerToken } });
@@ -48,8 +49,8 @@ export function getParticipantKtvLinks(roomId: string, participantToken: string,
   return request<{ ok: true; links: Array<{ audioId: string; videoId: string; audioTitle: string; videoTitle: string; offsetMs: number }> }>(`/ktv/rooms/${encodeURIComponent(roomId)}/links?${new URLSearchParams({ audioId })}`, { headers: { Authorization: `Bearer ${participantToken}` } });
 }
 
-export function getPublicKtvRoom(roomId: string, invite: string) {
-  return request<{ ok: true; room: KtvRoomSnapshot }>(`/ktv/rooms/${encodeURIComponent(roomId)}?${new URLSearchParams({ invite })}`);
+export function resolveKtvInvite(code: string) {
+  return request<{ ok: true; room: KtvRoomSnapshot }>(`/ktv/invites/${encodeURIComponent(code)}`);
 }
 export function joinKtvRoom(roomId: string, input: { invite: string; displayName: string; participantToken?: string }) {
   return request<{ ok: true; room: KtvRoomSnapshot; participantId: string; participantToken: string }>(`/ktv/rooms/${encodeURIComponent(roomId)}/join`, json(input));

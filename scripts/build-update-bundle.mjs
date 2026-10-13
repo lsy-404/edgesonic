@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
 const root = path.resolve(new URL("..", import.meta.url).pathname);
-const [stageArg, versionArg, buildTimeArg, allowMajorArg, tagArg, imageRepositoryArg, imageDigestArg] = process.argv.slice(2);
+const [stageArg, versionArg, buildTimeArg, allowMajorArg, tagArg, imageRepositoryArg, imageDigestArg, mediaImageRepositoryArg, mediaImageDigestArg] = process.argv.slice(2);
 const stage = path.resolve(stageArg || path.join(root, ".update-stage"));
 const version = versionArg || process.env.UPDATE_VERSION || "dev";
 const buildTime = buildTimeArg || process.env.UPDATE_BUILD_TIME || new Date().toISOString();
@@ -17,6 +17,12 @@ if (!/^docker\.io\/[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i.test(imageRepos
 }
 if (!/^sha256:[0-9a-f]{64}$/i.test(imageDigest)) {
   throw new Error("A published container image digest (sha256:<64 hex chars>) is required");
+}
+
+const mediaImageRepository = mediaImageRepositoryArg || "";
+const mediaImageDigest = mediaImageDigestArg || process.env.EDGESONIC_MEDIA_IMAGE_DIGEST || "";
+if (!/^docker\.io\/[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i.test(mediaImageRepository) || !/^sha256:[0-9a-f]{64}$/i.test(mediaImageDigest)) {
+  throw new Error("A published Docker Hub media image and immutable digest are required");
 }
 
 async function walk(dir, prefix = "") {
@@ -189,6 +195,9 @@ if (!container || container.image?.reference !== imagePlaceholder) {
   throw new Error("recipe.json must declare the Sandbox image placeholder");
 }
 container.image = { reference: `${imageRepository}@${imageDigest.toLowerCase()}` };
+const mediaContainer = recipe.worker?.containers?.find((entry) => entry.className === "MediaContainer");
+if (mediaContainer?.image?.reference !== "docker.io/DOCKERHUB_NAMESPACE/edgesonic-media@sha256:__BUILD_MEDIA_IMAGE_DIGEST__") throw new Error("recipe.json must declare the media image placeholder");
+mediaContainer.image = { reference: `${mediaImageRepository}@${mediaImageDigest.toLowerCase()}` };
 recipe.version = version;
 recipe.tag = tag;
 recipe.buildTime = buildTime;

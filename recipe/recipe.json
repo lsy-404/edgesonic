@@ -369,6 +369,17 @@
           "en": "Transcoding runs in this container. This release publishes the matching pre-built image, and the deployment pins its immutable digest when the container is enabled.",
           "zh-CN": "转码运行在该容器中。本版本会发布对应的预构建镜像；启用容器时，部署将固定使用该镜像的不可变摘要。"
         }
+      },
+      {
+        "className": "MediaContainer",
+        "mode": "ask",
+        "image": {
+          "reference": "docker.io/DOCKERHUB_NAMESPACE/edgesonic-media@sha256:__BUILD_MEDIA_IMAGE_DIGEST__"
+        },
+        "note": {
+          "en": "Full video playback and platform account sessions run in this integrated container. Without it, library playback and optional iframe video remain available.",
+          "zh-CN": "完整视频播放与平台账号会话运行在集成容器内。不启用时，仍可播放曲库及可选 iframe 视频。"
+        }
       }
     ]
   },

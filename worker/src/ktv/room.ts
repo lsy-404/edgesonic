@@ -3,6 +3,8 @@
 import type { KtvAction, KtvComment, KtvQueueItem, KtvQueueMode, KtvRoomSnapshot, KtvSelection } from "../../../shared/ktv";
 import { createQueries } from "../db/queries";
 import { requestMedia, resolveExternalMedia } from "../media/loader";
+import { videoReference } from "../media/references";
+import { accountCookies } from "../media/accounts";
 import { getVideo, listVideos } from "../media/videos";
 import { resolveActivation } from "../utils/activation";
 import { hasPermission } from "../utils/permissions";
@@ -30,6 +32,8 @@ interface Room {
   origin: string;
   generation: number;
   mode: KtvQueueMode;
+  mediaMode: "full" | "compatible";
+  allowEmbeddedVideo: boolean;
   participants: Participant[];
   queue: QueueItem[];
   current: QueueItem | null;
@@ -56,6 +60,10 @@ function secret(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(32)), (value) => value.toString(16).padStart(2, "0")).join("");
 }
 
+function inviteCode(): string {
+  return String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, "0");
+}
+
 function displayName(value: unknown): string {
   if (typeof value !== "string" || !value.trim() || value.trim().length > 32) throw new RoomError("Choose a name of 1 to 32 characters", 400);
   return value.trim();
@@ -74,14 +82,6 @@ function selection(value: unknown): KtvSelection {
   if (input.externalUrl !== undefined) {
     if (typeof input.externalUrl !== "string" || input.externalUrl.length > 2048) throw new RoomError("Invalid video link", 400);
     const ref = input.externalUrl.trim();
-    if (!/^(BV[0-9A-Za-z]{10}|av\s*\d+)$/i.test(ref)) {
-      let url: URL;
-      try { url = new URL(ref); } catch { throw new RoomError("Use a Bilibili or YouTube video link", 400); }
-      if (url.protocol !== "https:" || url.username || url.password || url.port
-        || !["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "bilibili.com", "www.bilibili.com", "m.bilibili.com", "b23.tv"].includes(url.hostname)) {
-        throw new RoomError("Use a Bilibili or YouTube video link", 400);
-      }
-    }
     result.externalUrl = ref;
   }
   if ((!result.audioId && !result.videoId && !result.externalUrl) || (result.videoId && result.externalUrl)) throw new RoomError("Choose one video source", 400);
@@ -117,7 +117,7 @@ function publicItem(item: QueueItem): KtvQueueItem {
 
 function snapshot(room: Room): KtvRoomSnapshot {
   return {
-    id: room.id, version: room.version, open: true, mode: room.mode,
+    id: room.id, version: room.version, open: true, mode: room.mode, mediaMode: room.mediaMode, allowEmbeddedVideo: room.allowEmbeddedVideo,
     current: room.current ? publicItem(room.current) : null,
     queue: [...ordered(room), ...room.queue.filter((item) => item.status === "failed")].map(publicItem),
     participants: room.participants.map(({ id, displayName, host }) => ({ id, displayName, host })),
@@ -156,7 +156,7 @@ export class KtvRoom implements DurableObject {
   private active(): Room {
     const room = this.read();
     if (!room) throw new RoomError("Room is unavailable", 404);
-    if (Math.min(room.expiresAt, room.leaseUntil) <= Date.now()) {
+    if (!/^[0-9]{6}$/.test(room.invite) || !["full", "compatible"].includes(room.mediaMode) || Math.min(room.expiresAt, room.leaseUntil) <= Date.now()) {
       this.close();
       throw new RoomError("Room is closed", 410);
     }
@@ -171,6 +171,8 @@ export class KtvRoom implements DurableObject {
   }
 
   private close(): void {
+    const closing = this.read();
+    if (closing) this.ctx.waitUntil(this.env.DB.prepare("DELETE FROM kv_store WHERE key = ? AND json_extract(value, '$.roomId') = ? AND json_extract(value, '$.generation') = ?").bind(`ktv_invite:${closing.invite}`, closing.id, closing.generation).run());
     this.ctx.storage.sql.exec("DELETE FROM room_state");
     this.broadcast({ type: "closed" });
     for (const socket of this.ctx.getWebSockets()) socket.close(1000, "Room closed");
@@ -189,7 +191,25 @@ export class KtvRoom implements DurableObject {
   }
 
   private inviteUrl(room: Room): string {
-    return `${room.origin}/#/ktv/join/${room.id}?invite=${room.invite}`;
+    return `${room.origin}/#/k?c=${room.invite}`;
+  }
+
+  private async registerInvite(initial: Room): Promise<Room> {
+    for (let attempt = 0; attempt < 16; attempt++) {
+      const room = this.active();
+      if (room.controller !== initial.controller) throw new RoomError("Room has changed", 410);
+      const value = JSON.stringify({ roomId: room.id, expiresAt: room.expiresAt, generation: room.generation });
+      const result = await this.env.DB.prepare("INSERT INTO kv_store (key, value, updated_at) VALUES (?, ?, unixepoch()) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at WHERE kv_store.value = excluded.value OR json_extract(kv_store.value, '$.expiresAt') <= ?")
+        .bind(`ktv_invite:${room.invite}`, value, Date.now()).run();
+      const latest = this.active();
+      if (latest.controller !== initial.controller) throw new RoomError("Room has changed", 410);
+      if (result.meta.changes && latest.invite === room.invite) {
+        this.ctx.waitUntil(this.env.DB.prepare("DELETE FROM kv_store WHERE key LIKE 'ktv_invite:%' AND updated_at < unixepoch() - 43200").run());
+        return latest;
+      }
+      if (latest.invite === room.invite) { latest.invite = inviteCode(); this.save(latest); }
+    }
+    throw new RoomError("Could not allocate a room code; try again", 503);
   }
 
   private async body(request: Request): Promise<Record<string, unknown>> {
@@ -243,23 +263,26 @@ export class KtvRoom implements DurableObject {
     const body = await this.body(request);
     if (typeof body.playerId !== "string" || !/^[A-Za-z0-9_-]{16,128}$/.test(body.playerId)) throw new RoomError("Invalid playback instance", 400);
     const existing = this.read();
-    if (existing && Math.min(existing.expiresAt, existing.leaseUntil) > Date.now()) {
+    if (existing && /^[0-9]{6}$/.test(existing.invite) && ["full", "compatible"].includes(existing.mediaMode) && Math.min(existing.expiresAt, existing.leaseUntil) > Date.now()) {
       if (existing.owner !== owner || existing.playerId !== body.playerId) throw new RoomError("Playback instance is already in use", 409);
-      return Response.json({ ok: true, room: snapshot(existing), controllerToken: existing.controller, inviteUrl: this.inviteUrl(existing) });
+      const registered = await this.registerInvite(existing);
+      return Response.json({ ok: true, room: snapshot(registered), controllerToken: registered.controller, inviteUrl: this.inviteUrl(registered) });
     }
     if (existing) this.close();
     const host: Participant = { id: crypto.randomUUID(), token: secret(), displayName: displayName(body.displayName), host: true, lastServed: 0, enqueueTimes: [], commentTimes: [] };
     const now = Date.now();
     const room: Room = {
       id: this.ctx.id.toString(), owner, origin, playerId: body.playerId,
-      controller: secret(), invite: secret(), generation: now,
-      mode: body.mode === "fifo" ? "fifo" : "fair", participants: [host], queue: [], current: null,
+      controller: secret(), invite: inviteCode(), generation: now,
+      mode: body.mode === "fifo" ? "fifo" : "fair",
+      mediaMode: body.mediaMode === "full" && this.env.MediaContainer ? "full" : "compatible", allowEmbeddedVideo: body.allowEmbeddedVideo === true, participants: [host], queue: [], current: null,
       playback: { playing: false, position: 0, updatedAt: now }, autoplay: false,
-      turn: 0, sequence: 0, version: 0, expiresAt: now + 12 * 60 * 60 * 1000, leaseUntil: now + 120_000,
+      turn: 0, sequence: 0, version: 0, expiresAt: now + 12 * 60 * 60 * 1000, leaseUntil: now + 300_000,
     };
     this.save(room);
     await this.ctx.storage.setAlarm(room.leaseUntil);
-    return Response.json({ ok: true, room: snapshot(room), controllerToken: room.controller, inviteUrl: this.inviteUrl(room) }, { status: 201 });
+    const registered = await this.registerInvite(room);
+    return Response.json({ ok: true, room: snapshot(registered), controllerToken: registered.controller, inviteUrl: this.inviteUrl(registered) }, { status: 201 });
   }
 
   private async join(initial: Room, request: Request): Promise<Response> {
@@ -304,15 +327,17 @@ export class KtvRoom implements DurableObject {
     if (!["enqueue", "remove", "rename", "comment"].includes(action.action) && !person.host) throw new RoomError("Only the host can control playback", 403);
     switch (action.action) {
       case "heartbeat":
-        room.leaseUntil = Math.min(Date.now() + 120_000, room.expiresAt);
+        room.leaseUntil = Math.min(Date.now() + 300_000, room.expiresAt);
         this.save(room, false);
         await this.ctx.storage.setAlarm(room.leaseUntil);
         break;
       case "close":
         this.close();
         return Response.json({ ok: true, room: { ...snapshot(room), open: false, current: null, queue: [] } });
-      case "rotate":
-        room.invite = secret();
+      case "rotate": {
+        const previousInvite = room.invite;
+        const previousGeneration = room.generation;
+        room.invite = inviteCode();
         room.generation++;
         for (const candidate of room.participants) if (!candidate.host) candidate.token = secret();
         for (const socket of this.ctx.getWebSockets()) {
@@ -321,7 +346,10 @@ export class KtvRoom implements DurableObject {
           else { socket.send(JSON.stringify({ type: "closed" })); socket.close(1000, "Invitation changed"); }
         }
         this.save(room);
+        await this.registerInvite(room);
+        await this.env.DB.prepare("DELETE FROM kv_store WHERE key = ? AND json_extract(value, '$.roomId') = ? AND json_extract(value, '$.generation') = ?").bind(`ktv_invite:${previousInvite}`, room.id, previousGeneration).run();
         break;
+      }
       case "mode":
         if (action.mode !== "fair" && action.mode !== "fifo") throw new RoomError("Invalid queue mode", 400);
         room.mode = action.mode;
@@ -367,7 +395,7 @@ export class KtvRoom implements DurableObject {
         };
         room.queue.push(item);
         this.save(room);
-        this.ctx.waitUntil(this.prepare(item, room.controller));
+        this.ctx.waitUntil(this.prepare(item, room.controller, room.owner, room.mediaMode, room.allowEmbeddedVideo));
         break;
       }
       case "comment": {
@@ -384,10 +412,11 @@ export class KtvRoom implements DurableObject {
       }
       default: throw new RoomError("Unknown room action", 400);
     }
-    return Response.json({ ok: true, room: snapshot(room), ...(person.host ? { inviteUrl: this.inviteUrl(room) } : {}) });
+    const latest = this.active();
+    return Response.json({ ok: true, room: snapshot(latest), ...(person.host ? { inviteUrl: this.inviteUrl(latest) } : {}) });
   }
 
-  private async prepare(item: QueueItem, controller: string): Promise<void> {
+  private async prepare(item: QueueItem, controller: string, owner: string, mode: "full" | "compatible", allowEmbeddedVideo: boolean): Promise<void> {
     try {
       let title = "";
       let artist: string | undefined;
@@ -402,18 +431,28 @@ export class KtvRoom implements DurableObject {
       if (item.videoId) {
         const video = await getVideo(this.env, item.videoId);
         if (!video) throw new Error("Video unavailable");
+        if (mode === "compatible" && video.provider !== "file" && !allowEmbeddedVideo) throw new Error("Embedded video is disabled");
+        if (mode === "compatible" && video.provider !== "file") item.listenOnly = false;
         if (!title) { title = video.title; duration = video.duration; }
       }
       if (item.externalUrl) {
-        const session = await resolveExternalMedia(this.env, item.externalUrl, AbortSignal.timeout(90_000));
-        if (!title) { title = session.title; duration = session.duration; }
-        await requestMedia(this.env, `/media/sessions/${session.id}`, { method: "DELETE" }).then((response) => response.body?.cancel()).catch(() => undefined);
+        const ref = await videoReference(item.externalUrl);
+        item.externalUrl = ref.url;
+        if (mode === "compatible") {
+          if (!allowEmbeddedVideo) throw new Error("Embedded video is disabled");
+          item.listenOnly = false;
+          if (!title) title = ref.title;
+        } else {
+          const session = await resolveExternalMedia(this.env, ref.url, AbortSignal.timeout(90_000), owner);
+          if (!title) { title = session.title; duration = session.duration; }
+          await requestMedia(this.env, `/media/sessions/${session.id}`, { method: "DELETE" }).then((response) => response.body?.cancel()).catch(() => undefined);
+        }
       }
       const room = this.active();
       if (room.controller !== controller) return;
       const pending = room.queue.find((candidate) => candidate.id === item.id);
       if (!pending) return;
-      Object.assign(pending, { title, artist, duration, status: "queued" });
+      Object.assign(pending, { externalUrl: item.externalUrl, listenOnly: item.listenOnly, title, artist, duration, status: "queued" });
       if (room.autoplay) advance(room);
       this.save(room);
     } catch {
@@ -431,12 +470,22 @@ export class KtvRoom implements DurableObject {
   private async search(initial: Room, url: URL): Promise<Response> {
     const query = (url.searchParams.get("q") || "").trim();
     if (query.length > 160) throw new RoomError("Search is too long", 400);
+    const provider = url.searchParams.get("provider") || "library";
+    if (provider !== "library") {
+      if (!["youtube", "bilibili"].includes(provider) || initial.mediaMode !== "full" || !query) throw new RoomError("Platform search requires full playback mode", 400);
+      const cookies = await accountCookies(this.env, initial.owner, provider as "youtube" | "bilibili");
+      const response = await requestMedia(this.env, "/media/search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, query, cookies }), signal: AbortSignal.timeout(60_000) });
+      if (!response.ok) { await response.body?.cancel(); throw new RoomError("Platform search is unavailable", 502); }
+      const data = await response.json<{ items: Array<{ url: string; title: string; duration: number | null }> }>();
+      if (this.active().generation !== initial.generation) throw new RoomError("Room has changed", 410);
+      return Response.json({ ok: true, audio: [], videos: [], external: data.items });
+    }
     const [audio, videos] = await Promise.all([
       createQueries(this.env.DB).search(query, { artistCount: 0, artistOffset: 0, albumCount: 0, albumOffset: 0, songCount: 20, songOffset: 0 }),
       listVideos(this.env, query, 0, 20),
     ]);
     if (this.active().generation !== initial.generation) throw new RoomError("Room has changed", 410);
-    return Response.json({ ok: true, audio: audio.songs.filter((song) => song.inst_storage_uri).map((song) => ({ id: song.id, title: song.title, artist: song.artist_name || "", duration: song.duration ?? song.inst_duration ?? null })), videos: videos.videos });
+    return Response.json({ ok: true, audio: audio.songs.filter((song) => song.inst_storage_uri).map((song) => ({ id: song.id, title: song.title, artist: song.artist_name || "", duration: song.duration ?? song.inst_duration ?? null })), videos: videos.videos.filter((video) => initial.mediaMode === "full" || initial.allowEmbeddedVideo || video.provider === "file"), external: [] });
   }
 
   private async links(initial: Room, url: URL): Promise<Response> {
@@ -445,7 +494,10 @@ export class KtvRoom implements DurableObject {
     const links = await this.env.DB.prepare("SELECT l.audio_id AS audioId, l.video_id AS videoId, a.title AS audioTitle, v.title AS videoTitle, l.offset_ms AS offsetMs FROM video_audio_links l JOIN song_masters a ON a.id = l.audio_id JOIN videos v ON v.id = l.video_id WHERE l.audio_id = ? LIMIT 100").bind(audioId)
       .all<{ audioId: string; videoId: string; audioTitle: string; videoTitle: string; offsetMs: number }>();
     const visible = [];
-    for (const link of links.results) if (await getVideo(this.env, link.videoId)) visible.push(link);
+    for (const link of links.results) {
+      const video = await getVideo(this.env, link.videoId);
+      if (video && (initial.mediaMode === "full" || initial.allowEmbeddedVideo || video.provider === "file")) visible.push(link);
+    }
     if (this.active().generation !== initial.generation) throw new RoomError("Room has changed", 410);
     return Response.json({ ok: true, links: visible });
   }

@@ -342,7 +342,7 @@ onBeforeUnmount(() => {
   </Transition>
 
   <!-- 未登录：全屏渲染（Login）；bare 路由同样全屏，不套框架 -->
-  <router-view v-if="!isLoggedIn || isBare" :key="route.path.startsWith('/ktv/join/') ? route.fullPath : undefined" />
+  <router-view v-if="!isLoggedIn || isBare" :key="route.path === '/k' ? route.fullPath : undefined" />
 
   <div
     v-else

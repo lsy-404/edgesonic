@@ -4,7 +4,7 @@ import {
   ChevronUp, Circle, CircleHelp, Clock, Cog, Copy, Download, Flag, Folder, Headphones,
   Heart, House, Info, LayoutDashboard, Library, ListMusic, ListPlus, Lock, LogOut,
   Maximize2, Menu, Minimize2, MoreHorizontal, Music, Music2, Pause, Pencil, Play, Plus,
-  Podcast, Radio, RefreshCw, Repeat, Repeat1, Search, Settings, Share2, Shuffle, SkipBack,
+  Podcast, QrCode, Radio, RefreshCw, Repeat, Repeat1, Search, Settings, Share2, Shuffle, SkipBack,
   SkipForward, Star, TriangleAlert, TrendingUp, Upload, Users, Volume2, VolumeX, Wrench, X,
 } from "@lucide/vue";
 import { computed } from "vue";
@@ -19,7 +19,7 @@ const icons = {
   help: CircleHelp, home: House, info: Info, left: ChevronLeft, library: Library, lock: Lock,
   logout: LogOut, maximize: Maximize2, menu: Menu, minimize: Minimize2, music: Music,
   next: SkipForward, note: Music2, pause: Pause, playlist: ListMusic, play: Play, plus: Plus,
-  podcast: Podcast, previous: SkipBack, queueNext: ListPlus, radio: Radio, refresh: RefreshCw,
+  qr: QrCode, podcast: Podcast, previous: SkipBack, queueNext: ListPlus, radio: Radio, refresh: RefreshCw,
   repeat: Repeat, repeatOne: Repeat1, right: ChevronRight, search: Search, settings: Settings,
   share: Share2, shuffle: Shuffle, star: Star, tools: Wrench, trending: TrendingUp, up: ArrowUp,
   upload: Upload, users: Users, volume: Volume2, volumeOff: VolumeX, warn: TriangleAlert,

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { getFeatureString } from "../utils/features";
+import { videoReference } from "./references";
+import { accountCookies, accountRevision } from "./accounts";
 
 export interface MediaTrack {
   id: string;
@@ -9,6 +10,10 @@ export interface MediaTrack {
 }
 
 export interface MediaSession {
+  transport: "hls" | "file" | "iframe";
+  sourceUrl?: string;
+  provider?: "youtube" | "bilibili";
+  credentialRevision?: string;
   id: string;
   title: string;
   duration: number | null;
@@ -28,18 +33,9 @@ export class MediaLoaderError extends Error {
 
 export async function requestMedia(env: Env, path: string, init: RequestInit = {}): Promise<Response> {
   if (!path.startsWith("/media/") || path.includes("..")) throw new MediaLoaderError("Invalid media path", 400);
-  const [base, secret] = await Promise.all([
-    getFeatureString(env, "external_transcoder_url", ""),
-    env.DB.prepare("SELECT value FROM external_secrets WHERE key = 'external_transcoder_key'").first<{ value: string }>(),
-  ]);
-  if (!base || !secret?.value) throw new MediaLoaderError("Media loader is not configured", 503);
-  const headers = new Headers(init.headers);
-  headers.set("X-EdgeSonic-Container-Key", secret.value);
-  const response = await fetch(`${base.replace(/\/+$/, "")}${path}`, { ...init, headers, redirect: "manual" });
-  if (response.status >= 300 && response.status < 400) {
-    await response.body?.cancel();
-    throw new MediaLoaderError("Media loader must use its direct service address");
-  }
+  if (!env.MediaContainer) throw new MediaLoaderError("Full playback requires the integrated media container", 503);
+  const stub = env.MediaContainer.getByName("media");
+  const response = await stub.fetch(new Request(`https://media.internal${path}`, init));
   return response;
 }
 
@@ -54,16 +50,20 @@ export async function readMediaSession(response: Response): Promise<MediaSession
     || !Array.isArray(session.audioTracks) || !Array.isArray(session.captions)) {
     throw new MediaLoaderError("Invalid media session");
   }
-  return session;
+  return { ...session, transport: "hls" };
 }
 
-export async function resolveExternalMedia(env: Env, url: string, signal?: AbortSignal): Promise<MediaSession> {
-  return readMediaSession(await requestMedia(env, "/media/resolve", {
+export async function resolveExternalMedia(env: Env, url: string, signal?: AbortSignal, username?: string): Promise<MediaSession> {
+  const ref = await videoReference(url);
+  const credentialRevision = username ? await accountRevision(env, username, ref.provider) : undefined;
+  const cookies = username ? await accountCookies(env, username, ref.provider) : undefined;
+  const session = await readMediaSession(await requestMedia(env, "/media/resolve", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url: ref.url, cookies }),
     signal,
   }));
+  return { ...session, provider: ref.provider, credentialRevision };
 }
 
 export async function uploadVideoMedia(

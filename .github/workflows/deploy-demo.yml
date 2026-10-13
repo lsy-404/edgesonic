@@ -222,10 +222,10 @@ jobs:
             edgesonic-release/worker/wrangler.toml.example > edgesonic-release/worker/wrangler.toml
           # No custom domain — use edgesonic.<account>.workers.dev.
           sed -i '/^routes/,/^\]/d' edgesonic-release/worker/wrangler.toml
-          # Remove the paid Sandbox stack while retaining SQLite room bindings.
+          # Remove the paid container stacks while retaining SQLite room bindings.
           sed -i '/^\[\[containers\]\]/,/^new_sqlite_classes/d' edgesonic-release/worker/wrangler.toml
-          if grep -qE '^\[\[containers\]\]|class_name = "Sandbox"|new_sqlite_classes = \["Sandbox"\]' edgesonic-release/worker/wrangler.toml; then
-            echo "::error::wrangler.toml still declares the paid Sandbox stack."
+          if grep -qE '^\[\[containers\]\]|class_name = "(Sandbox|MediaContainer)"|new_sqlite_classes = \["(Sandbox|MediaContainer)"\]' edgesonic-release/worker/wrangler.toml; then
+            echo "::error::wrangler.toml still declares a paid container stack."
             exit 1
           fi
 

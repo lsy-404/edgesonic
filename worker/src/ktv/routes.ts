@@ -4,6 +4,7 @@ import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { User } from "../types/entities";
 import { hasPermission } from "../utils/permissions";
+import { ktvSettings as settings } from "../media/settings";
 import { rateLimitAllowed } from "../middleware/rate_limit";
 
 type RoomContext = Context<{ Bindings: Env; Variables: { user: User } }>;
@@ -35,19 +36,13 @@ ktvPublicRoutes.use("*", async (c, next) => {
   await next();
 });
 
-async function settings(env: Env, username: string): Promise<{ enabled: boolean; mode: "fair" | "fifo" }> {
-  const rows = await env.DB.prepare("SELECT key, value FROM user_settings WHERE username = ? AND key IN ('ktv_enabled', 'ktv_queue_mode')")
-    .bind(username).all<{ key: string; value: string }>();
-  return { enabled: rows.results.some((row) => row.key === "ktv_enabled" && row.value === "1"), mode: rows.results.some((row) => row.key === "ktv_queue_mode" && row.value === "fifo") ? "fifo" : "fair" };
-}
-
 ktvHostRoutes.get("/settings", async (c) => c.json({ ok: true, ...await settings(c.env, c.get("user").username) }));
 ktvHostRoutes.put("/settings", async (c) => {
-  const body = await c.req.json<{ enabled?: unknown; mode?: unknown }>().catch(() => null);
-  if (!body || (body.enabled !== undefined && typeof body.enabled !== "boolean") || (body.mode !== undefined && body.mode !== "fair" && body.mode !== "fifo")) return c.json({ ok: false, error: "Invalid KTV settings" }, 400);
+  const body = await c.req.json<{ enabled?: unknown; mode?: unknown; mediaMode?: unknown; allowEmbeddedVideo?: unknown }>().catch(() => null);
+  if (!body || (body.enabled !== undefined && typeof body.enabled !== "boolean") || (body.mediaMode !== undefined && !["full", "compatible"].includes(String(body.mediaMode))) || (body.allowEmbeddedVideo !== undefined && typeof body.allowEmbeddedVideo !== "boolean") || (body.mode !== undefined && body.mode !== "fair" && body.mode !== "fifo")) return c.json({ ok: false, error: "Invalid KTV settings" }, 400);
   const username = c.get("user").username;
   const updates: D1PreparedStatement[] = [];
-  for (const [key, value] of [["ktv_enabled", body.enabled === undefined ? undefined : body.enabled ? "1" : "0"], ["ktv_queue_mode", body.mode]] as const) {
+  for (const [key, value] of [["ktv_enabled", body.enabled === undefined ? undefined : body.enabled ? "1" : "0"], ["ktv_queue_mode", body.mode], ["ktv_media_mode", body.mediaMode], ["ktv_allow_embedded_video", body.allowEmbeddedVideo === undefined ? undefined : body.allowEmbeddedVideo ? "1" : "0"]] as const) {
     if (value !== undefined) updates.push(c.env.DB.prepare("INSERT INTO user_settings (username, key, value, updated_at) VALUES (?, ?, ?, unixepoch()) ON CONFLICT(username, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at").bind(username, key, value));
   }
   if (updates.length) await c.env.DB.batch(updates);
@@ -76,7 +71,7 @@ ktvHostRoutes.post("/rooms", async (c) => {
   const id = c.env.KTV_ROOMS.idFromName(`${c.env.INSTANCE_ID}:${user.username}:${body.playerId}`);
   const response = await c.env.KTV_ROOMS.get(id).fetch("https://ktv.invalid/create", {
     method: "POST", headers: { "Content-Type": "application/json", "X-KTV-Owner": user.username, "X-KTV-Origin": new URL(c.req.url).origin },
-    body: JSON.stringify({ ...body, mode: body.mode ?? config.mode }),
+    body: JSON.stringify({ ...body, mode: body.mode ?? config.mode, mediaMode: config.mediaMode, allowEmbeddedVideo: config.allowEmbeddedVideo }),
   });
   if (response.ok) await c.env.DB.prepare("INSERT INTO kv_store (key, value, updated_at) VALUES (?, ?, unixepoch()) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
     .bind(`ktv_room:${user.username}:${body.playerId}`, id.toString()).run();
@@ -116,3 +111,13 @@ ktvPublicRoutes.get("/rooms/:id/ws", (c) => forward(c, "ws", false));
 ktvPublicRoutes.get("/rooms/:id/search", (c) => forward(c, "search", false));
 ktvPublicRoutes.get("/rooms/:id/links", (c) => forward(c, "links", false));
 ktvPublicRoutes.post("/rooms/:id/actions", (c) => forward(c, "actions", false));
+
+ktvPublicRoutes.get("/invites/:code", async (c) => {
+  const code = c.req.param("code");
+  if (!c.env.KTV_ROOMS || !/^[0-9]{6}$/.test(code)) return c.json({ ok: false, error: "Room is unavailable" }, 404);
+  const row = await c.env.DB.prepare("SELECT value FROM kv_store WHERE key = ?").bind(`ktv_invite:${code}`).first<{ value: string }>();
+  if (!row) return c.json({ ok: false, error: "Room is unavailable" }, 404);
+  const invite = JSON.parse(row.value) as { roomId: string; expiresAt: number };
+  if (invite.expiresAt <= Date.now() || !/^[a-f0-9]{64}$/.test(invite.roomId)) return c.json({ ok: false, error: "Room is closed" }, 410);
+  return c.env.KTV_ROOMS.get(c.env.KTV_ROOMS.idFromString(invite.roomId)).fetch(`https://ktv.invalid/preview?invite=${code}`);
+});

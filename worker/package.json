@@ -34,6 +34,7 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@cloudflare/containers": "0.3.7",
     "@cloudflare/sandbox": "^0.12.1",
     "@noble/hashes": "^2.4.0",
     "hono": "^4.12.22",

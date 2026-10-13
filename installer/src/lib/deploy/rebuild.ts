@@ -53,6 +53,7 @@ export interface ScriptFacts {
    * machine with Docker, never from this wizard.
    */
   hasSandboxContainer: boolean;
+  hasMediaContainer: boolean;
 }
 
 export async function readScriptFacts(token: string, accountId: string, script: string): Promise<ScriptFacts> {
@@ -65,6 +66,7 @@ export async function readScriptFacts(token: string, accountId: string, script: 
   const bindings = settings.bindings || [];
   return {
     instanceId: bindings.find((entry) => entry.type === "plain_text" && entry.name === "INSTANCE_ID")?.text || "",
+    hasMediaContainer: bindings.some((entry) => entry.type === "durable_object_namespace" && entry.class_name === "MediaContainer"),
     hasSandboxContainer: bindings.some((entry) => entry.type === "durable_object_namespace" && entry.class_name === "Sandbox"),
   };
 }

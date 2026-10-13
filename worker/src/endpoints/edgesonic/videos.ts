@@ -3,9 +3,11 @@
 import { Hono } from "hono";
 import { permissionMiddleware } from "../../auth";
 import { hasPermission } from "../../utils/permissions";
+import { embeddedVideoSession } from "../../media/references";
+import { ktvSettings } from "../../media/settings";
 import { MediaLoaderError } from "../../media/loader";
 import {
-  getVideo, importStorageVideo, listVideos, prepareVideoMedia, saveExternalVideo, videoSummary,
+  getVideo, importStorageVideo, listVideos, prepareVideoMedia, saveExternalVideo, videoSummary, rawVideoResponse,
 } from "../../media/videos";
 import type { User } from "../../types/entities";
 
@@ -30,7 +32,7 @@ videoRoutes.post("/videos/external", permissionMiddleware("upload"), async (c) =
     return c.json({ ok: false, error: "Missing video URL" }, 400);
   }
   try {
-    const video = await saveExternalVideo(c.env, body.url.trim(), c.req.raw.signal);
+    const video = await saveExternalVideo(c.env, body.url.trim(), c.req.raw.signal, c.get("user").username);
     return c.json({ ok: true, video: videoSummary(video) });
   } catch (error) {
     return errorResponse(error);
@@ -100,9 +102,21 @@ videoRoutes.get("/videos/:id/playback", permissionMiddleware("stream"), async (c
   const video = await getVideo(c.env, c.req.param("id"));
   if (!video) return c.json({ ok: false, error: "Video not found" }, 404);
   try {
+    if (!c.env.MediaContainer || c.req.query("mode") === "compatible") {
+      if (video.provider === "file") return c.json({ ok: true, session: { id: crypto.randomUUID(), transport: "file", sourceUrl: `/edgesonic/videos/${video.id}/stream`, title: video.title, duration: video.duration, width: video.width, height: video.height, expiresAt: Math.floor(Date.now() / 1000) + 43_200, audioTracks: [{ id: "default" }], captions: [] } });
+      const settings = await ktvSettings(c.env, c.get("user").username);
+      if (!settings.allowEmbeddedVideo) return c.json({ ok: false, error: "Enable embedded video in Tools first" }, 403);
+      return c.json({ ok: true, session: { ...await embeddedVideoSession(video.externalUrl!), title: video.title } });
+    }
     const session = await prepareVideoMedia(c.env, video, c.get("user").username, c.req.raw.signal, false);
     return c.json({ ok: true, session });
   } catch (error) {
     return errorResponse(error);
   }
+});
+
+videoRoutes.get("/videos/:id/stream", permissionMiddleware("stream"), async (c) => {
+  const video = await getVideo(c.env, c.req.param("id"));
+  if (!video) return c.body(null, 404);
+  return rawVideoResponse(c.env, video, c.req.raw);
 });

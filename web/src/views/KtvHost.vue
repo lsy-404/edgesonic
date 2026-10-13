@@ -8,6 +8,8 @@ import { useAuth } from "../api";
 import { usePlayerStore, type Track } from "../stores/player";
 import { useKtvSettingsStore } from "../stores/ktvSettings";
 import NowPlaying from "./NowPlaying.vue";
+import Icon from "../components/Icon.vue";
+import MediaAccountsCard from "../components/MediaAccountsCard.vue";
 import MediaSurface from "../components/MediaSurface.vue";
 import { createKtvRoom, getKtvLinks, getKtvRoom, hostStorageKey, ktvRoomAction, openKtvSocket, playerIdentityKey, searchKtvRoom, type KtvSearchAudio, type KtvSearchVideo } from "../lib/ktvApi";
 import { getVideoPlayback, resolveExternalVideo, saveExternalVideo, type MediaSession } from "../lib/videoApi";
@@ -22,6 +24,8 @@ const roomId = ref("");
 const controllerToken = ref("");
 const inviteUrl = ref("");
 const qrData = ref("");
+const stageQrData = ref("");
+const qrModules = ref(33);
 const busy = ref(false);
 const error = ref("");
 const searchText = ref("");
@@ -39,8 +43,7 @@ const mediaSurface = ref<InstanceType<typeof MediaSurface> | null>(null);
 const stage = ref(false);
 const stageControlsVisible = ref(false);
 const fullscreen = ref(false);
-const showStageQr = ref(false);
-const showStageHelp = ref(false);
+const showStageQr = ref(true);
 const mediaError = ref("");
 const autoplayBlocked = ref(false);
 const mediaTime = ref(0);
@@ -72,8 +75,10 @@ const embeddedVideoAllowed = computed(() => room.value
 const canAdvance = computed(() => !!current.value || room.value?.queue[0]?.status === "queued");
 const linkedOffset = computed(() => current.value?.offsetMs ?? 0);
 const activeComments = computed(() => comments.value.filter((item) => !current.value || item.itemId === current.value.id));
+const roomCode = computed(() => inviteUrl.value ? new URL(inviteUrl.value, window.location.href).searchParams.get("c") || "" : "");
 const fullInviteUrl = computed(() => new URL(inviteUrl.value, window.location.href).toString());
 const stagePosition = computed(() => currentAudio.value ? player.currentTime : mediaTime.value);
+const stageDuration = computed(() => currentAudio.value ? player.duration : mediaDuration.value);
 const stagePlaying = computed(() => currentAudio.value ? player.playing : mediaPlaying.value);
 
 function playerId() {
@@ -106,6 +111,10 @@ function persistHost() {
   sessionStorage.setItem(hostStorageKey, JSON.stringify({ roomId: roomId.value, controllerToken: controllerToken.value, playerId: playerId() }));
 }
 
+function applyRoom(next: KtvRoomSnapshot) {
+  if (!room.value || room.value.id !== next.id || next.version >= room.value.version) room.value = next;
+}
+
 function stopSocket() {
   const previous = socket;
   socket = null;
@@ -120,7 +129,7 @@ function connectSocket() {
   const connection = openKtvSocket(roomId.value, { kind: "controller", token: controllerToken.value }, (raw) => {
     if (socket !== connection) return;
     const event = raw as { type?: string; room?: KtvRoomSnapshot; comment?: KtvComment };
-    if (event.type === "state" && event.room) room.value = event.room;
+    if (event.type === "state" && event.room) applyRoom(event.room);
     if (event.type === "comment" && event.comment) comments.value = [...comments.value.slice(-99), event.comment];
     if (event.type === "closed") handleClosed();
   }, () => {
@@ -151,8 +160,12 @@ function startHeartbeat() {
 
 async function loadQr() {
   if (!inviteUrl.value) return;
-  try { qrData.value = await QRCode.toDataURL(new URL(inviteUrl.value, location.href).toString(), { margin: 1, width: 220, color: { dark: "#17191d", light: "#ffffff" } }); }
-  catch { qrData.value = ""; }
+  try {
+    const url = new URL(inviteUrl.value, location.href).toString();
+    qrModules.value = QRCode.create(url, { errorCorrectionLevel: "H" }).modules.size;
+    qrData.value = await QRCode.toDataURL(url, { margin: 0, width: 220, errorCorrectionLevel: "H", color: { dark: "#17191dff", light: "#ffffffff" } });
+    stageQrData.value = await QRCode.toDataURL(url, { margin: 0, width: 220, errorCorrectionLevel: "H", color: { dark: "#17191dff", light: "#ffffff47" } });
+  } catch { qrData.value = ""; stageQrData.value = ""; }
 }
 
 async function attachRoom() {
@@ -166,10 +179,11 @@ async function startRoom() {
   busy.value = true;
   error.value = "";
   deliberateClose = false;
+  showStageQr.value = true;
   savePreviousPlayer();
   try {
     const result = await createKtvRoom({ playerId: playerId(), mode: settings.mode, displayName: displayName.value.trim() || "Host" });
-    room.value = result.room;
+    applyRoom(result.room);
     roomId.value = result.room.id;
     controllerToken.value = result.controllerToken;
     inviteUrl.value = result.inviteUrl;
@@ -191,7 +205,7 @@ async function recoverRoom() {
     controllerToken.value = value.controllerToken;
     if (value.playerId) sessionStorage.setItem(playerIdentityKey, value.playerId);
     const result = await getKtvRoom(roomId.value, controllerToken.value);
-    room.value = result.room;
+    applyRoom(result.room);
     inviteUrl.value = result.inviteUrl;
     await attachRoom();
   } catch (cause) {
@@ -205,7 +219,7 @@ async function perform(action: KtvAction, showError = true) {
   if (!roomId.value || !controllerToken.value) return;
   try {
     const result = await ktvRoomAction(roomId.value, controllerToken.value, action);
-    room.value = result.room;
+    applyRoom(result.room);
     if (result.inviteUrl) {
       inviteUrl.value = result.inviteUrl;
       await loadQr();
@@ -227,12 +241,16 @@ async function closeRoom() {
 }
 
 function handleClosed() {
+  stage.value = false;
+  clearStageControlsTimer();
+  if (document.fullscreenElement === page.value) void document.exitFullscreen().catch(() => {});
   stopSocket();
   room.value = null;
   roomId.value = "";
   controllerToken.value = "";
   inviteUrl.value = "";
   qrData.value = "";
+  stageQrData.value = "";
   sessionStorage.removeItem(hostStorageKey);
   mediaSession.value = null;
   if (player.playing) player.toggle();
@@ -271,15 +289,9 @@ async function enqueue(selection: KtvSelection) {
 }
 function addAudio(audio: KtvSearchAudio) { void enqueue({ audioId: audio.id }); }
 function addVideo(video: KtvSearchVideo) { void enqueue({ audioId: selectedAudio.value?.id, videoId: video.id }); }
-function normalizeExternal(value: string) {
-  const clean = value.trim();
-  if (/^BV[0-9A-Za-z]+$/.test(clean)) return `https://www.bilibili.com/video/${clean}`;
-  if (/^av\d+$/i.test(clean)) return `https://www.bilibili.com/video/${clean}`;
-  return clean;
-}
 function requestExternal() {
   if (!embeddedVideoAllowed.value) return;
-  const url = normalizeExternal(externalUrl.value);
+  const url = externalUrl.value.trim();
   if (!url) return;
   void enqueue({ ...(selectedAudio.value ? { audioId: selectedAudio.value.id } : {}), externalUrl: url });
   externalUrl.value = "";
@@ -302,7 +314,10 @@ async function loadCurrentMedia(item: KtvQueueItem | null) {
   mediaDuration.value = item?.duration ?? 0;
   mediaPlaying.value = room.value?.playback.playing ?? false;
   mediaLoading.value = false;
-  if (!item) return;
+  if (!item) {
+    if (room.value?.open && player.playing) player.toggle();
+    return;
+  }
   if (item.audioId) {
     player.setQueue([{ id: item.audioId, title: item.title, artist: item.artist || "", album: "", duration: item.duration ?? 0 }], 0,
       { autoplay: mediaPlaying.value, startTime: mediaTime.value });
@@ -314,7 +329,7 @@ async function loadCurrentMedia(item: KtvQueueItem | null) {
       ? await getVideoPlayback(item.videoId, room.value?.mediaMode)
       : await resolveExternalVideo(item.externalUrl!, room.value?.mediaMode);
     if (generation !== itemGeneration) {
-      void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
+      if (result.session.transport === "hls") void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
       return;
     }
     mediaSession.value = result.session;
@@ -358,13 +373,13 @@ async function toggleStagePlayback() {
   }
 }
 
-function seekStage(delta: number) {
-  const duration = currentAudio.value ? player.duration : mediaDuration.value;
+function seekStageTo(position: number) {
   if (iframeVideoUncontrolled.value) return;
-  const next = Math.max(0, Math.min(duration || Infinity, stagePosition.value + delta));
+  const next = Math.max(0, Math.min(stageDuration.value || Infinity, position));
   if (currentAudio.value) player.seek(next);
   else mediaSurface.value?.seekTo(next);
 }
+function seekStage(delta: number) { seekStageTo(stagePosition.value + delta); }
 
 function clearStageControlsTimer() {
   if (stageControlsTimer !== undefined) clearTimeout(stageControlsTimer);
@@ -373,7 +388,8 @@ function clearStageControlsTimer() {
 
 function controlsHaveFocus() {
   const toolbar = page.value?.querySelector(".stage-toolbar");
-  return !!toolbar?.contains(document.activeElement);
+  const active = document.activeElement;
+  return active instanceof HTMLElement && !!toolbar?.contains(active) && active.matches(":focus-visible");
 }
 
 function scheduleStageControlsHide() {
@@ -382,7 +398,6 @@ function scheduleStageControlsHide() {
     stageControlsTimer = undefined;
     if (controlsHaveFocus()) return;
     stageControlsVisible.value = false;
-    showStageHelp.value = false;
   }, 3000);
 }
 
@@ -398,36 +413,48 @@ function onStageControlsFocusOut() {
   }, 0);
 }
 
-async function toggleFullscreen() {
-  try {
-    if (document.fullscreenElement === page.value) await document.exitFullscreen();
-    else await page.value?.requestFullscreen();
-  } catch { fullscreen.value = document.fullscreenElement === page.value; }
-}
-
 async function enterStage() {
-  stage.value = true;
+  error.value = "";
   stageControlsVisible.value = false;
-  showStageQr.value = false;
   clearStageControlsTimer();
-  await toggleFullscreen();
-  page.value?.focus({ preventScroll: true });
+  try {
+    await page.value?.requestFullscreen();
+    if (document.fullscreenElement !== page.value) throw new Error("Fullscreen unavailable");
+    fullscreen.value = true;
+    stage.value = true;
+    page.value?.focus({ preventScroll: true });
+  } catch {
+    stage.value = false;
+    fullscreen.value = false;
+    error.value = t("ktv.fullscreenUnavailable");
+  }
 }
 
 async function returnToPreparation() {
-  stage.value = false;
-  stageControlsVisible.value = false;
-  clearStageControlsTimer();
   if (document.fullscreenElement === page.value) await document.exitFullscreen().catch(() => {});
+  onFullscreenChange();
 }
 
-function onFullscreenChange() { fullscreen.value = document.fullscreenElement === page.value; }
+async function toggleFullscreen() {
+  if (document.fullscreenElement === page.value) await returnToPreparation();
+  else await enterStage();
+}
+
+function onFullscreenChange() {
+  fullscreen.value = document.fullscreenElement === page.value;
+  stage.value = fullscreen.value;
+  if (!stage.value) {
+    stageControlsVisible.value = false;
+    clearStageControlsTimer();
+  }
+}
 
 function onStageKeydown(event: KeyboardEvent) {
   if (!stage.value || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.key === "Escape") { event.preventDefault(); void returnToPreparation(); return; }
   revealStageControls();
   const target = event.target;
-  if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
+  if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName))) return;
   if (event.code === "Space") { event.preventDefault(); void toggleStagePlayback(); }
   else if (event.key === "ArrowLeft") { event.preventDefault(); seekStage(-10); }
   else if (event.key === "ArrowRight") { event.preventDefault(); seekStage(10); }
@@ -435,7 +462,6 @@ function onStageKeydown(event: KeyboardEvent) {
   else if (event.key.toLowerCase() === "q") showStageQr.value = !showStageQr.value;
   else if (event.key.toLowerCase() === "f") void toggleFullscreen();
   else if (event.key.toLowerCase() === "b") void returnToPreparation();
-  else if (event.key === "?") showStageHelp.value = !showStageHelp.value;
 }
 
 function onVisibilityChange() {
@@ -471,13 +497,15 @@ onBeforeUnmount(() => {
   <div ref="page" class="ktv-page" :class="{ 'is-stage': stage }" :tabindex="stage ? -1 : undefined" @pointermove="revealStageControls" @pointerdown="revealStageControls">
     <header class="page-header ktv-header">
       <div>
-        <div class="mono-label">EDGE SONIC / KTV</div>
+        <div class="mono-label">EDGE SONIC / KARAOKE</div>
         <h1 class="page-title">{{ t("ktv.hostTitle") }}</h1>
         <p class="page-description">{{ t("ktv.intro") }}</p>
       </div>
       <button v-if="room" type="button" class="btn-danger btn-sm" @click="closeRoom">{{ t("ktv.closeRoom") }}</button>
       <button v-if="room && !stage" type="button" class="btn-primary btn-sm" @click="enterStage">{{ t("ktv.enterStage") }}</button>
     </header>
+
+    <MediaAccountsCard v-if="!stage && settings.mediaMode === 'full'" />
 
     <div v-if="!settings.enabled" class="card ktv-notice">
       <p>{{ t("ktv.disabled") }}</p>
@@ -497,13 +525,14 @@ onBeforeUnmount(() => {
         <section class="card invite-card">
           <div class="invite-copy">
             <div class="mono-label">{{ t("ktv.invite") }}</div>
+            <p class="room-code">{{ t("ktv.roomCode") }} · <strong>{{ roomCode }}</strong></p>
             <h2>{{ t("ktv.participantCount", { count: room.participants.length }) }}</h2>
             <p class="feature-desc">{{ t("ktv.expires", { time: new Date(room.expiresAt > 1e12 ? room.expiresAt : room.expiresAt * 1000).toLocaleTimeString() }) }}</p>
             <input class="form-input invite-url" :value="fullInviteUrl" readonly @focus="($event.target as HTMLInputElement).select()" />
             <button class="btn-secondary btn-sm" @click="copyInvite">{{ t("ktv.copyLink") }}</button>
             <button class="btn-secondary btn-sm" @click="perform({ action: 'rotate' })">{{ t("ktv.rotateLink") }}</button>
           </div>
-          <img v-if="qrData" class="invite-qr" :src="qrData" alt="QR code to join the KTV room" />
+          <img v-if="qrData" class="invite-qr" :src="qrData" :alt="t('ktv.joinQrAlt')" />
         </section>
 
         <section class="card order-card">
@@ -524,23 +553,19 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="ktv-main-grid">
-        <section class="card current-card">
-          <div v-if="stage && stageControlsVisible" class="stage-toolbar" role="toolbar" :aria-label="t('ktv.stageHelp')" @focusin="clearStageControlsTimer" @focusout="onStageControlsFocusOut">
-            <button class="btn-secondary btn-sm" :aria-label="t('ktv.stageHelp')" :title="t('ktv.stageHelp')" @click="showStageHelp = !showStageHelp">{{ t("ktv.controls") }}</button>
-            <button class="btn-secondary btn-sm" @click="showStageQr = !showStageQr">{{ showStageQr ? t("ktv.hideQr") : t("ktv.showQr") }}</button>
-            <button class="btn-secondary btn-sm" :disabled="!current || iframeVideoUncontrolled" @click="seekStage(-10)">−10s</button>
-            <button class="btn-primary btn-sm" :disabled="!current || iframeVideoUncontrolled" @click="toggleStagePlayback">{{ stagePlaying ? t("ktv.pause") : t("ktv.play") }}</button>
-            <button class="btn-secondary btn-sm" :disabled="!current || iframeVideoUncontrolled" @click="seekStage(10)">+10s</button>
-            <button class="btn-secondary btn-sm" :disabled="!canAdvance" @click="perform({ action: 'next', currentId: current?.id ?? null })">{{ t("ktv.next") }}</button>
-            <button class="btn-secondary btn-sm" @click="toggleFullscreen">{{ fullscreen ? t("ktv.exitFullscreen") : t("ktv.fullscreen") }}</button>
-            <button class="btn-secondary btn-sm" @click="returnToPreparation">{{ t("ktv.backToPreparation") }}</button>
+        <section class="card current-card" :class="{ 'with-lyrics': currentAudio }">
+          <div v-if="stage && stageControlsVisible" class="stage-toolbar" role="toolbar" :aria-label="t('ktv.playbackControls')" @focusin="clearStageControlsTimer" @focusout="onStageControlsFocusOut">
+            <label v-if="current && !iframeVideoUncontrolled" class="stage-seek">
+              <span>{{ Math.floor(stagePosition / 60) }}:{{ String(Math.floor(stagePosition % 60)).padStart(2, '0') }}</span>
+              <input type="range" min="0" step="0.1" :max="stageDuration || 1" :value="stagePosition" :disabled="stageDuration <= 0" :aria-label="t('ktv.seek')" @input="seekStageTo(Number(($event.target as HTMLInputElement).value))" />
+              <span>{{ Math.floor(stageDuration / 60) }}:{{ String(Math.floor(stageDuration % 60)).padStart(2, '0') }}</span>
+            </label>
+            <button class="stage-icon" :aria-label="showStageQr ? t('ktv.hideQr') : t('ktv.showQr')" :title="showStageQr ? t('ktv.hideQr') : t('ktv.showQr')" :aria-pressed="showStageQr" @click="showStageQr = !showStageQr"><Icon name="qr" :size="20" /></button>
+            <button class="stage-icon stage-play" :disabled="!current || iframeVideoUncontrolled" :aria-label="stagePlaying ? t('ktv.pause') : t('ktv.play')" :title="stagePlaying ? t('ktv.pause') : t('ktv.play')" @click="toggleStagePlayback"><Icon :name="stagePlaying ? 'pause' : 'play'" :size="22" /></button>
+            <button class="stage-icon" :disabled="!canAdvance" :aria-label="t('ktv.next')" :title="t('ktv.next')" @click="perform({ action: 'next', currentId: current?.id ?? null })"><Icon name="next" :size="20" /></button>
+            <button class="stage-icon" :aria-label="fullscreen ? t('ktv.exitFullscreen') : t('ktv.fullscreen')" :title="fullscreen ? t('ktv.exitFullscreen') : t('ktv.fullscreen')" @click="toggleFullscreen"><Icon :name="fullscreen ? 'minimize' : 'maximize'" :size="20" /></button>
           </div>
-          <div v-if="stage && stageControlsVisible && showStageHelp" class="stage-help" role="status">{{ t("ktv.stageShortcuts") }}</div>
-          <aside v-if="stage && showStageQr" class="stage-qr-panel">
-            <img v-if="qrData" class="invite-qr" :src="qrData" :alt="t('ktv.joinQrAlt')" />
-            <p>{{ t("ktv.invite") }}</p>
-            <button class="btn-secondary btn-sm" @click="copyInvite">{{ t("ktv.copyLink") }}</button>
-          </aside>
+          <img v-if="stage && showStageQr && stageQrData" class="stage-qr-image" :style="{ '--qr-modules': qrModules }" tabindex="0" :src="stageQrData" :alt="t('ktv.joinQrAlt')" />
           <div class="mono-label stage-mode-label">{{ current ? t("ktv.status.playing") : t("ktv.chooseSource") }}</div>
           <div v-if="current" class="current-layout" :class="{ 'stage-audio-only': stage && currentAudio && !mediaSession }">
             <MediaSurface
@@ -565,8 +590,8 @@ onBeforeUnmount(() => {
             <div v-else-if="mediaLoading" class="media-placeholder">{{ t("common.loading") }}</div>
             <p v-if="mediaError" class="error-text" role="alert">{{ mediaError }}</p>
             <p v-if="autoplayBlocked" class="feature-desc" role="status">{{ t("ktv.autoplayBlocked") }}</p>
-            <p v-if="iframeAudioMismatch" class="feature-desc" role="status">{{ t("ktv.iframeAudioMismatch") }}</p>
-            <p v-else-if="iframeVideoUncontrolled" class="feature-desc" role="status">{{ t("ktv.iframeVideoUncontrolled") }}</p>
+            <p v-if="!stage && iframeAudioMismatch" class="feature-desc" role="status">{{ t("ktv.iframeAudioMismatch") }}</p>
+            <p v-else-if="!stage && iframeVideoUncontrolled" class="feature-desc" role="status">{{ t("ktv.iframeVideoUncontrolled") }}</p>
             <div class="current-copy">
               <div class="mono-label">{{ t("ktv.requester", { name: current.displayName }) }}</div>
               <h2>{{ current.title }}</h2>
@@ -576,7 +601,7 @@ onBeforeUnmount(() => {
                 <button v-if="currentAudio" class="btn-secondary btn-sm" @click="perform({ action: 'next', currentId: current.id })">{{ t("ktv.next") }}</button>
                 <button v-if="mediaSession && !current.audioId && !iframeTransport" class="btn-secondary btn-sm" :disabled="!listenOnly && !mediaSession.audioTracks.length" @click="toggleListenOnly">{{ listenOnly ? t("ktv.watchVideo") : t("ktv.listenOnly") }}</button>
                 <button v-if="current.externalUrl && auth.hasPerm('upload')" class="btn-secondary btn-sm" :disabled="savingVideo || savedVideoItemId === current.id" @click="saveCurrentVideo">{{ savedVideoItemId === current.id ? t("videos.saved") : t("videos.save") }}</button>
-                <p v-if="mediaSession && !current.audioId && !mediaSession.audioTracks.length" class="feature-desc">{{ t("media.audioTrackUnavailable") }}</p>
+                <p v-if="mediaSession && !current.audioId && !iframeTransport && !mediaSession.audioTracks.length" class="feature-desc">{{ t("media.audioTrackUnavailable") }}</p>
               </div>
               <label v-if="currentAudio && player.duration > 0" class="ktv-seek">
                 <input type="range" min="0" step="0.1" :max="player.duration" :value="player.currentTime" @input="player.seek(Number(($event.target as HTMLInputElement).value))" />
@@ -591,7 +616,7 @@ onBeforeUnmount(() => {
           </div>
           <NowPlaying v-if="currentAudio && player.current?.id === current?.audioId" class="ktv-lyrics" />
           <div v-if="!current" class="empty-current">{{ t("ktv.emptyQueue") }}</div>
-          <div v-if="stage && stageControlsVisible && current && !iframeVideoUncontrolled" class="stage-progress" aria-live="off">{{ Math.floor(stagePosition / 60) }}:{{ String(Math.floor(stagePosition % 60)).padStart(2, '0') }} / {{ Math.floor((currentAudio ? player.duration : mediaDuration) / 60) }}:{{ String(Math.floor((currentAudio ? player.duration : mediaDuration) % 60)).padStart(2, '0') }}</div>
+
         </section>
 
         <section class="card queue-card">
@@ -642,7 +667,8 @@ onBeforeUnmount(() => {
             <p v-if="!videoResults.length" class="feature-desc">—</p>
             <div v-for="video in videoResults" :key="video.id" class="search-result">
               <strong>{{ video.title }}</strong>
-              <button class="btn-secondary btn-sm" @click="addVideo(video)">{{ selectedAudio ? t("ktv.addPair") : t("ktv.addVideo") }}</button>
+              <div class="result-actions"><button class="btn-secondary btn-sm" @click="enqueue({ videoId: video.id })">{{ t("ktv.addVideo") }}</button>
+              <button v-if="selectedAudio" class="btn-secondary btn-sm" @click="addVideo(video)">{{ t("ktv.addPair") }}</button></div>
             </div>
           </div>
         </div>
@@ -673,7 +699,8 @@ onBeforeUnmount(() => {
 .invite-copy { min-width: 0; flex: 1; }
 .invite-copy h2, .queue-heading h2 { margin: .3rem 0; }
 .invite-url { margin: .5rem 0; font-size: .85rem; }
-.invite-qr { width: 160px; height: 160px; padding: .35rem; background: white; border-radius: 10px; }
+.room-code strong { font-size: 1.35rem; letter-spacing: .16em; font-variant-numeric: tabular-nums; }
+.invite-qr { width: 160px; height: 160px; padding: 0; border: 0; border-radius: 0; }
 .order-card { display: grid; gap: .75rem; }
 .order-options, .participants, .current-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
 .host-rename { display: flex; gap: .4rem; }
@@ -710,6 +737,7 @@ onBeforeUnmount(() => {
 .search-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .search-columns h3, .linked-choices h3 { font-size: .9rem; margin: .3rem 0 .55rem; }
 .search-result { display: flex; align-items: center; justify-content: space-between; gap: .55rem; padding: .45rem 0; border-top: 1px solid var(--color-border-subtle); }
+.result-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
 .result-main { display: grid; min-width: 0; text-align: left; border: 0; color: inherit; background: transparent; cursor: pointer; }
 .result-main strong, .search-result > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .result-main small { color: var(--color-text-muted); }
@@ -717,30 +745,36 @@ onBeforeUnmount(() => {
 .linked-choices h3 { flex-basis: 100%; }
 .error-text { color: var(--color-danger, #d13438); }
 .ktv-error { margin: 0; }
-.stage-toolbar, .stage-help, .stage-qr-panel, .stage-progress { display: none; }
+.stage-toolbar, .stage-qr-image { display: none; }
 .ktv-page.is-stage { position: fixed; inset: 0; z-index: 1200; display: block; width: 100vw; height: 100dvh; max-width: none; overflow: hidden; padding: 0; color: #fff; background: #050608; }
 .is-stage > .ktv-header, .is-stage > .ktv-top-grid, .is-stage > .request-card, .is-stage > .ktv-error { display: none; }
 .is-stage .ktv-main-grid { display: block; width: 100%; height: 100%; margin: 0 auto; max-width: none; }
 .is-stage .queue-card { display: none; }
-.is-stage .current-card { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; overflow: hidden; border: 0; padding: .5rem 1rem 5.5rem; background: transparent; box-shadow: none; }
+.is-stage .current-card { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; overflow: hidden; border: 0; padding: .5rem 1rem; background: transparent; box-shadow: none; }
 .is-stage .stage-mode-label, .is-stage .current-copy { display: none; }
 .is-stage .current-layout.stage-audio-only { display: none; }
-.is-stage .current-layout { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; width: 100%; min-height: 0; max-width: none; margin: 0; }
-.is-stage .current-layout :deep(.media-surface) { width: auto; height: min(calc(100dvh - 350px), 70dvh); max-width: 100%; max-height: calc(100dvh - 350px); min-height: 0; aspect-ratio: 16 / 9; margin: auto; }
+.is-stage .current-layout { display: flex; flex-direction: column; flex: 1 1 auto; align-items: center; justify-content: center; width: 100%; min-height: 0; max-width: none; margin: 0; }
+.is-stage .current-layout :deep(.media-surface) { width: min(100%, calc((100dvh - 2rem) * 16 / 9)); height: auto; max-width: 100%; max-height: calc(100dvh - 2rem); min-height: 0; aspect-ratio: 16 / 9; margin: auto; }
+.is-stage .current-card.with-lyrics .current-layout :deep(.media-surface) { width: min(100%, calc((100dvh - 260px) * 16 / 9)); max-height: calc(100dvh - 260px); }
 .is-stage .current-layout :deep(.media-surface.audio-only) { width: min(100%, 900px); height: auto; min-height: 210px; }
 .is-stage .stage-audio-content { display: grid; flex: 1 1 auto; align-content: center; justify-items: center; gap: .75rem; min-height: 0; padding: 1rem; text-align: center; }
 .is-stage .stage-audio-content strong { font-size: clamp(1.4rem, 3vw, 2.4rem); }
 .is-stage .stage-audio-content span { color: #bdc2ca; }
 .is-stage .ktv-lyrics { flex: 0 0 min(24vh, 220px); width: min(100%, 1100px); height: min(24vh, 220px); min-height: 100px; margin: 0 auto; border: 0; }
 .is-stage .ktv-lyrics :deep(.nowplaying) { height: 100%; }
-.is-stage .stage-toolbar { position: fixed; z-index: 3; inset: auto 1rem 1rem; display: flex; justify-content: center; flex-wrap: wrap; gap: .5rem; padding: .75rem; border: 1px solid #ffffff26; border-radius: 16px; background: #15171ddd; backdrop-filter: blur(12px); }
-.is-stage .stage-help { position: fixed; z-index: 4; left: 1rem; bottom: 5.5rem; display: block; max-width: min(34rem, calc(100vw - 2rem)); padding: .7rem 1rem; border-radius: 10px; color: #fff; background: #15171df2; }
-.is-stage .stage-qr-panel { position: fixed; z-index: 3; top: 1rem; right: 1rem; display: grid; justify-items: center; gap: .5rem; width: 190px; padding: .75rem; border: 1px solid #ffffff26; border-radius: 14px; background: #15171ddd; text-align: center; }
-.is-stage .stage-qr-panel .invite-qr { width: 150px; height: 150px; }
-.is-stage .stage-qr-panel p { margin: 0; font-size: .8rem; }
-.is-stage .stage-progress { position: fixed; z-index: 2; bottom: 5.7rem; left: 50%; display: block; transform: translateX(-50%); color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 1px 4px #000; }
+.is-stage .stage-toolbar { position: fixed; z-index: 3; left: 50%; bottom: 1.25rem; width: min(560px, calc(100vw - 3rem)); transform: translateX(-50%); display: flex; justify-content: center; flex-wrap: wrap; gap: .5rem; padding: .75rem; border: 1px solid #ffffff26; border-radius: 16px; background: #15171dbd; box-shadow: 0 12px 40px #0005; backdrop-filter: blur(16px); }
+
+.is-stage .stage-qr-image { position: fixed; display: block; z-index: 3; top: 1rem; right: 1rem; --qr-size: 176px; width: var(--qr-size); height: var(--qr-size); box-sizing: content-box; filter: blur(.45px); background: transparent; transition: padding .16s, background .16s, filter .16s; border: 0; border-radius: 0; padding: 0; box-shadow: none; pointer-events: auto; }
+.is-stage .stage-qr-image:hover, .is-stage .stage-qr-image:focus-visible, .is-stage .stage-qr-image:active { padding: calc(var(--qr-size) * 4 / var(--qr-modules)); background: white; filter: none; outline: none; }
+.stage-icon { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; color: #e8ebef; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
+.stage-icon:hover, .stage-icon:focus-visible { background: #ffffff20; }
+.stage-icon[aria-pressed="false"], .stage-icon:disabled { opacity: .4; }
+.stage-icon:disabled { cursor: default; }
+.stage-play { background: #ffffff16; }
+.stage-seek { display: flex; align-items: center; gap: .75rem; flex: 0 0 100%; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.stage-seek input { flex: 1; min-width: 0; accent-color: var(--color-accent-primary); cursor: pointer; }
 .is-stage .empty-current { display: grid; flex: 1 1 auto; min-height: 0; }
 @media (max-width: 850px) { .ktv-top-grid, .ktv-main-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) { .invite-card { align-items: flex-start; } .invite-qr { width: 100px; height: 100px; } .search-columns { grid-template-columns: minmax(0, 1fr); } .comment-form, .external-row { flex-direction: column; } }
-@media (max-width: 560px) { .is-stage .current-card { padding: .35rem .5rem 5rem; } .is-stage .stage-toolbar { inset: auto .5rem .5rem; gap: .35rem; padding: .55rem; } .is-stage .stage-toolbar button { padding-inline: .55rem; } .is-stage .current-layout :deep(.media-surface) { height: min(calc(100dvh - 280px), 70dvh); max-height: calc(100dvh - 280px); } .is-stage .stage-progress { bottom: 5.2rem; } .is-stage .stage-qr-panel { top: .5rem; right: .5rem; width: 150px; } .is-stage .stage-qr-panel .invite-qr { width: 110px; height: 110px; } }
+@media (max-width: 560px) { .is-stage .current-card { padding: .35rem .5rem; } .is-stage .stage-toolbar { bottom: 1rem; width: calc(100vw - 2.5rem); max-width: 440px; gap: .35rem; padding: .65rem; } .is-stage .stage-toolbar button { padding-inline: .55rem; }  .is-stage .stage-qr-image { top: .5rem; right: .5rem; --qr-size: 148px; } }
 </style>

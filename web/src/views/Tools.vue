@@ -9,6 +9,7 @@ import { canRebuildLibraryStats, type LibraryStatsResponse } from "../lib/librar
 import Icon from "../components/Icon.vue";
 import { normalizeForMatch } from "../lib/trackMatch";
 import { FluentSwitch } from "@platform-kit/fluent/vue";
+import MediaAccountsCard from "../components/MediaAccountsCard.vue";
 import KtvSettingsCard from "../components/KtvSettingsCard.vue";
 
 const { t } = useI18n();
@@ -1589,6 +1590,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
       </section>
 
       <KtvSettingsCard />
+      <MediaAccountsCard />
 
       <section v-if="canRepairLibraryStats" class="settings-section card" :class="{ open: open.libraryStats }">
         <button type="button" class="section-header" :aria-expanded="open.libraryStats" aria-controls="tools-panel-library-stats" @click="toggleSection('libraryStats')">

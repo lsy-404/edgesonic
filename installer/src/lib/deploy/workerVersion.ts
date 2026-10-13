@@ -87,6 +87,7 @@ interface UploadVersionInput {
   compatibilityFlags?: string[];
   mode: "fresh" | "overwrite";
   declareContainer?: boolean;
+  declareMediaContainer?: boolean;
   fresh?: FreshBindingsInput;
   overwriteVersion?: { version: string; buildTime: string };
   sso: SsoRuntimeBindings;
@@ -131,7 +132,8 @@ export async function uploadWorkerVersion(input: UploadVersionInput): Promise<st
   // had is rejected instead, since the image can only be built by wrangler on
   // a machine with Docker — hence the caller decides, from what the live
   // script actually has plus the operator's choice.
-  if (input.declareContainer) metadata.containers = [{ class_name: "Sandbox" }];
+  const containers = [...(input.declareContainer ? [{ class_name: "Sandbox" }] : []), ...(input.declareMediaContainer ? [{ class_name: "MediaContainer" }] : [])];
+  if (containers.length) metadata.containers = containers;
 
   const form = new FormData();
   form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }), "metadata");
