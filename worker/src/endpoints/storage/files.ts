@@ -25,6 +25,7 @@ import { encodePath } from "./scan";
 import { srcBaseUrl, type SourceRow } from "../../utils/slices";
 import { PayloadTooLargeError, limitReadableStream } from "../../utils/streamLimit";
 import { copyR2Object } from "../../utils/r2ObjectCopy";
+import { isVideoSuffix, registerUploadedVideo, videoContentType } from "../../media/videos";
 import type { User } from "../../types/entities";
 
 export const filesRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
@@ -94,7 +95,10 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   }
 
   const suffix = name.split(".").pop() || "bin";
-  const contentType = normalizeUploadContentType(c.req.header("Content-Type"), suffix);
+  const isVideo = isVideoSuffix(suffix);
+  const contentType = isVideo
+    ? videoContentType(suffix)
+    : normalizeUploadContentType(c.req.header("Content-Type"), suffix);
   // Lyric sidecars, text and images ride along with the music they belong to;
   // everything else about this request (D1 rows, tag parsing, transcodes) is
   // audio-only.
@@ -111,7 +115,7 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
   // are always accepted. Operators can flip allow_all_file_types to "1" to
   // accept anything else too; demo mode locks that row so a visitor can't.
   const allowAll = await allowAllFileTypes(env);
-  if (!allowAll && !isAudio && !isCompanionSuffix(suffix)) {
+  if (!allowAll && !isAudio && !isVideo && !isCompanionSuffix(suffix)) {
     return c.json({ ok: false, error: `File type .${suffix} not allowed` }, 415);
   }
 
@@ -312,12 +316,11 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
 
   const r2Target = source === "r2" ? target as R2UploadTarget : null;
 
-  // A companion file is just bytes plus a D1 entry. It has no song row, no tag
-  // parse and no transcode; its relation to an audio entry is resolved from
-  // the logical D1 path instead of a physical-key suffix replacement.
+  // Non-audio uploads never enter the metadata or transcode queue.
   if (!isAudio) {
+    let storageEntryId: string | null = null;
     if (r2Target) {
-      await registerR2Object(db, {
+      const registered = await registerR2Object(db, {
         objectId: r2Target.objectId,
         physicalKey: r2Key,
         legacyKey: null,
@@ -326,8 +329,24 @@ filesRoutes.post("/files/upload", permissionMiddleware("upload"), async (c) => {
         contentType,
         size: sizeHeader || 0,
       });
+      storageEntryId = registered.entryId;
       await cleanupStorageObject(db, r2Target.previousEntry?.object_id || null);
       if (r2Target.previousKey && r2Target.previousKey !== r2Key) await env.MUSIC_BUCKET.delete(r2Target.previousKey);
+    }
+    if (isVideo) {
+      try {
+        await registerUploadedVideo(env, {
+          sourceId,
+          storageUri,
+          storageEntryId,
+          title: name.replace(/\.[^.]+$/, ""),
+          suffix: suffix.toLowerCase(),
+          contentType,
+          size: sizeHeader || 0,
+        });
+      } catch (error) {
+        return c.json({ ok: false, error: `Video catalog registration failed: ${error instanceof Error ? error.message : String(error)}` }, 500);
+      }
     }
     return c.json(uploadSuccess({ key: r2Key, source, target }));
   }

@@ -141,6 +141,7 @@ const ARRAY_PAIRS = new Set([
   "share/entry", "nowPlaying/entry",
   "shares/share",
   "podcasts/channel", "channel/episode", "newestPodcasts/episode",
+  "videos/video", "videoInfo/captions", "videoInfo/audioTrack", "videoInfo/conversion",
   "internetRadioStations/internetRadioStation",
   "bookmarks/bookmark",
   "subsonic-response/openSubsonicExtensions",

@@ -36,12 +36,14 @@ import { accountRoutes } from "./account";
 import { downloadRoutes } from "./download";
 import { subsonicUserRoutes } from "./users";
 import { subsonicScanRoutes } from "./scan";
+import { videoSubsonicRoutes } from "./video";
 
 export const subsonicRoutes = new Hono();
 
 // /rest/* BEFORE authMiddleware so auth-failure envelopes convert too.
 
 subsonicRoutes.route("/", pingRoutes);
+subsonicRoutes.route("/", videoSubsonicRoutes);
 subsonicRoutes.route("/", browsingRoutes);
 subsonicRoutes.route("/", searchRoutes);
 subsonicRoutes.route("/", mediaRoutes);

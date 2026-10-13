@@ -24,6 +24,7 @@ import { importLrcOnScan } from "../../utils/lrcSidecar";
 import { R2_BUILTIN_ID, synthesizeR2Row } from "./sources";
 import { registerR2Object } from "../../utils/storageResolver";
 import { normalizeSuffix } from "../../utils/storageObjects";
+import { isVideoSuffix, syncScannedVideos } from "../../media/videos";
 
 export const scanRoutes = new Hono();
 
@@ -390,6 +391,8 @@ export async function asyncScanSource(
   const newInserts: Array<{ uri: string; masterId: string }> = [];
   try {
     const { entries, complete } = await listWebdav(src);
+    await syncScannedVideos(db, src.id, "webdav", entries.filter((entry) => !entry.isDir), complete,
+      entries.some((entry) => !entry.isDir), src.mode);
     const audio = entries.filter((e) => !e.isDir && AUDIO_EXT.has(extOf(e.path)));
 
     // existing instance keyed by storage_uri. One query instead of N per-file
@@ -676,23 +679,30 @@ export async function asyncScanS3Source(
       region: src.region || "us-east-1",
     };
 
-    // Collect all audio objects across all pages
+    // Collect playable media objects separately from the audio work queue.
     const audio: Array<{ key: string; size: number; etag: string | null; lastModified: number | null }> = [];
+    const videos: Array<{ path: string; size: number }> = [];
+    let listingHadItems = false;
     let nextToken: string | undefined;
     let pages = 0;
     let complete = true;
 
     do {
       const result = await listS3Objects(config, nextToken, 1000);
+      listingHadItems ||= result.objects.length > 0;
       for (const obj of result.objects) {
         if (AUDIO_EXT.has(extOf(obj.key))) {
           audio.push(obj);
+        } else if (isVideoSuffix(extOf(obj.key))) {
+          videos.push({ path: obj.key, size: obj.size });
         }
       }
       nextToken = result.nextToken ?? undefined;
       pages++;
       if (pages >= MAX_S3_PAGES && nextToken) { complete = false; break; }
     } while (nextToken);
+
+    await syncScannedVideos(db, src.id, "s3", videos, complete, listingHadItems, src.mode);
 
     // Pull prior snapshot (same structure as WebDAV scan)
     const existingMap = new Map<string, ExistingRow>();
@@ -912,11 +922,14 @@ export async function asyncScanR2Source(
 
   try {
     const audio: Array<{ key: string; size: number; etag: string | null; lastModified: number | null }> = [];
+    const videos: Array<{ path: string; size: number }> = [];
+    let listingHadItems = false;
     let cursor: string | undefined;
     let pages = 0;
     let complete = true;
     do {
       const listing = await env.MUSIC_BUCKET.list({ prefix: "objects/", cursor, limit: 1000 });
+      listingHadItems ||= listing.objects.length > 0;
       for (const o of listing.objects) {
         if (AUDIO_EXT.has(extOf(o.key))) {
           audio.push({
@@ -925,12 +938,16 @@ export async function asyncScanR2Source(
             etag: o.etag || null,
             lastModified: o.uploaded ? Math.floor(o.uploaded.getTime() / 1000) : null,
           });
+        } else if (isVideoSuffix(extOf(o.key))) {
+          videos.push({ path: o.key, size: o.size });
         }
       }
       cursor = listing.truncated ? listing.cursor : undefined;
       pages++;
       if (pages >= MAX_R2_PAGES && cursor) { complete = false; break; }
     } while (cursor);
+
+    await syncScannedVideos(db, src.id, "r2", videos, complete, listingHadItems, src.mode);
 
     // Pull prior snapshot (same structure as WebDAV/S3 scan).
     const existingMap = new Map<string, ExistingRow>();

@@ -39,6 +39,8 @@ import { lastfmRoutes } from "./lastfm";
 import { artistScrapeRoutes } from "./artistScrape";
 import { messagesRoutes } from "./messages";
 import { albumDisplayGroupRoutes } from "./albumDisplayGroups";
+import { videoRoutes } from "./videos";
+import { videoMediaRoutes } from "./media";
 
 export const edgesonicRoutes = new Hono();
 
@@ -62,3 +64,5 @@ edgesonicRoutes.route("/", lastfmRoutes);
 edgesonicRoutes.route("/", artistScrapeRoutes);
 edgesonicRoutes.route("/", messagesRoutes);
 edgesonicRoutes.route("/", albumDisplayGroupRoutes);
+edgesonicRoutes.route("/", videoRoutes);
+edgesonicRoutes.route("/", videoMediaRoutes);
