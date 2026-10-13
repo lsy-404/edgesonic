@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { FluentSwitch } from "@platform-kit/fluent/vue";
 import Icon from "./Icon.vue";
@@ -9,10 +9,12 @@ import { useKtvSettingsStore } from "../stores/ktvSettings";
 
 const { t } = useI18n();
 const settings = useKtvSettingsStore();
+const effectiveMediaMode = computed(() => settings.canUseContainer ? settings.mediaMode : "compatible");
 onMounted(() => { if (!settings.loaded) void settings.load(); });
 
 async function setEnabled(enabled: boolean) { await settings.save({ enabled }); }
 async function setMode(mode: "fair" | "fifo") { await settings.save({ mode }); }
+async function setMediaMode(mediaMode: "full" | "compatible") { await settings.save({ mediaMode }); }
 async function setEmbeddedVideo(allowEmbeddedVideo: boolean) { await settings.save({ allowEmbeddedVideo }); }
 </script>
 
@@ -37,11 +39,19 @@ async function setEmbeddedVideo(allowEmbeddedVideo: boolean) { await settings.sa
           <button type="button" class="btn-secondary btn-sm" :class="{ selected: settings.mode === 'fifo' }" :disabled="settings.busy || !settings.enabled" @click="setMode('fifo')">{{ t("settings.ktv.fifo") }}</button>
         </div>
       </div>
-      <label v-if="settings.mediaMode === 'compatible'" class="ktv-enable-row">
+      <div class="ktv-mode-row">
+        <span class="tc-key">{{ t("settings.ktv.mediaMode") }}</span>
+        <div v-if="settings.canUseContainer" class="ktv-mode-options" role="group" :aria-label="t('settings.ktv.mediaMode')">
+          <button type="button" class="btn-secondary btn-sm" :class="{ selected: settings.mediaMode === 'full' }" :disabled="settings.busy" @click="setMediaMode('full')">{{ t("settings.ktv.fullMode") }}</button>
+          <button type="button" class="btn-secondary btn-sm" :class="{ selected: settings.mediaMode === 'compatible' }" :disabled="settings.busy" @click="setMediaMode('compatible')">{{ t("settings.ktv.compatibleMode") }}</button>
+        </div>
+        <span v-else class="tc-key">{{ t("settings.ktv.compatibleMode") }}</span>
+      </div>
+      <label v-if="effectiveMediaMode === 'compatible'" class="ktv-enable-row">
         <span class="tc-key">{{ t("settings.ktv.embeddedVideo") }}</span>
         <FluentSwitch :model-value="settings.allowEmbeddedVideo" :disabled="settings.busy" :aria-label="t('settings.ktv.embeddedVideo')" @update:model-value="setEmbeddedVideo" />
       </label>
-      <p v-if="settings.mediaMode === 'compatible'" class="feature-desc">{{ settings.allowEmbeddedVideo ? t("settings.ktv.compatibilityHint") : t("settings.ktv.compatibilityDisabled") }}</p>
+      <p v-if="effectiveMediaMode === 'compatible'" class="feature-desc">{{ settings.allowEmbeddedVideo ? t("settings.ktv.compatibilityHint") : t("settings.ktv.compatibilityDisabled") }}</p>
       <RouterLink v-if="settings.enabled" class="btn-primary ktv-entry" to="/ktv">{{ t("ktv.enterPrep") }}</RouterLink>
       <p v-if="settings.error" class="ktv-settings-error" role="alert">{{ settings.error }}</p>
     </div>

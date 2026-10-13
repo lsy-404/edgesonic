@@ -995,6 +995,9 @@
       "embeddedVideo": "允许嵌入平台视频",
       "compatibilityHint": "平台视频将在嵌入框中播放，可能无法控制播放或与音频同步。",
       "compatibilityDisabled": "已禁用嵌入式平台视频。",
+      "mediaMode": "播放模式",
+      "fullMode": "完整播放",
+      "compatibleMode": "兼容模式",
       "mode": "默认点歌顺序",
       "fair": "轮流点歌",
       "fifo": "先点先播"

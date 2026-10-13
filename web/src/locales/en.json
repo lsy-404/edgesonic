@@ -998,6 +998,9 @@
       "embeddedVideo": "Allow embedded platform videos",
       "compatibilityHint": "Platform videos play in an embedded frame. Playback controls and audio synchronization may be unavailable.",
       "compatibilityDisabled": "Embedded platform videos are disabled.",
+      "mediaMode": "Playback mode",
+      "fullMode": "Full playback",
+      "compatibleMode": "Compatible",
       "mode": "Default request order",
       "fair": "Fair turns",
       "fifo": "First requested"

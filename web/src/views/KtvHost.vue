@@ -37,6 +37,7 @@ const mediaSession = ref<MediaSession | null>(null);
 const page = ref<HTMLDivElement | null>(null);
 const mediaSurface = ref<InstanceType<typeof MediaSurface> | null>(null);
 const stage = ref(false);
+const stageControlsVisible = ref(false);
 const fullscreen = ref(false);
 const showStageQr = ref(false);
 const showStageHelp = ref(false);
@@ -57,15 +58,17 @@ let socketRetryTimer: number | undefined;
 let lastFinishedId = "";
 let itemGeneration = 0;
 let deliberateClose = false;
+let stageControlsTimer: number | undefined;
 
 const current = computed(() => room.value?.current ?? null);
 const currentAudio = computed(() => !!current.value?.audioId);
 const iframeTransport = computed(() => mediaSession.value?.transport === "iframe");
 const iframeAudioMismatch = computed(() => iframeTransport.value && currentAudio.value);
 const iframeVideoUncontrolled = computed(() => iframeTransport.value && !currentAudio.value);
+const hostMediaMode = computed(() => settings.canUseContainer ? settings.mediaMode : "compatible");
 const embeddedVideoAllowed = computed(() => room.value
   ? room.value.mediaMode !== "compatible" || room.value.allowEmbeddedVideo
-  : settings.mediaMode !== "compatible" || settings.allowEmbeddedVideo);
+  : hostMediaMode.value !== "compatible" || settings.allowEmbeddedVideo);
 const canAdvance = computed(() => !!current.value || room.value?.queue[0]?.status === "queued");
 const linkedOffset = computed(() => current.value?.offsetMs ?? 0);
 const activeComments = computed(() => comments.value.filter((item) => !current.value || item.itemId === current.value.id));
@@ -363,6 +366,38 @@ function seekStage(delta: number) {
   else mediaSurface.value?.seekTo(next);
 }
 
+function clearStageControlsTimer() {
+  if (stageControlsTimer !== undefined) clearTimeout(stageControlsTimer);
+  stageControlsTimer = undefined;
+}
+
+function controlsHaveFocus() {
+  const toolbar = page.value?.querySelector(".stage-toolbar");
+  return !!toolbar?.contains(document.activeElement);
+}
+
+function scheduleStageControlsHide() {
+  clearStageControlsTimer();
+  stageControlsTimer = window.setTimeout(() => {
+    stageControlsTimer = undefined;
+    if (controlsHaveFocus()) return;
+    stageControlsVisible.value = false;
+    showStageHelp.value = false;
+  }, 3000);
+}
+
+function revealStageControls() {
+  if (!stage.value) return;
+  stageControlsVisible.value = true;
+  scheduleStageControlsHide();
+}
+
+function onStageControlsFocusOut() {
+  window.setTimeout(() => {
+    if (stage.value && !controlsHaveFocus()) scheduleStageControlsHide();
+  }, 0);
+}
+
 async function toggleFullscreen() {
   try {
     if (document.fullscreenElement === page.value) await document.exitFullscreen();
@@ -372,11 +407,17 @@ async function toggleFullscreen() {
 
 async function enterStage() {
   stage.value = true;
+  stageControlsVisible.value = false;
+  showStageQr.value = false;
+  clearStageControlsTimer();
   await toggleFullscreen();
+  page.value?.focus({ preventScroll: true });
 }
 
 async function returnToPreparation() {
   stage.value = false;
+  stageControlsVisible.value = false;
+  clearStageControlsTimer();
   if (document.fullscreenElement === page.value) await document.exitFullscreen().catch(() => {});
 }
 
@@ -384,8 +425,9 @@ function onFullscreenChange() { fullscreen.value = document.fullscreenElement ==
 
 function onStageKeydown(event: KeyboardEvent) {
   if (!stage.value || event.altKey || event.ctrlKey || event.metaKey) return;
+  revealStageControls();
   const target = event.target;
-  if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(target.tagName))) return;
+  if (target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
   if (event.code === "Space") { event.preventDefault(); void toggleStagePlayback(); }
   else if (event.key === "ArrowLeft") { event.preventDefault(); seekStage(-10); }
   else if (event.key === "ArrowRight") { event.preventDefault(); seekStage(10); }
@@ -413,6 +455,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  clearStageControlsTimer();
   document.removeEventListener("fullscreenchange", onFullscreenChange);
   window.removeEventListener("keydown", onStageKeydown);
   itemGeneration++;
@@ -425,7 +468,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="page" class="ktv-page" :class="{ 'is-stage': stage }">
+  <div ref="page" class="ktv-page" :class="{ 'is-stage': stage }" :tabindex="stage ? -1 : undefined" @pointermove="revealStageControls" @pointerdown="revealStageControls">
     <header class="page-header ktv-header">
       <div>
         <div class="mono-label">EDGE SONIC / KTV</div>
@@ -482,7 +525,7 @@ onBeforeUnmount(() => {
 
       <div class="ktv-main-grid">
         <section class="card current-card">
-          <div v-if="stage" class="stage-toolbar" role="toolbar" :aria-label="t('ktv.stageHelp')">
+          <div v-if="stage && stageControlsVisible" class="stage-toolbar" role="toolbar" :aria-label="t('ktv.stageHelp')" @focusin="clearStageControlsTimer" @focusout="onStageControlsFocusOut">
             <button class="btn-secondary btn-sm" :aria-label="t('ktv.stageHelp')" :title="t('ktv.stageHelp')" @click="showStageHelp = !showStageHelp">{{ t("ktv.controls") }}</button>
             <button class="btn-secondary btn-sm" @click="showStageQr = !showStageQr">{{ showStageQr ? t("ktv.hideQr") : t("ktv.showQr") }}</button>
             <button class="btn-secondary btn-sm" :disabled="!current || iframeVideoUncontrolled" @click="seekStage(-10)">−10s</button>
@@ -492,14 +535,14 @@ onBeforeUnmount(() => {
             <button class="btn-secondary btn-sm" @click="toggleFullscreen">{{ fullscreen ? t("ktv.exitFullscreen") : t("ktv.fullscreen") }}</button>
             <button class="btn-secondary btn-sm" @click="returnToPreparation">{{ t("ktv.backToPreparation") }}</button>
           </div>
-          <div v-if="stage && showStageHelp" class="stage-help" role="status">{{ t("ktv.stageShortcuts") }}</div>
+          <div v-if="stage && stageControlsVisible && showStageHelp" class="stage-help" role="status">{{ t("ktv.stageShortcuts") }}</div>
           <aside v-if="stage && showStageQr" class="stage-qr-panel">
             <img v-if="qrData" class="invite-qr" :src="qrData" :alt="t('ktv.joinQrAlt')" />
             <p>{{ t("ktv.invite") }}</p>
             <button class="btn-secondary btn-sm" @click="copyInvite">{{ t("ktv.copyLink") }}</button>
           </aside>
-          <div class="mono-label">{{ current ? t("ktv.status.playing") : t("ktv.chooseSource") }}</div>
-          <div v-if="current" class="current-layout">
+          <div class="mono-label stage-mode-label">{{ current ? t("ktv.status.playing") : t("ktv.chooseSource") }}</div>
+          <div v-if="current" class="current-layout" :class="{ 'stage-audio-only': stage && currentAudio && !mediaSession }">
             <MediaSurface
               v-if="mediaSession"
               ref="mediaSurface"
@@ -541,9 +584,14 @@ onBeforeUnmount(() => {
               </label>
             </div>
           </div>
+          <div v-if="stage && currentAudio && !mediaSession" class="stage-audio-content">
+            <strong>{{ current?.title }}</strong>
+            <span v-if="current?.artist">{{ current.artist }}</span>
+            <button v-if="!player.playing" type="button" class="btn-primary" @click="toggleStagePlayback">{{ t("ktv.play") }}</button>
+          </div>
           <NowPlaying v-if="currentAudio && player.current?.id === current?.audioId" class="ktv-lyrics" />
           <div v-if="!current" class="empty-current">{{ t("ktv.emptyQueue") }}</div>
-          <div v-if="stage && current && !iframeVideoUncontrolled" class="stage-progress" aria-live="off">{{ Math.floor(stagePosition / 60) }}:{{ String(Math.floor(stagePosition % 60)).padStart(2, '0') }} / {{ Math.floor((currentAudio ? player.duration : mediaDuration) / 60) }}:{{ String(Math.floor((currentAudio ? player.duration : mediaDuration) % 60)).padStart(2, '0') }}</div>
+          <div v-if="stage && stageControlsVisible && current && !iframeVideoUncontrolled" class="stage-progress" aria-live="off">{{ Math.floor(stagePosition / 60) }}:{{ String(Math.floor(stagePosition % 60)).padStart(2, '0') }} / {{ Math.floor((currentAudio ? player.duration : mediaDuration) / 60) }}:{{ String(Math.floor((currentAudio ? player.duration : mediaDuration) % 60)).padStart(2, '0') }}</div>
         </section>
 
         <section class="card queue-card">
@@ -670,19 +718,20 @@ onBeforeUnmount(() => {
 .error-text { color: var(--color-danger, #d13438); }
 .ktv-error { margin: 0; }
 .stage-toolbar, .stage-help, .stage-qr-panel, .stage-progress { display: none; }
-.ktv-page.is-stage { position: fixed; inset: 0; z-index: 1200; display: block; max-width: none; overflow: auto; padding: 1rem; color: #fff; background: #050608; }
+.ktv-page.is-stage { position: fixed; inset: 0; z-index: 1200; display: block; width: 100vw; height: 100dvh; max-width: none; overflow: hidden; padding: 0; color: #fff; background: #050608; }
 .is-stage > .ktv-header, .is-stage > .ktv-top-grid, .is-stage > .request-card, .is-stage > .ktv-error { display: none; }
-.is-stage .ktv-main-grid { display: block; margin: 0 auto; max-width: 1500px; }
+.is-stage .ktv-main-grid { display: block; width: 100%; height: 100%; margin: 0 auto; max-width: none; }
 .is-stage .queue-card { display: none; }
-.is-stage .current-card { position: relative; min-height: calc(100dvh - 2rem); display: flex; flex-direction: column; justify-content: center; border: 0; padding: 3.5rem 0 2rem; background: transparent; box-shadow: none; }
-.is-stage .current-card > .mono-label { color: #bdc2ca; text-align: center; }
-.is-stage .current-layout { width: 100%; max-width: 1400px; margin: .75rem auto 0; }
-.is-stage .current-layout :deep(.media-surface) { width: 100%; aspect-ratio: 16 / 9; }
-.is-stage .current-layout :deep(.media-surface.audio-only) { height: auto; min-height: 210px; }
-.is-stage .current-copy { align-items: center; text-align: center; }
-.is-stage .current-copy h2 { margin: .25rem 0; font-size: clamp(1.4rem, 3vw, 2.4rem); }
-.is-stage .current-copy .current-actions, .is-stage .current-copy .ktv-seek { display: none; }
-.is-stage .ktv-lyrics { width: min(100%, 1100px); height: min(26vh, 240px); min-height: 130px; margin: .75rem auto 0; border: 0; }
+.is-stage .current-card { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; overflow: hidden; border: 0; padding: .5rem 1rem 5.5rem; background: transparent; box-shadow: none; }
+.is-stage .stage-mode-label, .is-stage .current-copy { display: none; }
+.is-stage .current-layout.stage-audio-only { display: none; }
+.is-stage .current-layout { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; width: 100%; min-height: 0; max-width: none; margin: 0; }
+.is-stage .current-layout :deep(.media-surface) { width: auto; height: min(calc(100dvh - 350px), 70dvh); max-width: 100%; max-height: calc(100dvh - 350px); min-height: 0; aspect-ratio: 16 / 9; margin: auto; }
+.is-stage .current-layout :deep(.media-surface.audio-only) { width: min(100%, 900px); height: auto; min-height: 210px; }
+.is-stage .stage-audio-content { display: grid; flex: 1 1 auto; align-content: center; justify-items: center; gap: .75rem; min-height: 0; padding: 1rem; text-align: center; }
+.is-stage .stage-audio-content strong { font-size: clamp(1.4rem, 3vw, 2.4rem); }
+.is-stage .stage-audio-content span { color: #bdc2ca; }
+.is-stage .ktv-lyrics { flex: 0 0 min(24vh, 220px); width: min(100%, 1100px); height: min(24vh, 220px); min-height: 100px; margin: 0 auto; border: 0; }
 .is-stage .ktv-lyrics :deep(.nowplaying) { height: 100%; }
 .is-stage .stage-toolbar { position: fixed; z-index: 3; inset: auto 1rem 1rem; display: flex; justify-content: center; flex-wrap: wrap; gap: .5rem; padding: .75rem; border: 1px solid #ffffff26; border-radius: 16px; background: #15171ddd; backdrop-filter: blur(12px); }
 .is-stage .stage-help { position: fixed; z-index: 4; left: 1rem; bottom: 5.5rem; display: block; max-width: min(34rem, calc(100vw - 2rem)); padding: .7rem 1rem; border-radius: 10px; color: #fff; background: #15171df2; }
@@ -690,8 +739,8 @@ onBeforeUnmount(() => {
 .is-stage .stage-qr-panel .invite-qr { width: 150px; height: 150px; }
 .is-stage .stage-qr-panel p { margin: 0; font-size: .8rem; }
 .is-stage .stage-progress { position: fixed; z-index: 2; bottom: 5.7rem; left: 50%; display: block; transform: translateX(-50%); color: #fff; font-variant-numeric: tabular-nums; text-shadow: 0 1px 4px #000; }
-.is-stage .empty-current { min-height: 35vh; }
+.is-stage .empty-current { display: grid; flex: 1 1 auto; min-height: 0; }
 @media (max-width: 850px) { .ktv-top-grid, .ktv-main-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) { .invite-card { align-items: flex-start; } .invite-qr { width: 100px; height: 100px; } .search-columns { grid-template-columns: minmax(0, 1fr); } .comment-form, .external-row { flex-direction: column; } }
-@media (max-width: 560px) { .ktv-page.is-stage { padding: .5rem; } .is-stage .current-card { min-height: calc(100dvh - 1rem); padding-top: 4rem; padding-bottom: 5.5rem; } .is-stage .stage-toolbar { inset: auto .5rem .5rem; gap: .35rem; padding: .55rem; } .is-stage .stage-toolbar button { padding-inline: .55rem; } .is-stage .stage-progress { bottom: 5.2rem; } .is-stage .stage-qr-panel { top: .5rem; right: .5rem; width: 150px; } .is-stage .stage-qr-panel .invite-qr { width: 110px; height: 110px; } }
+@media (max-width: 560px) { .is-stage .current-card { padding: .35rem .5rem 5rem; } .is-stage .stage-toolbar { inset: auto .5rem .5rem; gap: .35rem; padding: .55rem; } .is-stage .stage-toolbar button { padding-inline: .55rem; } .is-stage .current-layout :deep(.media-surface) { height: min(calc(100dvh - 280px), 70dvh); max-height: calc(100dvh - 280px); } .is-stage .stage-progress { bottom: 5.2rem; } .is-stage .stage-qr-panel { top: .5rem; right: .5rem; width: 150px; } .is-stage .stage-qr-panel .invite-qr { width: 110px; height: 110px; } }
 </style>
