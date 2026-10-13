@@ -1568,9 +1568,6 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
         <h1 class="page-title">{{ t("tools.title") }}</h1>
         <p class="page-description">{{ t("tools.intro") }}</p>
       </div>
-      <RouterLink v-if="hasPerm('participate_work')" to="/work" class="btn-primary btn-sm">
-        {{ t("tools.workMode") }}
-      </RouterLink>
     </div>
 
     <div v-if="!isUser" class="empty-state">
