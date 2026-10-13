@@ -9,13 +9,29 @@ export function recoverMetadataFromStoragePath<T extends StorageMetadata>(
   storageUriOrPath: string | null,
   metadata: T,
 ): T {
+  return recoverMetadata(storageUriOrPath, metadata, false);
+}
+
+export function recoverMetadataFromLogicalPath<T extends StorageMetadata>(
+  logicalPath: string | null,
+  metadata: T,
+): T {
+  return recoverMetadata(logicalPath, metadata, true);
+}
+
+function recoverMetadata<T extends StorageMetadata>(
+  storageUriOrPath: string | null,
+  metadata: T,
+  isLogicalPath: boolean,
+): T {
   const result = { ...metadata } as T;
   const path = storagePath(storageUriOrPath);
   if (!path) return result;
 
   const segments = path.split("/").map(decodeSegment);
   const filename = segments.at(-1) || "";
-  if (segments[0]?.toLowerCase() === "objects" || /^obj_[0-9a-f]{16,64}(?:\.[^./]+)?$/i.test(filename)) {
+  if ((!isLogicalPath && (segments[0]?.toLowerCase() === "objects" || /^obj_[0-9a-f]{16,64}(?:\.[^./]+)?$/i.test(filename))) ||
+      (isLogicalPath && isPhysicalObjectAddress(segments, filename))) {
     return result;
   }
   const albumAt = segments.indexOf("专辑");
@@ -24,7 +40,7 @@ export function recoverMetadataFromStoragePath<T extends StorageMetadata>(
     : rootAlbumName(segments);
   const title = cleanTrackName(filename);
 
-  if (looksLossy(result.title) && title) result.title = title;
+  if ((isObjectTitle(result.title) || !result.title?.trim() || looksLossy(result.title)) && title) result.title = title;
   if (looksLossy(result.album) && album) result.album = album;
   if (looksLossy(result.artist)) {
     result.artist = "Unknown Artist";
@@ -101,4 +117,29 @@ function cleanTrackName(filename: string): string {
 
 function looksLossy(value: string | undefined): boolean {
   return !!value && (value.includes("\uFFFD") || /[?？]{2,}/.test(value) || (value.includes("?") && /[^\x00-\x7f]/.test(value)));
+}
+
+export function isObjectTitle(value: string | undefined): boolean {
+  return !!value && /^obj(?:_[0-9a-f]{16,64})?$/i.test(value.trim());
+}
+
+export function hasReadableLogicalTrackTitle(path: string | null): boolean {
+  if (!path) return false;
+  const storagePathValue = storagePath(path);
+  if (!storagePathValue) return false;
+  const segments = storagePathValue.split("/").map(decodeSegment);
+  const filename = segments.at(-1) || "";
+  if (isPhysicalObjectAddress(segments, filename)) return false;
+  const title = cleanTrackName(filename);
+  return !!title && !/^obj_[0-9a-f]{16,64}$/i.test(title);
+}
+
+export function canRecoverLogicalTrackTitle(path: string | null, currentTitle: string | undefined): boolean {
+  return hasReadableLogicalTrackTitle(path) &&
+    (!currentTitle?.trim() || isObjectTitle(currentTitle) || looksLossy(currentTitle));
+}
+
+function isPhysicalObjectAddress(segments: string[], filename: string): boolean {
+  return segments.length === 2 && segments[0]?.toLowerCase() === "objects" &&
+    /^obj_[0-9a-f]{16,64}\.[^./]+$/i.test(filename);
 }

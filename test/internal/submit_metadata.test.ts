@@ -150,6 +150,14 @@ function buildDb() {
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
     );
+    CREATE TABLE storage_entries (
+      id TEXT PRIMARY KEY,
+      source_id TEXT,
+      parent_id TEXT,
+      path TEXT,
+      kind TEXT,
+      instance_id TEXT
+    );
 
     -- Seed: one admin with edit_tags + manage_sources (the latter for /findInstanceByUri).
     INSERT INTO users (username, master_password, level) VALUES ('alice', 'x', 2);
@@ -166,6 +174,40 @@ function buildDb() {
       VALUES ('inst-1', 'sg-1', 'r2://music/foo.m4a', 'm4a', 'audio/mp4', 5000000, 0);
   `);
   return sqlite;
+}
+
+async function filenameOnlyUploadFallbackTest() {
+  console.log("upload-only filename fallback requires a readable logical path:");
+  const sqlite = buildDb();
+  sqlite.prepare("INSERT INTO user_permissions VALUES (2, 'upload', 1, 0)").run();
+  sqlite.prepare("UPDATE user_permissions SET enabled = 0 WHERE level = 2 AND permission = 'edit_tags'").run();
+  sqlite.prepare("INSERT INTO song_masters (id, album_id, artist_id, title) VALUES ('sm-filename', 'al-old', 'ar-old', 'obj_abcdef0123456789')").run();
+  sqlite.prepare("INSERT INTO song_instances (id, master_id, storage_uri, suffix, size, tag_scanned) VALUES ('si-filename', 'sm-filename', 'r2://objects/obj_abcdef0123456789.flac', 'flac', 1000, 0)").run();
+  sqlite.prepare("INSERT INTO storage_entries (id, source_id, path, kind, instance_id) VALUES ('entry-filename', 'r2-local', 'Artist/Album/08 Logical Upload.flac', 'file', 'si-filename')").run();
+  const envExtra = {
+    WORK_UPLOAD_HMAC_KEY: "test-only-hmac-key-with-sufficient-entropy",
+    MUSIC_BUCKET: { async put() {} },
+  };
+  const { post } = makeApp(sqlite, envExtra);
+  const nonce = "filename-only-upload";
+  sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status, created_at) VALUES (?, 'manual_upload_pending', ?, 'canceled', 0)")
+    .run("wm-upload-pending-si-filename", JSON.stringify({ instanceId: "si-filename", storageUri: "r2://objects/obj_abcdef0123456789.flac", uploadNonce: nonce }));
+  const token = await issueUploadMetadataCapability(envExtra as any, "alice", "si-filename", "r2://objects/obj_abcdef0123456789.flac", nonce);
+  const applied = await post("/tag/submit-upload", { instanceId: "si-filename", token, tags: {} });
+  const saved = sqlite.prepare("SELECT title, album_id, artist_id FROM song_masters WHERE id='sm-filename'").get() as any;
+  assert(applied.status === 200 && saved.title === "Logical Upload", "filename-only upload uses a real logical path");
+  assert(saved.album_id === "al-old" && saved.artist_id === "ar-old", "filename-only fallback preserves known album and artist identity");
+
+  sqlite.prepare("INSERT INTO song_masters (id, album_id, artist_id, title) VALUES ('sm-empty', 'al-old', 'ar-old', 'Known Title')").run();
+  sqlite.prepare("INSERT INTO song_instances (id, master_id, storage_uri, suffix, size, tag_scanned) VALUES ('si-empty', 'sm-empty', 'r2://objects/obj_1234567890abcdef.flac', 'flac', 1000, 0)").run();
+  const emptyNonce = "empty-upload-no-path";
+  sqlite.prepare("INSERT INTO work_queue (id, task_type, payload, status, created_at) VALUES (?, 'manual_upload_pending', ?, 'canceled', 0)")
+    .run("wm-upload-pending-si-empty", JSON.stringify({ instanceId: "si-empty", storageUri: "r2://objects/obj_1234567890abcdef.flac", uploadNonce: emptyNonce }));
+  const emptyToken = await issueUploadMetadataCapability(envExtra as any, "alice", "si-empty", "r2://objects/obj_1234567890abcdef.flac", emptyNonce);
+  const rejected = await post("/tag/submit-upload", { instanceId: "si-empty", token: emptyToken, tags: {} });
+  const unchanged = sqlite.prepare("SELECT title, album_id, artist_id FROM song_masters WHERE id='sm-empty'").get() as any;
+  assert(rejected.status === 400, "empty upload without a logical filename is rejected before applying");
+  assert(unchanged.title === "Known Title" && unchanged.album_id === "al-old" && unchanged.artist_id === "ar-old", "rejected empty upload does not relink identity");
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +240,7 @@ function makeApp(sqlite: DatabaseSync, envExtra: Record<string, unknown> = {}) {
 
 // ---------------------------------------------------------------------------
 async function main() {
+  await filenameOnlyUploadFallbackTest();
 
 console.log("happy path: existing instance + full tags:");
 {

@@ -39,6 +39,7 @@ import {
   relinkArtistAlbum,
   type SubmittedMetadata,
 } from "../../utils/metadataApply";
+import { hasReadableLogicalTrackTitle, sourceFolderLogicalPath } from "../../utils/storageMetadata";
 import { writeEmbeddedCover, type EmbeddedCover } from "../../utils/embeddedCover";
 import { verifyUploadMetadataCapability } from "../../utils/uploadMetadataCapability";
 import { acquireUploadMetadataLease, releaseUploadMetadataLease } from "../../utils/uploadMetadataQueue";
@@ -148,7 +149,10 @@ metadataRoutes.post("/submit-upload", permissionMiddleware("upload"), async (c) 
   if (instance.tag_scanned !== 0) return c.json({ ok: false, error: "Upload metadata capability already used" }, 409);
 
   const tags = cleanInput(body.tags);
-  if (!hasAnyLogical(tags)) return c.json({ ok: false, error: "No usable tag fields" }, 400);
+  const logicalPath = await sourceFolderLogicalPath(env.DB, body.instanceId);
+  if (!hasAnyLogical(tags) && !hasReadableLogicalTrackTitle(logicalPath)) {
+    return c.json({ ok: false, error: "No usable tag fields" }, 400);
+  }
 
   const lease = await acquireUploadMetadataLease(env.DB, body.instanceId, instance.storage_uri, uploadNonce);
   if (!lease) return c.json({ ok: false, error: "Upload metadata generation is being changed or applied" }, 409);

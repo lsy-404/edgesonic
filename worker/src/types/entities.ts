@@ -84,6 +84,7 @@ export interface SongInstance {
   source_dedup_key: string | null;
   parent_instance_id: string | null;
   storage_uri: string;
+  logical_path?: string | null;
   storage_object_id: string | null;
   transcode_profile: string | null;
   suffix: string;

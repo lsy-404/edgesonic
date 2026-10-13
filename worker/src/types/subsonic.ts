@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import type { Artist, Album, SongMaster, Playlist, Bookmark, PlayQueue, InternetRadioStation, Share, PodcastChannel, PodcastEpisode } from "./entities";
-import { recoverMetadataFromStoragePath } from "../utils/storageMetadata";
+import { recoverMetadataFromLogicalPath, recoverMetadataFromStoragePath } from "../utils/storageMetadata";
 
 // All three mapXxx functions accept this as an optional 3rd arg so existing
 // callers (detail maps, etc.) compile unchanged.
@@ -80,8 +80,10 @@ export function mapArtist(a: Artist, annotation?: AnnotationLite): SubsonicArtis
   return applyAnnotation(obj, annotation);
 }
 
-export function mapAlbum(a: Album, artistName?: string, annotation?: AnnotationLite, storageUri?: string | null): SubsonicAlbum {
-  const display = recoverMetadataFromStoragePath(storageUri || "", {
+export function mapAlbum(a: Album, artistName?: string, annotation?: AnnotationLite, storageUri?: string | null, logicalPath?: string | null): SubsonicAlbum {
+  const display = logicalPath != null
+    ? recoverMetadataFromLogicalPath(logicalPath, { album: a.name, artist: artistName })
+    : recoverMetadataFromStoragePath(storageUri || "", {
     album: a.name,
     artist: artistName,
   });
@@ -106,17 +108,24 @@ export function mapSong(
     artist_name?: string | null; album_name?: string | null; album_artist_name?: string | null; album_year?: number | null;
     inst_suffix?: string | null; inst_content_type?: string | null;
     inst_bit_rate?: number | null; inst_size?: number | null;
-    inst_duration?: number | null; inst_storage_uri?: string | null;
+    inst_duration?: number | null; inst_storage_uri?: string | null; inst_logical_path?: string | null;
   },
   parentId: string,
   annotation?: AnnotationLite,
 ): SubsonicChild {
-  const display = recoverMetadataFromStoragePath(s.inst_storage_uri || "", {
+  const display = s.inst_logical_path != null
+    ? recoverMetadataFromLogicalPath(s.inst_logical_path, {
     title: s.title,
     artist: s.artist_name ?? undefined,
     album: s.album_name ?? undefined,
     albumArtist: s.album_artist_name ?? undefined,
-  });
+    })
+    : recoverMetadataFromStoragePath(s.inst_storage_uri || "", {
+      title: s.title,
+      artist: s.artist_name ?? undefined,
+      album: s.album_name ?? undefined,
+      albumArtist: s.album_artist_name ?? undefined,
+    });
   const obj: SubsonicChild = {
     id: s.id, parent: parentId, isDir: false,
     title: display.title || s.title,

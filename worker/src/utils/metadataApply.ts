@@ -31,7 +31,7 @@ import {
   parseArtistCredits,
   songArtistStatements,
 } from "./artistCredits";
-import { recoverMetadataFromStoragePath, sourceFolderAlbumName, sourceFolderLogicalPath } from "./storageMetadata";
+import { hasReadableLogicalTrackTitle, recoverMetadataFromLogicalPath, sourceFolderAlbumName, sourceFolderLogicalPath } from "./storageMetadata";
 
 export interface SubmittedMetadata {
   title?: string;
@@ -94,12 +94,13 @@ export async function applyMetadataResult(
   let tags = mergeToSubmitted(common ?? {}, format ?? {});
 
   const inst = await db.prepare(
-    `SELECT si.id, si.master_id, si.size, si.storage_uri, si.suffix, sm.album_id
+    `SELECT si.id, si.master_id, si.size, si.storage_uri, si.suffix, sm.album_id, sm.title
      FROM song_instances si LEFT JOIN song_masters sm ON sm.id = si.master_id WHERE si.id = ?`,
-  ).bind(instanceId).first<{ id: string; master_id: string; size: number | null; storage_uri: string; suffix: string; album_id: string | null }>();
+  ).bind(instanceId).first<{ id: string; master_id: string; size: number | null; storage_uri: string; suffix: string; album_id: string | null; title: string }>();
   if (!inst) return { updated: false, reason: "instance not found" };
   const logicalPath = await sourceFolderLogicalPath(db, instanceId);
-  tags = recoverMetadataFromStoragePath(logicalPath, tags);
+  if (!tags.title && hasReadableLogicalTrackTitle(logicalPath)) tags.title = inst.title || undefined;
+  tags = recoverMetadataFromLogicalPath(logicalPath, tags);
   if (!tags.album && inst.album_id === "pending-uploads") {
     tags.album = await sourceFolderAlbumName(db, instanceId) ?? undefined;
   }

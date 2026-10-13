@@ -374,6 +374,24 @@ async function main() {
   const usableRead = usableReadDb.prepare("SELECT sm.album_id, al.name FROM song_masters sm JOIN albums al ON al.id=sm.album_id WHERE sm.id='sg-a'").get() as { album_id: string; name: string };
   assert(usableRead.album_id === "al-old" && usableRead.name === "Old Album", "tag/read keeps a usable album when the native album tag is a placeholder");
   usableReadDb.close();
+
+  const objectTitleReadDb = buildDb();
+  objectTitleReadDb.exec("UPDATE song_instances SET tag_scanned=1 WHERE id='inst-b'; UPDATE song_masters SET title='obj_abcdef0123456789' WHERE id='sg-a'; UPDATE song_instances SET storage_uri='r2://music/no-tags.mp3', tag_scanned=0 WHERE id='inst-a';");
+  objectTitleReadDb.prepare("INSERT INTO storage_entries(id,source_id,path,kind,instance_id) VALUES ('entry-no-tags','r2-local','Artist/Album/08 Logical No Tags.mp3','file','inst-a')").run();
+  await appFor(objectTitleReadDb)("/tag/read?batch=1");
+  const recoveredNoTags = objectTitleReadDb.prepare("SELECT sm.title, sm.album_id, sm.artist_id, si.tag_scanned FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.id='sg-a'").get() as { title: string; album_id: string; artist_id: string; tag_scanned: number };
+  assert(recoveredNoTags.title === "Logical No Tags" && recoveredNoTags.tag_scanned === 1, "Read Tags uses a readable logical filename when embedded tags are absent");
+  assert(recoveredNoTags.album_id === "al-old" && recoveredNoTags.artist_id === "ar-track-a", "filename-only reparse preserves existing album and artist identity");
+  objectTitleReadDb.close();
+
+  const emptyParseReadDb = buildDb();
+  emptyParseReadDb.exec("UPDATE song_instances SET tag_scanned=1 WHERE id='inst-b'; UPDATE song_instances SET storage_uri='r2://music/no-tags.mp3', tag_scanned=0 WHERE id='inst-a';");
+  await appFor(emptyParseReadDb)("/tag/read?batch=1");
+  const unchangedEmptyParse = emptyParseReadDb.prepare("SELECT sm.title, sm.album_id, sm.artist_id, si.tag_scanned FROM song_masters sm JOIN song_instances si ON si.master_id=sm.id WHERE sm.id='sg-a'").get() as { title: string; album_id: string; artist_id: string; tag_scanned: number };
+  assert(unchangedEmptyParse.tag_scanned === 2, "Read Tags leaves unsupported empty parses untagged without a logical filename");
+  assert(unchangedEmptyParse.title === "Same Title" && unchangedEmptyParse.album_id === "al-old" && unchangedEmptyParse.artist_id === "ar-track-a", "empty parse without a logical filename does not change stored identity");
+  emptyParseReadDb.close();
+
   for (const key of ["different-album-read.mp3", "different-artist-read.mp3"]) {
     const changedAlbumDb = buildDb();
     changedAlbumDb.exec("INSERT INTO artists(id,name,sort_name) VALUES ('ar-album','Album Ensemble','album ensemble'); UPDATE song_masters SET album_artist_id='ar-album' WHERE id='sg-b'; UPDATE song_instances SET tag_scanned=1 WHERE id='inst-a';");

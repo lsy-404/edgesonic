@@ -59,6 +59,18 @@ const songResponse = mapSong({
 }, "al-damaged");
 assert(songResponse.title === "大风歌20XX" && songResponse.album === "从众效应Conformity" && songResponse.artist === "Unknown Artist", "song API response repairs the detail view without mutating source data");
 
+const objectBackedSong = mapSong({
+  id: "sm-object", album_id: "al-object", artist_id: "ar-object", album_artist_id: null,
+  title: "obj_abcdef0123456789", sort_title: null, track: null, disc: null, duration: null, genre: null,
+  compilation: 0, participants: null, lyrics: null, lyrics_rich: null, created_at: 0, updated_at: 0,
+  artist_name: "Known Artist", album_name: "Known Album", album_artist_name: "Known Album Artist",
+  inst_storage_uri: "r2://objects/obj_abcdef0123456789.flac",
+  inst_logical_path: "Known Artist/Known Album/08 Logical Name.flac",
+}, "al-object");
+assert(objectBackedSong.title === "Logical Name" && objectBackedSong.album === "Known Album" &&
+  objectBackedSong.artist === "Known Artist" && objectBackedSong.albumArtist === "Known Album Artist",
+  "Subsonic mapping prefers the logical filename while retaining known identity and ignoring the physical object key");
+
 const questionOnlyAlbum = mapAlbum({
   id: "al-question", name: "？？xx? Conformity", sort_name: null, year: null, genre: null,
   cover_r2_key: null, song_count: 1, duration: 0, size: 0, compilation: 0, created_at: 0, updated_at: 0,

@@ -18,7 +18,8 @@ import { permissionMiddleware } from "../../auth";
 import { md5 } from "../../utils/md5";
 import { parseTags, type SongTags } from "../../utils/tags";
 import { fetchSlices, type SourceRow } from "../../utils/slices";
-import { recoverMetadataFromStoragePath, sourceFolderAlbumName, sourceFolderLogicalPath } from "../../utils/storageMetadata";
+import { applyMetadataResult } from "../../utils/metadataApply";
+import { canRecoverLogicalTrackTitle, hasReadableLogicalTrackTitle, recoverMetadataFromLogicalPath, sourceFolderAlbumName, sourceFolderLogicalPath } from "../../utils/storageMetadata";
 import {
   compilationMarkerStatement,
   normalizeScannedAlbumName,
@@ -48,7 +49,7 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
 
   const rows = (await db.prepare(
     `SELECT si.id, si.master_id, si.source_id, si.storage_uri, si.suffix,
-            sm.album_id AS current_album_id, al.name AS current_album_name,
+            sm.album_id AS current_album_id, sm.title AS current_title, al.name AS current_album_name,
             al.compilation AS current_album_compilation,
             aa.name AS current_album_artist_name, ar.name AS current_artist_name
      FROM song_instances si
@@ -61,7 +62,7 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
   ).bind(...(onlySource ? [onlySource, batch] : [batch]))
     .all<{
       id: string; master_id: string; source_id: string; storage_uri: string; suffix: string;
-      current_album_id: string | null; current_album_name: string | null;
+      current_album_id: string | null; current_title: string; current_album_name: string | null;
       current_album_compilation: number | null; current_album_artist_name: string | null;
       current_artist_name: string | null;
     }>()).results;
@@ -85,10 +86,26 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
       if (slices) {
         const parsed = parseTags(slices.head, slices.tail);
         const logicalPath = await sourceFolderLogicalPath(db, row.id);
-        const fallbackTags = parsed ?? (row.current_album_id === "pending-uploads" ? {} : null);
+        const canRecoverTitle = canRecoverLogicalTrackTitle(logicalPath, row.current_title);
+        const useFilenameFallback = canRecoverTitle ||
+          (row.current_album_id === "pending-uploads" && hasReadableLogicalTrackTitle(logicalPath));
+        const parsedHasIdentity = !!(parsed?.title || parsed?.artist || parsed?.album);
+        const fallbackTags = parsedHasIdentity ? parsed : useFilenameFallback ? {} : null;
         const tags: SongTags | null = fallbackTags
-          ? recoverMetadataFromStoragePath(logicalPath, fallbackTags)
+          ? recoverMetadataFromLogicalPath(logicalPath, {
+            ...fallbackTags,
+            title: fallbackTags.title || row.current_title || undefined,
+          })
           : null;
+        if (tags && !parsedHasIdentity && useFilenameFallback) {
+          databaseAttempted = true;
+          const result = await applyMetadataResult(db, row.id, { title: tags.title }, {}, { scanIdentity: true });
+          if (result.updated) {
+            scanned = 1;
+            tagged++;
+          }
+          continue;
+        }
         if (tags && !tags.album && row.current_album_id === "pending-uploads") {
           databaseAttempted = true;
           tags.album = await sourceFolderAlbumName(db, row.id) ?? undefined;

@@ -120,7 +120,7 @@ const getAlbumHandler = async (c: Context) => {
     subsonicOK({
       album: {
         _attributes: {
-          ...mapAlbum(album, firstSong?.album_artist_name ?? firstSong?.artist_name ?? undefined, liteOf(albumAnn.get(`album:${id}`)), firstSong?.inst_storage_uri),
+          ...mapAlbum(album, firstSong?.album_artist_name ?? firstSong?.artist_name ?? undefined, liteOf(albumAnn.get(`album:${id}`)), firstSong?.inst_storage_uri, firstSong?.inst_logical_path),
           artistId: firstSong?.album_artist_id || firstSong?.artist_id || undefined,
         },
         song: songs.map((s) =>
@@ -158,6 +158,7 @@ const getSongHandler = async (c: Context) => {
     inst_size: selected?.size ?? song.inst_size,
     inst_duration: selected?.duration ?? song.inst_duration,
     inst_storage_uri: selected?.storage_uri ?? song.inst_storage_uri,
+    inst_logical_path: selected?.logical_path ?? song.inst_logical_path,
   }, song.album_id, liteOf(ann.get(`song:${id}`)));
   return c.text(
     subsonicOK({ song: {
@@ -234,7 +235,7 @@ const albumList2Handler = async (c: Context, tag: "albumList" | "albumList2") =>
       [tag]: {
         album: albums.map((a) =>
           attrs({
-            ...mapAlbum(a, a.artist_name ?? undefined, liteOf(ann.get(`album:${a.id}`)), a.storage_uri),
+            ...mapAlbum(a, a.artist_name ?? undefined, liteOf(ann.get(`album:${a.id}`)), a.storage_uri, a.logical_path),
             artistId: a.artist_id ?? undefined,
           })
         ),

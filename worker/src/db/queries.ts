@@ -34,6 +34,7 @@ export interface SongPhysical {
   inst_size: number | null;
   inst_duration: number | null;
   inst_storage_uri: string | null;
+  inst_logical_path: string | null;
 }
 
 export type SongRow = SongMaster & SongNames & SongPhysical;
@@ -53,7 +54,9 @@ const SONG_ROW_COLS = `sm.*,
        aar.name AS album_artist_name,
        si.suffix AS inst_suffix, si.content_type AS inst_content_type,
        si.bit_rate AS inst_bit_rate, si.size AS inst_size,
-       si.duration AS inst_duration, si.storage_uri AS inst_storage_uri`;
+       si.duration AS inst_duration, si.storage_uri AS inst_storage_uri,
+       (SELECT CASE WHEN COUNT(*) = 1 THEN MIN(path) END FROM storage_entries
+        WHERE instance_id = si.id AND kind = 'file') AS inst_logical_path`;
 
 const SONG_SEARCH_ROW_COLS = `sm.id, sm.album_id, sm.artist_id, sm.title, sm.track, sm.disc,
        sm.duration, sm.genre, sm.created_at,
@@ -67,7 +70,9 @@ const SONG_SEARCH_ROW_COLS = `sm.id, sm.album_id, sm.artist_id, sm.title, sm.tra
        aar.name AS album_artist_name,
        si.suffix AS inst_suffix, si.content_type AS inst_content_type,
        si.bit_rate AS inst_bit_rate, si.size AS inst_size,
-       si.duration AS inst_duration, si.storage_uri AS inst_storage_uri`;
+       si.duration AS inst_duration, si.storage_uri AS inst_storage_uri,
+       (SELECT CASE WHEN COUNT(*) = 1 THEN MIN(path) END FROM storage_entries
+        WHERE instance_id = si.id AND kind = 'file') AS inst_logical_path`;
 
 const SONG_ROW_JOINS = `LEFT JOIN artists ar ON ar.id = sm.artist_id
        LEFT JOIN artists aar ON aar.id = sm.album_artist_id
@@ -249,7 +254,7 @@ export function createQueries(db: D1Database) {
         genre?: string;
         musicFolderId?: string;
       } = {},
-    ): Promise<Array<Album & { artist_name: string | null; artist_id: string | null; storage_uri: string | null }>> {
+    ): Promise<Array<Album & { artist_name: string | null; artist_id: string | null; storage_uri: string | null; logical_path: string | null }>> {
       // ORDER BY is selected by type. WHERE is composed from opts so any type
       // may be filtered further (genre / musicFolderId / etc).
       let order: string;
@@ -400,6 +405,15 @@ export function createQueries(db: D1Database) {
            ORDER BY CASE WHEN si.storage_uri LIKE 'r2://%' THEN 0 ELSE 1 END ASC,
                     si.bit_rate DESC
            LIMIT 1) AS storage_uri,
+          (SELECT CASE WHEN COUNT(*) = 1 THEN MIN(se.path) END
+           FROM song_masters sm JOIN song_instances si ON si.master_id = sm.id AND si.missing = 0
+           JOIN storage_entries se ON se.instance_id = si.id AND se.kind = 'file'
+           WHERE sm.album_id = a.id
+             AND si.id = (SELECT si2.id FROM song_masters sm2
+                          JOIN song_instances si2 ON si2.master_id = sm2.id AND si2.missing = 0
+                          WHERE sm2.album_id = a.id
+                          ORDER BY CASE WHEN si2.storage_uri LIKE 'r2://%' THEN 0 ELSE 1 END ASC,
+                                   si2.bit_rate DESC LIMIT 1)) AS logical_path,
           COALESCE((SELECT AVG(an.rating) FROM annotations an
                     WHERE an.item_id = a.id AND an.item_type = 'album' AND an.rating IS NOT NULL), 0) AS avg_rating,
           ${listeningStats},
@@ -414,7 +428,7 @@ export function createQueries(db: D1Database) {
 
       const result = await db.prepare(sql)
         .bind(...binds, size, offset)
-        .all<Album & { artist_name: string | null; artist_id: string | null; storage_uri: string | null }>();
+        .all<Album & { artist_name: string | null; artist_id: string | null; storage_uri: string | null; logical_path: string | null }>();
       return result.results;
     },
 
@@ -488,7 +502,10 @@ export function createQueries(db: D1Database) {
         // source tier, higher bit_rate wins to preserve the earlier quality
         // preference. media.ts still runs the full selector loop for
         // format/maxBitRate overrides.
-        `SELECT * FROM song_instances
+        `SELECT si.*,
+                (SELECT CASE WHEN COUNT(*) = 1 THEN MIN(path) END FROM storage_entries
+                 WHERE instance_id = si.id AND kind = 'file') AS logical_path
+         FROM song_instances si
          WHERE master_id = ? AND missing = 0
          ORDER BY
            CASE WHEN storage_uri LIKE 'r2://%' THEN 0 ELSE 1 END ASC,
