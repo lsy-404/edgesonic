@@ -2,7 +2,7 @@ import express from "express";
 import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { createWriteStream, statSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, rm, stat, unlink } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, rm, stat, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
@@ -12,6 +12,13 @@ const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const MAX_SESSIONS = 12;
 const MAX_ACTIVE_JOBS = 3;
 const MAX_ACTIVE_UPLOADS = 2;
+const MAX_ACTIVE_SEARCHES = 2;
+const MAX_SEARCH_QUERY_LENGTH = 200;
+const MAX_SEARCH_OUTPUT_BYTES = 1024 * 1024;
+const MAX_QR_SESSIONS = 8;
+const QR_TTL_MS = 180 * 1000;
+const QR_RESULT_TTL_MS = 30 * 1000;
+const MAX_ACCOUNT_COOKIE_BYTES = 64 * 1024;
 const MAX_UPLOAD_BYTES = 1024 * 1024 * 1024;
 const MAX_SESSION_DISK_BYTES = 2 * 1024 * 1024 * 1024;
 const MAX_SESSION_HLS_VARIANTS = 8;
@@ -23,10 +30,13 @@ const VIDEO_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", 
 const BILI_HOSTS = new Set(["b23.tv", "www.b23.tv", "bilibili.com", "www.bilibili.com", "m.bilibili.com", "bilibili.tv", "www.bilibili.tv", "m.bilibili.tv"]);
 const EXTERNAL_MEDIA_HOSTS = ["youtube.com", "googlevideo.com", "googleusercontent.com", "bilibili.com", "bilivideo.com", "bilivideo.cn", "biliapi.net", "hdslb.com"];
 const sessions = new Map();
+const qrSessions = new Map();
 const activeJobs = new Set();
 const jobWaiters = [];
 let activeResolvers = 0;
 let activeUploads = 0;
+let activeSearches = 0;
+let activeQrCreates = 0;
 
 await mkdir(ROOT, { recursive: true });
 for (const entry of await readdir(ROOT, { withFileTypes: true })) {
@@ -47,6 +57,46 @@ function validExternalUrl(value) {
     return url.protocol === "https:" && (EXTERNAL_MEDIA_HOSTS.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`)) || (/^upos-[a-z0-9-]+\.akamaized\.net$/i.test(url.hostname)));
   } catch {
     return false;
+  }
+}
+
+function cleanHeaders(headers) {
+  if (!headers || typeof headers !== "object") return {};
+  return Object.fromEntries(Object.entries(headers).filter(([key, value]) =>
+    !["cookie", "authorization", "proxy-authorization"].includes(key.toLowerCase()) && typeof value === "string" && !/[\r\n]/.test(value)));
+}
+
+function cookieDomainAllowed(domain, provider) {
+  const normalized = domain.replace(/^#HttpOnly_/i, "").replace(/^\./, "").toLowerCase();
+  const bases = provider === "youtube" ? ["youtube.com", "google.com"] : ["bilibili.com"];
+  return bases.some((base) => normalized === base || normalized.endsWith(`.${base}`));
+}
+
+function scopedCookieFile(contents, provider) {
+  if (typeof contents !== "string" || Buffer.byteLength(contents, "utf8") > MAX_ACCOUNT_COOKIE_BYTES) throw new Error("invalid cookies");
+  const lines = [];
+  for (const line of contents.split(/\r?\n/)) {
+    if (!line || line.startsWith("#") && !line.startsWith("#HttpOnly_")) continue;
+    const fields = line.split("\t");
+    if (fields.length !== 7 || !cookieDomainAllowed(fields[0], provider)) continue;
+    if (!/^(?:TRUE|FALSE)$/i.test(fields[1]) || !/^\/$/.test(fields[2]) && !fields[2].startsWith("/") || !/^(?:TRUE|FALSE)$/i.test(fields[3]) || !/^\d+$/.test(fields[4]) || !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(fields[5]) || /[\r\n\t]/.test(fields[6])) continue;
+    lines.push(line);
+  }
+  if (!lines.length) throw new Error("invalid cookies");
+  return `# Netscape HTTP Cookie File\n${lines.join("\n")}\n`;
+}
+
+async function withCookieFile(contents, provider, callback) {
+  if (contents == null) return callback(null);
+  const cookieText = scopedCookieFile(contents, provider);
+  const dir = await mkdtemp(path.join(os.tmpdir(), "edgesonic-resolver-"));
+  const file = path.join(dir, "cookies.txt");
+  try {
+    await writeFile(file, cookieText, { flag: "wx", mode: 0o600 });
+    await chmod(file, 0o600);
+    return await callback(file);
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
@@ -134,8 +184,8 @@ function run(command, args, options = {}) {
   });
 }
 
-function runJson(command, args) {
-  return run(command, args, { maxOutput: 32 * 1024 * 1024 }).then((bytes) => JSON.parse(bytes.toString("utf8")));
+function runJson(command, args, options = {}) {
+  return run(command, args, { maxOutput: 32 * 1024 * 1024, ...options }).then((bytes) => JSON.parse(bytes.toString("utf8")));
 }
 
 function nativeDemuxer(file) {
@@ -372,7 +422,7 @@ function mapSubtitleTracks(info) {
       .filter((item) => typeof item.data !== "string" || Buffer.byteLength(item.data) <= MAX_SUBTITLE_BYTES)
       .sort((left, right) => Number(String(right.ext).toLowerCase() === "srt") - Number(String(left.ext).toLowerCase() === "srt"))[0];
     if (!entry) continue;
-    tracks.push({ id: `sub-${tracks.length}`, language, title: entry.name || entry.ext || language, ext: String(entry.ext).toLowerCase(), ...(typeof entry.data === "string" ? { data: entry.data } : { url: entry.url, headers: info.http_headers || {} }) });
+    tracks.push({ id: `sub-${tracks.length}`, language, title: entry.name || entry.ext || language, ext: String(entry.ext).toLowerCase(), ...(typeof entry.data === "string" ? { data: entry.data } : { url: entry.url, headers: cleanHeaders(info.http_headers) }) });
   }
   return tracks;
 }
@@ -390,10 +440,15 @@ function mapAudioFormats(info) {
   const audioTracks = [...groups.entries()].map(([language, list]) => {
     list.sort((a, b) => Number(b.vcodec === "none") - Number(a.vcodec === "none") || (b.audio_channels || 0) - (a.audio_channels || 0) || (b.abr || b.tbr || 0) - (a.abr || a.tbr || 0));
     const format = list[0];
-    return { id: `audio-${language}`, ...(language !== "und" ? { language } : {}), title: language === "und" ? (format.format_note || "Original audio") : language, url: format.url, headers: format.http_headers || info.http_headers || {} };
+    return { id: `audio-${language}`, ...(language !== "und" ? { language } : {}), title: language === "und" ? (format.format_note || "Original audio") : language, url: format.url, headers: cleanHeaders(format.http_headers || info.http_headers) };
   });
-  const video = formats.filter((f) => f.vcodec && f.vcodec !== "none").sort((a, b) => Number(b.acodec === "none") - Number(a.acodec === "none") || (b.height || 0) - (a.height || 0) || (b.tbr || 0) - (a.tbr || 0))[0];
-  return { video: video && { url: video.url, headers: video.http_headers || info.http_headers || {} }, audioTracks };
+  const video = formats.filter((f) => f.vcodec && f.vcodec !== "none").sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)) || Number(b.acodec === "none") - Number(a.acodec === "none") || (b.tbr || 0) - (a.tbr || 0))[0];
+  return { video: video && { url: video.url, width: video.width || null, height: video.height || null, headers: cleanHeaders(video.http_headers || info.http_headers) }, audioTracks };
+}
+
+function sourceProvider(source) {
+  const host = new URL(source).hostname.toLowerCase();
+  return host === "youtu.be" || host === "youtube.com" || host.endsWith(".youtube.com") ? "youtube" : "bilibili";
 }
 
 function safeCaptionTrack(track) {
@@ -422,14 +477,18 @@ async function fetchLimited(url, headers, maximum, signal) {
 
 async function handleResolve(req, res) {
   if (sessions.size + activeResolvers + activeUploads >= MAX_SESSIONS) return publicError(res, 429, "too many media sessions");
-  if (!req.body || typeof req.body.url !== "string" || req.body.url.length > 2048) return publicError(res, 400, "invalid request");
+  if (!req.body || typeof req.body.url !== "string" || req.body.url.length > 2048 || (req.body.cookies != null && typeof req.body.cookies !== "string")) return publicError(res, 400, "invalid request");
   if (activeResolvers >= 2) return publicError(res, 429, "media resolver busy");
   activeResolvers += 1;
   try {
     if (sessions.size + activeResolvers + activeUploads > MAX_SESSIONS) return publicError(res, 429, "too many media sessions");
     let source;
     try { source = await normalizeSource(req.body.url.trim()); } catch { return publicError(res, 400, "unsupported media URL"); }
-    const info = await runJson("yt-dlp", ["--ignore-config", "--no-warnings", "--no-playlist", "--skip-download", "--write-subs", "--simulate", "--no-progress", "--js-runtimes", "node", "--dump-single-json", source]);
+    const provider = sourceProvider(source);
+    if (req.body.cookies != null) {
+      try { scopedCookieFile(req.body.cookies, provider); } catch { return publicError(res, 400, "invalid cookies"); }
+    }
+    const info = await withCookieFile(req.body.cookies, provider, (cookieFile) => runJson("yt-dlp", ["--ignore-config", "--no-warnings", ...(cookieFile ? ["--cookies", cookieFile] : []), "--no-playlist", "--skip-download", "--write-subs", "--simulate", "--no-progress", "--js-runtimes", "node", "--dump-single-json", source]));
     if (!info || info._type === "playlist" || info.entries || info.is_live || ["is_live", "is_upcoming"].includes(info.live_status) || !info.title) return publicError(res, 400, "unsupported media");
     const sources = mapAudioFormats(info);
     if (!sources.video || !sources.audioTracks.length) return publicError(res, 422, "video stream unavailable");
@@ -437,13 +496,246 @@ async function handleResolve(req, res) {
     const dir = await mkdtemp(path.join(ROOT, "session-"));
     const danmaku = (info.subtitles?.danmaku || []).find((entry) => validDanmakuUrl(entry.url));
     const captions = mapSubtitleTracks(info);
-    const session = createRecord({ kind: "remote", dir, title: String(info.title).slice(0, 500), duration: Number.isFinite(info.duration) ? info.duration : null, width: info.width || sources.video.width || null, height: info.height || sources.video.height || null, sources, sourceCaptions: captions, captions: captions.map(safeCaptionTrack), danmaku: danmaku ? { url: danmaku.url, headers: info.http_headers || {} } : null, audioTracks: sources.audioTracks.map(({ url, headers, ...item }) => item) });
+    const session = createRecord({ kind: "remote", dir, title: String(info.title).slice(0, 500), duration: Number.isFinite(info.duration) ? info.duration : null, width: sources.video.width || info.width || null, height: sources.video.height || info.height || null, sources, sourceCaptions: captions, captions: captions.map(safeCaptionTrack), danmaku: danmaku ? { url: danmaku.url, headers: cleanHeaders(info.http_headers) } : null, audioTracks: sources.audioTracks.map(({ url, headers, ...item }) => item) });
     return res.status(201).json(sessionShape(session));
   } catch {
     return publicError(res, 422, "unable to resolve media");
   } finally {
     activeResolvers -= 1;
   }
+}
+
+async function searchEntryUrl(entry, provider) {
+  for (const value of [entry?.webpage_url, entry?.original_url, entry?.url]) {
+    if (typeof value !== "string" || !value) continue;
+    try { return await normalizeSearchUrl(value, provider); } catch {}
+  }
+  if (typeof entry?.id === "string") {
+    try { return await normalizeSearchUrl(entry.id, provider); } catch {}
+  }
+  return null;
+}
+
+async function normalizeSearchUrl(value, provider) {
+  let candidate = value;
+  if (provider === "youtube" && /^[A-Za-z0-9_-]{11}$/.test(value)) candidate = `https://www.youtube.com/watch?v=${value}`;
+  if (provider === "bilibili" && /^(?:BV[0-9A-Za-z]{10}|av[0-9]{1,20})$/i.test(value)) candidate = `https://www.bilibili.com/video/${value}/?p=1`;
+  const parsed = new URL(candidate);
+  if (provider === "bilibili" && ["b23.tv", "www.b23.tv"].includes(parsed.hostname.toLowerCase())) throw new Error("short URL unsupported in search results");
+  if (provider === "bilibili" && parsed.protocol === "http:" && allowedHost(parsed.hostname, new Set(["bilibili.com", "www.bilibili.com", "m.bilibili.com", "bilibili.tv", "www.bilibili.tv", "m.bilibili.tv"]))) parsed.protocol = "https:";
+  const normalized = await normalizeSource(parsed.href);
+  if (sourceProvider(normalized) !== provider) throw new Error("wrong provider");
+  return normalized;
+}
+
+async function handleSearch(req, res) {
+  const { provider, query, cookies } = req.body || {};
+  if (!["youtube", "bilibili"].includes(provider) || typeof query !== "string" || !query.trim() || query.length > MAX_SEARCH_QUERY_LENGTH || /[\u0000-\u001f\u007f]/.test(query) || (cookies != null && typeof cookies !== "string")) return publicError(res, 400, "invalid request");
+  if (cookies != null) {
+    try { scopedCookieFile(cookies, provider); } catch { return publicError(res, 400, "invalid cookies"); }
+  }
+  if (activeSearches >= MAX_ACTIVE_SEARCHES) return publicError(res, 429, "media search busy");
+  activeSearches += 1;
+  try {
+    const prefix = provider === "youtube" ? "ytsearch10:" : "bilisearch10:";
+    const items = await withCookieFile(cookies, provider, async (cookieFile) => {
+      const deadline = Date.now() + 50000;
+      const info = await runJson("yt-dlp", ["--ignore-config", "--no-warnings", "--no-progress", "--skip-download", "--flat-playlist", "--playlist-end", "10", "--dump-single-json", ...(cookieFile ? ["--cookies", cookieFile] : []), "--js-runtimes", "node", `${prefix}${query.trim()}`], { maxOutput: MAX_SEARCH_OUTPUT_BYTES, timeoutMs: 20000 });
+      const candidates = [];
+      for (const entry of (Array.isArray(info?.entries) ? info.entries : []).slice(0, 10)) {
+        const url = await searchEntryUrl(entry, provider);
+        if (!url) continue;
+        let title = typeof entry?.title === "string" ? entry.title.trim() : "";
+        let duration = Number(entry?.duration);
+        candidates.push({ url, title, duration });
+      }
+      if (provider !== "bilibili") return candidates.filter((item) => item.title).map(({ url, title, duration }) => ({ url, title: title.slice(0, 500), ...(Number.isFinite(duration) && duration >= 0 ? { duration } : {}) }));
+      const results = new Array(candidates.length);
+      let nextIndex = 0;
+      const enrich = async () => {
+        while (nextIndex < candidates.length && Date.now() < deadline) {
+          const index = nextIndex++;
+          const candidate = candidates[index];
+          if (candidate.title) {
+            results[index] = { url: candidate.url, title: candidate.title.slice(0, 500), ...(Number.isFinite(candidate.duration) && candidate.duration >= 0 ? { duration: candidate.duration } : {}) };
+            continue;
+          }
+          try {
+            const detail = await runJson("yt-dlp", ["--ignore-config", "--no-warnings", "--no-progress", "--skip-download", "--no-playlist", ...(cookieFile ? ["--cookies", cookieFile] : []), "--js-runtimes", "node", "--dump-single-json", candidate.url], { maxOutput: MAX_SEARCH_OUTPUT_BYTES, timeoutMs: Math.min(5000, deadline - Date.now()) });
+            const title = typeof detail.title === "string" ? detail.title.trim() : "";
+            const duration = Number(detail.duration);
+            if (title) results[index] = { url: candidate.url, title: title.slice(0, 500), ...(Number.isFinite(duration) && duration >= 0 ? { duration } : {}) };
+          } catch { /* A single unavailable result does not fail the bounded search. */ }
+        }
+      };
+      await Promise.all([enrich(), enrich()]);
+      return results.filter(Boolean);
+    });
+    return res.json({ items });
+  } catch {
+    return publicError(res, 502, "media search unavailable");
+  } finally {
+    activeSearches -= 1;
+  }
+}
+
+function pruneQrSessions(now = Date.now()) {
+  for (const [id, state] of qrSessions) {
+    const deadline = state.status === "authorized" ? state.authorizedUntil : state.expiresAt;
+    if (deadline <= now) qrSessions.delete(id);
+  }
+}
+
+function parseBilibiliSetCookies(headers) {
+  const lines = [];
+  for (const header of headers) {
+    const [pair, ...attributes] = header.split(";");
+    const separator = pair.indexOf("=");
+    if (separator <= 0) continue;
+    const name = pair.slice(0, separator).trim();
+    const value = pair.slice(separator + 1).trim();
+    if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name) || /[\r\n\t]/.test(value)) continue;
+    const attrs = new Map(attributes.map((item) => {
+      const index = item.indexOf("=");
+      return index < 0 ? [item.trim().toLowerCase(), ""] : [item.slice(0, index).trim().toLowerCase(), item.slice(index + 1).trim()];
+    }));
+    const rawDomain = attrs.get("domain");
+    const domain = rawDomain || "passport.bilibili.com";
+    if (!cookieDomainAllowed(domain, "bilibili")) continue;
+    const pathName = attrs.get("path") || "/";
+    if (!pathName.startsWith("/") || /[\r\n\t]/.test(pathName)) continue;
+    let expires = 0;
+    const maxAge = Number(attrs.get("max-age"));
+    if (Number.isFinite(maxAge) && attrs.has("max-age")) expires = Math.max(0, Math.floor(Date.now() / 1000) + maxAge);
+    else if (attrs.has("expires")) {
+      const parsed = Date.parse(attrs.get("expires"));
+      if (Number.isFinite(parsed)) expires = Math.floor(parsed / 1000);
+    }
+    const cookieDomain = rawDomain ? `.${domain.replace(/^\./, "")}` : domain;
+    const httpOnlyDomain = attrs.has("httponly") ? `#HttpOnly_${cookieDomain}` : cookieDomain;
+    lines.push([httpOnlyDomain, rawDomain ? "TRUE" : "FALSE", pathName, attrs.has("secure") ? "TRUE" : "FALSE", expires, name, value].join("\t"));
+  }
+  const cookieText = lines.length ? `# Netscape HTTP Cookie File\n${lines.join("\n")}\n` : "";
+  return Buffer.byteLength(cookieText, "utf8") <= MAX_ACCOUNT_COOKIE_BYTES ? cookieText : "";
+}
+
+function cookieHeaderFor(cookieText, host, requestPath) {
+  const values = [];
+  const now = Math.floor(Date.now() / 1000);
+  for (const line of cookieText.split(/\r?\n/)) {
+    if (!line || line.startsWith("#") && !line.startsWith("#HttpOnly_")) continue;
+    const fields = line.split("\t");
+    if (fields.length !== 7) continue;
+    const domain = fields[0].replace(/^#HttpOnly_/i, "").replace(/^\./, "").toLowerCase();
+    const domainMatches = fields[1].toUpperCase() === "TRUE" ? host === domain || host.endsWith(`.${domain}`) : host === domain;
+    const pathMatches = requestPath === fields[2] || requestPath.startsWith(fields[2].endsWith("/") ? fields[2] : `${fields[2]}/`);
+    const expires = Number(fields[4]);
+    if (domainMatches && pathMatches && (!expires || expires > now)) values.push(`${fields[5]}=${fields[6]}`);
+  }
+  return values.join("; ");
+}
+
+function responseSetCookies(headers) {
+  const separate = headers.getSetCookie?.();
+  if (Array.isArray(separate) && separate.length) return separate;
+  const combined = headers.get("set-cookie") || "";
+  return combined ? combined.split(/,(?=\s*[!#$%&'*+.^_`|~0-9A-Za-z-]+=)/) : [];
+}
+
+async function handleBilibiliQrCreate(_req, res) {
+  pruneQrSessions();
+  if (qrSessions.size + activeQrCreates >= MAX_QR_SESSIONS) return publicError(res, 429, "too many pending QR logins");
+  activeQrCreates += 1;
+  try {
+    const response = await fetch("https://passport.bilibili.com/x/passport-login/web/qrcode/generate", {
+      headers: { Accept: "application/json", Referer: "https://www.bilibili.com/" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) throw new Error("QR generation failed");
+    const payload = await response.json();
+    const key = payload?.data?.qrcode_key;
+    const qrUrl = payload?.data?.url;
+    let parsedUrl;
+    try { parsedUrl = new URL(qrUrl); } catch { throw new Error("QR generation failed"); }
+    if (payload?.code !== 0 || typeof key !== "string" || !key || key.length > 256 || !isSecureVideoUrl(parsedUrl) || !(parsedUrl.hostname === "bilibili.com" || parsedUrl.hostname.endsWith(".bilibili.com"))) throw new Error("QR generation failed");
+    const id = randomBytes(24).toString("hex");
+    const expiresAt = Date.now() + QR_TTL_MS;
+    qrSessions.set(id, { key, expiresAt, status: "waiting", lastPollAt: 0, cookies: "", profile: null, authorizedUntil: 0, pollPromise: null });
+    return res.status(201).json({ id, url: parsedUrl.href, expiresAt: Math.floor(expiresAt / 1000) });
+  } catch {
+    return publicError(res, 502, "Bilibili QR login unavailable");
+  } finally {
+    activeQrCreates -= 1;
+  }
+}
+
+async function pollBilibiliQr(state) {
+  const endpoint = new URL("https://passport.bilibili.com/x/passport-login/web/qrcode/poll");
+  endpoint.searchParams.set("qrcode_key", state.key);
+  const response = await fetch(endpoint, {
+    headers: { Accept: "application/json", Referer: "https://www.bilibili.com/" },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!response.ok) throw new Error("QR poll failed");
+  const payload = await response.json();
+  const code = payload?.data?.code ?? payload?.code;
+  if (code === 86101) state.status = "waiting";
+  else if (code === 86090) state.status = "scanned";
+  else if (code === 86038) state.status = "expired";
+  else if (code === 0) {
+    state.key = "";
+    const cookies = parseBilibiliSetCookies(responseSetCookies(response.headers));
+    if (!cookies) { state.status = "expired"; return; }
+    state.cookies = cookies;
+    state.profile = null;
+    const cookieHeader = cookieHeaderFor(cookies, "api.bilibili.com", "/x/web-interface/nav");
+    if (cookieHeader) {
+      try {
+        const profileResponse = await fetch("https://api.bilibili.com/x/web-interface/nav", {
+          redirect: "manual",
+          headers: { Accept: "application/json", Cookie: cookieHeader, Referer: "https://www.bilibili.com/" },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (profileResponse.ok) {
+          const profilePayload = await profileResponse.json();
+          if (profilePayload?.code === 0 && profilePayload.data?.isLogin) {
+            state.profile = {
+              ...(profilePayload.data.mid != null ? { id: String(profilePayload.data.mid).slice(0, 80) } : {}),
+              ...(typeof profilePayload.data.uname === "string" ? { displayName: profilePayload.data.uname.slice(0, 120) } : {}),
+            };
+          }
+        }
+      } catch { /* Profile details are optional; the upstream QR response supplied the login cookies. */ }
+    }
+    state.status = "authorized";
+    state.authorizedUntil = Date.now() + QR_RESULT_TTL_MS;
+  }
+}
+
+async function handleBilibiliQrStatus(req, res) {
+  const id = String(req.params.id || "");
+  if (!/^[a-f0-9]{48}$/.test(id)) return res.json({ status: "expired" });
+  pruneQrSessions();
+  const state = qrSessions.get(id);
+  if (!state) return res.json({ status: "expired" });
+  if (state.status === "expired") {
+    qrSessions.delete(id);
+    return res.json({ status: "expired" });
+  }
+  if (state.status === "authorized") return res.json({ status: "authorized", cookies: state.cookies, ...(state.profile ? { profile: state.profile } : {}) });
+  const now = Date.now();
+  if (state.expiresAt <= now) {
+    qrSessions.delete(id);
+    return res.json({ status: "expired" });
+  }
+  if (state.pollPromise) await state.pollPromise;
+  else if (now - state.lastPollAt >= 1000) {
+    state.lastPollAt = now;
+    state.pollPromise = pollBilibiliQr(state).catch(() => {}).finally(() => { state.pollPromise = null; });
+    await state.pollPromise;
+  }
+  if (state.status === "authorized") return res.json({ status: "authorized", cookies: state.cookies, ...(state.profile ? { profile: state.profile } : {}) });
+  return res.json({ status: state.status });
 }
 
 async function handleUpload(req, res) {
@@ -550,7 +842,7 @@ function hlsArguments(session, variant, options, outDir) {
 }
 
 function validateVariants(values, session, options, res) {
-  const raw = values.length ? values : [options.audioOnly ? "192" : "1200"];
+  const raw = values.length ? values : [options.audioOnly ? "192" : String(defaultVideoBitrate(session))];
   if (raw.length > 5) { publicError(res, 400, "too many variants"); return null; }
   const variants = [];
   for (const value of raw) {
@@ -571,6 +863,16 @@ function validateVariants(values, session, options, res) {
   const newKeys = variants.filter((variant) => !session.hlsVariantKeys.has(variant.key));
   if (session.hlsVariantKeys.size + newKeys.length > MAX_SESSION_HLS_VARIANTS) { publicError(res, 429, "too many HLS variants"); return null; }
   return variants;
+}
+
+function defaultVideoBitrate(session) {
+  const height = Number(session.height) || 720;
+  if (height <= 360) return 700;
+  if (height <= 480) return 1200;
+  if (height <= 720) return 2500;
+  if (height <= 1080) return 5000;
+  if (height <= 1440) return 9000;
+  return 16000;
 }
 
 async function directorySize(dir) {
@@ -733,7 +1035,10 @@ async function serveDanmaku(req, res, session) {
 }
 
 export function registerMediaRoutes(app, authGate) {
-  app.post("/media/resolve", authGate, express.json({ limit: "4kb" }), handleResolve);
+  app.post("/media/resolve", authGate, express.json({ limit: "140kb" }), handleResolve);
+  app.post("/media/search", authGate, express.json({ limit: "140kb" }), handleSearch);
+  app.post("/media/auth/bilibili/qr", authGate, handleBilibiliQrCreate);
+  app.get("/media/auth/bilibili/qr/:id", authGate, handleBilibiliQrStatus);
   app.post("/media/files", authGate, handleUpload);
   app.get("/media/sessions/:id/stream", authGate, (req, res) => {
     const session = getSession(req, res);
