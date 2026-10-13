@@ -20,7 +20,6 @@ import { getTheme } from "./themes/registry";
 import { ensureBuiltinThemeLoaded } from "./themes/builtin";
 import { activeToast, dismissToast } from "./stores/toast";
 import { createPlayerKeyboardShortcutHandler } from "./lib/playerKeyboardShortcuts";
-import { useKtvSettingsStore } from "./stores/ktvSettings";
 
 const router = useRouter();
 const route = useRoute();
@@ -33,7 +32,6 @@ const {
   subsonicMasterPasswordNotice, dismissSubsonicMasterPasswordNotice,
 } = useAuth();
 const player = usePlayerStore();
-const ktvSettings = useKtvSettingsStore();
 const detail = useDetailStore();
 const mainRegion = ref<HTMLElement | null>(null);
 const sidebarScroll = ref<HTMLElement | null>(null);
@@ -117,7 +115,6 @@ watch(isLoggedIn, (now) => {
     void fetchMe();
     void restoreSavedTheme();
     player.resumePlaybackIfNeeded();
-    void ktvSettings.load();
   } else {
     resetTheme();
   }
@@ -207,7 +204,6 @@ const groups = computed<NavGroup[]>(() => {
         { label: t("app.menu.starred"), path: "/starred", minLevel: 0, icon: "heart" },
         { label: t("app.menu.playlists"), path: "/playlists", minLevel: 0, icon: "playlist" },
         { label: t("app.menu.videos"), path: "/videos", minLevel: 0, icon: "note" },
-        ...(ktvSettings.enabled ? [{ label: t("app.menu.ktv"), path: "/ktv", minLevel: 0, icon: "music" }] : []),
         { label: t("app.menu.radio"), path: "/radio", minLevel: 0, icon: "radio" },
         { label: t("app.menu.podcasts"), path: "/podcasts", minLevel: 0, icon: "podcast" },
         { label: t("app.menu.shares"), path: "/shares", minLevel: 0, icon: "share" },

@@ -9,6 +9,7 @@ import { canRebuildLibraryStats, type LibraryStatsResponse } from "../lib/librar
 import Icon from "../components/Icon.vue";
 import { normalizeForMatch } from "../lib/trackMatch";
 import { FluentSwitch } from "@platform-kit/fluent/vue";
+import KtvSettingsCard from "../components/KtvSettingsCard.vue";
 
 const { t } = useI18n();
 const { isSuperAdmin, isAdmin, isUser, isGuest, hasPerm, username: currentUsername, edgesonicPost, edgesonicFetch, rescanSongs, md5, signedParams, restUrl } = useAuth();
@@ -1586,6 +1587,8 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
           <span aria-hidden="true">→</span>
         </RouterLink>
       </section>
+
+      <KtvSettingsCard />
 
       <section v-if="canRepairLibraryStats" class="settings-section card" :class="{ open: open.libraryStats }">
         <button type="button" class="section-header" :aria-expanded="open.libraryStats" aria-controls="tools-panel-library-stats" @click="toggleSection('libraryStats')">

@@ -13,7 +13,6 @@ import { getTheme, registeredThemeIds, externalThemeIds, loadExternalTheme, unre
 import { audioCacheStats, clearAudioCache, audioCacheMaxMb, setAudioCacheMaxMb } from "../lib/audioCache";
 import PermissionsMatrix from "../components/PermissionsMatrix.vue";
 import Icon from "../components/Icon.vue";
-import KtvSettingsCard from "../components/KtvSettingsCard.vue";
 import { FluentSelect, FluentSwitch } from "@platform-kit/fluent/vue";
 import { useWorkSocket } from "../stores/workSocket";
 import {
@@ -1573,8 +1572,6 @@ onMounted(() => {
         <p class="page-description">{{ t("settings.intro") }}</p>
       </div>
     </div>
-
-    <KtvSettingsCard />
 
     <!-- ============ USER ============ -->
     <section class="settings-section card" :class="{ open: open.user }">
