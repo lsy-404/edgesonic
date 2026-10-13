@@ -54,7 +54,7 @@ export function saveVideoLink(videoId: string, audioId: string, offsetMs: number
 export function removeVideoLink(videoId: string, audioId: string) {
   return request<{ ok: true }>(`/edgesonic/videos/${encodeURIComponent(videoId)}/links/${encodeURIComponent(audioId)}`, { method: "DELETE" });
 }
-export function getVideoPlayback(videoId: string) { return request<{ ok: true; session: MediaSession }>(`/edgesonic/videos/${encodeURIComponent(videoId)}/playback`); }
-export function resolveExternalVideo(url: string) { return request<{ ok: true; session: MediaSession }>("/edgesonic/media/resolve", post({ url })); }
+export function getVideoPlayback(videoId: string, mode?: "full" | "compatible") { return request<{ ok: true; session: MediaSession }>(`/edgesonic/videos/${encodeURIComponent(videoId)}/playback${mode ? `?mode=${mode}` : ""}`); }
+export function resolveExternalVideo(url: string, mode?: "full" | "compatible") { return request<{ ok: true; session: MediaSession }>("/edgesonic/media/resolve", post({ url, mode })); }
 export const mediaManifestUrl = (sessionId: string, audioOnly = false) => `/edgesonic/media/${encodeURIComponent(sessionId)}/hls.m3u8${audioOnly ? "?audioOnly=1" : ""}`;
 export const captionTrackUrl = (sessionId: string, track: string) => `/edgesonic/media/${encodeURIComponent(sessionId)}/captions?${new URLSearchParams({ track, format: "vtt" })}`;
