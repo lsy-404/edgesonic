@@ -1,7 +1,7 @@
 import express from "express";
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { createWriteStream } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
+import { createWriteStream, statSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, rm, stat, unlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -17,11 +17,12 @@ const MAX_SESSION_DISK_BYTES = 2 * 1024 * 1024 * 1024;
 const MAX_DANMAKU_BYTES = 4 * 1024 * 1024;
 const MAX_SUBTITLE_BYTES = 16 * 1024 * 1024;
 const ID_PATTERN = /^[a-f0-9]{48}$/;
-const VIDEO_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.bilibili.com", "bilibili.com", "www.bilibili.tv", "bilibili.tv"]);
-const BILI_HOSTS = new Set(["b23.tv", "www.b23.tv", "bilibili.com", "www.bilibili.com", "bilibili.tv", "www.bilibili.tv"]);
+const VIDEO_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "www.bilibili.com", "bilibili.com", "m.bilibili.com", "www.bilibili.tv", "bilibili.tv", "m.bilibili.tv"]);
+const BILI_HOSTS = new Set(["b23.tv", "www.b23.tv", "bilibili.com", "www.bilibili.com", "m.bilibili.com", "bilibili.tv", "www.bilibili.tv", "m.bilibili.tv"]);
 const EXTERNAL_MEDIA_HOSTS = ["youtube.com", "googlevideo.com", "googleusercontent.com", "bilibili.com", "bilivideo.com", "bilivideo.cn", "biliapi.net", "hdslb.com"];
 const sessions = new Map();
 const activeJobs = new Set();
+const jobWaiters = [];
 let activeResolvers = 0;
 let activeUploads = 0;
 
@@ -59,13 +60,14 @@ function validDanmakuUrl(value) {
 async function resolveShortUrl(value) {
   let current = new URL(value);
   for (let i = 0; i < 6; i += 1) {
-    if (!allowedHost(current.hostname, BILI_HOSTS)) throw new Error("unsupported URL");
+    if (!isSecureVideoUrl(current) || !allowedHost(current.hostname, BILI_HOSTS)) throw new Error("unsupported URL");
     const response = await fetch(current, { method: "GET", redirect: "manual", headers: { Range: "bytes=0-0" }, signal: AbortSignal.timeout(8000) });
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("location");
       await response.body?.cancel();
       if (!location) throw new Error("invalid redirect");
       current = new URL(location, current);
+      if (!isSecureVideoUrl(current) || !allowedHost(current.hostname, BILI_HOSTS)) throw new Error("unsupported redirect");
       continue;
     }
     await response.body?.cancel();
@@ -74,15 +76,27 @@ async function resolveShortUrl(value) {
   throw new Error("too many redirects");
 }
 
+function isSecureVideoUrl(url) {
+  return url.protocol === "https:" && !url.username && !url.password && !url.port;
+}
+
 async function normalizeSource(value) {
-  const bv = /^BV[0-9A-Za-z]{10}$/.test(value) ? value : null;
-  const av = /^av[0-9]{1,20}$/i.test(value) ? value : null;
+  const trimmed = value.trim();
+  const bv = /^BV[0-9A-Za-z]{10}$/.test(trimmed) ? trimmed : null;
+  const avMatch = /^av\s+([0-9]{1,20})$/i.exec(trimmed) || /^av([0-9]{1,20})$/i.exec(trimmed);
+  const av = avMatch ? `av${avMatch[1]}` : null;
   if (bv || av) return `https://www.bilibili.com/video/${bv || av}/`;
   let url;
-  try { url = new URL(value); } catch { throw new Error("invalid URL"); }
-  if (url.protocol !== "https:" || url.username || url.password) throw new Error("unsupported URL");
+  try { url = new URL(trimmed); } catch { throw new Error("invalid URL"); }
+  if (!isSecureVideoUrl(url)) throw new Error("unsupported URL");
   if (allowedHost(url.hostname, new Set(["b23.tv", "www.b23.tv"]))) url = await resolveShortUrl(url.href);
   if (!allowedHost(url.hostname, VIDEO_HOSTS)) throw new Error("unsupported URL");
+  if (url.hostname === "m.bilibili.com") url.hostname = "www.bilibili.com";
+  if (url.hostname === "m.bilibili.tv") url.hostname = "www.bilibili.tv";
+  if (BILI_HOSTS.has(url.hostname)) {
+    const avPath = /^\/(?:video\/)?av(?:%20|\s)([0-9]{1,20})\/?$/i.exec(url.pathname);
+    if (avPath) url.pathname = `/video/av${avPath[1]}/`;
+  }
   if (url.hostname.endsWith("youtube.com") && !["/watch", "/shorts/", "/embed/", "/live/"].some((part) => url.pathname.startsWith(part))) throw new Error("unsupported URL");
   if (url.searchParams.has("list") || url.pathname.startsWith("/playlist/")) throw new Error("unsupported URL");
   if (url.hostname === "youtu.be" && url.pathname.length < 2) throw new Error("unsupported URL");
@@ -131,7 +145,7 @@ function sessionShape(session) {
 
 function createRecord(data) {
   const id = randomBytes(24).toString("hex");
-  const session = { ...data, id, createdAt: Date.now(), expiresAt: Date.now() + SESSION_TTL_MS, jobs: new Set(), generatingVariants: new Set(), timer: null };
+  const session = { ...data, id, createdAt: Date.now(), expiresAt: Date.now() + SESSION_TTL_MS, jobs: new Set(), generatingVariants: new Map(), timer: null };
   session.timer = setTimeout(() => removeSession(session), SESSION_TTL_MS).unref();
   sessions.set(id, session);
   return session;
@@ -141,10 +155,16 @@ async function removeSession(session) {
   if (!session) return;
   clearTimeout(session.timer);
   sessions.delete(session.id);
-  for (const job of session.jobs) {
+  const jobs = [...session.jobs];
+  for (const job of jobs) {
     job.child?.kill("SIGKILL");
     job.controller.abort();
+    if (!job.child) finishJob(session, job);
   }
+  await Promise.all(jobs.map(async (job) => {
+    if (job.child) await waitForChild(job.child);
+    finishJob(session, job);
+  }));
   await rm(session.dir, { recursive: true, force: true }).catch(() => {});
 }
 
@@ -155,17 +175,82 @@ function getSession(req, res) {
   return session;
 }
 
-function acquireJob(session, res) {
-  if (activeJobs.size >= MAX_ACTIVE_JOBS) { publicError(res, 429, "media workers busy"); return null; }
+function createJob(session) {
   const job = { child: null, controller: new AbortController() };
-  activeJobs.add(job);
   session.jobs.add(job);
   return job;
 }
 
+function activateJob(job) {
+  const index = jobWaiters.indexOf(job);
+  if (index >= 0) jobWaiters.splice(index, 1);
+  job.waiterCleanup?.();
+  job.waiterCleanup = null;
+  job.active = true;
+  activeJobs.add(job);
+}
+
+function drainJobWaiters() {
+  while (activeJobs.size < MAX_ACTIVE_JOBS && jobWaiters.length) {
+    const job = jobWaiters.shift();
+    job.waiterCleanup?.();
+    job.waiterCleanup = null;
+    if (job.finished || job.controller.signal.aborted) {
+      job.waiterReject?.(new Error("media job cancelled"));
+      continue;
+    }
+    job.active = true;
+    activeJobs.add(job);
+    job.waiterResolve();
+  }
+}
+
+function waitForJobSlot(job) {
+  if (job.controller.signal.aborted) return Promise.reject(new Error("media job cancelled"));
+  if (activeJobs.size < MAX_ACTIVE_JOBS && jobWaiters.length === 0) {
+    job.active = true;
+    activeJobs.add(job);
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    job.waiterResolve = resolve;
+    job.waiterReject = reject;
+    const abort = () => {
+      const index = jobWaiters.indexOf(job);
+      if (index >= 0) jobWaiters.splice(index, 1);
+      job.waiterCleanup?.();
+      job.waiterCleanup = null;
+      reject(new Error("media job cancelled"));
+    };
+    job.waiterCleanup = () => job.controller.signal.removeEventListener("abort", abort);
+    jobWaiters.push(job);
+    job.controller.signal.addEventListener("abort", abort, { once: true });
+  });
+}
+
+function acquireJob(session, res) {
+  if (activeJobs.size >= MAX_ACTIVE_JOBS || jobWaiters.length > 0) { publicError(res, 429, "media workers busy"); return null; }
+  const job = createJob(session);
+  activateJob(job);
+  return job;
+}
+
 function finishJob(session, job) {
+  if (job.finished) return;
+  job.finished = true;
+  const waiting = jobWaiters.indexOf(job);
+  if (waiting >= 0) {
+    jobWaiters.splice(waiting, 1);
+    job.waiterCleanup?.();
+    job.waiterReject?.(new Error("media job cancelled"));
+  }
   session.jobs.delete(job);
-  activeJobs.delete(job);
+  if (activeJobs.delete(job)) drainJobWaiters();
+}
+
+function waitForChild(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+  return new Promise((resolve) => child.once("close", resolve));
 }
 
 function numeric(value, min, max) {
@@ -294,14 +379,18 @@ function safeCaptionTrack(track) {
 async function fetchLimited(url, headers, maximum, signal) {
   if (!validExternalUrl(url)) throw new Error("invalid media resource");
   const response = await fetch(url, { redirect: "manual", headers: headers || {}, signal: signal || AbortSignal.timeout(20000) });
-  if (response.status < 200 || response.status >= 300) throw new Error("media resource unavailable");
+  if (response.status < 200 || response.status >= 300) {
+    await response.body?.cancel().catch(() => {});
+    throw new Error("media resource unavailable");
+  }
   const length = Number(response.headers.get("content-length"));
   if (Number.isFinite(length) && length > maximum) { await response.body?.cancel(); throw new Error("media resource too large"); }
   const chunks = [];
   let size = 0;
+  if (!response.body) return Buffer.alloc(0);
   for await (const chunk of response.body) {
     size += chunk.length;
-    if (size > maximum) { await response.body.cancel(); throw new Error("media resource too large"); }
+    if (size > maximum) throw new Error("media resource too large");
     chunks.push(chunk);
   }
   return Buffer.concat(chunks, size);
@@ -316,7 +405,7 @@ async function handleResolve(req, res) {
     if (sessions.size + activeResolvers + activeUploads > MAX_SESSIONS) return publicError(res, 429, "too many media sessions");
     let source;
     try { source = await normalizeSource(req.body.url.trim()); } catch { return publicError(res, 400, "unsupported media URL"); }
-    const info = await runJson("yt-dlp", ["--no-warnings", "--no-playlist", "--skip-download", "--no-progress", "--js-runtimes", "node", "--dump-single-json", source]);
+    const info = await runJson("yt-dlp", ["--ignore-config", "--no-warnings", "--no-playlist", "--skip-download", "--no-progress", "--js-runtimes", "node", "--dump-single-json", source]);
     if (!info || info._type === "playlist" || info.entries || info.is_live || ["is_live", "is_upcoming"].includes(info.live_status) || !info.title) return publicError(res, 400, "unsupported media");
     const sources = mapAudioFormats(info);
     if (!sources.video || !sources.audioTracks.length) return publicError(res, 422, "video stream unavailable");
@@ -337,11 +426,12 @@ async function handleUpload(req, res) {
   if (activeUploads >= MAX_ACTIVE_UPLOADS) return publicError(res, 429, "upload workers busy");
   if (sessions.size + activeResolvers + activeUploads >= MAX_SESSIONS) return publicError(res, 429, "too many media sessions");
   const type = String(req.get("Content-Type") || "").toLowerCase();
-  if (!/^video\/(mp4|webm|quicktime|x-matroska|ogg)$/.test(type) && type !== "application/octet-stream") return publicError(res, 415, "unsupported video type");
+  if (!/^video\/(mp4|webm|quicktime|x-matroska|x-m4v|x-msvideo|avi)$/.test(type) && !["application/octet-stream", "application/x-matroska", "video/matroska"].includes(type)) return publicError(res, 415, "unsupported video type");
   const length = Number(req.get("Content-Length"));
   if (Number.isFinite(length) && length > MAX_UPLOAD_BYTES) return publicError(res, 413, "video too large");
-  const suffix = String(req.query.suffix || "").toLowerCase();
-  if (suffix && ![".mp4", ".m4v", ".mov", ".webm", ".mkv", ".ogv"].includes(suffix)) return publicError(res, 400, "invalid suffix");
+  const rawSuffix = String(req.query.suffix || "").trim().toLowerCase();
+  const suffix = rawSuffix ? (rawSuffix.startsWith(".") ? rawSuffix : `.${rawSuffix}`) : "";
+  if (suffix && ![".mp4", ".mkv", ".webm", ".mov", ".m4v", ".avi"].includes(suffix)) return publicError(res, 400, "invalid suffix");
   activeUploads += 1;
   let dir;
   let written = 0;
@@ -381,7 +471,10 @@ function validatePlaybackOptions(req, session, res) {
 function terminateOnClose(req, res, session, job) {
   let finished = false;
   const done = () => { if (!finished) { finished = true; finishJob(session, job); } };
-  const close = () => { if (!res.writableEnded && job.child && !job.child.killed) job.child.kill("SIGKILL"); done(); };
+  const close = () => {
+    if (!res.writableEnded && job.child && !job.child.killed) job.child.kill("SIGKILL");
+    if (!job.child || job.child.exitCode !== null || job.child.signalCode !== null) done();
+  };
   req.once("aborted", close);
   res.once("close", close);
   return done;
@@ -428,12 +521,12 @@ function hlsArguments(session, variant, options, outDir) {
     if (options.size) args.push("-vf", `scale=${options.size.width}:${options.size.height}:force_original_aspect_ratio=decrease`);
     args.push("-c:v", "libx264", "-preset", "veryfast", "-b:v", `${variant.rate}k`, "-maxrate", `${variant.rate}k`, "-bufsize", `${variant.rate * 2}k`, "-c:a", "aac", "-b:a", "128k");
   }
-  args.push("-f", "hls", "-hls_time", "4", "-hls_playlist_type", "vod", "-hls_segment_type", "fmp4", "-hls_fmp4_init_filename", "init.mp4", "-hls_segment_filename", path.join(outDir, "seg-%05d.m4s"), path.join(outDir, "index.m3u8"));
+  args.push("-f", "hls", "-hls_time", "4", "-hls_list_size", "0", "-hls_segment_type", "fmp4", "-hls_fmp4_init_filename", "init.mp4", "-hls_segment_filename", path.join(outDir, "seg-%05d.m4s"), path.join(outDir, "index.m3u8"));
   return args;
 }
 
-function validateVariants(values, session, res) {
-  const raw = values.length ? values : ["1200"];
+function validateVariants(values, session, options, res) {
+  const raw = values.length ? values : [options.audioOnly ? "192" : "1200"];
   if (raw.length > 5) { publicError(res, 400, "too many variants"); return null; }
   const variants = [];
   for (const value of raw) {
@@ -445,23 +538,13 @@ function validateVariants(values, session, res) {
     const target = size || (session.width && session.height ? { width: session.width, height: session.height } : null);
     const outputSize = fitDimensions(session.width, session.height, target);
     const variant = { rate, size: outputSize };
-    variant.key = `${variant.rate}-${variant.size?.width || 0}x${variant.size?.height || 0}`;
+    const audioTrack = options.audioTrack || session.audioTracks[0]?.id || "none";
+    const trackKey = createHash("sha256").update(String(audioTrack)).digest("hex").slice(0, 20);
+    variant.key = `${options.audioOnly ? "audio" : "video"}-${trackKey}-${rate}-${outputSize?.width || 0}x${outputSize?.height || 0}`;
     if (variants.some((item) => item.key === variant.key)) { publicError(res, 400, "duplicate HLS variant"); return null; }
     variants.push(variant);
   }
   return variants;
-}
-
-async function waitForPlaylist(file, child, timeoutMs = 45000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try { if (await directorySize(path.dirname(path.dirname(file))) > MAX_SESSION_DISK_BYTES) { child.kill("SIGKILL"); throw new Error("session disk limit exceeded"); } } catch (error) { if (error.message === "session disk limit exceeded") throw error; }
-    try { if ((await stat(file)).size > 0) return; } catch {}
-    if (child.exitCode != null) throw new Error("hls generation failed");
-    await new Promise((resolve) => setTimeout(resolve, 150));
-  }
-  child.kill("SIGKILL");
-  throw new Error("hls generation timeout");
 }
 
 async function directorySize(dir) {
@@ -473,6 +556,77 @@ async function directorySize(dir) {
     if (total > MAX_SESSION_DISK_BYTES) return total;
   }
   return total;
+}
+
+function ensureHlsVariant(session, variant, options) {
+  const current = session.generatingVariants.get(variant.key);
+  if (current) return current.ready;
+  const outDir = path.join(session.dir, variant.key);
+  try { if (statSync(path.join(outDir, "index.m3u8")).size > 0) return Promise.resolve(); } catch {}
+  const state = {};
+  state.ready = new Promise((resolve, reject) => { state.resolve = resolve; state.reject = reject; });
+  state.ready.catch(() => {});
+  session.generatingVariants.set(variant.key, state);
+  void generateHlsVariant(session, variant, options, outDir, state);
+  return state.ready;
+}
+
+async function generateHlsVariant(session, variant, options, outDir, state) {
+  const job = createJob(session);
+  state.job = job;
+  let child;
+  let playlistReady = false;
+  let timedOut = false;
+  let diskExceeded = false;
+  const deadline = Date.now() + 45000;
+  try {
+    await waitForJobSlot(job);
+    if (job.controller.signal.aborted || !sessions.has(session.id)) throw new Error("media job cancelled");
+    await mkdir(outDir, { recursive: true });
+    if (job.controller.signal.aborted || !sessions.has(session.id)) throw new Error("media job cancelled");
+    child = spawn("ffmpeg", hlsArguments(session, variant, { ...options, size: variant.size }, outDir), { stdio: ["ignore", "ignore", "ignore"] });
+    job.child = child;
+    child.once("error", () => {});
+    const closed = new Promise((resolve) => child.once("close", (code, signal) => resolve({ code, signal })));
+    let exit = null;
+    while (!exit) {
+      if (job.controller.signal.aborted) child.kill("SIGKILL");
+      if (await directorySize(session.dir) > MAX_SESSION_DISK_BYTES) {
+        diskExceeded = true;
+        child.kill("SIGKILL");
+      }
+      if (!playlistReady) {
+        try {
+          if ((await stat(path.join(outDir, "index.m3u8"))).size > 0) {
+            playlistReady = true;
+            state.resolve();
+          }
+        } catch {}
+        if (!playlistReady && Date.now() >= deadline) {
+          timedOut = true;
+          child.kill("SIGKILL");
+        }
+      }
+      exit = await Promise.race([closed, new Promise((resolve) => setTimeout(() => resolve(null), 250))]);
+    }
+    if (!playlistReady) {
+      try {
+        if ((await stat(path.join(outDir, "index.m3u8"))).size > 0) {
+          playlistReady = true;
+          state.resolve();
+        }
+      } catch {}
+    }
+    if (job.controller.signal.aborted || timedOut || diskExceeded || exit.code !== 0 || !playlistReady) throw new Error("HLS generation failed");
+  } catch (error) {
+    child?.kill("SIGKILL");
+    if (child) await waitForChild(child);
+    await rm(outDir, { recursive: true, force: true }).catch(() => {});
+    if (!playlistReady) state.reject(error);
+  } finally {
+    finishJob(session, job);
+    if (session.generatingVariants.get(variant.key) === state) session.generatingVariants.delete(variant.key);
+  }
 }
 
 function masterPlaylist(variants, metadata, audioTrack, audioOnly) {
@@ -488,38 +642,13 @@ function masterPlaylist(variants, metadata, audioTrack, audioOnly) {
 }
 
 async function serveHls(req, res, session, options) {
-  const variants = validateVariants([].concat(req.query.bitRate || []), session, res);
+  const variants = validateVariants([].concat(req.query.bitRate || []), session, options, res);
   if (!variants) return;
-  const job = acquireJob(session, res);
-  if (!job) return;
-  const done = terminateOnClose(req, res, session, job);
-  if (variants.some((variant) => session.generatingVariants.has(variant.key))) {
-    done();
-    return publicError(res, 409, "HLS variant is already generating");
-  }
-  for (const variant of variants) session.generatingVariants.add(variant.key);
-  const created = [];
   try {
-    for (const variant of variants) {
-      const outDir = path.join(session.dir, variant.key);
-      await mkdir(outDir, { recursive: true });
-      variant.dir = outDir;
-      try { if ((await stat(path.join(outDir, "index.m3u8"))).size > 0) continue; } catch {}
-      variant.created = true;
-      created.push(variant);
-      const child = spawn("ffmpeg", hlsArguments(session, variant, { ...options, size: variant.size }, outDir), { stdio: ["ignore", "ignore", "ignore"] });
-      job.child = child;
-      child.once("error", () => {});
-      await waitForPlaylist(path.join(outDir, "index.m3u8"), child);
-    }
-    if (!res.headersSent) res.type("application/vnd.apple.mpegurl").set("Cache-Control", "no-store").send(masterPlaylist(variants, session, options.audioTrack, options.audioOnly));
-    done();
+    await Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options)));
+    res.type("application/vnd.apple.mpegurl").set("Cache-Control", "no-store").send(masterPlaylist(variants, session, options.audioTrack, options.audioOnly));
   } catch {
-    for (const variant of created) if (variant.dir) await rm(variant.dir, { recursive: true, force: true });
     if (!res.headersSent) publicError(res, 502, "unable to create HLS stream");
-    done();
-  } finally {
-    for (const variant of variants) session.generatingVariants.delete(variant.key);
   }
 }
 
@@ -556,17 +685,17 @@ async function serveCaption(req, res, session) {
 }
 
 async function serveDanmaku(req, res, session) {
+  if (!session.danmaku) return res.type("application/xml").send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><i></i>");
   const job = acquireJob(session, res);
   if (!job) return;
   cancelOnDisconnect(req, res, job);
   try {
-  if (!session.danmaku) return res.type("application/xml").send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><i></i>");
   try {
     const bytes = await fetchLimited(session.danmaku.url, session.danmaku.headers, MAX_DANMAKU_BYTES, job.controller.signal);
     const text = bytes.toString("utf8");
     if (!/^\s*(?:<\?xml[^>]*>\s*)?<i(?:\s|>)/i.test(text)) throw new Error("invalid danmaku");
     return res.type("application/xml").send(bytes);
-  } catch { return res.type("application/xml").send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><i></i>"); }
+  } catch { return publicError(res, 502, "danmaku unavailable"); }
   } finally {
     finishJob(session, job);
   }
@@ -595,7 +724,7 @@ export function registerMediaRoutes(app, authGate) {
   app.get("/media/sessions/:id/file/:variant/:filename", authGate, async (req, res) => {
     const session = getSession(req, res);
     if (!session) return;
-    if (!/^[0-9]{2,5}-[0-9]{1,5}x[0-9]{1,5}$/.test(req.params.variant) || !/^(?:index\.m3u8|init\.mp4|seg-\d{5}\.m4s)$/.test(req.params.filename)) return publicError(res, 404, "media file not found");
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(req.params.variant) || !/^(?:index\.m3u8|init\.mp4|seg-\d{5}\.m4s)$/.test(req.params.filename)) return publicError(res, 404, "media file not found");
     const root = path.resolve(session.dir, req.params.variant);
     const file = path.resolve(root, req.params.filename);
     if (!file.startsWith(`${root}${path.sep}`)) return publicError(res, 404, "media file not found");
