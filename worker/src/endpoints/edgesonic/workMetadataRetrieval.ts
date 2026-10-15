@@ -315,8 +315,8 @@ metadataRetrievalRoutes.get("/work/scrape/status", permissionMiddleware("dispatc
      WHERE EXISTS (SELECT 1 FROM song_instances si WHERE si.master_id = sm.id AND si.source_type = 'original' AND si.missing = 0)`
   ).first<{ total: number; incomplete: number; complete: number }>();
   const [pending, kept, queued, claimed] = await Promise.all([
-    env.DB.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND error_message=?").bind(RETRIEVAL_REVIEW_PENDING).first<{ count: number }>(),
-    env.DB.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND error_message=?").bind(RETRIEVAL_REVIEW_KEPT).first<{ count: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE status='completed' AND task_type='scrape' AND error_message=?").bind(RETRIEVAL_REVIEW_PENDING).first<{ count: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE status='completed' AND task_type='scrape' AND error_message=?").bind(RETRIEVAL_REVIEW_KEPT).first<{ count: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND status='queued'").first<{ count: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS count FROM work_queue WHERE task_type='scrape' AND status='claimed'").first<{ count: number }>(),
   ]);

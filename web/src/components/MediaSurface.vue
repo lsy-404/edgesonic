@@ -34,6 +34,7 @@ let resumeTime = 0;
 let danmakuController: AbortController | null = null;
 let danmakuRequestId = 0;
 let danmakuSessionId = "";
+let lastHeartbeatAt = 0;
 const captionOptions = computed(() => props.session.captions ?? []);
 const embeddedUrl = computed(() => {
   if (props.session.transport !== "iframe" || !props.session.sourceUrl) return "";
@@ -166,7 +167,17 @@ watch(selectedCaption, (trackId) => {
 });
 
 watch(currentTime, (time) => emit("time", time));
-function onTime() { if (media.value?.readyState && resumeTime <= 0) currentTime.value = media.value.currentTime; }
+function onTime() {
+  const element = media.value;
+  if (element?.readyState && resumeTime <= 0) currentTime.value = element.currentTime;
+  // Buffered playback can outlast the container's idle timeout without requesting segments.
+  if (element && !element.paused && !element.ended && props.session.transport === "hls" && Date.now() - lastHeartbeatAt >= 120_000) {
+    lastHeartbeatAt = Date.now();
+    void fetch(mediaManifestUrl(props.session.id, props.audioOnly), {
+      method: "HEAD", credentials: "same-origin", signal: AbortSignal.timeout(15_000),
+    }).catch(() => {});
+  }
+}
 function onDuration() { const duration = media.value?.duration; if (duration && Number.isFinite(duration)) emit("duration", duration); void restoreInitialTime(); }
 function onMetadata() { onDuration(); }
 async function restoreInitialTime() {
