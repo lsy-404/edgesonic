@@ -101,6 +101,8 @@ const STRING_FEATURE_KEYS = new Set([
   "transcode_engine",
   "external_transcoder_url",
   "sandbox_idle_timeout_seconds",
+  "media_container_budget_hours",
+  "media_container_billing_day",
   "scrape_enabled_sources",
   // getArtistInfo / getAlbumInfo / getSimilarSongs / getTopSongs proxies.
   "lastfm_api_key",
@@ -213,6 +215,12 @@ function validateFeatureString(key: string, value: string): string | null {
       return null;
     case "sandbox_idle_timeout_seconds":
       if (!["15", "150", "300"].includes(value)) return "sandbox_idle_timeout_seconds must be 15|150|300";
+      return null;
+    case "media_container_budget_hours":
+      if (!/^\d+(\.\d{1,2})?$/.test(value) || Number(value) > 744) return "media_container_budget_hours must be between 0 and 744";
+      return null;
+    case "media_container_billing_day":
+      if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 28) return "media_container_billing_day must be between 1 and 28";
       return null;
     case "lastfm_api_key":
       // Empty string is explicitly allowed — that's how the admin turns the

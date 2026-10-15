@@ -204,7 +204,7 @@ export class KtvRoom implements DurableObject {
       const latest = this.active();
       if (latest.controller !== initial.controller) throw new RoomError("Room has changed", 410);
       if (result.meta.changes && latest.invite === room.invite) {
-        this.ctx.waitUntil(this.env.DB.prepare("DELETE FROM kv_store WHERE key LIKE 'ktv_invite:%' AND updated_at < unixepoch() - 43200").run());
+        this.ctx.waitUntil(this.env.DB.prepare("DELETE FROM kv_store WHERE key GLOB 'ktv_invite:*' AND updated_at < unixepoch() - 43200").run());
         return latest;
       }
       if (latest.invite === room.invite) { latest.invite = inviteCode(); this.save(latest); }

@@ -437,6 +437,8 @@ maintenanceRoutes.post("/maintenance/orphanSongs/delete",
   const items: Array<{ masterId: string; ok: boolean; error?: string }> = [];
   for (const masterId of masterIds) {
     try {
+      const master = await env.DB.prepare("SELECT album_id FROM song_masters WHERE id = ?")
+        .bind(masterId).first<{ album_id: string }>();
       const instances = (await env.DB.prepare(
         "SELECT storage_uri FROM song_instances WHERE master_id = ?",
       ).bind(masterId).all<{ storage_uri: string }>()).results;
@@ -470,11 +472,9 @@ maintenanceRoutes.post("/maintenance/orphanSongs/delete",
       await env.DB.batch([
         env.DB.prepare("DELETE FROM song_instances WHERE master_id = ?").bind(masterId),
         env.DB.prepare("DELETE FROM song_masters WHERE id = ?").bind(masterId),
-        // Drop any album left with no masters so it stops showing up as a
-        // clickable-but-empty card in the library (the "光年之外" ghost case).
         env.DB.prepare(
-          "DELETE FROM albums WHERE NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = albums.id)",
-        ),
+          "DELETE FROM albums WHERE id = ? AND id != 'pending-uploads' AND NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = albums.id)",
+        ).bind(master?.album_id ?? null),
       ]);
       items.push({ masterId, ok: true });
     } catch (e) {

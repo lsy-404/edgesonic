@@ -380,6 +380,7 @@ CREATE TABLE IF NOT EXISTS albums (
   updated_at INTEGER DEFAULT (unixepoch())
 );
 CREATE INDEX IF NOT EXISTS idx_albums_name ON albums(name);
+CREATE INDEX IF NOT EXISTS idx_albums_created ON albums(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_albums_sort_name_id ON albums(sort_name, id);
 
 CREATE TABLE IF NOT EXISTS album_display_groups (
@@ -641,6 +642,7 @@ CREATE TABLE IF NOT EXISTS annotations (
   PRIMARY KEY (user_id, item_id, item_type)
 );
 CREATE INDEX IF NOT EXISTS idx_annotations_user ON annotations(user_id);
+CREATE INDEX IF NOT EXISTS idx_annotations_item ON annotations(item_type, item_id);
 CREATE INDEX IF NOT EXISTS idx_annotations_starred ON annotations(user_id, item_type, starred);
 CREATE INDEX IF NOT EXISTS idx_annotations_rating ON annotations(user_id, item_type, rating);
 CREATE INDEX IF NOT EXISTS idx_annotations_played ON annotations(user_id, item_type, play_date);
@@ -708,7 +710,7 @@ CREATE TABLE IF NOT EXISTS transcode_jobs (
 CREATE INDEX IF NOT EXISTS idx_transcode_jobs_status ON transcode_jobs(status);
 
 -- ============================================================================
--- 14. Internet Radio Stations (045)
+-- 14. Internet Radio Stations
 -- ============================================================================
 -- Subsonic standard station directory; clients connect to stream_url directly
 -- (no proxy on EdgeSonic). CUD is admin-gated via the `manage_radio` permission.
@@ -724,7 +726,7 @@ CREATE TABLE IF NOT EXISTS internet_radio_stations (
 );
 
 -- ============================================================================
--- 15. Podcasts (046)
+-- 15. Podcasts
 -- ============================================================================
 -- Subsonic Podcast API + hourly Cron RSS refresh. Channels subscribe by URL;
 -- episodes come from RSS and only land in R2 when an admin opts an episode in
@@ -764,7 +766,7 @@ CREATE INDEX IF NOT EXISTS idx_podcast_episodes_channel_pub
   ON podcast_episodes (channel_id, published_at DESC);
 
 -- ============================================================================
--- 16. Shares (044) — public share links targeting one or more song masters
+-- 16. Shares — public share links targeting one or more song masters
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS shares (
   id TEXT PRIMARY KEY,
@@ -791,7 +793,7 @@ CREATE TABLE IF NOT EXISTS share_entries (
 CREATE INDEX IF NOT EXISTS idx_share_entries_song ON share_entries(song_master_id);
 
 -- ============================================================================
--- 17. Bookmarks + Play Queues (037)
+-- 17. Bookmarks + Play Queues
 -- ============================================================================
 -- Per-user bookmarks (resume point per song) and a single saved play queue
 -- per user (Subsonic getBookmarks / createBookmark / deleteBookmark /
@@ -841,7 +843,7 @@ CREATE INDEX IF NOT EXISTS idx_scan_jobs_source_started ON scan_jobs (source_id,
 CREATE INDEX IF NOT EXISTS idx_scan_jobs_status ON scan_jobs (status);
 
 -- ============================================================================
--- 19. Scrape Jobs (040) — metadata scrape audit table
+-- 19. Scrape Jobs — metadata scrape audit table
 -- ============================================================================
 -- write-only audit log: one row per /rest/scrapeMetadata proxy call
 -- (status='fetched'), /rest/submitScrapeResult write (status='applied'),
@@ -865,7 +867,7 @@ CREATE INDEX IF NOT EXISTS idx_scrape_jobs_user_created ON scrape_jobs (user_id,
 CREATE INDEX IF NOT EXISTS idx_scrape_jobs_master ON scrape_jobs (song_master_id);
 
 -- ============================================================================
--- 20. Work Queue (052) — browser worker pool task queue
+-- 20. Work Queue — browser worker pool task queue
 -- ============================================================================
 -- Logged-in users (level ≥ 2) can opt in to becoming a worker node: their
 -- browser holds a WebSocket on /edgesonic/work/socket, the coordinator claims
@@ -894,6 +896,8 @@ CREATE TABLE IF NOT EXISTS work_queue (
 );
 
 -- Pickup query: oldest queued row first, priority-respecting.
+CREATE INDEX IF NOT EXISTS idx_work_status_type_error_heartbeat
+  ON work_queue(status, task_type, error_message, heartbeat_at);
 CREATE INDEX IF NOT EXISTS idx_work_pickup
   ON work_queue (priority, created_at) WHERE status = 'queued';
 
@@ -931,8 +935,7 @@ UPDATE features SET description = '元数据刮削总开关'
 
 -- ============================================================================
 -- ============================================================================
--- String/JSON-valued feature flags. Used by 049 transcode engine, 051 scan,
--- work pool, 065 COOP/COEP, 088 concurrency, 091/092 presign.
+-- String/JSON-valued feature flags.
 CREATE TABLE IF NOT EXISTS feature_strings (
   key         TEXT PRIMARY KEY,
   value       TEXT NOT NULL DEFAULT '',
@@ -940,11 +943,13 @@ CREATE TABLE IF NOT EXISTS feature_strings (
   updated_at  INTEGER DEFAULT (unixepoch())
 );
 
--- 049 transcode engine defaults
+-- transcode engine defaults
 INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
   ('transcode_engine',           'disabled', '转码引擎 (sandbox|external|disabled)'),
   ('external_transcoder_url',    '',          '外部转码器 URL（仅在 engine=external 时生效）'),
-  ('sandbox_idle_timeout_seconds', '150',     'Sandbox 容器空闲休眠秒数 (15|150|300)');
+  ('sandbox_idle_timeout_seconds', '150',     'Sandbox 容器空闲休眠秒数 (15|150|300)'),
+  ('media_container_budget_hours', '0', 'Media container runtime budget per billing cycle (hours, 0 disables)'),
+  ('media_container_billing_day', '1', 'Media container billing cycle start day (UTC, 1–28)');
 
 -- transcode_mode / default_transcode_profiles were never read by any
 -- runtime code (pre-bake decisions now happen per-upload instead of via a
@@ -979,40 +984,40 @@ INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
 INSERT OR IGNORE INTO feature_strings (key, value, description) VALUES
   ('server_relay_policy', '', 'S2S 中继策略 (allow|deny|no-cache；空=依 allow_being_proxied 推导)');
 
--- 051 incremental scan tunables
+-- incremental scan tunables
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('scan_interval_hours', '6', 'WebDAV auto-scan interval in hours; 0 = disabled', unixepoch()),
   ('scan_etag_check',     '1', '0|1 — use ETag/lastModified/size triple to skip unchanged files', unixepoch()),
   ('scan_rescan_strategy','auto', 'auto|worker|browser — who re-reads tags on change', unixepoch()),
   ('scan_browser_auto',   '1', '0|1 — Files.vue auto-drains pending metadata queue', unixepoch());
 
--- 052 work pool tunables
+-- work pool tunables
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('worker_pool_enabled',          '1',   'Whether the browser work pool is active (0|1)', unixepoch()),
   ('worker_claim_ttl_seconds',     '60',  'Heartbeat timeout before stale claim is re-queued', unixepoch());
 
--- 065 cross-origin isolation (default ON)
+-- cross-origin isolation (default ON)
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('enable_cross_origin_isolation',
    '1',
    'COOP/COEP response headers — required for SharedArrayBuffer + ffmpeg.wasm multi-thread. 0|1.',
    unixepoch());
 
--- 088 concurrent workers (1..8, default 3)
+-- concurrent workers (1..8, default 3)
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('worker_max_concurrent', '3', 'Concurrent Web Workers per browser (1-8)', unixepoch());
 
--- 091 R2 presign (default OFF — needs R2 S3 secrets; see SECRETS.md §3)
+-- R2 presign (default OFF — needs R2 S3 secrets; see SECRETS.md §3)
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('enable_r2_presign', '0', 'R2 presigned URL direct stream (0=off, 1=on; needs R2 S3 secrets)', unixepoch());
 
--- 092 WebDAV presign — 0035/108: default OFF. The userinfo redirect
+-- WebDAV presign — default OFF. The userinfo redirect
 -- (user:pass@host) is rejected by browsers/ExoPlayer/AVFoundation and leaks
 -- WebDAV credentials to streaming clients; in-Worker proxy is the default.
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
-  ('enable_webdav_presign', '0', 'WebDAV presigned URL direct stream (0=off, 1=on; leaks creds to clients — see 108)', unixepoch());
+  ('enable_webdav_presign', '0', 'WebDAV presigned URL direct stream (0=off, 1=on; leaks creds to clients)', unixepoch());
 
--- 101 R2 cost estimation — free-tier allocation setting
+-- R2 cost estimation — free-tier allocation setting
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('r2_free_allocation_gb', '10',
    'GB of R2 free tier (10 GB total) allocated to EdgeSonic for monthly cost estimation',
@@ -1030,14 +1035,14 @@ INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALU
    'Extended cache tier: larger budget and per-file cap but a short TTL, for sources set to cache_tier=extended',
    unixepoch());
 
--- 110 periodic browser-pool metadata re-check (unsupported formats +
+-- periodic browser-pool metadata re-check (unsupported formats +
 -- lyrics/disc backfill). Default 24h; 0 disables.
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('metadata_recheck_interval_hours', '24',
    'Hours between automatic browser-pool metadata re-checks for unsupported-format or lyrics/disc-incomplete songs (0=disabled)',
    unixepoch());
 
--- 113 periodic batch LRC sidecar backfill for the pre-existing library.
+-- periodic batch LRC sidecar backfill for the pre-existing library.
 -- Default 24h; 0 disables.
 INSERT OR IGNORE INTO feature_strings (key, value, description, updated_at) VALUES
   ('lrc_backfill_interval_hours', '24',

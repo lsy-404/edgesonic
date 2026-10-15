@@ -10,7 +10,7 @@ import { pipeline } from "node:stream/promises";
 const ROOT = path.join(os.tmpdir(), "edgesonic-media");
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const MAX_SESSIONS = 12;
-const MAX_ACTIVE_JOBS = 3;
+const MAX_ACTIVE_JOBS = 1;
 const MAX_ACTIVE_UPLOADS = 2;
 const MAX_ACTIVE_SEARCHES = 2;
 const MAX_SEARCH_QUERY_LENGTH = 200;
@@ -366,14 +366,14 @@ function addHeaderArgs(args, headers) {
 }
 
 function ffmpegInputs(session, selected) {
-  const args = ["-hide_banner", "-loglevel", "error", "-nostdin"];
+  const args = ["-hide_banner", "-loglevel", "error", "-nostdin", "-threads", "1", "-filter_threads", "1"];
   if (selected.video) { addHeaderArgs(args, selected.video.headers); args.push("-i", selected.video.url); addHeaderArgs(args, selected.audio.headers); args.push("-i", selected.audio.url); }
   else args.push("-protocol_whitelist", "file,pipe", "-f", nativeDemuxer(session.file), "-i", session.file);
   return args;
 }
 
 function ffmpegAudioInputs(session, selected) {
-  const args = ["-hide_banner", "-loglevel", "error", "-nostdin"];
+  const args = ["-hide_banner", "-loglevel", "error", "-nostdin", "-threads", "1", "-filter_threads", "1"];
   if (selected.video) { addHeaderArgs(args, selected.audio.headers); args.push("-i", selected.audio.url); }
   else args.push("-protocol_whitelist", "file,pipe", "-f", nativeDemuxer(session.file), "-i", session.file);
   return args;
@@ -400,7 +400,7 @@ function ffmpegForStream(session, options, job) {
   if (options.timeOffset != null) args.push("-ss", String(options.timeOffset));
   if (options.size) args.push("-vf", `scale=${options.size.width}:${options.size.height}:force_original_aspect_ratio=decrease`);
   if (options.bitRate) args.push("-b:v", `${options.bitRate}k`, "-maxrate", `${options.bitRate}k`, "-bufsize", `${options.bitRate * 2}k`);
-  args.push("-c:v", "libx264", "-preset", "veryfast", "-c:a", "aac", "-movflags", "frag_keyframe+empty_moov+default_base_moof", "-f", "mp4", "pipe:1");
+  args.push("-c:v", "libx264", "-preset", "veryfast", "-threads", "1", "-c:a", "aac", "-movflags", "frag_keyframe+empty_moov+default_base_moof", "-f", "mp4", "pipe:1");
   return spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
 }
 
@@ -835,7 +835,7 @@ function hlsArguments(session, variant, options, outDir) {
   } else {
     args.push(...sourceMaps(selected, session));
     if (options.size) args.push("-vf", `scale=${options.size.width}:${options.size.height}:force_original_aspect_ratio=decrease`);
-    args.push("-c:v", "libx264", "-preset", "veryfast", "-b:v", `${variant.rate}k`, "-maxrate", `${variant.rate}k`, "-bufsize", `${variant.rate * 2}k`, "-c:a", "aac", "-b:a", "128k");
+    args.push("-c:v", "libx264", "-preset", "veryfast", "-threads", "1", "-force_key_frames", "expr:gte(t,n_forced*4)", "-flags", "+cgop", "-b:v", `${variant.rate}k`, "-maxrate", `${variant.rate}k`, "-bufsize", `${variant.rate * 2}k`, "-c:a", "aac", "-b:a", "128k");
   }
   args.push("-f", "hls", "-hls_time", "4", "-hls_list_size", "0", "-hls_segment_type", "fmp4", "-hls_fmp4_init_filename", "init.mp4", "-hls_segment_filename", path.join(outDir, "seg-%05d.m4s"), path.join(outDir, "index.m3u8"));
   return args;

@@ -70,7 +70,7 @@ videoMediaRoutes.post("/media/accounts/bilibili/qr", async (c) => {
   const data = await response.json<{ id: string; url: string; expiresAt: number }>();
   if (!/^[A-Za-z0-9_-]{16,128}$/.test(data.id) || !Number.isFinite(data.expiresAt) || data.expiresAt <= Date.now() / 1000 || data.expiresAt > Date.now() / 1000 + 600) throw new MediaLoaderError("Invalid sign-in session");
   await c.env.DB.prepare("INSERT INTO kv_store (key, value, updated_at) VALUES (?, ?, unixepoch())").bind(`media_qr:${data.id}`, JSON.stringify({ username: c.get("user").username, expiresAt: data.expiresAt })).run();
-  await c.env.DB.prepare("DELETE FROM kv_store WHERE key LIKE 'media_qr:%' AND updated_at < unixepoch() - 600").run();
+  await c.env.DB.prepare("DELETE FROM kv_store WHERE key GLOB 'media_qr:*' AND updated_at < unixepoch() - 600").run();
   return c.json({ ok: true, ...data });
 });
 videoMediaRoutes.get("/media/accounts/bilibili/qr/:id", async (c) => {

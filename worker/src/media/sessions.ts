@@ -16,7 +16,7 @@ export async function rememberMediaSession(env: Env, username: string, session: 
   await env.DB.batch([
     env.DB.prepare("INSERT INTO kv_store (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
       .bind(sessionKey(session.id), JSON.stringify({ username, session }), now),
-    env.DB.prepare("DELETE FROM kv_store WHERE key LIKE 'media_session:%' AND updated_at < ?").bind(now - 86_400),
+    env.DB.prepare("DELETE FROM kv_store WHERE key GLOB 'media_session:*' AND updated_at < ?").bind(now - 86_400),
   ]);
 }
 

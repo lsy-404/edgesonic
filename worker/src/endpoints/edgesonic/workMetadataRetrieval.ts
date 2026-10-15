@@ -173,9 +173,9 @@ async function dispatchRetrievalBatch(env: Env, after: string | null, limit: num
        WHERE si2.master_id = sm.id AND si2.source_type = 'original' AND si2.missing = 0 ${manualForce ? "" : "AND si2.tag_scanned = 1"}
        ORDER BY si2.created_at, si2.id LIMIT 1
      )
-     WHERE (? IS NULL OR sm.id > ?) AND ${metadataIncompleteSql()}
+     WHERE sm.id > ? AND ${metadataIncompleteSql()}
      ORDER BY sm.id LIMIT ?`,
-  ).bind(after, after, limit).all<{
+  ).bind(after ?? "", limit).all<{
     master_id: string; title: string; artist_id: string; album_id: string; album_artist_id: string | null;
     lyrics: string | null; master_updated_at: number; song_cover_r2_key: string | null;
     album_name: string; year: number | null; compilation: number; album_cover_r2_key: string | null;

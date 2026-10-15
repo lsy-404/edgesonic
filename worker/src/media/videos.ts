@@ -181,7 +181,7 @@ async function rememberVideoSession(env: Env, username: string, video: Video, se
       .bind(videoSessionCacheKey(username, video), JSON.stringify({
         username, videoId: video.id, revision: video.revision, sessionId: session.id,
       } satisfies VideoSessionCache), now),
-    env.DB.prepare("DELETE FROM kv_store WHERE key LIKE 'video_session:%' AND updated_at < ?").bind(now - 86_400),
+    env.DB.prepare("DELETE FROM kv_store WHERE key GLOB 'video_session:*' AND updated_at < ?").bind(now - 86_400),
   ]);
 }
 

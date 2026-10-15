@@ -65,15 +65,15 @@ export async function accountStatus(env: Env, username: string, provider: Extern
 }
 
 async function revokeMediaSessions(env: Env, username: string): Promise<void> {
-  const rows = await env.DB.prepare("SELECT key, value FROM kv_store WHERE key LIKE 'media_session:%' AND json_extract(value, '$.username') = ? LIMIT 500").bind(username).all<{ key: string; value: string }>();
+  const rows = await env.DB.prepare("SELECT key, value FROM kv_store WHERE key GLOB 'media_session:*' AND json_extract(value, '$.username') = ? LIMIT 500").bind(username).all<{ key: string; value: string }>();
   for (const row of rows.results) {
     const id = row.key.slice("media_session:".length);
     if (env.MediaContainer && /^[A-Za-z0-9_-]{16,128}$/.test(id)) await requestMedia(env, `/media/sessions/${id}`, { method: "DELETE", signal: AbortSignal.timeout(5000) }).then((response) => response.body?.cancel()).catch(() => undefined);
   }
-  await env.DB.prepare("DELETE FROM kv_store WHERE (key LIKE 'media_session:%' OR key LIKE 'video_session:%') AND json_extract(value, '$.username') = ?").bind(username).run();
+  await env.DB.prepare("DELETE FROM kv_store WHERE (key GLOB 'media_session:*' OR key GLOB 'video_session:*') AND json_extract(value, '$.username') = ?").bind(username).run();
 }
 export async function removeAccount(env: Env, username: string, provider: ExternalProvider): Promise<void> {
   await env.DB.prepare("DELETE FROM kv_store WHERE key = ?").bind(accountKey(username, provider)).run();
-  await env.DB.prepare("DELETE FROM kv_store WHERE key LIKE 'media_qr:%' AND json_extract(value, '$.username') = ?").bind(username).run();
+  await env.DB.prepare("DELETE FROM kv_store WHERE key GLOB 'media_qr:*' AND json_extract(value, '$.username') = ?").bind(username).run();
   await revokeMediaSessions(env, username);
 }

@@ -347,6 +347,8 @@ const copied = ref(false);
 
 const transcodeEngine = ref<"sandbox" | "external" | "browser_pool" | "disabled">("disabled");
 const sandboxIdleTimeout = ref<"15" | "150" | "300">("150");
+const mediaContainerBudgetHours = ref("0");
+const mediaContainerBillingDay = ref("1");
 const externalUrl = ref("");
 const externalKeyInput = ref("");
 const externalKeySet = ref(false);
@@ -374,6 +376,8 @@ async function loadFeatures() {
     transcodeEngine.value = (findFeatureString("transcode_engine", "disabled") as "sandbox" | "external" | "browser_pool" | "disabled");
     const configuredIdleTimeout = findFeatureString("sandbox_idle_timeout_seconds", "150");
     sandboxIdleTimeout.value = configuredIdleTimeout === "15" || configuredIdleTimeout === "300" ? configuredIdleTimeout : "150";
+    mediaContainerBudgetHours.value = findFeatureString("media_container_budget_hours", "0");
+    mediaContainerBillingDay.value = findFeatureString("media_container_billing_day", "1");
     externalUrl.value = findFeatureString("external_transcoder_url", "");
     // Probe the secret presence (the value itself never crosses the wire).
     try {
@@ -422,6 +426,8 @@ async function saveTranscode() {
     const writes = [
       { key: "transcode_engine", value: transcodeEngine.value },
       { key: "sandbox_idle_timeout_seconds", value: sandboxIdleTimeout.value },
+      { key: "media_container_budget_hours", value: String(mediaContainerBudgetHours.value) },
+      { key: "media_container_billing_day", value: String(mediaContainerBillingDay.value) },
       { key: "external_transcoder_url", value: externalUrl.value },
     ];
     for (const w of writes) {
@@ -1944,6 +1950,16 @@ onMounted(() => {
               <FluentSelect v-model="sandboxIdleTimeout" class="form-select" :aria-label="t('settings.common.transcode.idleTimeout')" :disabled="!canManageSettings" :options="[{ value: '15', label: t('settings.common.transcode.idle15') }, { value: '150', label: t('settings.common.transcode.idle150') }, { value: '300', label: t('settings.common.transcode.idle300') }]" />
             </label>
             <p class="feature-desc tc-desc">{{ t("settings.common.transcode.idleTimeoutDesc") }}</p>
+
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.transcode.mediaBudgetHours") }}</span>
+              <input v-model="mediaContainerBudgetHours" type="number" min="0" max="744" step="0.01" class="form-input" :disabled="!canManageSettings" />
+            </label>
+            <label class="tc-row">
+              <span class="tc-key">{{ t("settings.common.transcode.mediaBillingDay") }}</span>
+              <input v-model="mediaContainerBillingDay" type="number" min="1" max="28" step="1" class="form-input" :disabled="!canManageSettings" />
+            </label>
+            <p class="feature-desc tc-desc">{{ t("settings.common.transcode.mediaBudgetDesc") }}</p>
 
             <!-- External URL -->
             <label class="tc-row">
