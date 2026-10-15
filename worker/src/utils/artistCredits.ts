@@ -56,6 +56,17 @@ export function songArtistStatements(
   ];
 }
 
-export const UNUSED_ARTIST_CLEANUP_SQL = `DELETE FROM artists
-  WHERE NOT EXISTS (SELECT 1 FROM song_masters WHERE artist_id = artists.id OR album_artist_id = artists.id)
-    AND NOT EXISTS (SELECT 1 FROM song_artists WHERE artist_id = artists.id)`;
+export async function deleteUnusedArtists(db: D1Database, candidateIds: Iterable<string>): Promise<void> {
+  const ids = [...new Set(candidateIds)].filter(Boolean);
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
+    const placeholders = chunk.map(() => "?").join(", ");
+    await db.prepare(
+      `DELETE FROM artists
+       WHERE id IN (${placeholders})
+         AND NOT EXISTS (SELECT 1 FROM song_masters WHERE artist_id = artists.id)
+         AND NOT EXISTS (SELECT 1 FROM song_masters WHERE album_artist_id = artists.id)
+         AND NOT EXISTS (SELECT 1 FROM song_artists WHERE artist_id = artists.id)`
+    ).bind(...chunk).run();
+  }
+}

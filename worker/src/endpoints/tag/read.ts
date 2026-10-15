@@ -35,7 +35,7 @@ import {
   parseAlbumArtistCredit,
   parseArtistCredits,
   songArtistStatements,
-  UNUSED_ARTIST_CLEANUP_SQL,
+  deleteUnusedArtists,
 } from "../../utils/artistCredits";
 
 export const tagReadRoutes = new Hono();
@@ -51,7 +51,8 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
     `SELECT si.id, si.master_id, si.source_id, si.storage_uri, si.suffix,
             sm.album_id AS current_album_id, sm.title AS current_title, al.name AS current_album_name,
             al.compilation AS current_album_compilation,
-            aa.name AS current_album_artist_name, ar.name AS current_artist_name
+            aa.id AS current_album_artist_id, aa.name AS current_album_artist_name,
+            ar.id AS current_artist_id, ar.name AS current_artist_name
      FROM song_instances si
      LEFT JOIN song_masters sm ON sm.id = si.master_id
      LEFT JOIN albums al ON al.id = sm.album_id
@@ -63,8 +64,8 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
     .all<{
       id: string; master_id: string; source_id: string; storage_uri: string; suffix: string;
       current_album_id: string | null; current_title: string; current_album_name: string | null;
-      current_album_compilation: number | null; current_album_artist_name: string | null;
-      current_artist_name: string | null;
+      current_album_compilation: number | null; current_album_artist_id: string | null;
+      current_album_artist_name: string | null; current_artist_id: string | null; current_artist_name: string | null;
     }>()).results;
 
   const sources = new Map<string, SourceRow>();
@@ -76,6 +77,8 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
   let processed = 0;
   let tagged = 0;
   const touchedAlbums = new Set<string>();
+  const vacatedAlbums = new Set<string>();
+  const displacedArtistIds = new Set<string>();
 
   for (const row of rows) {
     processed++;
@@ -147,6 +150,8 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
             ? row.current_album_id
             : "al-" + md5(linkArtistName + " " + albumName).substring(0, 10));
           const albumArtistId = albumArtist?.id ?? null;
+          const oldCreditIds = (await db.prepare("SELECT artist_id FROM song_artists WHERE song_id = ?")
+            .bind(row.master_id).all<{ artist_id: string }>()).results.map((credit) => credit.artist_id);
           const stmts: D1PreparedStatement[] = [
             ...artistInsertStatements(db, [...artistCredits, ...albumArtistCredits], now),
             db.prepare("INSERT OR IGNORE INTO albums (id, name, sort_name, year, genre, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
@@ -171,7 +176,13 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
           ];
           await db.batch(stmts);
           touchedAlbums.add(albumId);
-          if (row.current_album_id && row.current_album_id !== albumId) touchedAlbums.add(row.current_album_id);
+          if (row.current_album_id && row.current_album_id !== albumId) {
+            touchedAlbums.add(row.current_album_id);
+            vacatedAlbums.add(row.current_album_id);
+          }
+          for (const id of [row.current_artist_id, row.current_album_artist_id, ...oldCreditIds]) {
+            if (id) displacedArtistIds.add(id);
+          }
           scanned = 1;
           tagged++;
         }
@@ -194,8 +205,11 @@ tagReadRoutes.get("/read", permissionMiddleware("manage_sources"), async (c) => 
     ).bind(albumId, albumId, albumId, now, albumId).run();
   }
   if (touchedAlbums.size > 0) {
-    await db.prepare("DELETE FROM albums WHERE NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = albums.id)").run();
-    await db.prepare(UNUSED_ARTIST_CLEANUP_SQL).run();
+    for (const albumId of vacatedAlbums) {
+      await db.prepare("DELETE FROM albums WHERE id = ? AND NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = ?)")
+        .bind(albumId, albumId).run();
+    }
+    await deleteUnusedArtists(db, displacedArtistIds);
   }
 
   const remaining = (await db.prepare(

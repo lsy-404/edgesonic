@@ -21,7 +21,7 @@ import {
   parseAlbumArtistCredit,
   parseArtistCredits,
   songArtistStatements,
-  UNUSED_ARTIST_CLEANUP_SQL,
+  deleteUnusedArtists,
 } from "../../utils/artistCredits";
 import { retainCompilationAlbum } from "../../utils/albumIdentity";
 import { createQueries } from "../../db/queries";
@@ -434,6 +434,18 @@ async function applyTagsToSong(
     : master.album_id;
   const now = Math.floor(Date.now() / 1000);
   const oldAlbumId = master.album_id;
+  const displacedArtistIds = new Set<string>();
+  if (artistChanged || tags.albumArtist !== undefined) {
+    if (artistChanged) {
+      displacedArtistIds.add(master.artist_id);
+      const oldCredits = await db.prepare("SELECT artist_id FROM song_artists WHERE song_id = ?")
+        .bind(master.id).all<{ artist_id: string }>();
+      for (const credit of oldCredits.results) displacedArtistIds.add(credit.artist_id);
+    }
+    if (tags.albumArtist !== undefined && master.album_artist_id) {
+      displacedArtistIds.add(master.album_artist_id);
+    }
+  }
 
   //  `{null}` → explicit UPDATE lyrics = NULL (separate stmt below)
   //  `{write}` → D1 unchanged; tags.lyrics now holds master.lyrics so the
@@ -470,7 +482,7 @@ async function applyTagsToSong(
       .bind(tags.year ?? null, genreValue ?? null, now, albumId).run();
   }
 
-  // refresh aggregates for both the new and the vacated album, then sweep empties
+  // refresh aggregates for both the new and the vacated album
   for (const aid of new Set([albumId, oldAlbumId])) {
     await db.prepare(
       `UPDATE albums SET
@@ -481,8 +493,11 @@ async function applyTagsToSong(
        WHERE id = ?`
     ).bind(aid, aid, now, aid).run();
   }
-  await db.prepare("DELETE FROM albums WHERE NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = albums.id)").run();
-  await db.prepare(UNUSED_ARTIST_CLEANUP_SQL).run();
+  if (albumId !== oldAlbumId) {
+    await db.prepare("DELETE FROM albums WHERE id = ? AND NOT EXISTS (SELECT 1 FROM song_masters WHERE album_id = ?)")
+      .bind(oldAlbumId, oldAlbumId).run();
+  }
+  await deleteUnusedArtists(db, displacedArtistIds);
 
   // --- file write-back per instance ---
   const instances = await queries.getSongInstances(master.id);
