@@ -25,6 +25,7 @@ import { resolveActivation, clampExpiryToActivation, clampTtlToActivation, isGue
 import { ensureSubsonicMasterPasswordNoticeColumn } from "./utils/schema_patch";
 import { resolveSsoPolicy } from "./utils/ssoPolicy";
 import { SERVER_TYPE, SERVER_VERSION } from "./utils/xml";
+import { isStudioRelayRoute, studioRelayContext } from "./studio/relay";
 import type { User } from "./types/entities";
 
 export type AuthMethod = "session" | "subsonic_cred" | "apikey" | "guest";
@@ -388,7 +389,7 @@ async function findSubsonicCredentialByPassword(
 // ============================================================================
 // User Lookup (by username)
 // ============================================================================
-async function lookupUser(db: D1Database, username: string): Promise<User | null> {
+export async function lookupUser(db: D1Database, username: string): Promise<User | null> {
   // SELECT * so optional columns (activation_status / activated_until) come
   // along when present and simply stay undefined on a not-yet-migrated
   // database — no per-request schema self-heal needed on this hot path.
@@ -411,7 +412,7 @@ async function lookupUser(db: D1Database, username: string): Promise<User | null
 // ============================================================================
 export const authMiddleware = createMiddleware<{
   Bindings: Env;
-  Variables: { user: User; authMethod: AuthMethod; authSource?: "cookie" | "query"; sessionAuthSource?: "local" | "sso"; streamProxyStrategy?: string; rateLimitDeviceId?: string };
+  Variables: { user: User; authMethod: AuthMethod; authSource?: "cookie" | "query" | "relay"; sessionAuthSource?: "local" | "sso"; streamProxyStrategy?: string; rateLimitDeviceId?: string };
 }>(async (c, next) => {
   const path = new URL(c.req.url).pathname;
 
@@ -428,6 +429,27 @@ export const authMiddleware = createMiddleware<{
       : c.text(subsonicError(code, message), status, {
           "Content-Type": "application/xml; charset=UTF-8",
         });
+
+  // --- Studio gateway relay (studio/gateway.ts) ---
+  // Only a service-binding call can reach this: the gateway already mapped
+  // the subject to an enabled, activated SSO user and dispatches with a
+  // per-call env copy carrying the relay symbol. It acts as that user's SSO
+  // session, limited to the relay allowlist. Chain headers were stripped by
+  // the gateway and are ignored here. streamProxyStrategy "never" keeps
+  // /rest/stream on the in-Worker byte path instead of a presigned 302.
+  const relay = studioRelayContext(c.env);
+  if (relay) {
+    if (!isStudioRelayRoute(c.req.method, path)) {
+      return authFail(50, "Operation not allowed for relay", 403);
+    }
+    c.set("user", relay.user);
+    c.set("authMethod", "session");
+    c.set("authSource", "relay");
+    c.set("sessionAuthSource", "sso");
+    c.set("streamProxyStrategy", "never");
+    c.set("rateLimitDeviceId", await rateLimitDeviceId("relay", relay.subject));
+    return next();
+  }
 
   // --- Anti-loop proxy chain guard (DESIGN.md §3.2) ---
   // Another EdgeSonic proxying us appends its INSTANCE_ID to esChain. The
@@ -697,7 +719,7 @@ export const authMiddleware = createMiddleware<{
 export const permissionMiddleware = (requiredPermission: string) =>
   createMiddleware<{
     Bindings: Env;
-    Variables: { user: User; authMethod: AuthMethod; authSource?: "cookie" | "query"; sessionAuthSource?: "local" | "sso"; streamProxyStrategy?: string };
+    Variables: { user: User; authMethod: AuthMethod; authSource?: "cookie" | "query" | "relay"; sessionAuthSource?: "local" | "sso"; streamProxyStrategy?: string };
   }>(async (c, next) => {
     const user = c.get("user");
     const enabled = await hasPermission(c.env, user, requiredPermission);

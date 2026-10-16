@@ -767,14 +767,22 @@ async function resolveIdentity(
   _idToken: IDToken,
   _userInfo: UserInfoResponse,
 ): Promise<User> {
+  const user = await findIdentityUser(env, issuer, subject);
+  if (!user) throw new OidcFlowError("identity_not_mapped");
+  await env.DB.prepare(
+    "UPDATE oidc_identities SET last_login_at = ? WHERE issuer = ? AND subject = ?",
+  ).bind(Math.floor(Date.now() / 1000), issuer, subject).run();
+  return user;
+}
+
+// Subject → user mapping shared by the SSO callback and the studio gateway.
+// An explicit oidc_identities row wins; with shared mapping enabled, an
+// identity_accounts row is linked the same way a first SSO login links it.
+// Returns null when the subject maps to no user.
+export async function findIdentityUser(env: OidcEnv, issuer: string, subject: string): Promise<User | null> {
   await ensureSsoSchema(env);
   const existing = await findMappedUser(env.DB, issuer, subject);
-  if (existing) {
-    await env.DB.prepare(
-      "UPDATE oidc_identities SET last_login_at = ? WHERE issuer = ? AND subject = ?",
-    ).bind(Math.floor(Date.now() / 1000), issuer, subject).run();
-    return existing;
-  }
+  if (existing) return existing;
   if (env.SSO_SHARED_IDENTITY_MAPPING === "1") {
     const shared = await env.DB.prepare(
       `SELECT u.username, u.master_password, u.level, u.enabled,
@@ -793,7 +801,7 @@ async function resolveIdentity(
       if (persisted) return persisted;
     }
   }
-  throw new OidcFlowError("identity_not_mapped");
+  return null;
 }
 
 function callbackBase(url: URL): string {

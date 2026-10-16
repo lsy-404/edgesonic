@@ -50,6 +50,8 @@ export { Sandbox } from "@cloudflare/sandbox";
 export { WorkCoordinator } from "./coordinator/workCoordinator";
 export { KtvRoom } from "./ktv/room";
 export { MediaContainer } from "./media/container";
+// Service-binding-only RPC surface for the trusted studio Worker.
+export { StudioGateway } from "./studio/gateway";
 
 const app = new Hono();
 
