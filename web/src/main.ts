@@ -58,6 +58,7 @@ const routes = [
   // Tools hosts the Subsonic sync (clone-to-self) available to every non-guest;
   // admin-only tools inside gate themselves. Lazy-loaded, rarely visited.
   { path: "/tools", component: () => import("./views/Tools.vue"), meta: { title: "Tools" } },
+  { path: "/tools/diagnostics", component: () => import("./views/Diagnostics.vue"), meta: { title: "Diagnostics", perm: "maintenance_cleanup" } },
   // non-admin users so we keep it out of the main chunk.
   { path: "/radio", component: () => import("./views/Radio.vue"), meta: { title: "Radio" } },
   { path: "/podcasts", component: () => import("./views/Podcasts.vue"), meta: { title: "Podcasts" } },

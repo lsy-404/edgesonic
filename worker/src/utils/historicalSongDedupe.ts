@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {
+  chooseSurvivorMaster as chooseSurvivor,
+  masterMergeStatements,
+  rewritePlayQueues,
+  type MergeableMaster,
+} from "./catalogMerge";
+
 export interface HistoricalSongDedupeGroup {
   storageUris: string[];
   survivorMasterId: string;
@@ -13,23 +20,7 @@ export interface HistoricalSongDedupePreview {
   duplicateInstances: number;
 }
 
-interface MasterRow {
-  id: string;
-  title: string | null;
-  artist_id: string | null;
-  album_id: string | null;
-  album_artist_id: string | null;
-  cover_r2_key: string | null;
-  sort_title: string | null;
-  track: number | null;
-  disc: number | null;
-  duration: number | null;
-  genre: string | null;
-  participants: string | null;
-  lyrics: string | null;
-  lyrics_rich: string | null;
-  created_at: number | null;
-}
+type MasterRow = MergeableMaster;
 
 interface InstanceRow {
   id: string;
@@ -43,38 +34,6 @@ interface DedupeComponent {
   masters: MasterRow[];
   storageUris: string[];
   instances: InstanceRow[];
-}
-
-function present(value: string | null | undefined): boolean {
-  return !!value && value.trim().length > 0;
-}
-
-function metadataScore(master: MasterRow): number {
-  let score = 0;
-  if (present(master.title)) score++;
-  if (present(master.artist_id) && master.artist_id !== "unknown-artist") score++;
-  if (present(master.album_id) && master.album_id !== "pending-uploads") score++;
-  if (present(master.album_artist_id)) score++;
-  if (present(master.cover_r2_key)) score++;
-  if (present(master.sort_title)) score++;
-  if (master.track !== null) score++;
-  if (master.disc !== null) score++;
-  if (master.duration !== null && master.duration > 0) score++;
-  if (present(master.genre)) score++;
-  if (present(master.participants)) score++;
-  if (present(master.lyrics)) score += 2;
-  if (present(master.lyrics_rich)) score += 2;
-  return score;
-}
-
-function chooseSurvivor(masters: MasterRow[]): MasterRow {
-  return [...masters].sort((a, b) => {
-    const scoreDiff = metadataScore(b) - metadataScore(a);
-    if (scoreDiff !== 0) return scoreDiff;
-    const createdDiff = (a.created_at ?? Number.MAX_SAFE_INTEGER) - (b.created_at ?? Number.MAX_SAFE_INTEGER);
-    if (createdDiff !== 0) return createdDiff;
-    return a.id.localeCompare(b.id);
-  })[0];
 }
 
 function chooseInstance(instances: InstanceRow[], survivorMasterId: string): InstanceRow {
@@ -188,25 +147,6 @@ export async function previewHistoricalSongDedupe(db: D1Database): Promise<Histo
   };
 }
 
-interface QueueRow { user_id: string; song_ids: string; current_id: string | null }
-
-async function rewritePlayQueues(db: D1Database, duplicateMasterIds: string[], survivorMasterId: string, now: number) {
-  const queues = (await db.prepare("SELECT user_id, song_ids, current_id FROM play_queues").all<QueueRow>()).results;
-  const duplicates = new Set(duplicateMasterIds);
-  const writes: D1PreparedStatement[] = [];
-  for (const queue of queues) {
-    let ids: unknown;
-    try { ids = JSON.parse(queue.song_ids); } catch { continue; }
-    if (!Array.isArray(ids) || !ids.some((id) => typeof id === "string" && duplicates.has(id))) continue;
-    const nextIds = ids.map((id) => typeof id === "string" && duplicates.has(id) ? survivorMasterId : id);
-    const nextCurrent = queue.current_id && duplicates.has(queue.current_id) ? survivorMasterId : queue.current_id;
-    writes.push(db.prepare(
-      "UPDATE play_queues SET song_ids = ?, current_id = ?, updated_at = ? WHERE user_id = ?",
-    ).bind(JSON.stringify(nextIds), nextCurrent, now, queue.user_id));
-  }
-  if (writes.length > 0) await db.batch(writes);
-}
-
 export async function applyHistoricalSongDedupe(db: D1Database): Promise<HistoricalSongDedupePreview> {
   const preview = await previewHistoricalSongDedupe(db);
   const components = await loadComponents(db);
@@ -220,74 +160,7 @@ export async function applyHistoricalSongDedupe(db: D1Database): Promise<Histori
     const statements: D1PreparedStatement[] = [];
     for (const duplicateMasterId of duplicateMasterIds) {
       const duplicateMaster = component.masters.find((master) => master.id === duplicateMasterId)!;
-      statements.push(
-        db.prepare(
-          `UPDATE song_masters SET
-             title = COALESCE(NULLIF(title, ''), NULLIF(?, '')),
-             artist_id = COALESCE(NULLIF(artist_id, ''), NULLIF(?, '')),
-             album_id = COALESCE(NULLIF(album_id, ''), NULLIF(?, '')),
-             album_artist_id = COALESCE(NULLIF(album_artist_id, ''), NULLIF(?, '')),
-             cover_r2_key = COALESCE(NULLIF(cover_r2_key, ''), NULLIF(?, '')),
-             sort_title = COALESCE(NULLIF(sort_title, ''), NULLIF(?, '')),
-             track = COALESCE(track, ?),
-             disc = COALESCE(disc, ?),
-             duration = COALESCE(duration, ?),
-             genre = COALESCE(NULLIF(genre, ''), NULLIF(?, '')),
-             participants = COALESCE(NULLIF(participants, ''), NULLIF(?, '')),
-             lyrics = COALESCE(NULLIF(lyrics, ''), NULLIF(?, '')),
-             lyrics_rich = COALESCE(NULLIF(lyrics_rich, ''), NULLIF(?, ''))
-           WHERE id = ?`,
-        ).bind(
-          duplicateMaster.title,
-          duplicateMaster.artist_id,
-          duplicateMaster.album_id,
-          duplicateMaster.album_artist_id,
-          duplicateMaster.cover_r2_key,
-          duplicateMaster.sort_title,
-          duplicateMaster.track,
-          duplicateMaster.disc,
-          duplicateMaster.duration,
-          duplicateMaster.genre,
-          duplicateMaster.participants,
-          duplicateMaster.lyrics,
-          duplicateMaster.lyrics_rich,
-          survivor.id,
-        ),
-        db.prepare("INSERT OR IGNORE INTO song_artists (song_id, artist_id, position) SELECT ?, artist_id, position FROM song_artists WHERE song_id = ?").bind(survivor.id, duplicateMasterId),
-        db.prepare("DELETE FROM song_artists WHERE song_id = ?").bind(duplicateMasterId),
-        db.prepare(
-          `INSERT INTO annotations (user_id, item_id, item_type, play_count, play_date, rating, starred, starred_at)
-           SELECT user_id, ?, item_type, play_count, play_date, rating, starred, starred_at
-           FROM annotations WHERE item_id = ? AND item_type = 'song'
-           ON CONFLICT(user_id, item_id, item_type) DO UPDATE SET
-             play_count = annotations.play_count + excluded.play_count,
-             play_date = MAX(annotations.play_date, excluded.play_date),
-             rating = COALESCE(annotations.rating, excluded.rating),
-             starred = MAX(annotations.starred, excluded.starred),
-             starred_at = CASE
-               WHEN annotations.starred_at IS NULL THEN excluded.starred_at
-               WHEN excluded.starred_at IS NULL THEN annotations.starred_at
-               ELSE MIN(annotations.starred_at, excluded.starred_at)
-             END`,
-        ).bind(survivor.id, duplicateMasterId),
-        db.prepare("DELETE FROM annotations WHERE item_id = ? AND item_type = 'song'").bind(duplicateMasterId),
-        db.prepare(
-          `INSERT INTO bookmarks (user_id, song_master_id, position_ms, comment, created_at, updated_at)
-           SELECT user_id, ?, position_ms, comment, created_at, updated_at FROM bookmarks WHERE song_master_id = ?
-           ON CONFLICT(user_id, song_master_id) DO UPDATE SET
-             position_ms = CASE WHEN excluded.updated_at > bookmarks.updated_at THEN excluded.position_ms ELSE bookmarks.position_ms END,
-             comment = CASE WHEN excluded.updated_at > bookmarks.updated_at THEN excluded.comment ELSE bookmarks.comment END,
-             created_at = MIN(bookmarks.created_at, excluded.created_at),
-             updated_at = MAX(bookmarks.updated_at, excluded.updated_at)`,
-        ).bind(survivor.id, duplicateMasterId),
-        db.prepare("DELETE FROM bookmarks WHERE song_master_id = ?").bind(duplicateMasterId),
-        db.prepare("UPDATE playlist_songs SET song_master_id = ? WHERE song_master_id = ?").bind(survivor.id, duplicateMasterId),
-        db.prepare("UPDATE share_entries SET song_master_id = ? WHERE song_master_id = ?").bind(survivor.id, duplicateMasterId),
-        db.prepare("UPDATE now_playing SET song_id = ? WHERE song_id = ?").bind(survivor.id, duplicateMasterId),
-        db.prepare("UPDATE scrape_jobs SET song_master_id = ? WHERE song_master_id = ?").bind(survivor.id, duplicateMasterId),
-        db.prepare("UPDATE clone_id_map SET local_id = ?, updated_at = ? WHERE item_type = 'song' AND local_id = ?").bind(survivor.id, now, duplicateMasterId),
-        db.prepare("UPDATE song_instances SET master_id = ?, updated_at = ? WHERE master_id = ?").bind(survivor.id, now, duplicateMasterId),
-      );
+      statements.push(...masterMergeStatements(db, survivor.id, duplicateMaster, now));
     }
 
     for (const uri of component.storageUris) {

@@ -1584,6 +1584,16 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
         </RouterLink>
       </section>
 
+      <section v-if="hasPerm('maintenance_cleanup')" class="settings-section card tool-mode-entry">
+        <RouterLink to="/tools/diagnostics" class="tool-mode-entry-link">
+          <span>
+            <span class="section-title">{{ t("tools.diagnostics") }}</span>
+            <span class="tool-mode-entry-desc">{{ t("tools.diagnosticsDesc") }}</span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </RouterLink>
+      </section>
+
       <section v-if="hasPerm('stream')" class="settings-section card tool-mode-entry">
         <RouterLink to="/ktv" class="tool-mode-entry-link">
           <span>

@@ -122,6 +122,7 @@
     "Karaoke mode": "Karaoke mode",
     "Subsonic Clients": "Subsonic Clients",
     "Tools": "Tools",
+    "Diagnostics": "Diagnostics",
     "Radio": "Radio",
     "Podcasts": "Podcasts",
     "Shares": "Shares",
@@ -919,6 +920,8 @@
     "workMode": "Work Mode",
     "workModeDesc": "Choose which background tasks this device can process",
     "karaokeModeDesc": "Open a song request room and enter the fullscreen stage",
+    "diagnostics": "Library diagnostics",
+    "diagnosticsDesc": "Find duplicate songs and albums, inconsistent folder album artists and bad data, then fix them after a preview",
     "superAdminOnly": "This page requires super-admin (level 3)",
     "signInRequired": "Sign in to use the tools",
     "tabClone": "Clone (upstream → local)",
@@ -990,6 +993,135 @@
       "missing": "File missing",
       "pending": "Pending scan",
       "emptyTags": "Tags empty"
+    }
+  },
+  "diagnostics": {
+    "label": "Tools / Diagnostics",
+    "title": "Library diagnostics",
+    "intro": "Scan for duplicate songs and albums, album artist and track number problems inside a folder, and bad data such as object-key placeholders or unknown durations. Every fix is checked against current data before the previewed change is applied.",
+    "back": "Back to tools",
+    "scan": "Scan",
+    "rescan": "Rescan",
+    "scanning": "Scanning…",
+    "scanningHint": "Reading the whole library; this can take a moment…",
+    "emptyHint": "Select Scan to check the library. Scanning only reads data and changes nothing.",
+    "noPermission": "Diagnostics requires the maintenance cleanup permission.",
+    "noDeletePermission": "You do not have the delete permission: merges that need to remove duplicate files will be refused.",
+    "forbidden": "Permission denied",
+    "tagNote": "Fixes change the library database only, not the tags inside files; forcing a re-parse later can bring the old file tags back.",
+    "shown": "Showing {shown} / {total}",
+    "fixSelected": "Fix selected ({n})",
+    "none": "No problems found",
+    "keep": "Keep",
+    "missing": "Missing",
+    "derived": "Derived",
+    "fixed": "Fixed",
+    "fingerprint": "Check audio data",
+    "fingerprinting": "Checking audio data segments…",
+    "fingerprintedAuto": "Checked; the merge chooses per song whether the audio data matches",
+    "tabs": {
+      "songs": "Duplicate songs",
+      "albums": "Duplicate albums",
+      "folders": "Folder albums",
+      "errors": "Bad data"
+    },
+    "col": {
+      "song": "Song",
+      "album": "Album",
+      "duration": "Length",
+      "files": "Files",
+      "songs": "Tracks",
+      "formats": "Formats",
+      "folder": "Folder"
+    },
+    "confidence": {
+      "exact": "Duplicate",
+      "high": "Very likely",
+      "medium": "Possible"
+    },
+    "dataMatch": {
+      "match": "Audio data matches",
+      "mismatch": "Audio data differs",
+      "unknown": "Audio data not checked"
+    },
+    "mode": {
+      "exact": "Remove byte-identical extra files",
+      "best": "Keep only the best-quality file",
+      "auto": "Auto: keep only the best when audio data matches, otherwise remove identical files"
+    },
+    "confirm": {
+      "songs": "Merge {n} duplicate song groups and remove extra files from storage as selected? Deleted files cannot be restored.",
+      "albums": "Merge {n} duplicate album groups and remove extra files from storage as selected? Deleted files cannot be restored.",
+      "folders": "Fix the album artist and track numbers of {n} folder albums?",
+      "errors": "Fix the {n} selected data problems?"
+    },
+    "songs": {
+      "merge": "Merge",
+      "merged": "Merged; removed {files} files"
+    },
+    "albums": {
+      "merge": "Merge albums",
+      "summary": "{pairs} songs paired, {moved} moved",
+      "retiring": "Cleaning up files {done}/{total}…",
+      "merged": "Merged {songs} songs; removed {files} files"
+    },
+    "folders": {
+      "fix": "Unify and fix",
+      "fixed": "Fixed; renumbered {tracks} tracks",
+      "albumArtists": "Current album artists",
+      "noAlbumArtist": "(no album artist)",
+      "manual": "Too different; needs manual review",
+      "albums": "Split albums",
+      "from": "From",
+      "to": "To",
+      "duplicateHint": "The same song appears in several albums of this folder (for example a FLAC set and a WAV set). Merge them under Duplicate albums.",
+      "tracksUnresolved": "Track numbers collide and cannot be inferred from file names; edit them manually.",
+      "problems": {
+        "splitAlbum": "Album split",
+        "albumArtist": "Album artists differ",
+        "missingAlbumArtist": "Album artist missing",
+        "trackNumbers": "Track numbers missing or colliding",
+        "duplicateCopies": "Duplicate copies"
+      }
+    },
+    "errors": {
+      "fixKind": "Fix all",
+      "kinds": {
+        "objectTitle": "Object key as title",
+        "garbledTitle": "Garbled title",
+        "objectAlbumName": "Object key as album name",
+        "objectArtistName": "Object key as artist name",
+        "unknownDuration": "Unknown duration",
+        "implausibleDuration": "Implausible duration",
+        "ghostSong": "Song records without files",
+        "missingFiles": "All files missing",
+        "emptyAlbum": "Empty albums",
+        "staleAlbumTotals": "Stale album totals",
+        "danglingReference": "Missing album or artist record"
+      },
+      "hints": {
+        "objectTitle": "The title is an obj_… storage key and can be restored from the original file name.",
+        "garbledTitle": "The title contains replacement characters or question-mark garbage and can be restored from the original file name.",
+        "objectAlbumName": "The album name is an obj_… storage key and can be restored from the folder name.",
+        "objectArtistName": "The artist name is an obj_… storage key; change it in the tag editor.",
+        "unknownDuration": "The duration is empty or 0: a file's duration is used when known, otherwise the file is parsed again.",
+        "implausibleDuration": "The duration disagrees with the files (for example a WAV parsed from a truncated buffer); the file duration is used or the file is parsed again.",
+        "ghostSong": "The song has no files, so playback always fails; the record can be deleted.",
+        "missingFiles": "None of the files can be found in storage; check the storage source or upload again.",
+        "emptyAlbum": "The album has no songs and can be deleted.",
+        "staleAlbumTotals": "The album's track count, duration or size is out of date and can be recalculated.",
+        "danglingReference": "The song points at an album or artist record that does not exist; parse it again or edit it manually."
+      },
+      "fix": {
+        "setTitle": "Set title to “{value}”",
+        "setAlbumName": "Set album name to “{value}”",
+        "setDuration": "Set duration to {value}",
+        "reparse": "Parse {n} files again",
+        "deleteSong": "Delete record",
+        "deleteAlbum": "Delete empty album",
+        "refreshAlbum": "Recalculate totals",
+        "manual": "Needs manual fix"
+      }
     }
   },
   "settings": {

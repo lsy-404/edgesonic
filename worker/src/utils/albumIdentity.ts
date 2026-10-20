@@ -120,7 +120,7 @@ export async function sourceFolderAlbumIdForScan(
   return currentFolderId === currentAlbumId ? folderAlbumId : null;
 }
 
-function isGenericAlbumName(name: string): boolean {
+export function isGenericAlbumName(name: string): boolean {
   return /^(?:unknown album|unknown|album|wav|flac|mp3|m4a|aac|ogg|opus|ape)$/i.test(name.trim());
 }
 

@@ -116,7 +116,7 @@ function cleanTrackName(filename: string): string {
     .trim();
 }
 
-function looksLossy(value: string | undefined): boolean {
+export function looksLossy(value: string | undefined): boolean {
   return !!value && (value.includes("\uFFFD") || /[?？]{2,}/.test(value) || (value.includes("?") && /[^\x00-\x7f]/.test(value)));
 }
 

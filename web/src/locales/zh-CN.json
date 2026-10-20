@@ -123,6 +123,7 @@
     "Karaoke mode": "K歌模式",
     "Subsonic Clients": "Subsonic 客户端",
     "Tools": "工具",
+    "Diagnostics": "诊断",
     "Radio": "电台",
     "Podcasts": "播客",
     "Shares": "分享",
@@ -916,6 +917,8 @@
     "workMode": "工作模式",
     "workModeDesc": "选择此设备可处理的后台任务",
     "karaokeModeDesc": "开启扫码点歌房间，进入全屏演唱舞台",
+    "diagnostics": "曲库诊断",
+    "diagnosticsDesc": "识别重复歌曲与专辑、同文件夹专辑艺术家不一致和错误数据，并预览后修复",
     "superAdminOnly": "此页面需要超级管理员（等级 3）",
     "signInRequired": "登录后即可使用工具",
     "tabClone": "克隆（上游 → 本地）",
@@ -987,6 +990,135 @@
       "missing": "文件缺失",
       "pending": "待扫描",
       "emptyTags": "标签为空"
+    }
+  },
+  "diagnostics": {
+    "label": "工具 / 诊断",
+    "title": "曲库诊断",
+    "intro": "扫描重复歌曲、重复专辑、同文件夹专辑艺术家与曲号问题，以及对象键占位、未知时长等错误数据。每项修复都会先按当前数据重新核对，再执行预览中的修改。",
+    "back": "返回工具",
+    "scan": "开始扫描",
+    "rescan": "重新扫描",
+    "scanning": "扫描中…",
+    "scanningHint": "正在读取整个曲库，可能需要一些时间…",
+    "emptyHint": "点击“开始扫描”检查曲库。扫描只读取数据，不会修改任何内容。",
+    "noPermission": "需要“维护清理”权限才能使用诊断。",
+    "noDeletePermission": "你没有删除权限：合并时若需要删除多余文件将被拒绝。",
+    "forbidden": "权限不足",
+    "tagNote": "修复只修改曲库数据库，不改写文件内的标签；之后若强制重新解析文件，文件里的旧标签可能再次生效。",
+    "shown": "显示 {shown} / {total}",
+    "fixSelected": "修复选中（{n}）",
+    "none": "没有发现问题",
+    "keep": "保留",
+    "missing": "缺失",
+    "derived": "派生",
+    "fixed": "已修复",
+    "fingerprint": "检测数据段",
+    "fingerprinting": "正在检测音频数据段…",
+    "fingerprintedAuto": "已检测，合并时按每首歌是否一致自动选择",
+    "tabs": {
+      "songs": "重复歌曲",
+      "albums": "重复专辑",
+      "folders": "文件夹专辑",
+      "errors": "错误数据"
+    },
+    "col": {
+      "song": "歌曲",
+      "album": "专辑",
+      "duration": "时长",
+      "files": "文件",
+      "songs": "曲目",
+      "formats": "格式",
+      "folder": "文件夹"
+    },
+    "confidence": {
+      "exact": "确定重复",
+      "high": "高度可能",
+      "medium": "可能重复"
+    },
+    "dataMatch": {
+      "match": "数据段一致",
+      "mismatch": "数据段不同",
+      "unknown": "数据段未检测"
+    },
+    "mode": {
+      "exact": "删除完全相同的多余文件",
+      "best": "只保留最佳品质文件",
+      "auto": "自动：数据段一致则只留最佳，否则只删完全相同"
+    },
+    "confirm": {
+      "songs": "将合并 {n} 组重复歌曲，并按所选方式从存储中删除多余文件，删除无法撤销。继续？",
+      "albums": "将合并 {n} 组重复专辑，并按所选方式从存储中删除多余文件，删除无法撤销。继续？",
+      "folders": "将修复 {n} 个文件夹专辑的专辑艺术家与曲号。继续？",
+      "errors": "将修复选中的 {n} 条错误数据。继续？"
+    },
+    "songs": {
+      "merge": "合并",
+      "merged": "已合并，删除 {files} 个文件"
+    },
+    "albums": {
+      "merge": "合并专辑",
+      "summary": "{pairs} 首配对合并，{moved} 首直接移入",
+      "retiring": "正在清理文件 {done}/{total}…",
+      "merged": "已合并 {songs} 首，删除 {files} 个文件"
+    },
+    "folders": {
+      "fix": "统一并修复",
+      "fixed": "已修复，调整曲号 {tracks} 首",
+      "albumArtists": "当前专辑艺术家",
+      "noAlbumArtist": "（无专辑艺术家）",
+      "manual": "差异较大，需要人工确认",
+      "albums": "被拆分的专辑",
+      "from": "原位置",
+      "to": "新位置",
+      "duplicateHint": "该文件夹里同一首歌出现在多张专辑中（例如 FLAC 和 WAV 各一套），请到“重复专辑”中合并。",
+      "tracksUnresolved": "曲号互相冲突且无法从文件名推断，需要手动编辑。",
+      "problems": {
+        "splitAlbum": "专辑被拆分",
+        "albumArtist": "专辑艺术家不一致",
+        "missingAlbumArtist": "缺少专辑艺术家",
+        "trackNumbers": "曲号缺失或冲突",
+        "duplicateCopies": "重复副本"
+      }
+    },
+    "errors": {
+      "fixKind": "修复本类",
+      "kinds": {
+        "objectTitle": "标题为对象键",
+        "garbledTitle": "标题乱码",
+        "objectAlbumName": "专辑名为对象键",
+        "objectArtistName": "艺人名为对象键",
+        "unknownDuration": "未知时长",
+        "implausibleDuration": "时长异常",
+        "ghostSong": "没有文件的歌曲记录",
+        "missingFiles": "文件全部缺失",
+        "emptyAlbum": "空专辑",
+        "staleAlbumTotals": "专辑统计过期",
+        "danglingReference": "引用不存在的专辑或艺人"
+      },
+      "hints": {
+        "objectTitle": "标题是 obj_… 物理存储键，可从原始文件名恢复。",
+        "garbledTitle": "标题含替换字符或问号乱码，可从原始文件名恢复。",
+        "objectAlbumName": "专辑名是 obj_… 物理存储键，可从所在文件夹名恢复。",
+        "objectArtistName": "艺人名是 obj_… 物理存储键，请在标签编辑器中修改。",
+        "unknownDuration": "时长为空或 0：有文件时长时直接采用，否则重新解析文件。",
+        "implausibleDuration": "时长与文件不符（例如旧版截断解析的 WAV），将采用文件时长或重新解析。",
+        "ghostSong": "歌曲记录没有任何文件，播放必然失败，可删除记录。",
+        "missingFiles": "所有文件都在存储中找不到，请检查存储源或重新上传。",
+        "emptyAlbum": "专辑里没有歌曲，可删除。",
+        "staleAlbumTotals": "专辑的曲目数、时长或大小与实际不符，可重新计算。",
+        "danglingReference": "歌曲引用的专辑或艺人记录不存在，需要重新解析或手动编辑。"
+      },
+      "fix": {
+        "setTitle": "标题改为「{value}」",
+        "setAlbumName": "专辑名改为「{value}」",
+        "setDuration": "时长设为 {value}",
+        "reparse": "重新解析 {n} 个文件",
+        "deleteSong": "删除记录",
+        "deleteAlbum": "删除空专辑",
+        "refreshAlbum": "重新计算统计",
+        "manual": "需手动处理"
+      }
     }
   },
   "settings": {
