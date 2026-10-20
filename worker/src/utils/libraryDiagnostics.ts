@@ -11,6 +11,7 @@
 // show exactly what changes before anything is written.
 
 import { instrumentalBaseTitle, isInstrumentalTitle } from "../../../shared/instrumental";
+import { isKnownMetadataIdentity } from "../../../shared/metadataRetrievalMatch";
 import { isGenericAlbumName } from "./albumIdentity";
 import { parseFingerprint } from "./audioFingerprint";
 import { chooseSurvivorMaster, type MergeableMaster } from "./catalogMerge";
@@ -39,15 +40,41 @@ function nfkcLower(value: string | null | undefined): string {
 // are different recordings and must never be proposed as duplicates.
 export function songTitleKey(title: string | null | undefined): string {
   const value = nfkcLower(title);
-  const withoutNumber = value.replace(/^\d{1,3}\s*[._、-]\s*(?=\S)/u, "");
+  const withoutNumber = value.replace(/^\d{1,3}(?:\s*[._、-]\s*|\s+)(?=\S)/u, "");
   return withoutNumber.replace(/[『』「」"“”'‘’]/gu, "").replace(/\s+/gu, "");
 }
 
+// A trailing label naming a format or quality marks a copy of the same
+// release: "(FLAC)", "（WAV版）", "（赠品MP3）", " - MP3 320 kbps", " - FLAC 16-bit".
+const VARIANT_TOKEN = String.raw`(?:wav|flac|mp3|m4a|aac|ape|ogg|opus|alac|dsd|hi-?res|\d{3}\s*k(?:bps)?|\d{2}[- ]?bit|无损|有损)`;
+const BRACKET_VARIANT = new RegExp(String.raw`\s*[(\[【][^()\[\]【】]*?${VARIANT_TOKEN}[^()\[\]【】]*[)\]】]\s*$`, "iu");
+const DASH_VARIANT = new RegExp(String.raw`\s+[-–—]\s+[^-–—]*?${VARIANT_TOKEN}[^-–—]*$`, "iu");
+
 export function albumTitleKey(name: string | null | undefined): string {
-  return nfkcLower(name)
-    .replace(/\s*[(\[]\s*(?:wav|flac|mp3|m4a|aac|ape|ogg|opus|hi-?res|24bit|16bit)\s*[)\]]$/iu, "")
-    .replace(/[『』「」]/gu, "")
-    .replace(/\s+/gu, "");
+  let value = nfkcLower(name);
+  for (let previous = ""; previous !== value;) {
+    previous = value;
+    value = value.replace(BRACKET_VARIANT, "").replace(DASH_VARIANT, "").trim();
+  }
+  return value.replace(/[『』「」]/gu, "").replace(/\s+/gu, "");
+}
+
+const UNKNOWN_ARTIST = /^(?:未知艺术家|未知歌手|未知艺人|未知)$/u;
+
+function knownArtist(name: string | null | undefined): boolean {
+  return isKnownMetadataIdentity(name) && !UNKNOWN_ARTIST.test(artistKey(name));
+}
+
+/**
+ * Whether two track-artist tags can describe the same recording: equal, one
+ * credit containing the other ("跳蝻P feat. 洛天依" / "洛天依"), or either
+ * side unknown.
+ */
+export function artistsRelated(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!knownArtist(a) || !knownArtist(b)) return true;
+  const left = artistKey(a);
+  const right = artistKey(b);
+  return left === right || left.includes(right) || right.includes(left);
 }
 
 export function artistKey(name: string | null | undefined): string {
@@ -250,6 +277,18 @@ export function isPrimaryInstance(instance: Pick<InstanceRow, "parent_instance_i
   return !instance.parent_instance_id && instance.source_type !== "transcoded" && instance.source_type !== "cached";
 }
 
+const VIDEO_SUFFIXES = new Set(["mp4", "m4v", "mkv", "webm", "mov", "avi", "flv"]);
+
+/** Video copies (a song's music video or "视频版") are never treated as duplicate audio. */
+export function isVideoInstance(instance: Pick<InstanceRow, "suffix">): boolean {
+  return VIDEO_SUFFIXES.has(instance.suffix.toLowerCase());
+}
+
+function isVideoOnlySong(snapshot: CatalogSnapshot, songId: string): boolean {
+  const primaries = (snapshot.instancesByMaster.get(songId) ?? []).filter(isPrimaryInstance);
+  return primaries.length > 0 && primaries.every(isVideoInstance);
+}
+
 function formatRank(suffix: string): number {
   const index = FORMAT_PREFERENCE.indexOf(suffix.toLowerCase());
   return index < 0 ? FORMAT_PREFERENCE.length : index;
@@ -310,7 +349,7 @@ function byteIdentity(instance: InstanceRow): string[] {
 //    format, size and etag), keeping the best of each identical set;
 //  - best: keep only the single best copy.
 export function planRetirement(instances: InstanceRow[], mode: FileMode): string[] {
-  const primaries = instances.filter(isPrimaryInstance).sort(compareInstanceQuality);
+  const primaries = instances.filter((instance) => isPrimaryInstance(instance) && !isVideoInstance(instance)).sort(compareInstanceQuality);
   if (primaries.length < 2 || primaries[0].missing) return [];
   if (mode === "best") return primaries.slice(1).map((instance) => instance.id);
 
@@ -439,7 +478,8 @@ function sharesBytes(instances: InstanceRow[]): boolean {
 
 export function findDuplicateSongs(snapshot: CatalogSnapshot): DuplicateSongGroup[] {
   const candidates = snapshot.songs.filter((song) =>
-    song.album_id !== PLACEHOLDER_ALBUM && songTitleKey(song.title) && !isObjectTitle(song.title ?? undefined));
+    song.album_id !== PLACEHOLDER_ALBUM && songTitleKey(song.title) && !isObjectTitle(song.title ?? undefined)
+    && !isVideoOnlySong(snapshot, song.id));
   const groups: DuplicateSongGroup[] = [];
   for (const [key, songs] of groupBy(candidates, (song) => `${songTitleKey(song.title)}\0${artistKey(song.artist_name)}`)) {
     if (songs.length < 2) continue;
@@ -548,10 +588,13 @@ export function pairAlbumSongs(survivorSongs: SongRow[], duplicateSongs: SongRow
   const unmatched: SongRow[] = [];
   for (const duplicate of duplicateSongs) {
     const options = available.get(songTitleKey(duplicate.title)) ?? [];
+    // Copies of one release often disagree on artist tags, so the same disc
+    // and track position is enough; otherwise the artists must be related.
+    const samePosition = (song: SongRow) => song.track !== null && (song.disc ?? 1) === (duplicate.disc ?? 1) && song.track === duplicate.track;
     const closeEnough = options.filter((song) =>
-      !song.duration || !duplicate.duration || Math.abs(song.duration - duplicate.duration) <= DURATION_TOLERANCE);
-    const match = closeEnough.find((song) => (song.disc ?? 1) === (duplicate.disc ?? 1) && song.track === duplicate.track)
-      ?? closeEnough[0];
+      (!song.duration || !duplicate.duration || Math.abs(song.duration - duplicate.duration) <= DURATION_TOLERANCE)
+      && (samePosition(song) || artistsRelated(song.artist_name, duplicate.artist_name)));
+    const match = closeEnough.find(samePosition) ?? closeEnough[0];
     if (!match) { unmatched.push(duplicate); continue; }
     options.splice(options.indexOf(match), 1);
     pairs.push([match, duplicate]);
@@ -594,7 +637,7 @@ export function findDuplicateAlbums(snapshot: CatalogSnapshot): DuplicateAlbumGr
   for (const album of candidates) {
     for (const song of songsByAlbum.get(album.id)!) {
       const folder = homeFolder(snapshot, song);
-      if (!folder) continue;
+      if (!folder || folder.root || isVideoOnlySong(snapshot, song.id)) continue;
       const key = `${folder.key}\0${albumTitleKey(album.name)}\0${songTitleKey(song.title)}`;
       sharedTracks.set(key, (sharedTracks.get(key) ?? new Set()).add(album.id));
     }
@@ -829,13 +872,17 @@ export interface FolderAlbumIssue {
 
 // A song belongs to the folder of its best primary copy, so a track whose
 // FLAC and WAV live in different folders is only planned once.
-function homeFolder(snapshot: CatalogSnapshot, song: SongRow): { key: string; path: string; fileName: string } | null {
+// Files directly under a storage root are unrelated uploads, not an album
+// folder (`root`), and are left out of folder-based grouping.
+function homeFolder(snapshot: CatalogSnapshot, song: SongRow): { key: string; path: string; fileName: string; root: boolean } | null {
   const best = (snapshot.instancesByMaster.get(song.id) ?? []).filter(isPrimaryInstance).sort(compareInstanceQuality)[0];
   if (!best) return null;
   const entry = snapshot.entryByInstance.get(best.id);
-  if (entry) return { key: `${entry.source_id}\0${entry.parent_id ?? ""}`, path: dirname(entry.path), fileName: basename(entry.path) };
+  if (entry) {
+    return { key: `${entry.source_id}\0${entry.parent_id ?? ""}`, path: dirname(entry.path), fileName: basename(entry.path), root: !entry.parent_id };
+  }
   const path = dirname(best.storage_uri);
-  return { key: `${best.source_id}\0uri:${path}`, path, fileName: basename(best.storage_uri) };
+  return { key: `${best.source_id}\0uri:${path}`, path, fileName: basename(best.storage_uri), root: !path.includes("/") };
 }
 
 export function planFolderAlbum(songs: Array<SongRow & { fileName: string }>, snapshot: CatalogSnapshot, folder: { key: string; path: string }): FolderAlbumIssue | null {
@@ -904,7 +951,7 @@ export function findFolderAlbumIssues(snapshot: CatalogSnapshot): FolderAlbumIss
   for (const song of snapshot.songs) {
     if (song.album_id === PLACEHOLDER_ALBUM) continue;
     const folder = homeFolder(snapshot, song);
-    if (folder) located.push({ ...song, fileName: folder.fileName, folderKey: folder.key, folderPath: folder.path });
+    if (folder && !folder.root) located.push({ ...song, fileName: folder.fileName, folderKey: folder.key, folderPath: folder.path });
   }
   const issues: FolderAlbumIssue[] = [];
   for (const songs of groupBy(located, (song) => `${song.folderKey}\0${albumTitleKey(song.album_name)}`).values()) {
@@ -1034,7 +1081,7 @@ export function planAlbumIssues(snapshot: CatalogSnapshot, album: AlbumRow, song
       kind: "staleAlbumTotals",
       id: album.id,
       label: album.name,
-      detail: `${album.song_count ?? 0}/${album.duration ?? 0}s → ${songs.length}/${duration}s`,
+      detail: `${album.song_count ?? 0} / ${album.duration ?? 0}s / ${album.size ?? 0}B → ${songs.length} / ${duration}s / ${size}B`,
       fix: { action: "refreshAlbum" },
     });
   }

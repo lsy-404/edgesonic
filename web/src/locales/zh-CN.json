@@ -1058,6 +1058,7 @@
     },
     "albums": {
       "merge": "合并专辑",
+      "noPairs": "没有可配对的曲目：合并只会把两套曲目放进同一张专辑，请先确认这是同一张专辑。",
       "summary": "{pairs} 首配对合并，{moved} 首直接移入",
       "retiring": "正在清理文件 {done}/{total}…",
       "merged": "已合并 {songs} 首，删除 {files} 个文件"

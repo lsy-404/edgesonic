@@ -97,7 +97,8 @@ async function scan() {
     for (const group of data.songs) {
       Object.assign(stateOf(`song:${group.key}`), { survivorId: group.survivorId, mode: group.defaultMode, selected: group.confidence !== "medium" });
     }
-    for (const group of data.albums) Object.assign(stateOf(`album:${group.key}`), { survivorId: group.survivorId, mode: "auto", selected: true });
+    // A group with no paired songs would only pile both track lists into one album.
+    for (const group of data.albums) Object.assign(stateOf(`album:${group.key}`), { survivorId: group.survivorId, mode: "auto", selected: group.pairs.length > 0 });
     for (const issue of data.folders) stateOf(`folder:${issue.key}`).selected = issue.autoFixable;
     for (const issue of data.errors) stateOf(`error:${issue.kind}:${issue.id}`).selected = !!issue.fix;
     report.value = data;
@@ -462,6 +463,7 @@ function statusClass(status: Status): string {
               <span class="status-badge" :class="group.dataMatch === 'match' ? 'success' : group.dataMatch === 'mismatch' ? 'warning' : 'muted'">{{ t(`diagnostics.dataMatch.${group.dataMatch}`) }}</span>
               <span class="muted small">{{ t("diagnostics.albums.summary", { pairs: group.pairs.length, moved: group.moved }) }}</span>
             </header>
+            <p v-if="group.pairs.length === 0" class="diag-note warn">{{ t("diagnostics.albums.noPairs") }}</p>
             <table class="diag-table">
               <thead>
                 <tr><th>{{ t("diagnostics.keep") }}</th><th>{{ t("diagnostics.col.album") }}</th><th class="num">{{ t("diagnostics.col.songs") }}</th><th>{{ t("diagnostics.col.formats") }}</th><th>{{ t("diagnostics.col.folder") }}</th></tr>

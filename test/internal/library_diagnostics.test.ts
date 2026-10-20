@@ -12,11 +12,13 @@ import { diagnosticsRoutes } from "../../worker/src/endpoints/edgesonic/diagnost
 import { instrumentalBaseTitle, isInstrumentalTitle } from "../../shared/instrumental";
 import { locateAudioSegment } from "../../worker/src/utils/audioFingerprint";
 import {
+  albumTitleKey,
   buildDiagnosticsReport,
   chooseFolderAlbumArtist,
   loadCatalogSnapshot,
   planRetirement,
   planTrackNumbers,
+  artistsRelated,
   songTitleKey,
   type InstanceRow,
 } from "../../worker/src/utils/libraryDiagnostics";
@@ -137,6 +139,14 @@ async function pureChecks() {
   console.log("title keys and instrumental pairing:");
   assert(songTitleKey("01. Same Song") === songTitleKey("Same Song"), "track number prefix is ignored");
   assert(songTitleKey("Same Song (Inst.)") !== songTitleKey("Same Song"), "instrumental marker keeps titles apart");
+  assert(songTitleKey("01 海边城") === songTitleKey("海边城"), "space-separated track number is ignored");
+  assert(albumTitleKey("枫烬-夜屠灵（WAV版）") === albumTitleKey("枫烬-夜屠灵（MP3版）"), "format edition labels are ignored");
+  assert(albumTitleKey("平行四界 Vocal Collection - MP3 320 kbps") === albumTitleKey("平行四界 Vocal Collection - FLAC 16-bit"), "dash quality labels are ignored");
+  assert(albumTitleKey("失落的机械城Ⅱ：虚浮之都（赠品MP3）") === albumTitleKey("失落的机械城Ⅱ：虚浮之都"), "bonus-format label is ignored");
+  assert(albumTitleKey("肆自系列 (视频版)") !== albumTitleKey("肆自系列"), "non-format edition labels stay distinct");
+  assert(albumTitleKey("A-Side - B-Side") === "a-side-b-side", "hyphenated names without a format label are kept");
+  assert(artistsRelated("Unknown Artist", "洛天依") && artistsRelated("未知艺术家", "咏吟轩"), "unknown artists match anyone");
+  assert(artistsRelated("跳蝻P feat. 洛天依", "洛天依") && !artistsRelated("祖娅纳惜", "赤羽"), "featured credits relate, different singers do not");
   assert(isInstrumentalTitle("曲名 (Instrumental)") && instrumentalBaseTitle("曲名 (Instrumental)") === "曲名", "bracketed marker is stripped");
   assert(instrumentalBaseTitle("曲名 - inst.") === "曲名", "appended marker and separator are stripped");
   assert(instrumentalBaseTitle("Instrumental Analysis") === "Instrumental Analysis", "marker word inside a title is kept");
@@ -194,6 +204,7 @@ async function pureChecks() {
   assert(planRetirement([copy("m", "mp3"), copy("f", "flac")], "best").join() === "m", "best keeps the lossless copy");
   assert(planRetirement([copy("w", "wav", { bit_rate: 1411 }), copy("f", "flac")], "best").join() === "w", "equal lossless quality prefers FLAC over WAV");
   assert(planRetirement([copy("f", "flac", { missing: 1 }), copy("m", "mp3", { missing: 1 })], "best").length === 0, "nothing is removed when every copy is missing");
+  assert(planRetirement([copy("f", "flac"), copy("v", "mp4")], "best").length === 0, "a video copy is never removed as a lower-quality duplicate");
 
   console.log("data segments:");
   const samples = pcm(7);

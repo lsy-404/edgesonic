@@ -1061,6 +1061,7 @@
     },
     "albums": {
       "merge": "Merge albums",
+      "noPairs": "No songs pair up: merging would only put both track lists into one album. Check that these are the same release first.",
       "summary": "{pairs} songs paired, {moved} moved",
       "retiring": "Cleaning up files {done}/{total}…",
       "merged": "Merged {songs} songs; removed {files} files"
