@@ -207,10 +207,12 @@ export function mapPlaylist(p: Playlist): SubsonicPlaylist {
 }
 
 // Playlist detail returns playlist attributes + entry[] (each entry mirrors mapSong).
-export function mapPlaylistDetail(p: Playlist, songs: SongMaster[]) {
+// `annotations` holds the caller's song annotations keyed `song:<id>` so
+// entries carry starred/rating like every other song listing.
+export function mapPlaylistDetail(p: Playlist, songs: SongMaster[], annotations?: ReadonlyMap<string, AnnotationLite>) {
   return {
     attrs: mapPlaylist(p),
-    entries: songs.map((s) => mapSong(s, s.album_id)),
+    entries: songs.map((s) => mapSong(s, s.album_id, annotations?.get(`song:${s.id}`))),
   };
 }
 

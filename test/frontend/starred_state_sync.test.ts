@@ -27,8 +27,15 @@ globalThis.setInterval = ((handler: TimerHandler, timeout?: number, ...args: any
 
 let resolveStaleSong: ((response: Response) => void) | undefined;
 let staleSongRequested = false;
+let limitedSongCalls = 0;
 globalThis.fetch = (async (input: string | URL | Request) => {
   const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+  if (url.includes("/rest/getSong") && url.includes("id=song-2")) {
+    limitedSongCalls++;
+    return limitedSongCalls === 1
+      ? new Response('{"error":"rate limited"}', { status: 429 })
+      : new Response('<subsonic-response status="ok"><song id="song-2" starred="2026-01-01T00:00:00Z" /></subsonic-response>');
+  }
   if (url.includes("/rest/getSong")) {
     staleSongRequested = true;
     return new Promise<Response>((resolve) => { resolveStaleSong = resolve; });
@@ -65,6 +72,16 @@ async function run() {
   await player.toggleStar();
   assert(player.starred === true, "successful player toggle keeps the optimistic starred state");
   assert(player.queue[0]?.starred === true, "successful player toggle keeps queue state aligned");
+
+  player.$patch({ queue: [{ id: "file:r2://music/b.flac", libraryId: "song-2", title: "B", artist: "Artist", album: "Album", duration: 0 }], index: 0 });
+  await nextTick();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert(limitedSongCalls === 1 && player.starred === false, "a rate-limited lookup leaves the heart unresolved");
+  await new Promise((resolve) => setTimeout(resolve, 1700));
+  await nextTick();
+  assert(limitedSongCalls === 2 && player.starred === true, "the lookup is retried and the star is shown");
+  const saved = JSON.parse(session.getItem("edgesonic:queue") || "[]")[0] ?? {};
+  assert(saved.libraryId === "song-2" && saved.starred === true, "saved queue keeps the library id and star for reloads");
 
   clearInterval((globalThis as any).__trackPrefetchCleanupInterval);
   console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");

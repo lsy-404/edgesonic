@@ -120,7 +120,8 @@ const getPlaylistHandler = async (c: import("hono").Context<{ Bindings: Env; Var
   }
 
   const songs = await queries.getPlaylistSongs(id);
-  const detail = mapPlaylistDetail(playlist, songs);
+  const songAnn = await queries.getAnnotationsMap(user.username, "song", songs.map((s) => s.id));
+  const detail = mapPlaylistDetail(playlist, songs, songAnn);
   return c.text(
     subsonicOK({
       playlist: {
@@ -164,7 +165,8 @@ const createPlaylistHandler = async (c: import("hono").Context<{ Bindings: Env; 
     const updated = await queries.getPlaylistById(playlistId);
     const songs = await queries.getPlaylistSongs(playlistId);
     if (!updated) return c.text(subsonicError(70, "Playlist not found"), 404, XML);
-    const detail = mapPlaylistDetail(updated, songs);
+    const songAnn = await queries.getAnnotationsMap(user.username, "song", songs.map((s) => s.id));
+    const detail = mapPlaylistDetail(updated, songs, songAnn);
     return c.text(
       subsonicOK({
         playlist: {
@@ -186,7 +188,8 @@ const createPlaylistHandler = async (c: import("hono").Context<{ Bindings: Env; 
   const created = await queries.getPlaylistById(newId);
   if (!created) return c.text(subsonicError(0, "Playlist creation failed"), 500, XML);
   const songs = await queries.getPlaylistSongs(newId);
-  const detail = mapPlaylistDetail(created, songs);
+  const songAnn = await queries.getAnnotationsMap(user.username, "song", songs.map((s) => s.id));
+  const detail = mapPlaylistDetail(created, songs, songAnn);
   return c.text(
     subsonicOK({
       playlist: {

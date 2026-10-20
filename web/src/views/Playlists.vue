@@ -132,6 +132,8 @@ function parseEntry(attrs: Record<string, string>, idx: number): PlaylistEntry {
     album: decodeAttr(attrs.album || ""),
     coverArt: attrs.coverArt || undefined,
     duration: parseInt(attrs.duration || "0", 10) || 0,
+    starred: !!attrs.starred,
+    starredAt: attrs.starred || undefined,
     position: idx + 1,
   };
 }

@@ -240,17 +240,31 @@ export const usePlayerStore = defineStore("player", () => {
     applyStarred(id, value);
   }
 
+  // A rate-limited, timed-out or failed lookup would otherwise leave the
+  // heart wrong for the whole track; "not found" (code 70) is final.
+  const STARRED_RETRY_DELAYS_MS = [1500, 5000];
+
   async function _refreshStarred(id: string) {
     const request = ++starredRequest;
-    try {
-      const { authFetch } = useAuth();
-      const xml = await authFetch("getSong", { id });
-      if (request !== starredRequest || !current.value || catalogId(current.value) !== id) return;
-      if (starMutationId === id) return;
-      const song = parseXmlAttrs(xml, "song")[0];
-      if (song) applyStarred(id, !!song.starred);
-    } catch {
-      // Preserve the known favorite when metadata is unavailable.
+    for (let attempt = 0; ; attempt++) {
+      let final = false;
+      try {
+        const { authFetch } = useAuth();
+        const xml = await authFetch("getSong", { id });
+        if (request !== starredRequest || !current.value || catalogId(current.value) !== id) return;
+        if (starMutationId === id) return;
+        const song = parseXmlAttrs(xml, "song")[0];
+        if (song) {
+          applyStarred(id, !!song.starred);
+          return;
+        }
+        final = /<error\b[^>]*\bcode=["']70["']/.test(xml);
+      } catch {
+        // Preserve the known favorite while metadata is unavailable.
+      }
+      if (final || attempt >= STARRED_RETRY_DELAYS_MS.length) return;
+      await new Promise((resolve) => setTimeout(resolve, STARRED_RETRY_DELAYS_MS[attempt]));
+      if (request !== starredRequest) return;
     }
   }
   watch(current, (tr) => {
@@ -258,6 +272,15 @@ export const usePlayerStore = defineStore("player", () => {
     starred.value = !!tr?.starred;
     if (tr) void _refreshStarred(catalogId(tr));
   }, { immediate: true });
+
+  // Stars set on another device show up when this page is looked at again.
+  function refreshCurrentStarred() {
+    if (current.value && starMutationId === null) void _refreshStarred(catalogId(current.value));
+  }
+  if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshCurrentStarred(); });
+  }
+  window.addEventListener("online", refreshCurrentStarred);
 
   async function toggleStar() {
     const tr = current.value;
@@ -1427,12 +1450,20 @@ export const usePlayerStore = defineStore("player", () => {
 
   // ---- page-session persistence ----
 
-  /** Serialize queue to minimal objects (stream URLs are generated on demand). */
+  /**
+   * Serialize queue to minimal objects (stream URLs are generated on demand).
+   * The catalog identity and favorite state survive a reload: without
+   * libraryId a file-backed track can no longer look up its star.
+   */
   function _saveQueueAndIndex() {
     const slim = queue.value.map((t) => ({
       id: t.id, title: t.title, artist: t.artist, album: t.album,
       ...(t.coverArt !== undefined ? { coverArt: t.coverArt } : {}),
       duration: t.duration,
+      ...(t.libraryId ? { libraryId: t.libraryId } : {}),
+      ...(t.starred ? { starred: true, ...(t.starredAt ? { starredAt: t.starredAt } : {}) } : {}),
+      ...(t.artistId ? { artistId: t.artistId } : {}),
+      ...(t.albumId ? { albumId: t.albumId } : {}),
     }));
     playbackStorage.setItem("edgesonic:queue", JSON.stringify(slim));
     playbackStorage.setItem("edgesonic:currentIndex", String(index.value));
