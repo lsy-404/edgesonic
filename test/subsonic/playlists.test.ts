@@ -110,7 +110,7 @@ function setupSchema(sqlite: DatabaseSync): void {
     );
 
     CREATE TABLE artists (id TEXT PRIMARY KEY, name TEXT, sort_name TEXT);
-    CREATE TABLE albums (id TEXT PRIMARY KEY, name TEXT);
+    CREATE TABLE albums (id TEXT PRIMARY KEY, name TEXT, year INTEGER);
     CREATE TABLE song_masters (
       id TEXT PRIMARY KEY,
       album_id TEXT NOT NULL,
@@ -149,6 +149,25 @@ function setupSchema(sqlite: DatabaseSync): void {
       duration INTEGER,
       missing INTEGER DEFAULT 0,
       FOREIGN KEY (master_id) REFERENCES song_masters(id) ON DELETE CASCADE
+    );
+    -- Song rows read the instance's logical filename from here. Source and
+    -- object foreign keys are omitted because this fixture has neither table.
+    CREATE TABLE storage_entries (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      parent_id TEXT,
+      path TEXT NOT NULL,
+      display_name TEXT NOT NULL CHECK (length(display_name) > 0 AND instr(display_name, '/') = 0),
+      kind TEXT NOT NULL CHECK (kind IN ('folder', 'file')),
+      object_id TEXT,
+      instance_id TEXT,
+      companion_of TEXT,
+      created_at INTEGER DEFAULT (unixepoch()),
+      updated_at INTEGER DEFAULT (unixepoch()),
+      CHECK ((kind = 'folder' AND object_id IS NULL) OR (kind = 'file' AND object_id IS NOT NULL)),
+      FOREIGN KEY (parent_id) REFERENCES storage_entries(id) ON DELETE CASCADE,
+      FOREIGN KEY (instance_id) REFERENCES song_instances(id) ON DELETE SET NULL,
+      FOREIGN KEY (companion_of) REFERENCES storage_entries(id) ON DELETE SET NULL
     );
 
     CREATE TABLE playlists (

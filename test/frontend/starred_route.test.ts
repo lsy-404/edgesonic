@@ -36,7 +36,7 @@ assert(/path:\s*"\/starred"/.test(app), "navigation includes the starred path");
 assert(/app\.menu\.starred/.test(app), "navigation uses a dedicated starred label");
 assert(/defineProps<\{\s*starredOnly\?: boolean;?/.test(library), "Library accepts starredOnly");
 assert(/v-if="!starredOnly && !embedded" class="library-search"/.test(library), "standalone page hides the library search");
-assert(/v-if="!currentArtist && !currentAlbum && !embedded" class="library-controls"/.test(library), "standalone page shows shared library controls");
+assert(/v-if="!currentArtist && !currentAlbum && !currentDisplayGroup && !embedded" class="library-controls"/.test(library), "standalone page shows shared library controls");
 assert(/@click="switchTab\('artists'\)"/.test(library) && /@click="switchTab\('albums'\)"/.test(library) && /@click="switchTab\('songs'\)"/.test(library), "standalone page exposes all three tabs");
 assert(!/tab === 'starred'/.test(library), "standalone page has no combined starred tab");
 
