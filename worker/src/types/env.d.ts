@@ -15,6 +15,7 @@
 
 interface Env {
   DB: D1Database;
+  ACCESS?: Fetcher;
   KTV_ROOMS: DurableObjectNamespace;
   MediaContainer?: DurableObjectNamespace<import("../media/container").MediaContainer>;
   // Optional while deployments transition to the Rate Limiting bindings.

@@ -24,6 +24,7 @@ import { hasPermission } from "./utils/permissions";
 import { resolveActivation, clampExpiryToActivation, clampTtlToActivation, isGuestAccessEnabled, type ActivationState } from "./utils/activation";
 import { ensureSubsonicMasterPasswordNoticeColumn } from "./utils/schema_patch";
 import { resolveSsoPolicy } from "./utils/ssoPolicy";
+import { authorizeServiceAccess } from "./utils/accessAuthority";
 import { SERVER_TYPE, SERVER_VERSION } from "./utils/xml";
 import { isStudioRelayRoute, studioRelayContext } from "./studio/relay";
 import type { User } from "./types/entities";
@@ -293,15 +294,14 @@ export async function verifyWebPassword(password: string, stored: string): Promi
 // ============================================================================
 // Only checks subsonic_credentials. Session tokens cannot be used as password
 // or salt in any form. Sessions must use HTTP-only cookie authentication.
-// expires_at carries the activation horizon a credential was issued under
-// (NULL = unbounded); a lapsed one stops matching until the account is
-// re-activated, which re-stamps it.
+// Credential authenticity is checked before ACCESS decides current admission.
+// A lapsed activation expiry is still rejected later when ACCESS is absent.
 async function liveCredentials(
   db: D1Database,
   username: string,
 ): Promise<{ results: Array<{ id: string; password: string; stream_proxy_strategy: string | null; last_used: number | null }> }> {
   return await db.prepare(
-    "SELECT id, password, stream_proxy_strategy, last_used FROM subsonic_credentials WHERE username = ? AND (expires_at IS NULL OR expires_at > unixepoch())",
+    "SELECT id, password, stream_proxy_strategy, last_used FROM subsonic_credentials WHERE username = ?",
   ).bind(username).all<{ id: string; password: string; stream_proxy_strategy: string | null; last_used: number | null }>();
 }
 
@@ -336,18 +336,20 @@ async function findSubsonicCredential(
   return null;
 }
 
-async function renewSessionIfNeeded(db: D1Database, token: string, expiresAt: number, activation?: ActivationState): Promise<void> {
+async function renewSessionIfNeeded(db: D1Database, token: string, expiresAt: number, activation?: ActivationState, accessExpiresAt?: number | null): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
-  if (expiresAt >= now + SESSION_RENEW_THRESHOLD_SEC) return;
-  // The renewed expiry is clamped to the caller's activation window so a
-  // sliding session never outlives the account's activation.
-  const renewed = activation
+  const shouldRenew = expiresAt < now + SESSION_RENEW_THRESHOLD_SEC;
+  const mustClamp = typeof accessExpiresAt === "number" && expiresAt > accessExpiresAt;
+  if (!shouldRenew && !mustClamp) return;
+  // Keep the sliding window within whichever current authority expires first.
+  let renewed = activation
     ? clampExpiryToActivation(activation, now + SESSION_TTL_SEC)
     : now + SESSION_TTL_SEC;
-  if (renewed <= expiresAt) return;
+  if (typeof accessExpiresAt === "number") renewed = Math.min(renewed, accessExpiresAt);
+  if (renewed <= expiresAt && !mustClamp) return;
   await db
-    .prepare("UPDATE sessions SET expires_at = ? WHERE token = ? AND expires_at < ? AND expires_at < ?")
-    .bind(renewed, token, now + SESSION_RENEW_THRESHOLD_SEC, renewed)
+    .prepare("UPDATE sessions SET expires_at = ? WHERE token = ? AND expires_at > ? AND (expires_at < ? OR (? IS NOT NULL AND expires_at > ?))")
+    .bind(renewed, token, now, now + SESSION_RENEW_THRESHOLD_SEC, accessExpiresAt ?? null, accessExpiresAt ?? null)
     .run();
 }
 
@@ -620,7 +622,7 @@ export const authMiddleware = createMiddleware<{
         return authFail(50, "Guest access denied or token expired", 403);
       }
     } else if (GUEST_ALLOWED_PATHS.has(path)) {
-      if (!(await hasPermission(c.env, user, "browse"))) {
+      if (!c.env.ACCESS && ssoPolicy.mode !== "required" && !(await hasPermission(c.env, user, "browse"))) {
         return authFail(50, "Guest access is disabled", 403);
       }
     } else {
@@ -656,14 +658,46 @@ export const authMiddleware = createMiddleware<{
     return authFail(50, "This endpoint requires a web session credential", 403);
   }
 
+  let accessExpiresAt: number | null | undefined;
+  let accessGranted = false;
+  if (authMethod !== "guest" || c.env.ACCESS || ssoPolicy.mode === "required") {
+    try {
+      let identity: { subject: string } | { username: string } | null = { username: user.username };
+      if (authMethod === "session" && cookieSession?.authSource === "sso") {
+        const ssoIssuer = (await db.prepare("SELECT sso_issuer FROM sessions WHERE id = ?")
+          .bind(cookieSession.id).first<{ sso_issuer: string | null }>())?.sso_issuer ?? null;
+        const mapping = ssoIssuer
+          ? await db.prepare("SELECT subject FROM oidc_identities WHERE issuer = ? AND username = ? LIMIT 1")
+            .bind(ssoIssuer, user.username).first<{ subject: string }>()
+          : null;
+        identity = mapping ? { subject: mapping.subject } : null;
+      }
+      if (!identity && c.env.ACCESS) return authFail(40, "Identity mapping is unavailable", 401);
+      const authorization = identity ? await authorizeServiceAccess(c.env.ACCESS, identity) : null;
+      if (!authorization && ssoPolicy.mode === "required") {
+        return authFail(50, "Service authorization is unavailable", 503);
+      }
+      if (authorization) {
+        accessGranted = true;
+        user.accessPermissions = authorization.permissions;
+        accessExpiresAt = authorization.expiresAt;
+      }
+    } catch (error) {
+      const denied = error instanceof Error && error.message === "service_access_denied";
+      return authFail(50, denied ? "Access to this service is not granted" : "Service authorization is unavailable", denied ? 403 : 503);
+    }
+  }
+
+  if (authMethod === "guest" && accessGranted && GUEST_ALLOWED_PATHS.has(path)
+    && !(await hasPermission(c.env, user, "browse"))) {
+    return authFail(50, "Guest access is disabled", 403);
+  }
+
   // --- Activation enforcement ---
-  // The user row already carries activation_status / activated_until, so no
-  // extra query is needed. Subsonic client credentials are refused outright;
-  // a web session survives but is frozen: activation endpoints (+ /auth/me)
-  // always work, and when the guest account is enabled the session degrades
-  // to guest-grade browsing plus read-only own data (GETs only).
-  const activation = await resolveActivation(c.env, user);
-  if (!activation.active) {
+  // An active Access grant supersedes activation; otherwise inactive accounts
+  // retain the existing freeze and guest-read-only behavior.
+  const activation = accessGranted ? { enabled: false, active: true, status: "permanent" as const, until: null } : await resolveActivation(c.env, user);
+  if (!accessGranted && !activation.active) {
     if (authMethod === "apikey" || authMethod === "subsonic_cred") {
       return authFail(40, "Account not activated", 401);
     }
@@ -696,11 +730,13 @@ export const authMiddleware = createMiddleware<{
   // → the SPA logs out. A post-deploy reload surfacing as "lost login" was
   // the symptom that exposed the gap.
   if (authMethod === "session" && authSource === "cookie" && cookieToken) {
-    await renewSessionIfNeeded(db, cookieToken, cookieSession?.expiresAt ?? 0, activation);
+    await renewSessionIfNeeded(db, cookieToken, cookieSession?.expiresAt ?? 0, accessGranted ? undefined : activation, accessExpiresAt);
     const isHttps = new URL(c.req.url).protocol === "https:";
     // The cookie's Max-Age is clamped to the activation window so the
     // browser-side lifetime never exceeds the server-side session's.
-    const maxAge = clampTtlToActivation(activation, SESSION_TTL_SEC);
+    const maxAge = accessGranted
+      ? Math.max(0, Math.min(SESSION_TTL_SEC, accessExpiresAt === null ? SESSION_TTL_SEC : (accessExpiresAt ?? 0) - Math.floor(Date.now() / 1000)))
+      : clampTtlToActivation(activation, SESSION_TTL_SEC);
     c.header("Set-Cookie", buildSessionCookieHeader(cookieToken, maxAge) + (isHttps ? "; Secure" : ""), { append: true });
   }
   return next();

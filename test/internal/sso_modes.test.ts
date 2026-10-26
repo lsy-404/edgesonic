@@ -10,6 +10,9 @@ import { md5 } from "../../worker/src/utils/md5";
 
 declare global { type D1Database = unknown; type Env = unknown; }
 
+let accessReply: Record<string, unknown>;
+let accessRequests: Array<Record<string, unknown>> = [];
+
 function makeD1(sqlite: DatabaseSync) {
   function prepare(query: string) {
     const statement = sqlite.prepare(query);
@@ -47,6 +50,7 @@ function buildDatabase(): DatabaseSync {
       username TEXT NOT NULL,
       token TEXT NOT NULL UNIQUE,
       auth_source TEXT NOT NULL DEFAULT 'local' CHECK (auth_source IN ('local', 'sso')),
+      sso_issuer TEXT,
       user_agent TEXT,
       expires_at INTEGER NOT NULL,
       created_at INTEGER NOT NULL DEFAULT 0
@@ -56,7 +60,7 @@ function buildDatabase(): DatabaseSync {
       id TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL,
       stream_proxy_strategy TEXT, last_used INTEGER, expires_at INTEGER
     );
-    CREATE TABLE guest_tokens (token TEXT PRIMARY KEY, expires_at INTEGER);
+    CREATE TABLE guest_tokens (token TEXT PRIMARY KEY, created_by TEXT, expires_at INTEGER, created_at INTEGER);
     CREATE TABLE user_permissions (
       level INTEGER NOT NULL, permission TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 0,
       max_rph INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (level, permission)
@@ -65,11 +69,17 @@ function buildDatabase(): DatabaseSync {
     CREATE TABLE feature_strings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     CREATE TABLE external_secrets (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '');
     INSERT INTO users (username, master_password, level, enabled) VALUES ('alice', 'x', 1, 1);
+    INSERT INTO users (username, master_password, level, enabled) VALUES ('guest', 'x', 0, 1);
     INSERT INTO sessions (id, username, token, auth_source, expires_at)
       VALUES ('local-session', 'alice', 'local-token', 'local', unixepoch() + 3600);
     INSERT INTO sessions (id, username, token, auth_source, expires_at)
-      VALUES ('sso-session', 'alice', 'sso-token', 'sso', unixepoch() + 3600);
+      VALUES ('guest-session', 'guest', 'guest-token', 'local', unixepoch() + 3600);
+    INSERT INTO sessions (id, username, token, auth_source, sso_issuer, expires_at)
+      VALUES ('sso-session', 'alice', 'sso-token', 'sso', 'https://identity.example', unixepoch() + 3600);
+    CREATE TABLE oidc_identities (issuer TEXT NOT NULL, subject TEXT NOT NULL, username TEXT NOT NULL);
+    INSERT INTO oidc_identities (issuer, subject, username) VALUES ('https://identity.example', 'alice-subject', 'alice');
     INSERT INTO api_keys (api_key, username) VALUES ('alice-key', 'alice');
+    INSERT INTO guest_tokens (token, created_by, expires_at, created_at) VALUES ('guest-delegation', 'alice', unixepoch() + 3600, unixepoch());
     INSERT INTO subsonic_credentials (id, username, password, stream_proxy_strategy)
       VALUES ('alice-client', 'alice', 'alice-client-password', 'always');
     INSERT INTO features (key, value) VALUES
@@ -83,6 +93,14 @@ function buildDatabase(): DatabaseSync {
 }
 
 function configuredEnv(sqlite: DatabaseSync) {
+  accessReply = {
+    allowed: true,
+    expiresAt: Math.floor(Date.now() / 1000) + 3600,
+    serviceIdentity: "member",
+    serviceConfig: {},
+    subject: "alice-subject",
+  };
+  accessRequests = [];
   return {
     DB: makeD1(sqlite),
     INSTANCE_ID: "test-instance",
@@ -91,6 +109,13 @@ function configuredEnv(sqlite: DatabaseSync) {
     SSO_CLIENT_ID: "edgesonic-client",
     SSO_CLIENT_SECRET: "client-secret",
     SSO_PROVIDER_NAME: "Identity",
+    ACCESS: {
+      fetch: async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const identity = JSON.parse(String(init?.body)) as { subject?: string; username?: string };
+        accessRequests.push(identity);
+        return Response.json(accessReply);
+      },
+    } as unknown as Fetcher,
   };
 }
 
@@ -100,6 +125,7 @@ function makeApp(env: ReturnType<typeof configuredEnv>) {
   app.use("/rest/*", authMiddleware);
   app.use("/edgesonic/*", authMiddleware);
   app.get("/rest/ping", (c) => c.json({ ok: true }));
+  app.get("/rest/getArtists", (c) => c.json({ ok: true }));
   app.get("/edgesonic/protected", (c) => c.json({ ok: true, source: c.get("sessionAuthSource") }));
   return app;
 }
@@ -153,6 +179,46 @@ async function main() {
   const salt = "required-sso-salt";
   const requiredTokenSalt = await request(app, env, `/rest/ping?u=alice&t=${md5(`alice-client-password${salt}`)}&s=${salt}`);
   assert.equal(requiredTokenSalt.status, 200);
+  assert.ok(accessRequests.some((identity) => identity.subject === "alice-subject"));
+  assert.ok(accessRequests.some((identity) => identity.username === "alice"));
+
+  accessReply = { ...accessReply, allowed: false };
+  assert.equal((await request(app, env, "/rest/ping?apiKey=alice-key")).status, 403);
+  accessReply = { ...accessReply, allowed: true, expiresAt: Math.floor(Date.now() / 1000) - 1 };
+  assert.equal((await request(app, env, "/rest/ping?apiKey=alice-key")).status, 403);
+
+  accessReply = { ...accessReply, expiresAt: Math.floor(Date.now() / 1000) + 300 };
+  sqlite.exec("UPDATE features SET value = 1 WHERE key = 'enable_activation'; UPDATE users SET activation_status = 'disabled' WHERE username = 'alice'; UPDATE subsonic_credentials SET expires_at = unixepoch() - 10 WHERE username = 'alice'");
+  assert.equal((await request(app, env, "/rest/ping?apiKey=alice-key")).status, 200);
+  assert.equal((await request(app, env, "/rest/ping?u=alice&p=alice-client-password")).status, 200);
+  sqlite.prepare("DELETE FROM subsonic_credentials WHERE username = 'alice'").run();
+  assert.equal((await request(app, env, "/rest/ping?u=alice&p=alice-client-password")).status, 401);
+
+  env.SSO_MODE = "optional";
+  const shortGrantExpiry = Math.floor(Date.now() / 1000) + 300;
+  accessReply = { ...accessReply, expiresAt: shortGrantExpiry };
+  const shortSession = await request(app, env, "/edgesonic/protected", "local-token");
+  assert.equal(shortSession.status, 200);
+  const sessionExpiry = sqlite.prepare("SELECT expires_at FROM sessions WHERE token = 'local-token'").get() as { expires_at: number };
+  assert.ok(sessionExpiry.expires_at <= shortGrantExpiry);
+  assert.match(shortSession.headers.get("set-cookie") || "", /Max-Age=29[0-9]|Max-Age=300/);
+
+  env.SSO_MODE = "required";
+  const configuredAccess = env.ACCESS;
+  (env as { ACCESS?: Fetcher }).ACCESS = undefined;
+  assert.equal((await request(app, env, "/rest/ping?apiKey=alice-key")).status, 503);
+  assert.equal((await request(app, env, "/rest/getArtists?guestToken=guest-delegation", "guest-token")).status, 503);
+  (env as { ACCESS?: Fetcher }).ACCESS = configuredAccess;
+
+  accessReply = { ...accessReply, allowed: false, expiresAt: Math.floor(Date.now() / 1000) + 3600, serviceIdentity: "listener" };
+  const publicGuestWithoutGrant = await request(app, env, "/rest/getArtists?guestToken=guest-delegation", "guest-token");
+  assert.equal(publicGuestWithoutGrant.status, 403, "public identity policy does not bypass an explicit guest grant");
+  accessReply = { ...accessReply, allowed: true, subject: "guest-account" };
+  const explicitlyGrantedGuest = await request(app, env, "/rest/getArtists?guestToken=guest-delegation", "guest-token");
+  assert.equal(explicitlyGrantedGuest.status, 200);
+  assert.ok(accessRequests.some((identity) => identity.username === "guest"));
+  sqlite.prepare("DELETE FROM guest_tokens WHERE token = 'guest-delegation'").run();
+  assert.equal((await request(app, env, "/rest/getArtists?guestToken=guest-delegation", "guest-token")).status, 403);
 
   for (const path of [
     "/edgesonic/auth/login",

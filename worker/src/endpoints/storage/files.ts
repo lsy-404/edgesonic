@@ -30,13 +30,20 @@ import type { User } from "../../types/entities";
 
 export const filesRoutes = new Hono<{ Bindings: Env; Variables: { user: User } }>();
 const MAX_UPLOAD_BYTES = 256 * 1024 * 1024;
+const ACCESS_UPLOAD_PATHS = new Set([
+  "/files/upload", "/files/upload-conflicts", "/files/upload-metadata-fallback",
+  "/files/mkdir", "/files/moveFolder", "/files/move", "/files/copy", "/files/crossCopy",
+]);
 
 // ── Global Files API Security Guard ──────────────────────────────────────
-// All /storage/files/* operations require admin privileges (level 2+).
-// This prevents level 0/1 users from accessing file management entirely.
+// Non-upload file operations stay restricted to local level 2+ administrators.
+// Explicit Access upload grants can use only the upload permission routes.
 filesRoutes.use("*", async (c, next) => {
   const user = c.get("user");
-  if (user.level < 2) {
+  const route = new URL(c.req.url).pathname;
+  const accessUpload = user.accessPermissions?.upload === true
+    && [...ACCESS_UPLOAD_PATHS].some((path) => route.endsWith(path));
+  if (user.level < 2 && !accessUpload) {
     return c.json({
       ok: false,
       error: "File operations require admin privileges (level 2+)",

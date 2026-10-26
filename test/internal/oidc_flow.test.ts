@@ -382,6 +382,46 @@ async function main() {
     "shared mapping must be idempotent",
   );
 
+  let accessAllowed = true;
+  let accessExpiry: number | null = Math.floor(Date.now() / 1000) + 180;
+  const accessRequests: Record<string, unknown>[] = [];
+  env.ACCESS = {
+    fetch: async (_input: RequestInfo | URL, init?: RequestInit) => {
+      accessRequests.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return jsonResponse({
+        allowed: accessAllowed,
+        expiresAt: accessExpiry,
+        serviceIdentity: "member",
+        serviceConfig: { permissions: { upload: false } },
+        subject: "identity-shared-inactive",
+      });
+    },
+  } as unknown as Fetcher;
+  const accessProvider = provider({ claims: { sub: "identity-shared-inactive" } });
+  const accessStart = await begin(accessProvider, env);
+  const accessResult = await complete(accessProvider, env, accessStart.authorizationUrl.searchParams.get("state") as string, accessStart.cookie);
+  assert.equal(accessResult.activation.active, true, "an active Access grant supersedes the local activation gate");
+  assert.ok(accessResult.expiresAt <= Math.floor(Date.now() / 1000) + 180, `session ${accessResult.expiresAt}, grant ${accessExpiry}`);
+  assert.deepEqual(accessRequests.at(-1), { subject: "identity-shared-inactive" });
+  assert.equal(
+    (sqlite.prepare("SELECT expires_at FROM sessions WHERE token = ?").get(accessResult.sessionToken) as { expires_at: number }).expires_at,
+    accessResult.expiresAt,
+  );
+  accessExpiry = null;
+  const unboundedProvider = provider({ claims: { sub: "identity-shared-inactive" } });
+  const unboundedStart = await begin(unboundedProvider, env);
+  const unboundedResult = await complete(unboundedProvider, env, unboundedStart.authorizationUrl.searchParams.get("state") as string, unboundedStart.cookie);
+  assert.ok(unboundedResult.expiresAt <= Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60);
+  assert.ok(unboundedResult.expiresAt > Math.floor(Date.now() / 1000) + 6 * 24 * 60 * 60);
+  accessAllowed = false;
+  const deniedAccessProvider = provider({ claims: { sub: "identity-shared-inactive" } });
+  const deniedAccessStart = await begin(deniedAccessProvider, env);
+  await assert.rejects(
+    () => complete(deniedAccessProvider, env, deniedAccessStart.authorizationUrl.searchParams.get("state") as string, deniedAccessStart.cookie),
+    (error: unknown) => error instanceof OidcFlowError && error.code === "service_access_denied",
+  );
+  accessAllowed = true;
+
   sqlite.prepare("INSERT INTO identity_accounts (id, username) VALUES (?, ?)").run("identity-race", "shared-race");
   const raceEnv = environment(sqlite, () => {
     sqlite.prepare(

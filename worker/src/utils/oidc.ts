@@ -31,6 +31,7 @@ import type { User } from "../types/entities";
 import { clampTtlToActivation, resolveActivation } from "./activation";
 import { ensureSsoSchema } from "./schema_patch";
 import { resolveSsoPolicy, type SsoEnvironment, type SsoPolicy } from "./ssoPolicy";
+import { authorizeServiceAccess, ServiceAccessError } from "./accessAuthority";
 
 export const OIDC_TRANSACTION_COOKIE = "edgesonic_oidc_transaction";
 export const OIDC_TRANSACTION_TTL_SEC = 10 * 60;
@@ -694,12 +695,15 @@ export async function refreshOidcSession(
   if (!sessionToken) throw new OidcFlowError("missing_session");
   await ensureSsoSchema(env);
   const row = await env.DB.prepare(
-    `SELECT s.id, s.username, s.sso_refresh_token, s.sso_dpop_key, u.master_password,
+    `SELECT s.id, s.username, s.sso_issuer, s.sso_refresh_token, s.sso_refresh_expires_at, s.sso_dpop_key, u.master_password,
             u.level, u.enabled, u.activation_status, u.activated_until, u.created_at, u.updated_at
        FROM sessions s JOIN users u ON u.username = s.username
-      WHERE s.token = ? AND s.auth_source = 'sso' AND s.expires_at > ?`,
-  ).bind(sessionToken, Math.floor(Date.now() / 1000)).first<StoredUserRow & { id: string; sso_refresh_token: string | null; sso_dpop_key: string | null }>();
+      WHERE s.token = ? AND s.auth_source = 'sso'`,
+  ).bind(sessionToken).first<StoredUserRow & { id: string; sso_issuer: string | null; sso_refresh_token: string | null; sso_refresh_expires_at: number | null; sso_dpop_key: string | null }>();
   if (!row?.sso_refresh_token) throw new OidcFlowError("no_refresh_token");
+  if (typeof row.sso_refresh_expires_at !== "number" || row.sso_refresh_expires_at <= Math.floor(Date.now() / 1000)) {
+    throw new OidcFlowError("no_refresh_token");
+  }
   const refreshToken = await unprotectSecret(policy, row.sso_refresh_token);
   const config = await oidcConfiguration(policy, fetcher);
   let dpopHandle: ReturnType<typeof getDPoPHandle> | undefined;
@@ -717,21 +721,35 @@ export async function refreshOidcSession(
   validateDpopTokenResponse(tokens.token_type, tokens.cnf, dpopHandle ? await dpopHandle.calculateThumbprint() : undefined);
   const user = toUser(row);
   if (!user.enabled || user.level < 1) throw new OidcFlowError("account_disabled");
-  const activation = await resolveActivation(env, user);
-  const ttlSec = clampTtlToActivation(activation, SESSION_TTL_SEC);
-  const expiresAt = Math.floor(Date.now() / 1000) + ttlSec;
+  const identity = row.sso_issuer
+    ? await env.DB.prepare("SELECT subject FROM oidc_identities WHERE issuer = ? AND username = ? LIMIT 1")
+      .bind(row.sso_issuer, row.username).first<{ subject: string }>()
+    : null;
+  if (!identity && env.ACCESS) throw new OidcFlowError("identity_not_mapped");
+  let access;
+  try {
+    access = await authorizeServiceAccess(env.ACCESS, identity ? { subject: identity.subject } : { username: user.username });
+  } catch (error) {
+    if (error instanceof ServiceAccessError) throw new OidcFlowError(error.code);
+    throw error;
+  }
+  if (!access && policy.mode === "required") throw new OidcFlowError("service_access_unavailable");
+  const activation = access ? { enabled: false, active: true, status: "permanent" as const, until: null } : await resolveActivation(env, user);
+  const activationTtl = access ? SESSION_TTL_SEC : clampTtlToActivation(activation, SESSION_TTL_SEC);
+  const expiresAt = Math.floor(Date.now() / 1000) + activationTtl;
+  const boundedExpiresAt = access && access.expiresAt !== null ? Math.min(expiresAt, access.expiresAt) : expiresAt;
   const nextRefresh = typeof tokens.refresh_token === "string" ? await protectSecret(policy, tokens.refresh_token) : row.sso_refresh_token;
   const nextIdToken = typeof tokens.id_token === "string" ? await protectSecret(policy, tokens.id_token) : null;
   await env.DB.prepare(
     `UPDATE sessions SET sso_refresh_token = ?, sso_id_token = COALESCE(?, sso_id_token),
        sso_token_expires_at = ?, sso_refresh_expires_at = ?, expires_at = ?
      WHERE id = ? AND token = ? AND auth_source = 'sso'`,
-  ).bind(nextRefresh, nextIdToken, Math.floor(Date.now() / 1000) + Number(tokens.expires_in || 300), Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, expiresAt, row.id, sessionToken).run();
+  ).bind(nextRefresh, nextIdToken, Math.floor(Date.now() / 1000) + Number(tokens.expires_in || 300), Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, boundedExpiresAt, row.id, sessionToken).run();
   return {
     username: user.username,
     level: user.level,
     sessionToken,
-    expiresAt,
+    expiresAt: boundedExpiresAt,
     activation: { enabled: activation.enabled, status: activation.status, until: activation.until, active: activation.active },
   };
 }
@@ -859,10 +877,19 @@ export async function completeOidcAuthorization(
   const user = await callbackStage("identity_mapping", () => resolveIdentity(env, claims.iss, claims.sub, claims, userInfo));
   if (!user.enabled || user.level < 1) throw new OidcFlowError("account_disabled");
 
-  const activation = await resolveActivation(env, user);
-  const ttlSec = clampTtlToActivation(activation, SESSION_TTL_SEC);
+  let access;
+  try {
+    access = await callbackStage("service_access", () => authorizeServiceAccess(env.ACCESS, { subject: claims.sub }));
+  } catch (error) {
+    if (error instanceof ServiceAccessError) throw new OidcFlowError(error.code);
+    throw error;
+  }
+  if (!access && policy.mode === "required") throw new OidcFlowError("service_access_unavailable");
+  const activation = access ? { enabled: false, active: true, status: "permanent" as const, until: null } : await resolveActivation(env, user);
+  const ttlSec = access ? SESSION_TTL_SEC : clampTtlToActivation(activation, SESSION_TTL_SEC);
   const sessionToken = crypto.randomUUID().replace(/-/g, "");
   const expiresAt = Math.floor(Date.now() / 1000) + ttlSec;
+  const boundedExpiresAt = access && access.expiresAt !== null ? Math.min(expiresAt, access.expiresAt) : expiresAt;
   const refreshToken = typeof tokens.refresh_token === "string" ? await protectSecret(policy, tokens.refresh_token) : null;
   const idToken = typeof tokens.id_token === "string" ? await protectSecret(policy, tokens.id_token) : null;
   const dpopKey = transaction.dpopPrivateJwk && transaction.dpopPublicJwk
@@ -888,7 +915,7 @@ export async function completeOidcAuthorization(
     policy.issuer,
     policy.clientId,
     dpopKey,
-    expiresAt,
+    boundedExpiresAt,
     Math.floor(Date.now() / 1000),
   ).run());
 
@@ -896,7 +923,7 @@ export async function completeOidcAuthorization(
     username: user.username,
     level: user.level,
     sessionToken,
-    expiresAt,
+    expiresAt: boundedExpiresAt,
     activation: {
       enabled: activation.enabled,
       status: activation.status,

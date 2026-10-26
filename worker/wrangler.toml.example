@@ -52,6 +52,14 @@ SSO_SHARED_IDENTITY_MAPPING = "0"
 #   wrangler secret put SSO_JAR_PRIVATE_JWK
 # Keep SSO_CLIENT_SECRET out of this file:
 #   wrangler secret put SSO_CLIENT_SECRET
+
+# In the deployment with required SSO, bind the private service-authority
+# entrypoint from the identity Worker. Keep the binding absent only when SSO
+# is not required; required mode denies application access without it.
+# [[services]]
+# binding = "ACCESS"
+# service = "personal-sso"
+# entrypoint = "EdgeSonicAccessConnector"
 # R2Bucket bindings don't expose their own bucket name at runtime, so this
 # must mirror the [[r2_buckets]] bucket_name below exactly — it drives the R2
 # detail card in Settings and is the bucket name signed into R2 presigned

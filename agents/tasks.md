@@ -43,3 +43,4 @@
 | 592 | [BugFix] Catalog object titles | Restore object-like song titles and return logical filenames from search3 | Object storage ids must not become display names | ✅ 已完成 |
 | 593 | [BugFix] Object title parsing | Recover empty or generated object placeholder titles from original logical filenames across apply and Subsonic reads | R2 physical object keys were leaking into song title handling | ✅ 已完成 |
 | 594 | [Audit] Object title repair | Verify original path evidence and title-only repair eligibility | Protect existing catalog identities while fixing object path display | ✅ 已完成 |
+| 595 | [Feature] Access authority | Use IdP service-specific grants to control EdgeSonic admission while preserving local data ownership and administrator boundaries | Replace duplicated account entry restrictions with the authorized service connector | 🔄 进行中 |

@@ -737,7 +737,9 @@ edgesonicAuthRoutes.get("/auth/me", async (c) => {
     // If a legacy database cannot be upgraded yet, omit the optional notice.
   }
 
-  const activation = await resolveActivation(c.env, user);
+  const activation = user.accessPermissions
+    ? { enabled: false, status: "permanent", until: null, active: true }
+    : await resolveActivation(c.env, user);
   return c.json({
     ok: true,
     username: user.username,

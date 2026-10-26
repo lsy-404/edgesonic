@@ -34,11 +34,11 @@
 // serves reads before D1 is ever touched, avoiding a D1 round-trip on every
 // permission check when the admin has saved the matrix at least once.
 
-import type { User } from "../types/entities";
+import type { AccessPermission, User } from "../types/entities";
 import { isDemoMode, isDemoDisabledPerm } from "./demoMode";
 import { resolveActivation, isGuestAccessEnabled, type ActivationUser } from "./activation";
 
-type PermissionUser = Pick<User, "level"> & ActivationUser;
+type PermissionUser = Pick<User, "level" | "accessPermissions"> & ActivationUser;
 
 // Permission checks now prefer a runtime env-var cache over D1.
 // PERMISSIONS_OVERRIDE (pushed via POST /edgesonic/permissions/save using
@@ -75,6 +75,11 @@ const ALL_PERMISSIONS = [
   "manage_podcasts", "manage_radio", "manage_cloudflare", "edit_annotations",
   "manage_activation", "view_all_users_items",
 ] as const;
+
+export const ACCESS_PERMISSIONS: readonly AccessPermission[] = [
+  "stream", "browse", "search", "download", "upload", "share",
+  "manage_playlists", "manage_podcasts", "manage_radio", "edit_tags", "edit_annotations",
+];
 
 // ----------------------------------------------------------------------------
 // Hardlocked permissions — cannot be enabled for the given level via the
@@ -117,10 +122,21 @@ export async function getEffectivePermissions(
   env: { DB: D1Database; PERMISSIONS_OVERRIDE?: string; DEMO_MODE?: string },
   user: User,
 ): Promise<Record<string, boolean>> {
+  const demoActive = isDemoMode(env);
+  const access = user.accessPermissions;
+  const applyAccess = (permissions: Record<string, boolean>) => {
+    if (access) for (const key of ACCESS_PERMISSIONS) permissions[key] = access[key] === true;
+    for (const key of Object.keys(permissions)) {
+      if (isHardlocked(user.level, key)) permissions[key] = false;
+    }
+    if (demoActive) for (const key of Object.keys(permissions)) {
+      if (isDemoDisabledPerm(key)) permissions[key] = false;
+    }
+    return permissions;
+  };
   // Demo-mode read-time enforcement: dangerous perms are forced off even for
   // level 3, so a public demo instance can't be bricked by a visitor who
   // happens to hold the superadmin password. See utils/demoMode.ts.
-  const demoActive = isDemoMode(env);
   if (demoActive) {
     const demoPerms: Record<string, boolean> = {};
     for (const k of ALL_PERMISSIONS) {
@@ -130,7 +146,7 @@ export async function getEffectivePermissions(
     // every demo-disabled perm is forced off regardless of level.
     if (user.level === 3) {
       demoPerms["manage_permissions"] = true;
-      return demoPerms;
+      return applyAccess(demoPerms);
     }
     // Non-level-3 path: overlay demo locks on top of the D1/override result.
     // First fall through to the D1 read below, then mask.
@@ -144,14 +160,14 @@ export async function getEffectivePermissions(
   if (user.level === 3) {
     const perms: Record<string, boolean> = {};
     for (const k of ALL_PERMISSIONS) perms[k] = true;
-    return perms;
+    return applyAccess(perms);
   }
 
   // Freeze semantics: an inactive account degrades to guest-group
   // permissions (when the guest account is enabled) or to nothing at all.
   // Only applies when the caller passed a row that carries activation
   // fields — bare {level} probes are unaffected.
-  if (user.activation_status !== undefined) {
+  if (!access && user.activation_status !== undefined) {
     const act = await resolveActivation(env, user);
     if (!act.active) {
       if (await isGuestAccessEnabled(env)) {
@@ -162,7 +178,7 @@ export async function getEffectivePermissions(
       }
       const perms: Record<string, boolean> = {};
       for (const k of ALL_PERMISSIONS) perms[k] = false;
-      return perms;
+      return applyAccess(perms);
     }
   }
 
@@ -199,7 +215,7 @@ export async function getEffectivePermissions(
   }
 
   perms["manage_permissions"] = user.level === 3;
-  return perms;
+  return applyAccess(perms);
 }
 
 export async function hasPermission(
@@ -209,6 +225,11 @@ export async function hasPermission(
 ): Promise<boolean> {
   // Demo mode: dangerous perms are off for everyone, including level 3.
   if (isDemoMode(env) && isDemoDisabledPerm(permission)) return false;
+
+  if ((ACCESS_PERMISSIONS as readonly string[]).includes(permission) && user.accessPermissions) {
+    if (isHardlocked(user.level, permission)) return false;
+    return user.accessPermissions[permission as AccessPermission] === true;
+  }
 
   // manage_permissions is deliberately never toggleable — neither via the
   // D1 user_permissions row nor the PERMISSIONS_OVERRIDE env cache. If it
