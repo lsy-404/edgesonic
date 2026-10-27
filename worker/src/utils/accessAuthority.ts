@@ -1,18 +1,12 @@
-import type { AccessPermission } from "../types/entities";
-import { ACCESS_PERMISSIONS } from "./permissions";
+// The identity center admits an account and records its level in users.level;
+// permissions stay with the local level matrix.
+const SERVICE_IDENTITIES = ["user", "admin"] as const;
 
-const PROFILES = {
-  listener: ["stream", "browse", "search"],
-  member: ["stream", "browse", "search", "download", "upload", "share", "manage_playlists", "manage_podcasts", "manage_radio"],
-  creator: ["stream", "browse", "search", "download", "upload", "share", "manage_playlists", "manage_podcasts", "manage_radio", "edit_tags", "edit_annotations"],
-} as const satisfies Record<string, readonly AccessPermission[]>;
-
-export type AccessServiceIdentity = keyof typeof PROFILES;
+export type AccessServiceIdentity = (typeof SERVICE_IDENTITIES)[number];
 export type AccessAuthorization = {
   allowed: true;
   expiresAt: number | null;
   serviceIdentity: AccessServiceIdentity;
-  permissions: Record<AccessPermission, boolean>;
 };
 
 export type AccessSubject = { subject: string } | { username: string };
@@ -40,38 +34,17 @@ export async function authorizeServiceAccess(
   if (result.allowed !== true
     || !(result.expiresAt === null || (typeof result.expiresAt === "number" && Number.isInteger(result.expiresAt) && result.expiresAt > now))
     || typeof result.serviceIdentity !== "string"
-    || !Object.hasOwn(PROFILES, result.serviceIdentity)) {
+    || !(SERVICE_IDENTITIES as readonly string[]).includes(result.serviceIdentity)) {
     throw new ServiceAccessError("service_access_denied");
   }
-  const profile: readonly AccessPermission[] = PROFILES[result.serviceIdentity as AccessServiceIdentity];
   const configured = result.serviceConfig;
-  if (configured !== undefined && configured !== null && (typeof configured !== "object" || Array.isArray(configured))) {
+  if (configured !== undefined && configured !== null
+    && (typeof configured !== "object" || Array.isArray(configured) || Object.keys(configured).length > 0)) {
     throw new ServiceAccessError("invalid_service_config");
   }
-  if (configured && Object.keys(configured).some((key) => key !== "permissions")) {
-    throw new ServiceAccessError("invalid_service_config");
-  }
-  const configuredPermissions = configured && "permissions" in configured
-    ? (configured as { permissions?: unknown }).permissions
-    : undefined;
-  if (configuredPermissions !== undefined
-    && (configuredPermissions === null || typeof configuredPermissions !== "object" || Array.isArray(configuredPermissions))) {
-    throw new ServiceAccessError("invalid_service_config");
-  }
-  const overrides = (configuredPermissions || {}) as Record<string, unknown>;
-  for (const [key, value] of Object.entries(overrides)) {
-    if (!(ACCESS_PERMISSIONS as readonly string[]).includes(key) || typeof value !== "boolean") {
-      throw new ServiceAccessError("invalid_service_config");
-    }
-  }
-  const permissions = Object.fromEntries(ACCESS_PERMISSIONS.map((permission) => [
-    permission,
-    profile.includes(permission) && overrides[permission] !== false,
-  ])) as Record<AccessPermission, boolean>;
   return {
     allowed: true,
     expiresAt: result.expiresAt,
     serviceIdentity: result.serviceIdentity as AccessServiceIdentity,
-    permissions,
   };
 }

@@ -679,7 +679,7 @@ export const authMiddleware = createMiddleware<{
       }
       if (authorization) {
         accessGranted = true;
-        user.accessPermissions = authorization.permissions;
+        user.accessGranted = true;
         accessExpiresAt = authorization.expiresAt;
       }
     } catch (error) {

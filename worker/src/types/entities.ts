@@ -151,12 +151,8 @@ export interface User {
   activated_until?: number | null;     // unix seconds, only for active_until
   created_at: number;
   updated_at: number;
-  accessPermissions?: Partial<Record<AccessPermission, boolean>>;
+  accessGranted?: boolean;             // set per request after a live ACCESS admission
 }
-
-export type AccessPermission =
-  | "stream" | "browse" | "search" | "download" | "upload" | "share"
-  | "manage_playlists" | "manage_podcasts" | "manage_radio" | "edit_tags" | "edit_annotations";
 
 export interface Session {
   id: string;

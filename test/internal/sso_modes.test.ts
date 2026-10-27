@@ -70,6 +70,7 @@ function buildDatabase(): DatabaseSync {
     CREATE TABLE external_secrets (key TEXT PRIMARY KEY, value TEXT NOT NULL DEFAULT '');
     INSERT INTO users (username, master_password, level, enabled) VALUES ('alice', 'x', 1, 1);
     INSERT INTO users (username, master_password, level, enabled) VALUES ('guest', 'x', 0, 1);
+    INSERT INTO user_permissions (level, permission, enabled) VALUES (0, 'browse', 1);
     INSERT INTO sessions (id, username, token, auth_source, expires_at)
       VALUES ('local-session', 'alice', 'local-token', 'local', unixepoch() + 3600);
     INSERT INTO sessions (id, username, token, auth_source, expires_at)
@@ -96,7 +97,7 @@ function configuredEnv(sqlite: DatabaseSync) {
   accessReply = {
     allowed: true,
     expiresAt: Math.floor(Date.now() / 1000) + 3600,
-    serviceIdentity: "member",
+    serviceIdentity: "user",
     serviceConfig: {},
     subject: "alice-subject",
   };
@@ -210,7 +211,7 @@ async function main() {
   assert.equal((await request(app, env, "/rest/getArtists?guestToken=guest-delegation", "guest-token")).status, 503);
   (env as { ACCESS?: Fetcher }).ACCESS = configuredAccess;
 
-  accessReply = { ...accessReply, allowed: false, expiresAt: Math.floor(Date.now() / 1000) + 3600, serviceIdentity: "listener" };
+  accessReply = { ...accessReply, allowed: false, expiresAt: Math.floor(Date.now() / 1000) + 3600, serviceIdentity: "user" };
   const publicGuestWithoutGrant = await request(app, env, "/rest/getArtists?guestToken=guest-delegation", "guest-token");
   assert.equal(publicGuestWithoutGrant.status, 403, "public identity policy does not bypass an explicit guest grant");
   accessReply = { ...accessReply, allowed: true, subject: "guest-account" };

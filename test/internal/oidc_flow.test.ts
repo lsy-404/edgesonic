@@ -391,8 +391,8 @@ async function main() {
       return jsonResponse({
         allowed: accessAllowed,
         expiresAt: accessExpiry,
-        serviceIdentity: "member",
-        serviceConfig: { permissions: { upload: false } },
+        serviceIdentity: "user",
+        serviceConfig: {},
         subject: "identity-shared-inactive",
       });
     },

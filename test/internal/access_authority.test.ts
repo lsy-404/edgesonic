@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { authorizeServiceAccess } from "../../worker/src/utils/accessAuthority";
-import { hasPermission } from "../../worker/src/utils/permissions";
 
 function connector(reply: unknown, status = 200): Fetcher {
   return {
@@ -15,62 +14,41 @@ function connector(reply: unknown, status = 200): Fetcher {
 
 const valid = (overrides: Record<string, unknown> = {}) => ({
   allowed: true,
+  source: "assignment",
+  roles: ["user"],
   expiresAt: Math.floor(Date.now() / 1000) + 300,
-  serviceIdentity: "member",
+  serviceIdentity: "user",
   serviceConfig: {},
+  subject: "sub-1",
   ...overrides,
 });
 
-test("service profile grants only its typed permission set and config can narrow it", async () => {
-  const access = await authorizeServiceAccess(connector(valid({
-    serviceIdentity: "creator",
-    serviceConfig: { permissions: { upload: false, edit_tags: true } },
-  })), { subject: "sub-1" });
-  assert.ok(access);
-  assert.equal(access.permissions.stream, true);
-  assert.equal(access.permissions.edit_tags, true);
-  assert.equal(access.permissions.upload, false);
-  assert.equal(access.permissions.manage_users, undefined);
-  const unbounded = await authorizeServiceAccess(connector(valid({ expiresAt: null })), { subject: "sub-1" });
-  assert.equal(unbounded?.expiresAt, null);
+test("user and admin service identities are admitted with their grant expiry", async () => {
+  const user = await authorizeServiceAccess(connector(valid()), { subject: "sub-1" });
+  assert.equal(user?.serviceIdentity, "user");
+  assert.ok(typeof user?.expiresAt === "number");
+  const admin = await authorizeServiceAccess(connector(valid({
+    source: "admin", roles: ["admin"], serviceIdentity: "admin", expiresAt: null,
+  })), { username: "alice" });
+  assert.equal(admin?.serviceIdentity, "admin");
+  assert.equal(admin?.expiresAt, null);
   const noConfig = await authorizeServiceAccess(connector(valid({ serviceConfig: null })), { subject: "sub-1" });
-  assert.equal(noConfig?.permissions.upload, true);
+  assert.equal(noConfig?.allowed, true);
 });
 
-test("profile config cannot expand permissions and rejects unknown keys", async () => {
-  const access = await authorizeServiceAccess(connector(valid({
-    serviceIdentity: "listener",
-    serviceConfig: { permissions: { upload: true } },
-  })), { username: "alice" });
-  assert.equal(access?.permissions.upload, false);
+test("service config cannot carry permissions or other settings", async () => {
   await assert.rejects(() => authorizeServiceAccess(connector(valid({
-    serviceConfig: { permissions: { manage_users: true } },
+    serviceConfig: { permissions: { upload: true } },
   })), { username: "alice" }), /invalid_service_config/);
+  await assert.rejects(() => authorizeServiceAccess(connector(valid({ serviceConfig: [] })), { username: "alice" }), /invalid_service_config/);
 });
 
 test("denied, expired, malformed and unavailable grants fail closed", async () => {
   await assert.rejects(() => authorizeServiceAccess(connector(valid({ allowed: false })), { subject: "sub-1" }), /service_access_denied/);
   await assert.rejects(() => authorizeServiceAccess(connector(valid({ expiresAt: 1 })), { subject: "sub-1" }), /service_access_denied/);
+  await assert.rejects(() => authorizeServiceAccess(connector(valid({ serviceIdentity: "member" })), { subject: "sub-1" }), /service_access_denied/);
   await assert.rejects(() => authorizeServiceAccess(connector(valid({ serviceIdentity: "__proto__" })), { subject: "sub-1" }), /service_access_denied/);
+  await assert.rejects(() => authorizeServiceAccess(connector(valid({ serviceIdentity: null })), { subject: "sub-1" }), /service_access_denied/);
   await assert.rejects(() => authorizeServiceAccess(connector(valid(), 503), { username: "alice" }), /access_authority_unavailable/);
   assert.equal(await authorizeServiceAccess(undefined, { username: "alice" }), null);
-});
-
-test("Access permissions override local business matrix without assigning admin powers", async () => {
-  const db = {
-    prepare() {
-      return { bind() { return this; }, async first() { return { enabled: 0 }; }, async all() { return { results: [] }; } };
-    },
-  } as unknown as D1Database;
-  const env = { DB: db };
-  const user = { level: 1, accessPermissions: { upload: true, share: false } } as Parameters<typeof hasPermission>[1];
-  assert.equal(await hasPermission(env, user, "upload"), true);
-  assert.equal(await hasPermission(env, user, "share"), false);
-  assert.equal(await hasPermission(env, user, "manage_permissions"), false);
-  const localAdmin = { level: 3, accessPermissions: { stream: false } } as Parameters<typeof hasPermission>[1];
-  assert.equal(await hasPermission(env, localAdmin, "stream"), false);
-  assert.equal(await hasPermission(env, localAdmin, "manage_users"), true);
-  const guest = { level: 0, accessPermissions: { upload: true, stream: true } } as Parameters<typeof hasPermission>[1];
-  assert.equal(await hasPermission(env, guest, "upload"), false);
-  assert.equal(await hasPermission(env, guest, "stream"), true);
 });
