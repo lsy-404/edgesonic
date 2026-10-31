@@ -35,6 +35,8 @@ import { maybeRunPeerSync } from "./utils/peerSync";
 import { reapExpiredGuestTokens } from "./utils/guestTokenReaper";
 import { maybeRunCacheEviction } from "./utils/cacheEviction";
 import { advanceLyricsSearchIndex } from "./utils/lyricsSearch";
+import { createMcpAuthHandler } from "./mcp/auth";
+import { libraryMcpDispatcher } from "./mcp/server";
 import { refreshLibraryStats } from "./utils/libraryStats";
 import { webLoginRoutes } from "./endpoints/edgesonic/auth";
 import { sharePublicRoutes } from "./endpoints/share_public";
@@ -170,9 +172,11 @@ app.onError((err, c) => {
 // scan_interval_hours + cron:last_scan_ts to decide whether to dispatch a new
 // asyncScanSource per enabled source. Independent ctx.waitUntil() calls let
 // either subsystem fail without blocking the other.
+const fetchWithMcp = createMcpAuthHandler((request, env, ctx) => app.fetch(request, env, ctx), libraryMcpDispatcher((request, env, ctx) => app.fetch(request, env, ctx)));
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
-    const response = await app.fetch(request, env, ctx);
+    const response = await fetchWithMcp(request, env, ctx);
     if (response.status !== 404) return response;
     return spaHashRedirect(request) || response;
   },

@@ -388,6 +388,27 @@ console.log("WebDAV MOVE happy path (stubbed fetch):");
   }
 }
 
+console.log("WebDAV destination conflicts preserve source and destination:");
+{
+  const sqlite = buildDb();
+  const { bucket } = makeBucket();
+  const calls: string[] = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+    calls.push(init?.method || "GET");
+    return new Response(null, { status: 412 });
+  }) as typeof fetch;
+  try {
+    const { post } = makeApp(sqlite, bucket);
+    const response = await post("/tag/tidyFolder", { template: "{album}/{title}", ids: ["sg-par"], source: "webdav" });
+    const body = await response.json() as { failed: number; applied: Array<{ error?: string }> };
+    assert(body.failed === 1 && body.applied.some(row => row.error === "destination already exists"), "conflict is reported per file");
+    assert(calls.length === 1 && calls[0] === "MOVE", "does not copy over the destination or delete the source");
+    const row = sqlite.prepare("SELECT storage_uri FROM song_instances WHERE id = 'inst-par-wd'").get();
+    assert(row?.storage_uri === "webdav://wd1/music/Paranoid.flac", "catalog keeps the original path");
+  } finally { globalThis.fetch = originalFetch; sqlite.close(); }
+}
+
 console.log("validation errors:");
 {
   const sqlite = buildDb();

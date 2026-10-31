@@ -2,4 +2,5 @@ packages:
   - worker
   - web
   - installer
+  - tools/mcp
 injectWorkspacePackages: true

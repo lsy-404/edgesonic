@@ -36,10 +36,13 @@
   "dependencies": {
     "@cloudflare/containers": "0.3.7",
     "@cloudflare/sandbox": "^0.12.1",
+    "@cloudflare/workers-oauth-provider": "1.2.4",
+    "@modelcontextprotocol/server": "2.4.0",
     "@noble/hashes": "^2.4.0",
     "hono": "^4.12.22",
     "jose": "^6.2.12",
     "marked": "^17.0.6",
-    "openid-client": "^6.8.8"
+    "openid-client": "^6.8.8",
+    "zod": "^4.6.7"
   }
 }

@@ -6,6 +6,7 @@
     "dev:worker": "pnpm --dir worker run dev",
     "dev:web": "pnpm --dir web run dev",
     "build:web": "pnpm --dir web run build",
+    "test:mcp": "tsx --test test/internal/mcp_auth.test.ts test/internal/mcp_management.test.ts test/internal/mcp_metadata.test.ts test/internal/mcp_local.test.ts",
     "test:sso": "tsx --test test/internal/oidc_flow.test.ts test/internal/sso_modes.test.ts test/internal/login_sso_behavior.test.ts test/internal/personal_sso_mapping.test.ts test/internal/access_authority.test.ts",
     "typecheck": "pnpm --dir worker run typecheck && pnpm --dir web run typecheck && pnpm --dir installer run typecheck",
     "deploy": "pnpm run build:web && pnpm --dir worker run deploy",

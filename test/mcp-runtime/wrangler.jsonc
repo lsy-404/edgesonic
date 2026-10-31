@@ -1,0 +1,10 @@
+{
+  "name": "edgesonic-mcp-runtime-test",
+  "main": "../../worker/src/index.ts",
+  "compatibility_date": "2026-10-03",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "vars": { "INSTANCE_ID": "local-mcp-test", "WORK_UPLOAD_HMAC_KEY": "local-runtime-fixture-key-not-for-production-0000" },
+  "d1_databases": [{ "binding": "DB", "database_name": "mcp-test", "database_id": "00000000-0000-0000-0000-000000000001" }],
+  "kv_namespaces": [{ "binding": "MCP_OAUTH_KV", "id": "00000000000000000000000000000001" }],
+  "r2_buckets": [{ "binding": "MUSIC_BUCKET", "bucket_name": "mcp-test" }]
+}

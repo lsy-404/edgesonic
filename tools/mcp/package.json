@@ -6,7 +6,7 @@
   "scripts": { "start": "tsx main.ts" },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
-    "music-metadata": "11.15.0",
+    "music-metadata": "12.3.2",
     "tsx": "^4.23.13"
   }
 }

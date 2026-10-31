@@ -234,8 +234,7 @@ function sanitiseSegment(s: string): string {
   return s.replace(/[\/<>:"\\|?*\x00-\x1f]/g, "_").replace(/\s+$/g, "").replace(/^\./, "_");
 }
 
-// Per-instance move: R2 updates only the logical D1 entry; WebDAV still uses
-// HTTP MOVE with a GET/PUT/DELETE fallback for servers that reject MOVE.
+// R2 changes logical entries; WebDAV MOVE refuses existing destinations.
 async function applyMove(env: Env, db: D1Database, sources: Map<string, SourceRow>, fromUri: string, toUri: string, logicalTo?: string) {
   if (fromUri.startsWith("r2://") && toUri.startsWith("r2://")) {
     if (!logicalTo) throw new Error("missing logical R2 destination");
@@ -274,19 +273,7 @@ async function applyMove(env: Env, db: D1Database, sources: Map<string, SourceRo
       headers: { Authorization: auth, Destination: buildUrl(toPath), Overwrite: "F" },
     });
     if (!(moveResp.status >= 200 && moveResp.status < 300)) {
-      // Fallback for servers that reject MOVE (e.g. some R2-fronted bridges):
-      // GET → PUT → DELETE. Heavier but works on plain HTTP-2 backends.
-      const getResp = await fetch(buildUrl(fromPath), { headers: { Authorization: auth } });
-      if (!getResp.ok) throw new Error(`GET failed: HTTP ${getResp.status}`);
-      const buf = await getResp.arrayBuffer();
-      const putResp = await fetch(buildUrl(toPath), {
-        method: "PUT",
-        headers: { Authorization: auth, "Content-Type": getResp.headers.get("Content-Type") || "application/octet-stream" },
-        body: buf,
-      });
-      if (!putResp.ok) throw new Error(`PUT failed: HTTP ${putResp.status}`);
-      const delResp = await fetch(buildUrl(fromPath), { method: "DELETE", headers: { Authorization: auth } });
-      if (!delResp.ok && delResp.status !== 404) throw new Error(`DELETE failed: HTTP ${delResp.status}`);
+      throw new Error(moveResp.status === 412 ? "destination already exists" : `MOVE failed: HTTP ${moveResp.status}`);
     }
   } else {
     throw new Error(`cross-scheme move not supported (${fromUri} → ${toUri})`);
