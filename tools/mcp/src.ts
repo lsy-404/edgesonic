@@ -19,6 +19,26 @@ const localTools = [
   { name: 'upload_local_file', description: 'Stream a local file to EdgeSonic; optionally submit its tags.', inputSchema: schema({ localPath: str, path: str, source: { enum: ['r2', 'webdav'] }, conflict: { enum: ['error', 'overwrite', 'rename'] }, applyUploadMetadata: { type: 'boolean' } }, ['localPath']) },
 ];
 
+function validateLocalArguments(name: string, args: Record<string, unknown>) {
+  const allowed: Record<string, string[]> = {
+    search_metadata_local: ['query', 'sources', 'current', 'limit'],
+    resolve_metadata_local: ['result'],
+    read_local_metadata: ['localPath'],
+    upload_local_file: ['localPath', 'path', 'source', 'conflict', 'applyUploadMetadata'],
+  };
+  const keys = allowed[name];
+  if (!keys) return;
+  if (Object.keys(args).some(key => !keys.includes(key))) throw new Error('Unexpected tool argument');
+  if (name === 'read_local_metadata' || name === 'upload_local_file') {
+    if (typeof args.localPath !== 'string' || !args.localPath) throw new Error('localPath must be a nonempty string');
+  }
+  if (name === 'upload_local_file') {
+    if (args.path !== undefined && typeof args.path !== 'string') throw new Error('path must be a string');
+    if (args.source !== undefined && args.source !== 'r2' && args.source !== 'webdav') throw new Error('Invalid source');
+    if (args.conflict !== undefined && args.conflict !== 'error' && args.conflict !== 'overwrite' && args.conflict !== 'rename') throw new Error('Invalid conflict');
+    if (args.applyUploadMetadata !== undefined && typeof args.applyUploadMetadata !== 'boolean') throw new Error('applyUploadMetadata must be a boolean');
+  }
+}
 export async function openLocalFile(root: string | undefined, localPath: unknown) {
   if (!root) throw new Error('EDGESONIC_LOCAL_ROOT must be configured for local file access');
   if (typeof localPath !== 'string' || !localPath) throw new Error('localPath is required');
@@ -45,7 +65,7 @@ async function tagsFromFile(file: Awaited<ReturnType<typeof openLocalFile>>['fil
   const stream = file.createReadStream({ start: 0, autoClose: false });
   try {
     const { common, format } = await parseStream(stream, { size }, { skipCovers: true });
-    const tags = { title: common.title, artist: common.artist, album: common.album, albumArtist: common.albumartist, year: common.year, genre: common.genre?.join(', '), track: common.track?.no ?? undefined, disc: common.disk?.no ?? undefined, lyrics: common.lyrics?.map(item => item.text).filter(Boolean).join('\n') || undefined };
+    const tags = { duration: format.duration, bitrate: format.bitrate === undefined ? undefined : format.bitrate / 1000, sampleRate: format.sampleRate, bitDepth: format.bitsPerSample, channels: format.numberOfChannels, container: format.container, codec: format.codec, title: common.title, artist: common.artist, album: common.album, albumArtist: common.albumartist, year: common.year, genre: common.genre?.join(', '), track: common.track?.no ?? undefined, disc: common.disk?.no ?? undefined, lyrics: common.lyrics?.map(item => item.text).filter(Boolean).join('\n') || undefined };
     return { tags: Object.fromEntries(Object.entries(tags).filter(([, value]) => value !== undefined && value !== '')), format };
   } finally { stream.destroy(); }
 }
@@ -84,8 +104,9 @@ export async function start() {
   server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
     const args = params.arguments ?? {};
     try {
-      if (params.name === 'search_metadata_local') return text(await searchMetadata(args as any));
-      if (params.name === 'resolve_metadata_local') return text(await resolveMetadata(args as any));
+      validateLocalArguments(params.name, args);
+      if (params.name === 'search_metadata_local') return text(await searchMetadata(args as unknown as Parameters<typeof searchMetadata>[0]));
+      if (params.name === 'resolve_metadata_local') return text(await resolveMetadata(args as unknown as Parameters<typeof resolveMetadata>[0]));
       if (params.name === 'read_local_metadata' || params.name === 'upload_local_file') {
         const opened = await openLocalFile(process.env.EDGESONIC_LOCAL_ROOT, args.localPath);
         try {

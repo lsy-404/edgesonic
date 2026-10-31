@@ -79,7 +79,11 @@ test('bridge proxies remote tools and distinguishes uploaded files from metadata
   const remote = new Server({ name: 'fixture', version: '1.0.0' }, { capabilities: { tools: {} } });
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => "test-session", enableJsonResponse: true });
   remote.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: ['create_upload', 'finish_upload', 'submit_upload_metadata', 'remote_echo'].map(name => ({ name, inputSchema: { type: 'object' } })) }));
+  let submittedTags: Record<string, unknown> | undefined;
+  let creates = 0;
   remote.setRequestHandler(CallToolRequestSchema, async ({ params }: any) => {
+    if (params.name === 'create_upload') creates++;
+    if (params.name === 'submit_upload_metadata') submittedTags = params.arguments.tags;
     if (params.name === 'submit_upload_metadata') return { isError: true, content: [{ type: 'text', text: 'scope denied' }] };
     const data = params.name === 'create_upload' ? { uploadId: 'ticket', uploadUrl: '/mcp/upload/ticket', method: 'PUT' } : params.name === 'finish_upload' ? { ok: true, id: 'song', metadataToken: 'metadata' } : { echoed: params.arguments };
     return { structuredContent: data, content: [{ type: 'text', text: JSON.stringify(data) }] };
@@ -102,6 +106,11 @@ test('bridge proxies remote tools and distinguishes uploaded files from metadata
     assert.ok((await client.listTools()).tools.some((tool: any) => tool.name === 'remote_echo'));
     const echo = await client.callTool({ name: 'remote_echo', arguments: { value: 5 } });
     assert.deepEqual(echo.structuredContent, { echoed: { value: 5 } });
+    for (const invalid of [{ applyUploadMetadata: 'false' }, { source: 'other' }, { conflict: 'other' }, { path: 1 }, { surprise: true }]) {
+      const rejected = await client.callTool({ name: 'upload_local_file', arguments: { localPath: 'wav-flac-metadata-source.wav', ...invalid } });
+      assert.equal(rejected.isError, true);
+    }
+    assert.equal(creates, 0);
     const result = await client.callTool({ name: 'upload_local_file', arguments: { localPath: 'wav-flac-metadata-source.wav', applyUploadMetadata: true } });
     assert.notEqual(result.isError, true, JSON.stringify(result));
     const payload = JSON.parse(result.content[0].text);
@@ -109,5 +118,9 @@ test('bridge proxies remote tools and distinguishes uploaded files from metadata
     assert.equal(payload.metadata.ok, false);
     assert.match(payload.metadata.error, /scope denied/);
     assert.ok(uploaded > 0);
+    assert.ok(Number(submittedTags?.duration) > 0);
+    assert.ok(Number(submittedTags?.sampleRate) > 0);
+    assert.ok(Number(submittedTags?.channels) > 0);
+    assert.ok(Number(submittedTags?.bitDepth) > 0);
   } finally { await client.close(); await remote.close(); await new Promise<void>(resolve => http.close(() => resolve())); }
 });
