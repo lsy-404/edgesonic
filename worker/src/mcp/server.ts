@@ -5,7 +5,7 @@ import type { McpPrincipal } from "./context";
 import { getEffectivePermissions } from "../utils/permissions";
 import { findR2EntryByPath, updateR2EntryPath } from "../utils/storageResolver";
 import { invokeOperation, McpOperationError, type AppDispatch } from "./operations";
-import { createUpload, finishUpload, receiveUpload } from "./uploads";
+import { createUpload, finishUpload, receiveUpload, submitUploadMetadata } from "./uploads";
 import { searchMetadata, resolveMetadata } from "./metadata";
 
 const id = z.string().min(1).max(200);
@@ -71,7 +71,7 @@ export async function createLibraryMcpServer(origin: string, env: Env, ctx: Exec
   tool("move_folder", "mcp:write", ["upload"], "Move or rename a logical R2 directory.", z.object({ path, dest: path }).strict(), a => api("POST", "/storage/files/moveFolder", a));
   tool("create_upload", "mcp:upload", ["upload"], "Create an expiring upload ticket. PUT the original file bytes to uploadUrl using the same bearer token and exact Content-Length, then call finish_upload. Bytes do not belong in MCP JSON.", uploadSchema, a => createUpload(env, principal, origin, a));
   tool("finish_upload", "mcp:upload", ["upload"], "Read the stored upload result. A queued metadata status does not mean parsing is complete; submit local parsed tags or explicitly write retrieved fields.", z.object({ uploadId: id }).strict(), a => finishUpload(env, principal, a.uploadId));
-  tool("submit_upload_metadata", "mcp:upload", ["upload"], "Apply parsed tags to this upload using its returned metadataToken; does not rewrite the audio file.", z.object({ id, metadataToken: z.string().min(1).max(2000), tags: tags.extend({ duration: z.number().nonnegative().optional(), bitrate: z.number().nonnegative().optional(), sampleRate: z.number().nonnegative().optional(), channels: z.number().int().nonnegative().optional(), bitDepth: z.number().int().nonnegative().optional(), container: z.string().max(100).optional(), codec: z.string().max(100).optional() }) }).strict(), a => api("POST", "/tag/submit-upload", { instanceId: a.id, token: a.metadataToken, tags: a.tags }));
+  tool("submit_upload_metadata", "mcp:upload", ["upload"], "Apply parsed tags to this completed upload; does not rewrite the audio file.", z.object({ uploadId: id, tags: tags.extend({ duration: z.number().nonnegative().optional(), bitrate: z.number().nonnegative().optional(), sampleRate: z.number().nonnegative().optional(), channels: z.number().int().nonnegative().optional(), bitDepth: z.number().int().nonnegative().optional(), container: z.string().max(100).optional(), codec: z.string().max(100).optional() }) }).strict(), a => submitUploadMetadata(env, principal, a.uploadId, a.tags));
   if (principal.user.level >= 2) {
     tool("delete_file", "mcp:delete", ["delete"], "Permanently delete one R2 logical file and unreferenced data. Requires separately granted deletion access.", z.object({ path }).strict(), async a => {
       const entry = await findR2EntryByPath(env.DB, a.path);

@@ -148,39 +148,51 @@ metadataRoutes.post("/submit-upload", permissionMiddleware("upload"), async (c) 
   }
   if (instance.tag_scanned !== 0) return c.json({ ok: false, error: "Upload metadata capability already used" }, 409);
 
-  const tags = cleanInput(body.tags);
-  const logicalPath = await sourceFolderLogicalPath(env.DB, body.instanceId);
+  const result = await applyUploadMetadata(env, body.instanceId, instance.storage_uri, uploadNonce, body.tags, body.cover);
+  return c.json(result.body, result.status as 200 | 400 | 409);
+
+});
+
+export async function applyUploadMetadata(env: Env, instanceId: string, storageUri: string, uploadNonce: string, inputTags: SubmittedMetadata, cover?: EmbeddedCover) {
+  const tags = cleanInput(inputTags);
+  const logicalPath = await sourceFolderLogicalPath(env.DB, instanceId);
   if (!hasAnyLogical(tags) && !hasReadableLogicalTrackTitle(logicalPath)) {
-    return c.json({ ok: false, error: "No usable tag fields" }, 400);
+    return { status: 400, body: { ok: false, error: "No usable tag fields" } };
   }
 
-  const lease = await acquireUploadMetadataLease(env.DB, body.instanceId, instance.storage_uri, uploadNonce);
-  if (!lease) return c.json({ ok: false, error: "Upload metadata generation is being changed or applied" }, 409);
+  const lease = await acquireUploadMetadataLease(env.DB, instanceId, storageUri, uploadNonce);
+  if (!lease) return { status: 409, body: { ok: false, error: "Upload metadata generation is being changed or applied" } };
+  const current = await env.DB.prepare("SELECT tag_scanned, missing, storage_uri FROM song_instances WHERE id = ? AND source_type = 'original'")
+    .bind(instanceId).first<{ tag_scanned: number; missing: number; storage_uri: string }>();
+  if (!current || current.missing !== 0 || current.storage_uri !== storageUri || current.tag_scanned !== 0) {
+    await releaseUploadMetadataLease(env.DB, lease, false);
+    return { status: 409, body: { ok: false, error: "Upload metadata unavailable or already applied" } };
+  }
   let applied;
   try {
-    applied = await applyMetadataResult(env.DB, body.instanceId, tags, tags, { scanIdentity: true });
+    applied = await applyMetadataResult(env.DB, instanceId, tags, tags, { scanIdentity: true });
   } catch (error) {
     await releaseUploadMetadataLease(env.DB, lease, false);
     throw error;
   }
   if (!applied.updated || !applied.masterId) {
     await releaseUploadMetadataLease(env.DB, lease, false);
-    return c.json({ ok: false, error: applied.reason || "Metadata apply failed" }, 400);
+    return { status: 400, body: { ok: false, error: applied.reason || "Metadata apply failed" } };
   }
   let coverSaved = false;
   let coverStatus: "saved" | "preserved" | "failed" | "invalid" | "none" = "none";
-  if (body.cover && typeof body.cover.data === "string") {
+  if (cover && typeof cover.data === "string") {
     try {
       coverStatus = await writeEmbeddedCover(
         env.DB,
         env.MUSIC_BUCKET,
         applied.masterId,
-        body.cover,
-        { markerId: `wm-upload-pending-${body.instanceId}`, payload: lease.payload },
+        cover,
+        { markerId: `wm-upload-pending-${instanceId}`, payload: lease.payload },
       );
       coverSaved = coverStatus === "saved";
     } catch (error) {
-      console.error(`[tag/submit-upload] embedded cover write failed for ${body.instanceId}:`, error);
+      console.error(`[tag/submit-upload] embedded cover write failed for ${instanceId}:`, error);
       coverStatus = "failed";
     }
   }
@@ -191,8 +203,8 @@ metadataRoutes.post("/submit-upload", permissionMiddleware("upload"), async (c) 
     "SELECT artist_id, album_id FROM song_masters WHERE id = ?",
   ).bind(applied.masterId).first<{ artist_id: string; album_id: string }>();
 
-  return c.json({ ok: true, masterId: applied.masterId, albumId: ids?.album_id, artistId: ids?.artist_id, coverSaved, coverStatus });
-});
+  return { status: 200, body: { ok: true, masterId: applied.masterId, albumId: ids?.album_id, artistId: ids?.artist_id, coverSaved, coverStatus } };
+}
 
 // ============================================================================
 // Input scrubbing — same shape as tagedit.cleanInput, plus this endpoint's own fields.
