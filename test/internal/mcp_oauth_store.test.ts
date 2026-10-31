@@ -25,3 +25,35 @@ test("OAuth storage isolates keys, expires entries and paginates with metadata",
   assert.equal(await store.get("grant:user:2"), null);
   assert.equal(sqlite.prepare("SELECT value FROM kv_store WHERE key = 'unrelated'").get()?.value, "keep");
 });
+
+test("revocation prevents stale grant and token writes and hides preexisting tokens", async () => {
+  const { db } = sqliteD1();
+  const issuer = new OAuthStore(db);
+  const refreshing = new OAuthStore(db);
+  const revoker = new OAuthStore(db);
+  await issuer.put("grant:user:id", JSON.stringify({ refreshTokenId: "old" }));
+  await issuer.put("token:user:id:old", "old token");
+  assert.deepEqual(await refreshing.get("grant:user:id", "json"), { refreshTokenId: "old" });
+  await revoker.delete("grant:user:id");
+  await assert.rejects(refreshing.put("grant:user:id", JSON.stringify({ refreshTokenId: "new" })));
+  await assert.rejects(refreshing.put("token:user:id:new", "new token"));
+  assert.equal(await issuer.get("token:user:id:old"), null);
+  assert.equal(await issuer.get("grant:user:id"), null);
+  await assert.rejects(new OAuthStore(db).put("grant:user:id", "replacement"));
+  await issuer.put("grant:user:other", "other grant");
+  await issuer.put("token:user:other:one", "one");
+  await issuer.delete("token:user:other:one");
+  await issuer.put("token:user:other:two", "two");
+  assert.equal(await issuer.get("token:user:other:two"), "two");
+});
+
+test("concurrent grant updates permit only the first writer", async () => {
+  const { db } = sqliteD1();
+  await new OAuthStore(db).put("grant:user:id", JSON.stringify({ authCodeWrappedKey: "key" }));
+  const first = new OAuthStore(db);
+  const second = new OAuthStore(db);
+  await Promise.all([first.get("grant:user:id"), second.get("grant:user:id")]);
+  await first.put("grant:user:id", JSON.stringify({ refreshTokenId: "first" }));
+  await assert.rejects(second.put("grant:user:id", JSON.stringify({ refreshTokenId: "second" })));
+  assert.deepEqual(await new OAuthStore(db).get("grant:user:id", "json"), { refreshTokenId: "first" });
+});
