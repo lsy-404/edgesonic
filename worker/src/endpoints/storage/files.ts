@@ -1,3 +1,4 @@
+import { mcpPrincipal } from "../../mcp/context";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // This program is free software: you can redistribute it and/or modify
@@ -543,11 +544,12 @@ async function finishAudioUpload(
   const uploader = c.get("user");
   const directMetadata = c.req.query("metadata") === "direct";
   const mayApplyMetadata = createdInstance || canEditTags;
-  let metadataToken = directMetadata && mayApplyMetadata
+  const mcpDirect = directMetadata && !!mcpPrincipal(env) && mayApplyMetadata;
+  let metadataToken = directMetadata && mayApplyMetadata && !mcpDirect
     ? uploadNonce ? await issueUploadMetadataCapability(env, uploader.username, instanceId, storageUri, uploadNonce) : null
     : null;
   let pendingMarkerWritten = markerAlreadyWritten;
-  if (metadataToken && !pendingMarkerWritten && uploadNonce) {
+  if ((metadataToken || mcpDirect) && !pendingMarkerWritten && uploadNonce) {
     try {
       const lease = await markUploadMetadataPending(db, instanceId, storageUri, uploadNonce);
       pendingMarkerWritten = !!lease && await releaseUploadMetadataLease(db, lease, false);
@@ -557,7 +559,7 @@ async function finishAudioUpload(
       metadataToken = null;
     }
   }
-  const shouldQueueMetadata = mayApplyMetadata && (!directMetadata || !metadataToken || !pendingMarkerWritten);
+  const shouldQueueMetadata = mayApplyMetadata && (!directMetadata || !(metadataToken || mcpDirect) || !pendingMarkerWritten);
   let metadataStatus: "direct" | "queued" | "queue_failed" | "protected" = "direct";
 
   if (!mayApplyMetadata) {
@@ -592,7 +594,7 @@ async function finishAudioUpload(
     }
   }
 
-  return c.json(uploadSuccess({ key: r2Key, id: instanceId, storageUri, source, target, metadataToken: metadataToken || undefined, metadataStatus }));
+  return c.json(uploadSuccess({ key: r2Key, id: instanceId, storageUri, source, target, metadataToken: metadataToken || undefined, metadataStatus, ...(mcpDirect && pendingMarkerWritten ? { uploadNonce } : {}) }));
 }
 
 function isContentLengthMismatch(error: unknown): boolean {
@@ -736,7 +738,7 @@ function uploadConflict(source: string, requestedKey: string): Record<string, un
   };
 }
 
-function uploadSuccess(input: { key: string; id?: string; storageUri?: string; source: string; target: UploadTarget; metadataToken?: string; metadataStatus?: string }): Record<string, unknown> {
+function uploadSuccess(input: { key: string; id?: string; storageUri?: string; source: string; target: UploadTarget; metadataToken?: string; metadataStatus?: string; uploadNonce?: string }): Record<string, unknown> {
   const finalPath = "logicalPath" in input.target ? input.target.logicalPath : input.key;
   return {
     ok: true,
@@ -744,6 +746,7 @@ function uploadSuccess(input: { key: string; id?: string; storageUri?: string; s
     id: input.id,
     storageUri: input.storageUri,
     metadataToken: input.metadataToken,
+    uploadNonce: input.uploadNonce,
     metadataStatus: input.metadataStatus,
     conflict: {
       policy: input.target.policy,

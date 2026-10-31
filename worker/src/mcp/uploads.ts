@@ -2,6 +2,7 @@
 import { withMcpPrincipal, type McpPrincipal } from "./context";
 import { operationResponse, McpOperationError, type AppDispatch } from "./operations";
 import { hasPermission } from "../utils/permissions";
+import { applyUploadMetadata, type SubmittedMetadata } from "../endpoints/tag/submit";
 import { isDemoMode } from "../utils/demoMode";
 
 export interface UploadInput {
@@ -12,6 +13,8 @@ interface UploadTicket {
   owner: string; expiresAt: number; input: UploadInput;
   state: "pending" | "uploading" | "completed" | "failed";
   result?: Record<string, unknown>;
+  generation?: { instanceId: string; storageUri: string; uploadNonce: string };
+  metadataApplied?: boolean;
 }
 const prefix = "mcp:upload:";
 const lifetime = 60 * 60;
@@ -71,6 +74,10 @@ export async function receiveUpload(request: Request, env: Env, ctx: ExecutionCo
   try {
     const forwarded = new Request(url, { method: "POST", headers, body: request.body, duplex: "half" } as RequestInit);
     result = await operationResponse(await dispatch(forwarded, withMcpPrincipal(env, principal), ctx));
+    if (result.metadataStatus === "direct" && typeof result.id === "string" && typeof result.storageUri === "string" && typeof result.uploadNonce === "string") {
+      ticket.generation = { instanceId: result.id, storageUri: result.storageUri, uploadNonce: result.uploadNonce };
+    }
+    delete result.uploadNonce;
     ticket.state = "completed";
   } catch (error) {
     ticket.state = "failed";
@@ -80,4 +87,18 @@ export async function receiveUpload(request: Request, env: Env, ctx: ExecutionCo
   ticket.result = result;
   await env.DB.prepare("UPDATE kv_store SET value = ?, updated_at = ? WHERE key = ?").bind(JSON.stringify(ticket), Math.floor(Date.now() / 1000), prefix + id).run();
   return Response.json(result, { status, headers: { "Cache-Control": "no-store" } });
+}
+
+export async function submitUploadMetadata(env: Env, principal: McpPrincipal, id: string, tags: SubmittedMetadata) {
+  const ticket = await ticketFor(env, principal, id);
+  if (ticket.state !== "completed" || !ticket.generation || ticket.metadataApplied) throw new McpOperationError("Upload metadata unavailable or already applied", 409);
+  const { instanceId, storageUri, uploadNonce } = ticket.generation;
+  const instance = await env.DB.prepare("SELECT tag_scanned, missing, storage_uri FROM song_instances WHERE id = ? AND source_type = 'original'")
+    .bind(instanceId).first<{ tag_scanned: number; missing: number; storage_uri: string }>();
+  if (!instance || instance.missing !== 0 || instance.storage_uri !== storageUri || instance.tag_scanned !== 0) throw new McpOperationError("Upload metadata unavailable or already applied", 409);
+  const result = await applyUploadMetadata(env, instanceId, storageUri, uploadNonce, tags);
+  if (!result.body.ok) throw new McpOperationError(result.body.error || "Metadata apply failed", result.status);
+  await env.DB.prepare("UPDATE kv_store SET value = json_set(value, '$.metadataApplied', json('true')), updated_at = ? WHERE key = ?")
+    .bind(Math.floor(Date.now() / 1000), prefix + id).run();
+  return result.body;
 }

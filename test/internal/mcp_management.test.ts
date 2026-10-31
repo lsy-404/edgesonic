@@ -100,13 +100,15 @@ test("upload tickets stream once, enforce ownership and expiry, and guard overwr
     assert.equal(new URL(request.url).searchParams.get("metadata"), "direct");
     assert.equal(await request.text(), "fLaC");
     assert.equal(mcpPrincipal(env)?.user.username, "owner");
-    return Response.json({ ok: true, id: "instance", metadataToken: "capability", metadataStatus: "direct" });
+    return Response.json({ ok: true, id: "instance", storageUri: "r2://song.flac", uploadNonce: "nonce", metadataStatus: "direct" });
   };
   const other = { ...f.principal, user: { ...f.principal.user, username: "other" } };
   await assert.rejects(receiveUpload(request(), f.env, f.ctx, other, app), /not found/);
   await assert.rejects(finishUpload(f.env, f.principal, ticket.uploadId), /pending/);
   assert.equal((await receiveUpload(request(), f.env, f.ctx, f.principal, app)).status, 200);
-  assert.equal((await finishUpload(f.env, f.principal, ticket.uploadId)).id, "instance");
+  const finished = await finishUpload(f.env, f.principal, ticket.uploadId);
+  assert.equal(finished.id, "instance");
+  assert.equal(finished.uploadNonce, undefined);
   await assert.rejects(receiveUpload(request(), f.env, f.ctx, f.principal, app), /completed/);
   assert.equal(calls, 1);
   const expired = await createUpload(f.env, f.principal, "https://example.com", { name: "song.flac", size: 4 });
