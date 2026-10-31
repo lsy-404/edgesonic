@@ -57,6 +57,11 @@ featuresRoutes.get("/features/list", permissionMiddleware("manage_settings"), as
     "SELECT key, value, description, updated_at FROM feature_strings ORDER BY key ASC"
   ).all<{ key: string; value: string; description: string | null; updated_at: number }>();
 
+  if (!result.results.some(feature => feature.key === "mcp_enabled")) {
+    result.results.push({ key: "mcp_enabled", value: 0, description: "Enable authenticated MCP library management", updated_at: 0 });
+    result.results.sort((a, b) => a.key.localeCompare(b.key));
+  }
+
   return c.json({
     ok: true,
     instanceId: c.env.INSTANCE_ID,
@@ -82,11 +87,13 @@ featuresRoutes.post("/features/update", async (c) => {
     return c.json({ ok: false, error: "Feature is locked in demo mode" }, 403);
   }
 
-  const result = await c.env.DB.prepare(
-    "UPDATE features SET value = ?, updated_at = ? WHERE key = ?"
-  )
-    .bind(body.value, Math.floor(Date.now() / 1000), body.key)
-    .run();
+  const now = Math.floor(Date.now() / 1000);
+  const result = body.key === "mcp_enabled"
+    ? await c.env.DB.prepare(
+      `INSERT INTO features (key, value, description, updated_at) VALUES ('mcp_enabled', ?, 'Enable authenticated MCP library management', ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+    ).bind(body.value, now).run()
+    : await c.env.DB.prepare("UPDATE features SET value = ?, updated_at = ? WHERE key = ?").bind(body.value, now, body.key).run();
   if (result.meta.changes === 0) {
     return c.json({ ok: false, error: `Unknown feature: ${body.key}` }, 404);
   }

@@ -9,6 +9,8 @@ async function checked(path, init, status = 200) {
   return response;
 }
 
+await checked('/mcp', { method: 'POST', body: '{}' }, 404);
+await checked('/edgesonic/features/update', { method: 'POST', headers: { Cookie: session, Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'mcp_enabled', value: 1 }) });
 const registered = await checked('/oauth/register', {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ client_name: 'MCP runtime fixture', redirect_uris: ['http://127.0.0.1:4321/callback'], token_endpoint_auth_method: 'none', grant_types: ['authorization_code'], response_types: ['code'] }),
@@ -55,8 +57,10 @@ wav.write('data', 36); wav.writeUInt32LE(16000, 40);
 const ticket = await call('create_upload', { name, path: 'music/runtime', size: wav.length });
 await checked(new URL(ticket.uploadUrl).pathname, { method: 'PUT', headers: { ...authorization, 'Content-Length': String(wav.length), 'Content-Type': 'audio/wav' }, body: wav });
 const uploaded = await call('finish_upload', { uploadId: ticket.uploadId });
-assert.ok(uploaded.id && uploaded.metadataToken, JSON.stringify(uploaded));
-const applied = await call('submit_upload_metadata', { id: uploaded.id, metadataToken: uploaded.metadataToken, tags: { title: 'Runtime fixture', artist: 'Fixture artist', album: 'Fixture album', duration: 1, sampleRate: 8000, bitDepth: 16, channels: 1, bitrate: 128, container: 'WAVE', codec: 'PCM' } });
+assert.ok(uploaded.id, JSON.stringify(uploaded));
+assert.equal(uploaded.metadataToken, undefined);
+assert.equal(uploaded.metadataStatus, 'direct');
+const applied = await call('submit_upload_metadata', { uploadId: ticket.uploadId, tags: { title: 'Runtime fixture', artist: 'Fixture artist', album: 'Fixture album', duration: 1, sampleRate: 8000, bitDepth: 16, channels: 1, bitrate: 128, container: 'WAVE', codec: 'PCM' } });
 assert.equal(applied.ok, true);
 const catalog = await call('get_metadata', { id: uploaded.id });
 assert.ok(catalog.song, JSON.stringify(catalog));
@@ -79,4 +83,6 @@ const grant = grants.items.find(item => item.clientId === client_id);
 assert.ok(grant, JSON.stringify(grants.items.map(item => Object.keys(item))));
 await checked('/edgesonic/mcp/grants/revoke', { method: 'POST', headers: { Cookie: session, Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ grantId: grant.id }) });
 await checked('/mcp', { method: 'POST', headers: authorization, body: '{}' }, 401);
-console.log('Local workerd OAuth, scoped tools, upload, metadata apply/read/write, move, preview, deletion denial and revocation passed.');
+await checked('/edgesonic/features/update', { method: 'POST', headers: { Cookie: session, Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'mcp_enabled', value: 0 }) });
+await checked('/.well-known/oauth-authorization-server', {}, 404);
+console.log('Single-switch local workerd OAuth and upload metadata flow passed without extra keys or bindings; deletion denial and revocation passed.');

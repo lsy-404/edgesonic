@@ -13,7 +13,6 @@ const routes: Record<string, string> = {
   "GET /storage/files/list": "mcp:read",
   "GET /storage/files/song-locations": "mcp:read",
   "POST /storage/files/upload": "mcp:upload",
-  "POST /tag/submit-upload": "mcp:upload",
   "POST /tag/write": "mcp:write",
   "POST /tag/batchWrite": "mcp:write",
   "POST /tag/tidyFolder": "mcp:write",

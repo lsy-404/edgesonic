@@ -1,6 +1,6 @@
 # Local MCP runtime check
 
-Run these commands from the repository root. They use local D1, KV and R2 resources only.
+Run these commands from the repository root. They use the local D1 and R2 simulators, with no KV binding or configured signing key.
 
 ```sh
 pnpm exec wrangler d1 execute mcp-test --local --config test/mcp-runtime/wrangler.jsonc --file worker/migrations/Schema.sql
@@ -8,4 +8,4 @@ pnpm exec wrangler d1 execute mcp-test --local --config test/mcp-runtime/wrangle
 pnpm exec wrangler dev --local --config test/mcp-runtime/wrangler.jsonc --port 8796
 ```
 
-With the server ready, run `node test/mcp-runtime/smoke.mjs` in another terminal. It registers a local OAuth client and exercises upload, metadata submission/read/write, logical move, organization preview, deletion denial, and grant revocation through the real Worker. Test media remains in the local simulated storage. The fixture session and signing key are for local testing only.
+With the server ready, run `node test/mcp-runtime/smoke.mjs` in another terminal. It verifies that MCP starts disabled, enables it through settings, registers an OAuth client, and exercises upload, metadata submission/read/write, logical move, organization preview, deletion denial, and grant revocation through the real Worker. It disables MCP at the end. Test media remains in local storage. The seeded session is for local testing only.

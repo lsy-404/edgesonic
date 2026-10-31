@@ -1708,6 +1708,10 @@
       "unavailable": "Not available on this backend yet"
     },
     "featureKeys": {
+      "mcp_enabled": {
+        "name": "MCP server",
+        "desc": "Allow authenticated AI clients to search, organize and upload files. Deletion is off by default and requires separate authorization."
+      },
       "allow_being_proxied": {
         "name": "Allow being proxied",
         "desc": "Let other EdgeSonic instances stream from this server as an upstream."

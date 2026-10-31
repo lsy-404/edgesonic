@@ -1691,6 +1691,10 @@
       "unavailable": "后端尚未支持"
     },
     "featureKeys": {
+      "mcp_enabled": {
+        "name": "MCP 服务",
+        "desc": "允许 AI 客户端通过登录授权查询、整理和上传文件；删除默认关闭，需单独授权。"
+      },
       "allow_being_proxied": {
         "name": "允许被代理",
         "desc": "允许其它 EdgeSonic 实例把本站作为上游拉流。"

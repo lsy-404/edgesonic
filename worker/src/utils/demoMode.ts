@@ -19,6 +19,7 @@ const DEMO_DISABLED_PERM_SET = new Set<string>(DEMO_DISABLED_PERMS);
 // would let a visitor pivot the instance to a different storage backend,
 // change transcoding strategy, or disable the worker pool is off-limits.
 export const DEMO_LOCKED_FEATURE_KEYS = new Set<string>([
+  "mcp_enabled",
   "transcode_engine",
   "external_transcoder_url",
   "enable_r2_presign",

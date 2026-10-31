@@ -921,6 +921,7 @@ INSERT OR IGNORE INTO features (key, value, description) VALUES
   ('allow_being_proxied',     1, '允许本服务器被其他 EdgeSonic 作为上游二次代理'),
   ('enable_subsonic_upstream', 1, '本服务器是否启用 Subsonic 类型存储源（出站代理）'),
   ('guest_browse',            0, '允许 guest 级别浏览音乐库'),
+  ('mcp_enabled',             0, 'Enable authenticated MCP library management'),
   ('open_registration',       0, '开放用户自助注册'),
   ('allow_email_password_reset', 0, '允许通过邮箱自助重置密码（独立于自助注册开关）'),
   ('enable_activation',       0, '账户激活体系总开关（关闭时所有账号视为永久激活）');

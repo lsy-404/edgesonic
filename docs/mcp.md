@@ -2,6 +2,8 @@
 
 EdgeSonic provides a remote MCP endpoint at `/mcp` and a local stdio bridge. The bridge exposes the remote tools and adds local metadata search, file tag reading, and streaming uploads. It runs without the web interface. Local provider searches work without an EdgeSonic server.
 
+Enable **Settings → System → Feature Flags → MCP server** (`mcp_enabled`). It is off by default. No additional keys or resource bindings are required; clients sign in through the existing EdgeSonic account. Turning it off blocks MCP access and new authorization; existing grants can still be viewed and revoked.
+
 From a source checkout, install the workspace dependencies with `pnpm install`. Configure your MCP client to launch the bridge with Node and the checkout's `tsx` CLI. For example, replace the paths with absolute paths on your computer:
 
 ```json
