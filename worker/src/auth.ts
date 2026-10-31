@@ -14,6 +14,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import { Hono } from "hono";
+import { mcpPrincipal } from "./mcp/context";
+import { isMcpOperationAllowed } from "./mcp/operations";
 import { createMiddleware } from "hono/factory";
 import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
 import { sha256 as nobleSha256 } from "@noble/hashes/sha2.js";
@@ -432,6 +434,15 @@ export const authMiddleware = createMiddleware<{
           "Content-Type": "application/xml; charset=UTF-8",
         });
 
+  const mcp = mcpPrincipal(c.env);
+  if (mcp) {
+    if (!isMcpOperationAllowed(c.req.method, path, mcp.scopes)) return authFail(50, "Operation not allowed for MCP", 403);
+    c.set("user", mcp.user);
+    c.set("authMethod", "session");
+    c.set("streamProxyStrategy", "never");
+    c.set("rateLimitDeviceId", await rateLimitDeviceId("mcp", mcp.user.username));
+    return next();
+  }
   // --- Studio gateway relay (studio/gateway.ts) ---
   // Only a service-binding call can reach this: the gateway already mapped
   // the subject to an enabled, activated SSO user and dispatches with a

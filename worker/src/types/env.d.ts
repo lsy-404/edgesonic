@@ -15,6 +15,7 @@
 
 interface Env {
   DB: D1Database;
+  MCP_OAUTH_KV?: KVNamespace;
   ACCESS?: Fetcher;
   KTV_ROOMS: DurableObjectNamespace;
   MediaContainer?: DurableObjectNamespace<import("../media/container").MediaContainer>;
