@@ -110,13 +110,13 @@ export async function start() {
         remoteTransport = new StreamableHTTPClientTransport(endpoint, { authProvider: auth, fetch: guardedFetch });
         await remote.connect(remoteTransport);
       }
-    } catch (error) { await auth.close(); throw error; }
+    } finally { await auth.close(); }
   }
   let authorization: Promise<void> | undefined;
   async function authorized<T>(operation: () => Promise<T>): Promise<T> {
     try { return await operation(); } catch (error) {
       if (!(error instanceof UnauthorizedError) || !auth || !remoteTransport) throw error;
-      authorization ??= (async () => { await remoteTransport!.finishAuth(await auth!.authorizationCode()); })().finally(() => { authorization = undefined; });
+      authorization ??= (async () => { try { await remoteTransport!.finishAuth(await auth!.authorizationCode()); } finally { await auth!.close(); } })().finally(() => { authorization = undefined; });
       await authorization;
       return operation();
     }

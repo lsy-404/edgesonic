@@ -43,8 +43,13 @@ export class LocalOAuthProvider implements OAuthClientProvider {
     this.redirect = `http://127.0.0.1:${(this.listener.address() as any).port}/callback`;
     if (this.stored.redirectUrl !== this.redirect) { delete this.stored.client; delete this.stored.tokens; }
   }
-  redirectToAuthorization(url: URL) {
+  async redirectToAuthorization(url: URL) {
     if (url.origin !== this.origin) throw new Error('OAuth authorization endpoint must use the EdgeSonic origin');
+    if (!this.listener) {
+      this.listener = createServer();
+      await new Promise<void>((resolve, reject) => { this.listener!.once('error', reject); this.listener!.listen(Number(new URL(this.redirect).port), '127.0.0.1', () => { this.listener!.off('error', reject); resolve(); }); });
+      this.listener.unref();
+    }
     if (this.callback) throw new Error('OAuth authorization already pending');
     this.callback = new Promise<string>((resolve, reject) => {
       const timer = setTimeout(() => { cleanup(); reject(new Error('OAuth authorization timed out')); }, 300_000);
@@ -62,5 +67,5 @@ export class LocalOAuthProvider implements OAuthClientProvider {
     process.stderr.write(`Open this URL to authorize EdgeSonic:\n${url.href}\n`);
   }
   async authorizationCode() { if (!this.callback) throw new Error('OAuth authorization was not started'); try { return await this.callback; } finally { this.callback = undefined; } }
-  async close() { if (this.listener) await new Promise<void>(resolve => this.listener!.close(() => resolve())); }
+  async close() { const listener = this.listener; this.listener = undefined; if (listener) await new Promise<void>(resolve => listener.close(() => resolve())); }
 }

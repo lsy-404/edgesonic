@@ -134,3 +134,103 @@ test('bridge proxies remote tools and distinguishes uploaded files from metadata
     assert.ok(Number(submittedTags?.bitDepth) > 0);
   } finally { await client.close(); await remote.close(); await new Promise<void>(resolve => http.close(() => resolve())); await rm(appdata, { recursive: true, force: true }); }
 });
+
+test('first stdio connection authorizes with OAuth and uploads a file', { timeout: 30_000 }, async () => {
+  const { createRequire } = await import('node:module');
+  const { createServer } = await import('node:http');
+  const { createHash } = await import('node:crypto');
+  const require = createRequire(path.resolve('tools/mcp/package.json'));
+  const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
+  const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
+  const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
+  const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
+  const { ListToolsRequestSchema, CallToolRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
+  const remote = new Server({ name: 'fixture', version: '1.0.0' }, { capabilities: { tools: {} } });
+  const remoteTransport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => 'oauth-session', enableJsonResponse: true });
+  let submitted: any;
+  let uploaded = 0;
+  remote.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: ['create_upload', 'finish_upload', 'submit_upload_metadata', 'remote_echo'].map(name => ({ name, inputSchema: { type: 'object' } })) }));
+  remote.setRequestHandler(CallToolRequestSchema, async ({ params }: any) => {
+    if (params.name === 'submit_upload_metadata') submitted = params.arguments;
+    const data = params.name === 'create_upload' ? { uploadId: 'ticket', uploadUrl: '/mcp/upload/ticket', method: 'PUT' } : params.name === 'finish_upload' ? { id: 'song' } : { ok: true };
+    return { structuredContent: data, content: [{ type: 'text', text: JSON.stringify(data) }] };
+  });
+  await remote.connect(remoteTransport);
+  let origin = '';
+  let registeredCallback = '';
+  let challenge = '';
+  let tokenExchanges = 0;
+  const http = createServer(async (req, res) => {
+    const url = new URL(req.url!, origin);
+    const json = (value: unknown, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json' }).end(JSON.stringify(value)); };
+    if (url.pathname.includes('oauth-protected-resource')) { res.writeHead(404).end(); return; }
+    if (url.pathname.includes('oauth-authorization-server')) { json({ issuer: origin, authorization_endpoint: `${origin}/authorize`, token_endpoint: `${origin}/token`, registration_endpoint: `${origin}/register`, response_types_supported: ['code'], code_challenge_methods_supported: ['S256'], token_endpoint_auth_methods_supported: ['none'] }); return; }
+    if (url.pathname === '/register') {
+      let body = ''; for await (const chunk of req) body += chunk;
+      const registration = JSON.parse(body);
+      registeredCallback = registration.redirect_uris[0];
+      json({ client_id: 'fixture-client', redirect_uris: registration.redirect_uris }); return;
+    }
+    if (url.pathname === '/token') {
+      let body = ''; for await (const chunk of req) body += chunk;
+      const params = new URLSearchParams(body);
+      assert.equal(params.get('grant_type'), 'authorization_code');
+      assert.equal(params.get('code'), 'fixture-code');
+      assert.equal(params.get('redirect_uri'), registeredCallback);
+      assert.equal(createHash('sha256').update(params.get('code_verifier')!).digest('base64url'), challenge);
+      tokenExchanges++;
+      json({ access_token: 'fixture-access', token_type: 'Bearer', refresh_token: 'fixture-refresh', expires_in: 3600 }); return;
+    }
+    if (req.headers.authorization !== 'Bearer fixture-access') { res.writeHead(401, { 'WWW-Authenticate': 'Bearer' }).end(); return; }
+    if (url.pathname === '/mcp/upload/ticket') { for await (const chunk of req) uploaded += chunk.length; json({ ok: true }); return; }
+    await remoteTransport.handleRequest(req, res);
+  });
+  await new Promise<void>(resolve => http.listen(0, '127.0.0.1', resolve));
+  origin = `http://127.0.0.1:${(http.address() as any).port}`;
+  const appdata = await mkdtemp(path.join(os.tmpdir(), 'edgesonic-first-auth-'));
+  const transport = new StdioClientTransport({ command: process.execPath, args: [require.resolve('tsx/cli'), path.resolve('tools/mcp/main.ts')], stderr: 'pipe', env: { PATH: process.env.PATH ?? '', SYSTEMROOT: process.env.SYSTEMROOT ?? '', LOCALAPPDATA: appdata, EDGESONIC_URL: origin, EDGESONIC_LOCAL_ROOT: path.resolve('test/fixtures') } });
+  const client = new Client({ name: 'test', version: '1.0.0' });
+  let stderr = '';
+  let authStarted = false;
+  let callbackPort = 0;
+  const authorize = new Promise<void>((resolve, reject) => {
+    transport.stderr!.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString();
+      const match = stderr.match(/https?:\/\/[^\s]+\/authorize\?[^\s]+/);
+      if (!match || authStarted) return;
+      authStarted = true;
+      try {
+        const authUrl = new URL(match[0]);
+        assert.equal(authUrl.origin, origin);
+        assert.equal(authUrl.searchParams.get('code_challenge_method'), 'S256');
+        challenge = authUrl.searchParams.get('code_challenge')!;
+        const callback = new URL(authUrl.searchParams.get('redirect_uri')!);
+        assert.equal(callback.href, registeredCallback);
+        callbackPort = Number(callback.port);
+        callback.searchParams.set('state', authUrl.searchParams.get('state')!);
+        callback.searchParams.set('code', 'fixture-code');
+        fetch(callback).then(response => { assert.equal(response.status, 200); resolve(); }, reject).catch(reject);
+      } catch (error) { reject(error); }
+    });
+  });
+  try {
+    await Promise.all([client.connect(transport), authorize]);
+    assert.equal(tokenExchanges, 1);
+    assert.ok((await client.listTools()).tools.some((tool: any) => tool.name === 'remote_echo'));
+    const result = await client.callTool({ name: 'upload_local_file', arguments: { localPath: 'wav-flac-metadata-source.wav', applyUploadMetadata: true } });
+    assert.notEqual(result.isError, true, JSON.stringify(result));
+    assert.ok(uploaded > 0);
+    assert.equal(submitted.uploadId, 'ticket');
+    assert.ok(Number(submitted.tags.duration) > 0);
+    assert.deepEqual(Object.keys(submitted).sort(), ['tags', 'uploadId']);
+    assert.doesNotMatch(stderr, /fixture-access|fixture-refresh/);
+    const probe = createServer();
+    await new Promise<void>((resolve, reject) => { probe.once('error', reject); probe.listen(callbackPort, '127.0.0.1', resolve); });
+    await new Promise<void>(resolve => probe.close(() => resolve()));
+  } finally {
+    await client.close();
+    await remote.close();
+    await new Promise<void>(resolve => http.close(() => resolve()));
+    await rm(appdata, { recursive: true, force: true });
+  }
+});
