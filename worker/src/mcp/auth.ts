@@ -6,6 +6,8 @@ import { hasPermission } from "../utils/permissions";
 import { resolveSsoPolicy } from "../utils/ssoPolicy";
 import { isDemoMode } from "../utils/demoMode";
 import { withMcpPrincipal, type McpPrincipal } from "./context";
+import { getFeature } from "../utils/features";
+import { OAuthStore } from "./oauthStore";
 
 export { withMcpPrincipal } from "./context";
 export type { McpPrincipal } from "./context";
@@ -13,7 +15,7 @@ export const MCP_SCOPES = ["mcp:read", "mcp:upload", "mcp:write", "mcp:delete"] 
 type Dispatcher = (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response> | Response;
 type McpDispatcher = (request: Request, env: Env, ctx: ExecutionContext, principal: McpPrincipal) => Promise<Response> | Response;
 type GrantProps = { username: string; authSource: "local" | "sso"; issuer?: string; subject?: string };
-type ProviderEnv = Env & { OAUTH_KV: KVNamespace; OAUTH_PROVIDER: OAuthHelpers };
+type ProviderEnv = Env & { OAUTH_KV: OAuthStore; OAUTH_PROVIDER: OAuthHelpers };
 const escape = (s: string) => s.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 
 async function session(request: Request, env: Env, ctx: ExecutionContext, app: Dispatcher): Promise<GrantProps | null> {
@@ -72,7 +74,8 @@ export function createMcpAuthHandler(app: Dispatcher, mcp: McpDispatcher): Dispa
   return async (request, env, ctx) => {
     const path = new URL(request.url).pathname;
     if (!(path === "/mcp" || path.startsWith("/mcp/") || path === "/authorize" || path === "/edgesonic/mcp/grants" || path === "/edgesonic/mcp/grants/revoke" || path === "/oauth/token" || path === "/oauth/register" || path === "/oauth/revoke" || path.startsWith("/.well-known/oauth-"))) return app(request, env, ctx);
-    if (!env.MCP_OAUTH_KV) return new Response("MCP authorization is not configured", { status: 503 });
+    const grantManagement = path === "/edgesonic/mcp/grants" || path === "/edgesonic/mcp/grants/revoke";
+    if (!grantManagement && !(await getFeature(env, "mcp_enabled"))) return new Response("Not found", { status: 404 });
     const origin = new URL(request.url).origin;
     const provider = new OAuthProvider<ProviderEnv>({
       apiRoute: "/mcp", authorizeEndpoint: "/authorize", tokenEndpoint: "/oauth/token", clientRegistrationEndpoint: "/oauth/register",
@@ -134,6 +137,6 @@ export function createMcpAuthHandler(app: Dispatcher, mcp: McpDispatcher): Dispa
         }
       } },
     });
-    return provider.fetch(request, { ...env, OAUTH_KV: env.MCP_OAUTH_KV } as ProviderEnv, ctx);
+    return provider.fetch(request, { ...env, OAUTH_KV: new OAuthStore(env.DB) } as ProviderEnv, ctx);
   };
 }

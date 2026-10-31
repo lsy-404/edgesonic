@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { registerHooks } from "node:module";
 import { createHash, randomBytes } from "node:crypto";
+import { sqliteD1 } from "./mcp_test_db";
 
 registerHooks({ resolve(specifier, context, nextResolve) {
   if (specifier === "cloudflare:workers") return { url: "data:text/javascript,export class WorkerEntrypoint {}", shortCircuit: true };
@@ -9,31 +10,16 @@ registerHooks({ resolve(specifier, context, nextResolve) {
 } });
 
 
-class MemoryKV {
-  values = new Map<string, string>();
-  async get(key: string, options?: { type?: string } | string) {
-    const value = this.values.get(key);
-    if (value === undefined) return null;
-    return (typeof options === "string" ? options : options?.type) === "json" ? JSON.parse(value) : value;
-  }
-  async put(key: string, value: string) { this.values.set(key, value); }
-  async delete(key: string) { this.values.delete(key); }
-  async list({ prefix = "" }: { prefix?: string } = {}) {
-    return { keys: [...this.values.keys()].filter(k => k.startsWith(prefix)).map(name => ({ name })), list_complete: true, cacheStatus: null };
-  }
-}
-
 test("OAuth consent, scope, live admission and grant revocation", async () => {
   const { createMcpAuthHandler } = await import("../../worker/src/mcp/auth");
-  const kv = new MemoryKV();
-  let enabled = true;
-  const db = { prepare(sql: string) {
-    return { bind(..._args: unknown[]) { return this; }, async first() {
-      if (sql.includes("FROM users")) return enabled ? { username: "tester", master_password: "x", level: 3, enabled: 1, activation_status: "permanent" } : null;
-      return null;
-    } };
-  } };
-  const env = { DB: db, MCP_OAUTH_KV: kv, INSTANCE_ID: "test" } as unknown as Env;
+  const { sqlite, db } = sqliteD1();
+  sqlite.exec("INSERT INTO users VALUES ('tester', 'x', 3, 1, 'permanent')");
+  const env = { DB: db, INSTANCE_ID: "test" } as unknown as Env;
+  const { invalidateFeature } = await import("../../worker/src/utils/features");
+  const switchMcp = (enabled: boolean) => {
+    sqlite.prepare("INSERT INTO features VALUES ('mcp_enabled', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(enabled ? 1 : 0);
+    invalidateFeature(env);
+  };
   const ctx = { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext;
   const app = async (req: Request) => {
     if (new URL(req.url).pathname !== "/edgesonic/auth/me") return new Response("not found", { status: 404 });
@@ -42,6 +28,10 @@ test("OAuth consent, scope, live admission and grant revocation", async () => {
   };
   const handler = createMcpAuthHandler(app, async (_req, _env, _ctx, principal) => Response.json({ scopes: principal.scopes }));
   const request = (path: string, init?: RequestInit) => handler(new Request(`https://example.com${path}`, init), env, ctx);
+  assert.equal((await request("/mcp")).status, 404);
+  assert.equal((await request("/oauth/register")).status, 404);
+  assert.equal((await request("/.well-known/oauth-protected-resource")).status, 404);
+  switchMcp(true);
   assert.equal((await request("/edgesonic/mcp/grants?apiKey=subsonic-key")).status, 401);
   const registration = await request("/oauth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_name: "Test client", redirect_uris: ["http://127.0.0.1:4321/callback"], token_endpoint_auth_method: "none", grant_types: ["authorization_code", "refresh_token"], response_types: ["code"] }) });
   assert.equal(registration.status, 201, await registration.clone().text());
@@ -74,9 +64,11 @@ test("OAuth consent, scope, live admission and grant revocation", async () => {
   assert.deepEqual((await authorized.json() as { scopes: string[] }).scopes.sort(), ["mcp:read", "mcp:write"]);
   assert.equal((await request("/mcp/upload/1", { method: "POST", headers })).status, 403);
   assert.equal((await request("/mcp", { method: "POST", headers: { Authorization: "Bearer subsonic-key" } })).status, 401);
-  enabled = false;
+  sqlite.exec("UPDATE users SET enabled = 0");
   assert.equal((await request("/mcp", { method: "POST", headers })).status, 403);
-  enabled = true;
+  sqlite.exec("UPDATE users SET enabled = 1");
+  switchMcp(false);
+  assert.equal((await request("/mcp", { method: "POST", headers })).status, 404);
   const grants = await request("/edgesonic/mcp/grants", { headers: { Cookie: "edgesonic_session=valid" } });
   assert.equal(grants.status, 200, await grants.clone().text());
   const list = await grants.json() as { items: Array<{ id: string }> };
@@ -85,5 +77,6 @@ test("OAuth consent, scope, live admission and grant revocation", async () => {
   assert.equal(crossOrigin.status, 403);
   const revoke = await request("/edgesonic/mcp/grants/revoke", { method: "POST", headers: { Cookie: "edgesonic_session=valid", Origin: "https://example.com", "Content-Type": "application/json" }, body: JSON.stringify({ grantId: list.items[0].id }) });
   assert.equal(revoke.status, 200, await revoke.clone().text());
+  switchMcp(true);
   assert.equal((await request("/mcp", { method: "POST", headers })).status, 401);
 });

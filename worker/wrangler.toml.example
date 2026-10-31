@@ -177,8 +177,3 @@ new_sqlite_classes = ["MediaContainer"]
 # 以免 `wrangler deploy` 覆盖运行时配置的计划任务。部署后到
 # Settings → Cloudflare → "Ensure default cron" 重新应用。详见 worker/CF_CRON.md。
 # ---------------------------------------------------------------------------
-
-# Optional: create a KV namespace for MCP OAuth grants and set its ID here.
-# [[kv_namespaces]]
-# binding = "MCP_OAUTH_KV"
-# id = "your-mcp-oauth-kv-id"
