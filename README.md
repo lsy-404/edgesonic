@@ -178,3 +178,7 @@ The technical reference lives under [`docs/`](docs/):
 ## Licence
 
 [AGPL-3.0-or-later](LICENSE)
+
+## MCP management
+
+Use the [MCP setup guide](docs/mcp.md) to connect an MCP client and manage your library or search metadata from a local process.

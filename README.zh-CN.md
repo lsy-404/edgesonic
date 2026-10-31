@@ -172,3 +172,7 @@ wrangler d1 execute edgesonic-db --remote --command \
 ## 许可证
 
 [AGPL-3.0-or-later](LICENSE)
+
+## MCP 管理
+
+参阅 [MCP 配置指南](docs/mcp.md)，连接 MCP 客户端并通过本地进程管理音乐库或搜索元数据。

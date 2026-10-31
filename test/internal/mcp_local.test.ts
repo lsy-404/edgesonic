@@ -1,0 +1,113 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, writeFile, symlink, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { openLocalFile, uploadUrl } from '../../tools/mcp/src.js';
+
+test('local files require a root and cannot escape it through traversal or symlinks', async () => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'edgesonic-mcp-'));
+  try {
+    const root = path.join(temp, 'root');
+    await mkdir(root);
+    await writeFile(path.join(root, 'song.mp3'), 'test');
+    await writeFile(path.join(temp, 'outside.mp3'), 'test');
+    await assert.rejects(openLocalFile(undefined, 'song.mp3'), /EDGESONIC_LOCAL_ROOT/);
+    const opened = await openLocalFile(root, 'song.mp3');
+    await opened.file.close();
+    await assert.rejects(openLocalFile(root, '../outside.mp3'), /outside/);
+    await assert.rejects(openLocalFile(root, root), /outside|regular/);
+    try {
+      await symlink(path.join(temp, 'outside.mp3'), path.join(root, 'link.mp3'), 'file');
+      await assert.rejects(openLocalFile(root, 'link.mp3'), /outside/);
+    } catch (error: any) { if (error.code !== 'EPERM') throw error; }
+  } finally { await rm(temp, { recursive: true, force: true }); }
+});
+
+test('upload tickets cannot redirect credentials or target arbitrary endpoints', () => {
+  const base = new URL('https://music.example/mcp');
+  assert.equal(uploadUrl(base, '/mcp/upload/abc', 'abc').href, 'https://music.example/mcp/upload/abc');
+  for (const url of ['https://evil.example/mcp/upload/abc', '/mcp/upload/other', '/mcp/upload/abc?x=1', '/other']) {
+    assert.throws(() => uploadUrl(base, url, 'abc'), /Invalid upload URL/);
+  }
+});
+
+test('stdio server lists local tools and reports missing file scope', async () => {
+  const { createRequire } = await import('node:module');
+  const require = createRequire(path.resolve('tools/mcp/package.json'));
+  const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
+  const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
+  const transport = new StdioClientTransport({ command: process.execPath, args: [require.resolve('tsx/cli'), path.resolve('tools/mcp/main.ts')], env: { PATH: process.env.PATH ?? '', SYSTEMROOT: process.env.SYSTEMROOT ?? '' } });
+  const client = new Client({ name: 'test', version: '1.0.0' });
+  try {
+    await client.connect(transport);
+    const listed = await client.listTools();
+    assert.ok(listed.tools.some((item: any) => item.name === 'search_metadata_local'));
+    const result = await client.callTool({ name: 'read_local_metadata', arguments: { localPath: 'song.mp3' } });
+    assert.equal(result.isError, true);
+    assert.match(JSON.stringify(result.content), /EDGESONIC_LOCAL_ROOT/);
+  } finally { await client.close(); }
+});
+
+
+test('stdio server reads tags from a real audio fixture', async () => {
+  const { createRequire } = await import('node:module');
+  const require = createRequire(path.resolve('tools/mcp/package.json'));
+  const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
+  const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
+  const transport = new StdioClientTransport({ command: process.execPath, args: [require.resolve('tsx/cli'), path.resolve('tools/mcp/main.ts')], env: { PATH: process.env.PATH ?? '', SYSTEMROOT: process.env.SYSTEMROOT ?? '', EDGESONIC_LOCAL_ROOT: path.resolve('test/fixtures') } });
+  const client = new Client({ name: 'test', version: '1.0.0' });
+  try {
+    await client.connect(transport);
+    const result = await client.callTool({ name: 'read_local_metadata', arguments: { localPath: 'wav-flac-metadata-source.wav' } });
+    assert.notEqual(result.isError, true, JSON.stringify(result));
+    const payload = JSON.parse(result.content[0].text);
+    assert.ok(payload.format);
+    assert.ok(Object.keys(payload.tags).length > 0);
+  } finally { await client.close(); }
+});
+
+test('bridge proxies remote tools and distinguishes uploaded files from metadata failure', async () => {
+  const { createRequire } = await import('node:module');
+  const { createServer } = await import('node:http');
+  const require = createRequire(path.resolve('tools/mcp/package.json'));
+  const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
+  const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
+  const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
+  const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
+  const { ListToolsRequestSchema, CallToolRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
+  const remote = new Server({ name: 'fixture', version: '1.0.0' }, { capabilities: { tools: {} } });
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => "test-session", enableJsonResponse: true });
+  remote.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: ['create_upload', 'finish_upload', 'submit_upload_metadata', 'remote_echo'].map(name => ({ name, inputSchema: { type: 'object' } })) }));
+  remote.setRequestHandler(CallToolRequestSchema, async ({ params }: any) => {
+    if (params.name === 'submit_upload_metadata') return { isError: true, content: [{ type: 'text', text: 'scope denied' }] };
+    const data = params.name === 'create_upload' ? { uploadId: 'ticket', uploadUrl: '/mcp/upload/ticket', method: 'PUT' } : params.name === 'finish_upload' ? { ok: true, id: 'song', metadataToken: 'metadata' } : { echoed: params.arguments };
+    return { structuredContent: data, content: [{ type: 'text', text: JSON.stringify(data) }] };
+  });
+  await remote.connect(transport);
+  let uploaded = 0;
+  const http = createServer(async (req, res) => {
+    assert.equal(req.headers.authorization, 'Bearer secret');
+    if (req.url === '/mcp/upload/ticket') {
+      for await (const chunk of req) uploaded += chunk.length;
+      res.writeHead(200).end('{}');
+    } else await transport.handleRequest(req, res);
+  });
+  await new Promise<void>(resolve => http.listen(0, '127.0.0.1', resolve));
+  const port = (http.address() as any).port;
+  const localTransport = new StdioClientTransport({ command: process.execPath, args: [require.resolve('tsx/cli'), path.resolve('tools/mcp/main.ts')], env: { PATH: process.env.PATH ?? '', SYSTEMROOT: process.env.SYSTEMROOT ?? '', EDGESONIC_LOCAL_ROOT: path.resolve('test/fixtures'), EDGESONIC_URL: `http://127.0.0.1:${port}`, EDGESONIC_MCP_TOKEN: 'secret' } });
+  const client = new Client({ name: 'test', version: '1.0.0' });
+  try {
+    await client.connect(localTransport);
+    assert.ok((await client.listTools()).tools.some((tool: any) => tool.name === 'remote_echo'));
+    const echo = await client.callTool({ name: 'remote_echo', arguments: { value: 5 } });
+    assert.deepEqual(echo.structuredContent, { echoed: { value: 5 } });
+    const result = await client.callTool({ name: 'upload_local_file', arguments: { localPath: 'wav-flac-metadata-source.wav', applyUploadMetadata: true } });
+    assert.notEqual(result.isError, true, JSON.stringify(result));
+    const payload = JSON.parse(result.content[0].text);
+    assert.equal(payload.upload.id, 'song');
+    assert.equal(payload.metadata.ok, false);
+    assert.match(payload.metadata.error, /scope denied/);
+    assert.ok(uploaded > 0);
+  } finally { await client.close(); await remote.close(); await new Promise<void>(resolve => http.close(() => resolve())); }
+});
