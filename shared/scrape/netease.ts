@@ -57,18 +57,18 @@ interface NetEaseLyricResp {
 
 /** Search NetEase by free-text query. Tries direct → proxy. */
 export async function search(query: string, proxyFetch: ProxyFn): Promise<ScrapeResult[]> {
-  const upstream = await proxyFirst<NetEaseSearchResp>("search", () => proxyFetch({ source: SOURCE, intent: "search", query }), () => directSearch(query));
+  const upstream = await proxyFirst<NetEaseSearchResp>("search", () => proxyFetch({ source: SOURCE, intent: "search", query }), () => directSearch(query), proxyFetch.allowDirectFallback === false);
   return (upstream.result?.songs || []).map((s) => normalise(s));
 }
 
 /** Fetch inline lyrics by songId. NetEase returns LRC text. */
 export async function fetchLyric(songId: string, proxyFetch: ProxyFn): Promise<string> {
-  const upstream = await proxyFirst<NetEaseLyricResp>("lyric", () => proxyFetch({ source: SOURCE, intent: "lyric", songId }), () => directLyric(songId));
+  const upstream = await proxyFirst<NetEaseLyricResp>("lyric", () => proxyFetch({ source: SOURCE, intent: "lyric", songId }), () => directLyric(songId), proxyFetch.allowDirectFallback === false);
   return parseNetEaseLyrics(upstream.lrc?.lyric || "");
 }
 
 export async function resolve(result: ScrapeResult, proxyFetch: ProxyFn): Promise<ScrapeResult> {
-  const upstream = await proxyFirst<NetEaseDetailResp>("detail", () => proxyFetch({ source: SOURCE, intent: "detail", songId: result.songId }), () => directDetail(result.songId));
+  const upstream = await proxyFirst<NetEaseDetailResp>("detail", () => proxyFetch({ source: SOURCE, intent: "detail", songId: result.songId }), () => directDetail(result.songId), proxyFetch.allowDirectFallback === false);
   const song = upstream.songs?.[0];
   return song ? { ...result, ...normalise(song), raw: song } : result;
 }
@@ -125,17 +125,18 @@ function normalise(s: NetEaseSong): ScrapeResult {
 // ===========================================================================
 // Direct→proxy fallback shared with sibling adapters
 // ===========================================================================
-export type ProxyFn = (req: {
+export type ProxyFn = ((req: {
   source: typeof SOURCE | "lrc" | "qmusic" | "kugou" | "kuwo" | "migu";
   intent: "search" | "lyric" | "detail";
   query?: string;
   songId?: string;
-}) => Promise<unknown>;
+}) => Promise<unknown>) & { allowDirectFallback?: boolean };
 
 async function proxyFirst<T>(
   label: string,
   proxyRequest: () => Promise<unknown>,
   directFallback: () => Promise<T>,
+  proxyRequestFallbackDisabled: boolean,
 ): Promise<T> {
   let proxyError = "unknown";
   try {
@@ -143,6 +144,7 @@ async function proxyFirst<T>(
     if (proxied?.ok && proxied.data != null) return unwrapNetEase(proxied.data);
     proxyError = proxied?.error || "invalid proxy response";
   } catch (e) { proxyError = e instanceof Error ? e.message : String(e); }
+  if (proxyRequestFallbackDisabled) throw new Error(`netease ${label}: ${proxyError}`);
   try { return await directFallback(); } catch (e) {
     throw new Error(`netease ${label}: ${proxyError}; direct fallback: ${e instanceof Error ? e.message : String(e)}`);
   }

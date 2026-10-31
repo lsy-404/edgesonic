@@ -50,12 +50,12 @@ interface QMusicLyricResp {
 }
 
 export async function search(query: string, proxyFetch: ProxyFn): Promise<ScrapeResult[]> {
-  const upstream = await proxyFirst<QMusicSearchResp>("search", () => proxyFetch({ source: SOURCE, intent: "search", query }), () => directSearch(query));
+  const upstream = await proxyFirst<QMusicSearchResp>("search", () => proxyFetch({ source: SOURCE, intent: "search", query }), () => directSearch(query), proxyFetch.allowDirectFallback === false);
   return (upstream.data?.song?.list || []).map((s) => normalise(s));
 }
 
 export async function fetchLyric(songmid: string, proxyFetch: ProxyFn): Promise<string> {
-  const upstream = await proxyFirst<QMusicLyricResp>("lyric", () => proxyFetch({ source: SOURCE, intent: "lyric", songId: songmid }), () => directLyric(songmid));
+  const upstream = await proxyFirst<QMusicLyricResp>("lyric", () => proxyFetch({ source: SOURCE, intent: "lyric", songId: songmid }), () => directLyric(songmid), proxyFetch.allowDirectFallback === false);
   // when proxied we always get raw LRC text. Direct path uses the same param.
   return upstream.lyric || "";
 }
@@ -96,8 +96,10 @@ async function proxyFirst<T>(
   label: string,
   proxyRequest: () => Promise<unknown>,
   directFallback: () => Promise<T>,
+  proxyRequestFallbackDisabled: boolean,
 ): Promise<T> {
   let proxyError = "unknown";
   try { const proxied = await proxyRequest() as { ok?: boolean; data?: T; error?: string }; if (proxied?.ok && proxied.data != null) return proxied.data; proxyError = proxied?.error || "invalid proxy response"; } catch (e) { proxyError = e instanceof Error ? e.message : String(e); }
+  if (proxyRequestFallbackDisabled) throw new Error(`qmusic ${label}: ${proxyError}`);
   try { return await directFallback(); } catch (e) { throw new Error(`qmusic ${label}: ${proxyError}; direct fallback: ${e instanceof Error ? e.message : String(e)}`); }
 }

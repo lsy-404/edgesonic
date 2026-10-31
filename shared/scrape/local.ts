@@ -10,15 +10,26 @@ export interface MetadataSearchInput {
   current?: Partial<Pick<ScrapeResult, "title" | "artist" | "album">>;
   limit?: number;
 }
-const directProxy: ProxyFn = async (request) => {
-  try { return { ok: true, data: await proxyFetch(request.source, request.intent, request) }; }
-  catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) }; }
-};
-function bounded<T>(promise: Promise<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("provider timed out")), 12000);
-    promise.then((value) => { clearTimeout(timer); resolve(value); }, (error) => { clearTimeout(timer); reject(error); });
-  });
+function directProxy(signal: AbortSignal): ProxyFn {
+  const proxy: ProxyFn = async (request) => {
+    try { return { ok: true, data: await proxyFetch(request.source, request.intent, request, signal) }; }
+    catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) }; }
+  };
+  proxy.allowDirectFallback = false;
+  return proxy;
+}
+async function bounded<T>(run: (proxy: ProxyFn) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      run(directProxy(controller.signal)),
+      new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("provider timed out")); }, 12000); }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    controller.abort();
+  }
 }
 export function validateSources(value: unknown): ScrapeSource[] {
   if (!Array.isArray(value) || value.length === 0 || value.length > DEFAULT_SOURCES.length || value.some((v) => !DEFAULT_SOURCES.includes(v))) {
@@ -32,7 +43,7 @@ export async function searchMetadata(input: MetadataSearchInput): Promise<Search
   if (input.limit !== undefined && (!Number.isInteger(input.limit) || input.limit < 1 || input.limit > 20)) throw new Error("limit must be an integer between 1 and 20");
   if (input.current !== undefined && (!input.current || typeof input.current !== "object" || Array.isArray(input.current) || Object.values(input.current).some((v) => typeof v !== "string" || v.length > 200))) throw new Error("invalid current metadata");
   const responses = await Promise.all(sources.map(async (source) => {
-    try { return await bounded(searchAll({ query: input.query.trim(), sources: [source], proxyFetch: directProxy, perSourceLimit: input.limit ?? 10, current: input.current })); }
+    try { return await bounded((proxyFetch) => searchAll({ query: input.query.trim(), sources: [source], proxyFetch, perSourceLimit: input.limit ?? 10, current: input.current })); }
     catch (error) { return { results: [], errors: [{ source, error: error instanceof Error ? error.message : String(error) }] }; }
   }));
   return { results: rankResults(responses.flatMap((r) => r.results), input.query, input.current).slice(0, input.limit ?? 20), errors: responses.flatMap((r) => r.errors) };
@@ -45,5 +56,5 @@ export async function resolveMetadata(input: { result: ScrapeResult }): Promise<
     const raw = r.raw as { slug?: unknown; songTitle?: unknown } | undefined;
     if (!raw || raw.slug !== r.songId || typeof raw.songTitle !== "string" || raw.songTitle.length > 500) throw new Error("invalid lrc result");
   }
-  return bounded(resolveResult(r, directProxy));
+  return bounded((proxyFetch) => resolveResult(r, proxyFetch));
 }

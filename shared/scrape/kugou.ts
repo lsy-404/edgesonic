@@ -49,6 +49,7 @@ export async function search(query: string, proxyFetch: ProxyFn): Promise<Scrape
     "search",
     () => proxyFetch({ source: SOURCE, intent: "search", query }),
     () => directSearch(query),
+    proxyFetch.allowDirectFallback === false,
   );
   return (upstream.data?.lists || []).map((s) => normalise(s));
 }
@@ -89,8 +90,10 @@ async function tryDirectThenProxy<T>(
   label: string,
   proxyRequest: () => Promise<unknown>,
   directFallback: () => Promise<T>,
+  proxyRequestFallbackDisabled: boolean,
 ): Promise<T> {
   let proxyError = "unknown";
   try { const proxied = await proxyRequest() as { ok?: boolean; data?: T; error?: string }; if (proxied?.ok && proxied.data != null) return proxied.data; proxyError = proxied?.error || "invalid proxy response"; } catch (e) { proxyError = e instanceof Error ? e.message : String(e); }
+  if (proxyRequestFallbackDisabled) throw new Error(`kugou ${label}: ${proxyError}`);
   try { return await directFallback(); } catch (e) { throw new Error(`kugou ${label}: ${proxyError}; direct fallback: ${e instanceof Error ? e.message : String(e)}`); }
 }

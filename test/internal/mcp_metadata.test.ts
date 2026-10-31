@@ -31,3 +31,34 @@ test("local and cloud metadata use provider transport and configured priority", 
     await assert.rejects(resolveMetadata({ result: { ...local.results[0], songId: "../bad" } }), /invalid songId/);
   } finally { globalThis.fetch = previous; }
 });
+
+test("provider requests reject redirects and cancel pending body reads", async () => {
+  const previous = globalThis.fetch;
+  const controller = new AbortController();
+  let aborted = false;
+  globalThis.fetch = async (_input, init) => {
+    assert.equal(init?.redirect, "manual");
+    return { ok: true, json: () => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => { aborted = true; reject(new Error("aborted")); }, { once: true });
+    }) } as Response;
+  };
+  try {
+    const { proxyFetch } = await import("../../shared/scrape/transport");
+    const pending = proxyFetch("lrc", "search", { query: "Song" }, controller.signal);
+    await Promise.resolve();
+    controller.abort();
+    await assert.rejects(pending, /aborted/);
+    assert.equal(aborted, true);
+  } finally { globalThis.fetch = previous; }
+});
+
+test("server provider failures do not launch a browser fallback", async () => {
+  const previous = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return new Response("", { status: 503 }); };
+  try {
+    const result = await searchMetadata({ query: "Song", sources: ["netease"] });
+    assert.equal(calls, 1);
+    assert.match(result.errors[0].error, /503/);
+  } finally { globalThis.fetch = previous; }
+});

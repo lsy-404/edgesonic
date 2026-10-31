@@ -63,6 +63,7 @@ async function fetchJson<T>(url: string, proxyFetch: ProxyFn, intent: "search" |
     if (proxied?.ok && proxied.data != null) return proxied.data;
     proxyError = proxied?.error || "invalid proxy response";
   } catch (error) { proxyError = error instanceof Error ? error.message : String(error); }
+  if (proxyFetch.allowDirectFallback === false) throw new Error(`lrc ${intent}: ${proxyError}`);
   try {
     const response = await fetch(url, { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
