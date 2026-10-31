@@ -13,7 +13,7 @@ import {
   makeProxyFetch,
   type ScrapeResult,
   type ScrapeSource,
-} from "../lib/scrape";
+} from "../../../shared/scrape";
 
 const { t } = useI18n();
 const { edgesonicFetch, tagPost } = useAuth();

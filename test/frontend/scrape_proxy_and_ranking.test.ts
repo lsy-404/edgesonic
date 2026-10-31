@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { search as searchNetEase } from "../../web/src/lib/scrape/netease";
-import { resolveResult, searchAll } from "../../web/src/lib/scrape";
+import { search as searchNetEase } from "../../shared/scrape/netease";
+import { resolveResult, searchAll } from "../../shared/scrape";
 
 let failures = 0;
 function assert(condition: boolean, message: string) {

@@ -24,7 +24,7 @@
 // Both paths return the same upstream JSON shape; only the transport differs.
 
 import type { ScrapeResult } from "./types";
-import { parseNetEaseLyrics } from "../../../../shared/neteaseLyrics";
+import { parseNetEaseLyrics } from "../neteaseLyrics";
 
 const SOURCE = "netease" as const;
 const DIRECT_SEARCH = "https://music.163.com/api/search/get";

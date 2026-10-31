@@ -3,7 +3,7 @@ import test from "node:test";
 import { resolveMetadataRetrievalCandidate, runMetadataRetrieval } from "../../web/src/lib/workmodeMetadataRetrieval";
 import { isKnownMetadataIdentity } from "../../shared/metadataRetrievalMatch";
 import { fileNameFrom, prepareWorkerTask, type QueuedTask, type RunnerDeps } from "../../web/src/lib/taskRunner";
-import type { ScrapeResult, ScrapeSource } from "../../web/src/lib/scrape";
+import type { ScrapeResult, ScrapeSource } from "../../shared/scrape";
 
 const BASE = {
   kind: "metadata-retrieval",

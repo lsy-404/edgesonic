@@ -6,8 +6,8 @@ import {
   isSelectableMetadataMatch,
   normalizeMetadataIdentity,
 } from "../../../shared/metadataRetrievalMatch";
-import { resolveResult, searchAll } from "./scrape";
-import type { ProxyFn, ScrapeResult, ScrapeSource } from "./scrape";
+import { resolveResult, searchAll } from "../../../shared/scrape";
+import type { ProxyFn, ScrapeResult, ScrapeSource } from "../../../shared/scrape";
 
 const MAX_COVER_BYTES = 200_000;
 const COVER_HOSTS = ["lrc.leisiyu.dev", "music.126.net", "y.qq.com"];

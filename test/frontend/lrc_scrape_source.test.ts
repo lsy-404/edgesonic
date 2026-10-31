@@ -1,4 +1,4 @@
-import { resolve, search } from "../../web/src/lib/scrape/lrc";
+import { resolve, search } from "../../shared/scrape/lrc";
 
 let failures = 0;
 function assert(condition: boolean, message: string) {
@@ -41,7 +41,7 @@ void (async () => {
     const result = await resolve(results[0], proxy as never);
     assert(result.artist === "Vocal" && result.albumArtist === "Producer", "detail credits populate artist and album artist");
     assert(result.lyrics === "[00:01.25]First line\n[01:02.00]Second line", "detail timestamps convert to LRC");
-    assert(result.coverUrl === "https://lrc.wuyilingwei.com/albums/demo.png", "detail cover becomes an absolute URL");
+    assert(result.coverUrl === "https://lrc.leisiyu.dev/albums/demo.png", "detail cover becomes an absolute URL");
   } catch (error) {
     failures++;
     console.error(`  FAIL LRC scrape source: ${error instanceof Error ? error.message : String(error)}`);

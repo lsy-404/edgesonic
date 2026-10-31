@@ -18,7 +18,7 @@ import ShareDialog from "../components/ShareDialog.vue";
 import BudgetedImage from "../components/BudgetedImage.vue";
 import { showInfo } from "../stores/toast";
 import { isInstrumentalTitle } from "../lib/instrumental";
-import type { ScrapeResult } from "../lib/scrape";
+import type { ScrapeResult } from "../../../shared/scrape";
 import { buildLibrarySearchParams, buildLibrarySearchRoute, exactPageCount, LIBRARY_PAGE_SIZES, validPageTarget, visibleLibraryItems, type LibraryLoadMode, type LibraryPageSize } from "../lib/librarySearch";
 import { foldAlbumDisplayCards, type AlbumDisplayGroupSummary, type AlbumDisplayCard } from "../lib/albumDisplayGroups";
 import { FluentSelect } from "@platform-kit/fluent/vue";

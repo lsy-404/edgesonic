@@ -84,7 +84,11 @@ export async function searchAll(opts: SearchOpts): Promise<SearchResponse> {
     if (item.status === "fulfilled") results.push(...item.value.rows);
     else errors.push({ source, error: item.reason instanceof Error ? item.reason.message : String(item.reason) });
   });
-  return { results: results.map((row, index) => ({ row, index, score: matchScore(row, opts.query, opts.current) })).sort((a, b) => b.score - a.score || a.index - b.index).map((entry) => entry.row), errors };
+  return { results: rankResults(results, opts.query, opts.current), errors };
+}
+
+export function rankResults(results: ScrapeResult[], query: string, current?: SearchOpts["current"]): ScrapeResult[] {
+  return results.map((row, index) => ({ row, index, score: matchScore(row, query, current) })).sort((a, b) => b.score - a.score || a.index - b.index).map((entry) => entry.row);
 }
 
 function normalise(value: string): string { return value.toLocaleLowerCase().replace(/[\s\p{P}\p{S}_]+/gu, " ").trim(); }

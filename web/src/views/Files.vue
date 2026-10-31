@@ -13,7 +13,7 @@ import { ConversionMemoryLimitError, runUploadPipeline } from "../lib/uploadPipe
 import { compareDirectoryEntries, compareFileEntries, type FileSortDirection, type FileSortKey } from "../lib/fileSort";
 import TagEditor from "../components/TagEditor.vue";
 import ScrapeButton from "../components/ScrapeButton.vue";
-import type { ScrapeResult } from "../lib/scrape";
+import type { ScrapeResult } from "../../../shared/scrape";
 import { extractMetadata } from "../lib/metadata";
 import { isScrollInsideElement, placeFloatingPoint } from "../lib/floatingPlacement";
 import Icon from "../components/Icon.vue";
