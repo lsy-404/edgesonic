@@ -4,7 +4,7 @@ import type { ScrapeResult } from "./types";
 import type { ProxyFn } from "./netease";
 
 const SOURCE = "lrc" as const;
-const API = "https://lrc.voidcarve.com/api";
+const API = "https://lrc.leisiyu.dev/api";
 
 interface LrcSong {
   title?: string;
@@ -41,7 +41,7 @@ function year(value: unknown): number | undefined {
 
 function coverUrl(value: unknown): string | undefined {
   if (typeof value !== "string" || !value.startsWith("/albums/")) return undefined;
-  return new URL(value, "https://lrc.voidcarve.com").toString();
+  return new URL(value, "https://lrc.leisiyu.dev").toString();
 }
 
 function searchText(value: string): string {

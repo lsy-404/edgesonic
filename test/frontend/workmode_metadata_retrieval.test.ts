@@ -120,7 +120,7 @@ test("pending review does not fetch covers before the user selects a result", as
     identity: { title: "Blue Sky", artist: "Singer" },
     snapshot: { title: "Blue Sky", artist: "Singer", album: "Unknown Album", coverR2Key: null },
   }, "https://app.example/tag/scrape", new AbortController().signal, fetcher,
-  adapters([result({ coverUrl: "https://lrc.voidcarve.com/cover.jpg" }), result({ songId: "43", album: "Second Album" })]));
+  adapters([result({ coverUrl: "https://lrc.leisiyu.dev/cover.jpg" }), result({ songId: "43", album: "Second Album" })]));
   assert.equal(output.status, "pending");
   assert.equal(coverRequested, false);
 });
@@ -148,11 +148,11 @@ test("selected candidate details include lyrics and a validated bounded cover", 
     source: "netease", songId: "42", title: "Blue Sky", artist: "Singer", album: "First Album",
   }, "https://app.example/tag/scrape", new AbortController().signal,
   (async (input: RequestInfo | URL) => {
-    assert.equal(String(input), "https://lrc.voidcarve.com/cover.png");
+    assert.equal(String(input), "https://lrc.leisiyu.dev/cover.png");
     return new Response(png, { headers: { "Content-Type": "image/png" } });
   }) as typeof fetch, {
     searchAll: async () => ({ results: [], errors: [] }),
-    resolveResult: async (selected) => ({ ...selected, lyrics: "resolved lyrics", coverUrl: "https://lrc.voidcarve.com/cover.png" }),
+    resolveResult: async (selected) => ({ ...selected, lyrics: "resolved lyrics", coverUrl: "https://lrc.leisiyu.dev/cover.png" }),
   });
   assert.equal(output.status, "matched");
   assert.equal(output.match?.lyrics, "resolved lyrics");
@@ -217,7 +217,7 @@ test("cover download is skipped when it exceeds the server's bounded image size"
     ...BASE,
     snapshot: { title: "Blue Sky", artist: "Singer", album: "First Album", coverR2Key: null },
   }, "https://app.example/tag/scrape", new AbortController().signal, fetcher,
-  adapters([result({ coverUrl: "https://lrc.voidcarve.com/albums/cover.jpg" })]));
+  adapters([result({ coverUrl: "https://lrc.leisiyu.dev/albums/cover.jpg" })]));
   assert.equal(output.status, "matched");
   assert.equal(coverRequested, true);
   assert.equal(output.cover, undefined);
@@ -231,7 +231,7 @@ test("missing covers are returned only when the MIME and image signature agree",
     ...BASE,
     snapshot: { title: "Blue Sky", artist: "Singer", album: "First Album", coverR2Key: null },
   }, "https://app.example/tag/scrape", new AbortController().signal, fetcher,
-  adapters([result({ coverUrl: "https://lrc.voidcarve.com/albums/cover.png" })]));
+  adapters([result({ coverUrl: "https://lrc.leisiyu.dev/albums/cover.png" })]));
   assert.equal(output.cover?.mime, "image/png");
   assert.equal(output.cover?.data, btoa(String.fromCharCode(...png)));
 });

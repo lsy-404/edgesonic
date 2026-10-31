@@ -10,7 +10,7 @@ import { resolveResult, searchAll } from "./scrape";
 import type { ProxyFn, ScrapeResult, ScrapeSource } from "./scrape";
 
 const MAX_COVER_BYTES = 200_000;
-const COVER_HOSTS = ["lrc.voidcarve.com", "music.126.net", "y.qq.com"];
+const COVER_HOSTS = ["lrc.leisiyu.dev", "music.126.net", "y.qq.com"];
 const COVER_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 interface RetrievalSnapshot {
