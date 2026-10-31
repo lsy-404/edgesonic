@@ -5,6 +5,8 @@ import { parseStream } from 'music-metadata';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { UnauthorizedError } from '@modelcontextprotocol/sdk/client/auth.js';
+import { LocalOAuthProvider } from './oauth.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { searchMetadata, resolveMetadata } from '../../shared/scrape/local.js';
@@ -80,24 +82,52 @@ function resultData(result: any): any {
 
 export async function start() {
   const url = process.env.EDGESONIC_URL;
-  const token = process.env.EDGESONIC_MCP_TOKEN;
-  if (!!url !== !!token) throw new Error('EDGESONIC_URL and EDGESONIC_MCP_TOKEN must be configured together');
+  let auth: LocalOAuthProvider | undefined;
   let remote: Client | undefined;
   let base: URL | undefined;
-  if (url && token) {
+  let remoteTransport: StreamableHTTPClientTransport | undefined;
+  if (url) {
     base = new URL(url);
     if (!['https:', 'http:'].includes(base.protocol) || base.username || base.password || base.search || base.hash) throw new Error('Invalid EDGESONIC_URL');
     if (base.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(base.hostname)) throw new Error('EDGESONIC_URL must use HTTPS except on localhost');
     const endpoint = new URL('/mcp', base);
     remote = new Client({ name: 'edgesonic-local', version: '1.0.0' });
-    await remote.connect(new StreamableHTTPClientTransport(endpoint, { requestInit: { headers: { Authorization: `Bearer ${token}` }, redirect: 'error' }, fetch: (input, init) => fetch(input, { ...init, redirect: 'error' }) }));
+    auth = await LocalOAuthProvider.create(base.origin);
+    await auth.prepare();
+    const guardedFetch: typeof fetch = (input, init) => {
+      const target = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
+      if (target.origin !== base!.origin) throw new Error('OAuth endpoint must use the EdgeSonic origin');
+      return fetch(input, { ...init, redirect: 'error' });
+    };
+    const transport = new StreamableHTTPClientTransport(endpoint, { authProvider: auth, fetch: guardedFetch });
+    remoteTransport = transport;
+    try {
+      try { await remote.connect(transport); }
+      catch (error) {
+        if (!(error instanceof UnauthorizedError)) throw error;
+        await transport.finishAuth(await auth.authorizationCode());
+        remote = new Client({ name: 'edgesonic-local', version: '1.0.0' });
+        remoteTransport = new StreamableHTTPClientTransport(endpoint, { authProvider: auth, fetch: guardedFetch });
+        await remote.connect(remoteTransport);
+      }
+    } catch (error) { await auth.close(); throw error; }
+  }
+  let authorization: Promise<void> | undefined;
+  async function authorized<T>(operation: () => Promise<T>): Promise<T> {
+    try { return await operation(); } catch (error) {
+      if (!(error instanceof UnauthorizedError) || !auth || !remoteTransport) throw error;
+      authorization ??= (async () => { await remoteTransport!.finishAuth(await auth!.authorizationCode()); })().finally(() => { authorization = undefined; });
+      await authorization;
+      return operation();
+    }
   }
   const server = new Server({ name: 'edgesonic-local', version: '1.0.0' }, { capabilities: { tools: {} } });
+  server.onclose = () => { void auth?.close(); void remote?.close(); };
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     const tools = [...localTools];
     if (remote) {
       let cursor: string | undefined;
-      do { const page = await remote.listTools({ cursor }, { timeout: 120_000 }); tools.push(...page.tools.filter(tool => !localTools.some(local => local.name === tool.name)) as typeof localTools); cursor = page.nextCursor; } while (cursor);
+      do { const page = await authorized(() => remote!.listTools({ cursor }, { timeout: 120_000 })); tools.push(...page.tools.filter(tool => !localTools.some(local => local.name === tool.name)) as typeof localTools); cursor = page.nextCursor; } while (cursor);
     }
     return { tools };
   });
@@ -111,30 +141,32 @@ export async function start() {
         const opened = await openLocalFile(process.env.EDGESONIC_LOCAL_ROOT, args.localPath);
         try {
           if (params.name === 'read_local_metadata') return text(await tagsFromFile(opened.file, opened.stat.size));
-          if (!remote || !base || !token) throw new Error('Remote EdgeSonic is not configured');
+          if (!remote || !base || !auth) throw new Error('Remote EdgeSonic is not configured');
           let parsed: Awaited<ReturnType<typeof tagsFromFile>> | undefined;
           if (args.applyUploadMetadata) {
             const metadataFile = await openLocalFile(process.env.EDGESONIC_LOCAL_ROOT, args.localPath);
             try { parsed = await tagsFromFile(metadataFile.file, metadataFile.stat.size); } finally { await metadataFile.file.close(); }
           }
-          const ticket = resultData(await remote.callTool({ name: 'create_upload', arguments: { name: path.basename(opened.target), size: opened.stat.size, ...(args.path !== undefined ? { path: args.path } : {}), ...(args.source !== undefined ? { source: args.source } : {}), ...(args.conflict !== undefined ? { conflict: args.conflict } : {}) } }, undefined, { timeout: 120_000 }));
+          const ticket = resultData(await authorized(() => remote!.callTool({ name: 'create_upload', arguments: { name: path.basename(opened.target), size: opened.stat.size, ...(args.path !== undefined ? { path: args.path } : {}), ...(args.source !== undefined ? { source: args.source } : {}), ...(args.conflict !== undefined ? { conflict: args.conflict } : {}) } }, undefined, { timeout: 120_000 })));
           const destination = uploadUrl(base, ticket.uploadUrl, ticket.uploadId);
           if (ticket.method !== 'PUT') throw new Error('Invalid upload method');
+          await authorized(() => remote!.listTools(undefined, { timeout: 120_000 }));
+          const token = (await auth.tokens())?.access_token;
+          if (!token) throw new Error('Remote authorization is unavailable');
           const stream = opened.file.createReadStream({ start: 0, autoClose: false });
           let response: Response;
           try { response = await fetch(destination, { method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Length': String(opened.stat.size), 'Content-Type': 'application/octet-stream' }, body: Readable.toWeb(stream) as any, duplex: 'half', redirect: 'error', signal: AbortSignal.timeout(1_800_000) } as RequestInit); } finally { stream.destroy(); }
           if (!response.ok) throw new Error(`Upload failed: HTTP ${response.status}`);
-          const uploaded = resultData(await remote.callTool({ name: 'finish_upload', arguments: { uploadId: ticket.uploadId } }, undefined, { timeout: 120_000 }));
+          const uploaded = resultData(await authorized(() => remote!.callTool({ name: 'finish_upload', arguments: { uploadId: ticket.uploadId } }, undefined, { timeout: 120_000 })));
           if (!args.applyUploadMetadata) return text({ upload: uploaded });
           try {
-            if (!uploaded.id || !uploaded.metadataToken) throw new Error('Upload did not return a metadata token');
-            const metadata = resultData(await remote.callTool({ name: 'submit_upload_metadata', arguments: { id: uploaded.id, tags: parsed!.tags, metadataToken: uploaded.metadataToken } }, undefined, { timeout: 120_000 }));
+            const metadata = resultData(await authorized(() => remote!.callTool({ name: 'submit_upload_metadata', arguments: { uploadId: ticket.uploadId, tags: parsed!.tags } }, undefined, { timeout: 120_000 })));
             return text({ upload: uploaded, metadata: { ok: true, result: metadata } });
           } catch (error) { return text({ upload: uploaded, metadata: { ok: false, error: String(error) } }); }
         } finally { await opened.file.close(); }
       }
       if (!remote) throw new Error('Remote EdgeSonic is not configured');
-      return await remote.callTool(params, undefined, { timeout: 120_000 });
+      return await authorized(() => remote!.callTool(params, undefined, { timeout: 120_000 }));
     } catch (error) { return { ...text({ error: error instanceof Error ? error.message : String(error) }), isError: true }; }
   });
   await server.connect(new StdioServerTransport());

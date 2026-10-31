@@ -70,6 +70,7 @@ test('stdio server reads tags from a real audio fixture', async () => {
 test('bridge proxies remote tools and distinguishes uploaded files from metadata failure', async () => {
   const { createRequire } = await import('node:module');
   const { createServer } = await import('node:http');
+  const { createHash } = await import('node:crypto');
   const require = createRequire(path.resolve('tools/mcp/package.json'));
   const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
   const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
@@ -85,7 +86,7 @@ test('bridge proxies remote tools and distinguishes uploaded files from metadata
     if (params.name === 'create_upload') creates++;
     if (params.name === 'submit_upload_metadata') submittedTags = params.arguments.tags;
     if (params.name === 'submit_upload_metadata') return { isError: true, content: [{ type: 'text', text: 'scope denied' }] };
-    const data = params.name === 'create_upload' ? { uploadId: 'ticket', uploadUrl: '/mcp/upload/ticket', method: 'PUT' } : params.name === 'finish_upload' ? { ok: true, id: 'song', metadataToken: 'metadata' } : { echoed: params.arguments };
+    const data = params.name === 'create_upload' ? { uploadId: 'ticket', uploadUrl: '/mcp/upload/ticket', method: 'PUT' } : params.name === 'finish_upload' ? { ok: true, id: 'song', status: 'ok' } : { echoed: params.arguments };
     return { structuredContent: data, content: [{ type: 'text', text: JSON.stringify(data) }] };
   });
   await remote.connect(transport);
@@ -99,7 +100,16 @@ test('bridge proxies remote tools and distinguishes uploaded files from metadata
   });
   await new Promise<void>(resolve => http.listen(0, '127.0.0.1', resolve));
   const port = (http.address() as any).port;
-  const localTransport = new StdioClientTransport({ command: process.execPath, args: [require.resolve('tsx/cli'), path.resolve('tools/mcp/main.ts')], env: { PATH: process.env.PATH ?? '', SYSTEMROOT: process.env.SYSTEMROOT ?? '', EDGESONIC_LOCAL_ROOT: path.resolve('test/fixtures'), EDGESONIC_URL: `http://127.0.0.1:${port}`, EDGESONIC_MCP_TOKEN: 'secret' } });
+  const appdata = await mkdtemp(path.join(os.tmpdir(), 'edgesonic-auth-'));
+  const origin = `http://127.0.0.1:${port}`;
+  const credentialDir = path.join(appdata, 'EdgeSonic', 'mcp');
+  await mkdir(credentialDir, { recursive: true });
+  const probe = createServer();
+  await new Promise<void>(resolve => probe.listen(0, '127.0.0.1', resolve));
+  const callbackPort = (probe.address() as any).port;
+  await new Promise<void>(resolve => probe.close(() => resolve()));
+  await writeFile(path.join(credentialDir, `${createHash('sha256').update(origin).digest('hex')}.json`), JSON.stringify({ redirectUrl: `http://127.0.0.1:${callbackPort}/callback`, tokens: { access_token: 'secret', token_type: 'Bearer' } }));
+  const localTransport = new StdioClientTransport({ command: process.execPath, args: [require.resolve('tsx/cli'), path.resolve('tools/mcp/main.ts')], env: { PATH: process.env.PATH ?? '', SYSTEMROOT: process.env.SYSTEMROOT ?? '', LOCALAPPDATA: appdata, EDGESONIC_LOCAL_ROOT: path.resolve('test/fixtures'), EDGESONIC_URL: origin } });
   const client = new Client({ name: 'test', version: '1.0.0' });
   try {
     await client.connect(localTransport);
@@ -122,5 +132,5 @@ test('bridge proxies remote tools and distinguishes uploaded files from metadata
     assert.ok(Number(submittedTags?.sampleRate) > 0);
     assert.ok(Number(submittedTags?.channels) > 0);
     assert.ok(Number(submittedTags?.bitDepth) > 0);
-  } finally { await client.close(); await remote.close(); await new Promise<void>(resolve => http.close(() => resolve())); }
+  } finally { await client.close(); await remote.close(); await new Promise<void>(resolve => http.close(() => resolve())); await rm(appdata, { recursive: true, force: true }); }
 });
