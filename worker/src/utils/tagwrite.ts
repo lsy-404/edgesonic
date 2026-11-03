@@ -18,7 +18,7 @@
 // means: build a new prefix, then write newPrefix + originalBytes[oldPrefixLen..].
 // Frames/blocks we don't edit (APIC, PICTURE, SEEKTABLE…) are copied verbatim.
 
-import type { SongTags } from "./tags";
+import { parseTags, type SongTags } from "./tags";
 
 export interface PrefixRewrite {
   oldPrefixLen: number;
@@ -473,4 +473,86 @@ function concat(parts: Uint8Array[]): Uint8Array {
   let pos = 0;
   for (const p of parts) { out.set(p, pos); pos += p.length; }
   return out;
+}
+
+export type WavPart = Uint8Array | { offset: number; length: number };
+export interface WavRewrite { parts: WavPart[]; size: number }
+
+export async function planWavRewrite(
+  size: number, read: (offset: number, length: number) => Promise<Uint8Array>,
+  tags: SongTags, cover?: TagWriteCover,
+): Promise<WavRewrite | null> {
+  const header = await read(0, 12);
+  const text = (b: Uint8Array, p: number) => String.fromCharCode(...b.subarray(p, p + 4));
+  const uint = (b: Uint8Array, p: number) => new DataView(b.buffer, b.byteOffset, b.byteLength).getUint32(p, true);
+  if (header.length !== 12 || text(header, 0) !== "RIFF" || text(header, 8) !== "WAVE" || uint(header, 4) + 8 !== size) return null;
+  const chunks: WavPart[] = [];
+  let id3: Uint8Array | undefined;
+  let infoTags: SongTags = {};
+  for (let pos = 12; pos < size;) {
+    const h = await read(pos, Math.min(12, size - pos));
+    if (h.length < 8) return null;
+    const n = uint(h, 4), end = pos + 8 + n + (n % 2);
+    if (end > size) return null;
+    const id = text(h, 0);
+    if (id === "id3 " || id === "ID3 ") {
+      if (id3 || n > 8 * 1024 * 1024) return null;
+      id3 = await read(pos + 8, n);
+      if (id3.length !== n || text(id3, 0) !== "ID3\u0003" && text(id3, 0) !== "ID3\u0004") return null;
+    } else if (id === "LIST" && h.length >= 12 && text(h, 8) === "INFO") {
+      if (n > 8 * 1024 * 1024) return null;
+      const info = await read(pos, end - pos);
+      if (info.length !== end - pos) return null;
+      const parsed = parseTags(concat([header, info]));
+      if (parsed) infoTags = { ...infoTags, ...parsed };
+      const rebuilt = rewriteWavInfo(info, tags);
+      if (!rebuilt) return null;
+      chunks.push(rebuilt);
+    } else {
+      chunks.push({ offset: pos, length: end - pos });
+    }
+    pos = end;
+  }
+  const existing = id3 ? parseTags(id3) || {} : {};
+  const missing: SongTags = {};
+  for (const key of Object.keys(infoTags) as Array<keyof SongTags>) {
+    if (existing[key] === undefined && tags[key] === undefined) Object.assign(missing, { [key]: infoTags[key] });
+  }
+  const merged = { ...missing, ...tags };
+  const newId3 = id3 ? rebuildID3(id3, merged, cover)?.newPrefix : buildID3Tag(3, [], merged, cover);
+  if (!newId3) return null;
+  const id3Chunk = riffChunk("id3 ", newId3);
+  const newSize = 12 + id3Chunk.length + chunks.reduce((n, p) => n + (p instanceof Uint8Array ? p.length : p.length), 0);
+  if (newSize - 8 > 0xffffffff) return null;
+  const newHeader = Uint8Array.from(header);
+  new DataView(newHeader.buffer).setUint32(4, newSize - 8, true);
+  return { parts: [newHeader, id3Chunk, ...chunks], size: newSize };
+}
+
+function riffChunk(id: string, body: Uint8Array): Uint8Array {
+  const out = new Uint8Array(8 + body.length + body.length % 2);
+  for (let i = 0; i < 4; i++) out[i] = id.charCodeAt(i);
+  new DataView(out.buffer).setUint32(4, body.length, true);
+  out.set(body, 8);
+  return out;
+}
+
+function rewriteWavInfo(chunk: Uint8Array, tags: SongTags): Uint8Array | null {
+  const values: Record<string, string | number | undefined> = {
+    INAM: tags.title, IART: tags.artist, IPRD: tags.album, IGNR: tags.genre,
+    ITRK: tags.track, IPRT: tags.track, ICRD: tags.year,
+  };
+  const parts: Uint8Array[] = [new TextEncoder().encode("INFO")];
+  const size = new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength).getUint32(4, true);
+  for (let pos = 12; pos < 8 + size;) {
+    if (pos + 8 > 8 + size) return null;
+    const id = String.fromCharCode(...chunk.subarray(pos, pos + 4));
+    const n = new DataView(chunk.buffer, chunk.byteOffset, chunk.byteLength).getUint32(pos + 4, true);
+    const end = pos + 8 + n + n % 2;
+    if (end > 8 + size) return null;
+    const value = values[id];
+    parts.push(value ? riffChunk(id, concat([new TextEncoder().encode(String(value)), new Uint8Array(1)])) : chunk.slice(pos, end));
+    pos = end;
+  }
+  return riffChunk("LIST", concat(parts));
 }
