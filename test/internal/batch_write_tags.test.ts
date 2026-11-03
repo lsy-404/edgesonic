@@ -13,18 +13,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//
-// Strategy (same shape as test/annotation.test.ts):
-//  * In-memory SQLite shimmed as D1, real createQueries + real handlers.
-//  * Stubbed Env (no R2 / no WebDAV) → every instance write returns
-//   `written:false reason:"format not rewritable"` because the seeded
-//   instances use suffix=mp3 BUT have no real backing storage. We assert
-//   on D1 effects (artist/album relink + song_masters.title) instead.
-//  * Hono harness injects a session-auth user so permissionMiddleware
-//   ("edit_tags") sees the seeded permission row.
-//
-// Run: pnpm exec tsx test/internal/batch_write_tags.test.ts
-
 import { DatabaseSync } from "node:sqlite";
 import { Hono } from "hono";
 import { tagEditRoutes } from "../../worker/src/endpoints/tag/write";
@@ -160,6 +148,11 @@ function buildDb() {
       presign_password TEXT,
       root_path TEXT,
       enabled INTEGER DEFAULT 1
+    );
+    CREATE TABLE storage_entries (
+      instance_id TEXT,
+      kind TEXT NOT NULL,
+      path TEXT NOT NULL
     );
 
     -- Seed: one admin with edit_tags + a small library, instances point at a
