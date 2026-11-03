@@ -27,7 +27,7 @@ import { retainCompilationAlbum } from "../../utils/albumIdentity";
 import { createQueries } from "../../db/queries";
 
 type Queries = ReturnType<typeof createQueries>;
-import { requiredPrefixLen, rebuildTagPrefix } from "../../utils/tagwrite";
+import { requiredPrefixLen, rebuildTagPrefix, planWavRewrite } from "../../utils/tagwrite";
 import type { TagWriteCover } from "../../utils/tagwrite";
 import { encodePath } from "../storage/scan";
 import type { SongTags } from "../../utils/tags";
@@ -64,7 +64,7 @@ function libraryLyricsForFile(master: { lyrics: string | null; lyrics_rich: stri
 const HEAD_FETCH = 512 * 1024;
 const MAX_REWRITE_BYTES = 80 * 1024 * 1024; // whole file is buffered for the rewrite
 const MAX_COVER_BYTES = 500 * 1024;
-const BATCH_MAX = 50; // Workers single-request CPU budget bounds batch fan-out (see findings.md)
+const BATCH_MAX = 50; // Workers single-request CPU budget bounds batch fan-out.
 
 interface SourceRow {
   id: string;
@@ -579,7 +579,7 @@ function cleanInput(t: SongTags): SongTags {
   if (Number.isInteger(track) && track > 0) out.track = track;
   if (Number.isInteger(year) && year > 0) out.year = year;
   // (USLT / VORBIS LYRICS) is handled via rewriteInstance when the instance is
-  // mp3/flac and the source is writable (r2/webdav). D1 sync is always kept.
+  // mp3/flac/wav and the source is writable (r2/webdav). D1 sync is always kept.
   if (typeof t.lyrics === "string") {
     if (isLyricsKeyword(t.lyrics)) {
       out.lyrics = t.lyrics;
@@ -602,10 +602,34 @@ async function rewriteInstance(
   tags: SongTags,
   cover?: TagWriteCover,
 ): Promise<{ written: boolean; reason?: string; newSize?: number }> {
-  if (suffix !== "mp3" && suffix !== "flac") return { written: false, reason: `format .${suffix} not rewritable` };
+  if (suffix !== "mp3" && suffix !== "flac" && suffix !== "wav") return { written: false, reason: `format .${suffix} not rewritable` };
 
   if (uri.startsWith("r2://")) {
     const key = uri.substring(5);
+    if (suffix === "wav") {
+      const meta = await env.MUSIC_BUCKET.head(key);
+      if (!meta) return { written: false, reason: "object not found" };
+      const get = async (offset: number, length: number) => {
+        const obj = await env.MUSIC_BUCKET.get(key, { range: { offset, length }, onlyIf: { etagMatches: meta.etag } });
+        if (!obj || !("body" in obj)) throw new Error("object changed during rewrite");
+        return obj;
+      };
+      const plan = await planWavRewrite(meta.size, async (offset, length) => new Uint8Array(await (await get(offset, length)).arrayBuffer()), tags, cover);
+      if (!plan) return { written: false, reason: "unsupported tag layout" };
+      const fixed = new FixedLengthStream(plan.size);
+      const abort = new AbortController();
+      const piping = wavStream(plan.parts, async (offset, length) => (await get(offset, length)).body, abort.signal).pipeTo(fixed.writable, { signal: abort.signal });
+      try {
+        await Promise.all([piping, env.MUSIC_BUCKET.put(key, fixed.readable, {
+          onlyIf: { etagMatches: meta.etag }, httpMetadata: meta.httpMetadata, customMetadata: meta.customMetadata,
+        }).then(result => { if (!result) throw new Error("object changed during rewrite"); })]);
+      } catch (error) {
+        abort.abort();
+        void piping.catch(() => {});
+        throw error;
+      }
+      return { written: true, newSize: plan.size };
+    }
     const headObj = await env.MUSIC_BUCKET.get(key, { range: { offset: 0, length: HEAD_FETCH } });
     if (!headObj) return { written: false, reason: "object not found" };
     const meta = await env.MUSIC_BUCKET.head(key);
@@ -657,6 +681,19 @@ async function rewriteInstance(
     const whole = new Uint8Array(await resp.arrayBuffer());
     if (whole.length > MAX_REWRITE_BYTES) return { written: false, reason: "file too large to rewrite" };
 
+    if (suffix === "wav") {
+      const plan = await planWavRewrite(whole.length, async (offset, length) => whole.slice(offset, offset + length), tags, cover);
+      if (!plan) return { written: false, reason: "unsupported tag layout" };
+      const out = new Uint8Array(plan.size);
+      let offset = 0;
+      for (const part of plan.parts) {
+        const bytes = part instanceof Uint8Array ? part : whole.subarray(part.offset, part.offset + part.length);
+        out.set(bytes, offset); offset += bytes.length;
+      }
+      const put = await fetch(url, { method: "PUT", headers: { Authorization: auth, "Content-Type": contentType || "audio/wav" }, body: out });
+      if (!put.ok) return { written: false, reason: `PUT failed: HTTP ${put.status}` };
+      return { written: true, newSize: out.length };
+    }
     const need = requiredPrefixLen(whole, suffix);
     if (need === null || need > whole.length) return { written: false, reason: "unsupported tag layout" };
     const rw = rebuildTagPrefix(whole, suffix, tags, cover);
@@ -676,6 +713,37 @@ async function rewriteInstance(
   }
 
   return { written: false, reason: "read-only source" };
+}
+
+function wavStream(parts: import("../../utils/tagwrite").WavPart[], get: (offset: number, length: number) => Promise<ReadableStream<Uint8Array>>, signal: AbortSignal): ReadableStream<Uint8Array> {
+  let index = 0;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      signal.addEventListener("abort", () => {
+        void reader?.cancel().catch(() => {});
+        controller.error(signal.reason);
+      }, { once: true });
+    },
+    async pull(controller) {
+      try {
+        while (index < parts.length) {
+          const part = parts[index];
+          if (part instanceof Uint8Array) { index++; controller.enqueue(part); return; }
+          if (!reader) {
+            const body = await get(part.offset, part.length);
+            if (signal.aborted) { await body.cancel(); return; }
+            reader = body.getReader();
+          }
+          const next = await reader.read();
+          if (!next.done) { controller.enqueue(next.value); return; }
+          reader = undefined; index++;
+        }
+        controller.close();
+      } catch (error) { controller.error(error); }
+    },
+    async cancel() { await reader?.cancel(); },
+  });
 }
 
 interface SidecarResult { written: boolean; path?: string; reason?: string }
