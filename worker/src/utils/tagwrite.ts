@@ -186,11 +186,11 @@ function buildID3Tag(major: 3 | 4 | number, kept: Array<{ id: string; f1: number
   const frames: Uint8Array[] = [];
   const text = (id: string, value: string) => frames.push(textFrame(major, id, value));
 
-  if (tags.title) text("TIT2", tags.title);
-  if (tags.artist) text("TPE1", tags.artist);
-  if (tags.albumArtist) text("TPE2", tags.albumArtist);
-  if (tags.album) text("TALB", tags.album);
-  if (tags.genre) text("TCON", tags.genre);
+  if (tags.title && tags.title !== "{null}") text("TIT2", tags.title);
+  if (tags.artist && tags.artist !== "{null}") text("TPE1", tags.artist);
+  if (tags.albumArtist && tags.albumArtist !== "{null}") text("TPE2", tags.albumArtist);
+  if (tags.album && tags.album !== "{null}") text("TALB", tags.album);
+  if (tags.genre && tags.genre !== "{null}") text("TCON", tags.genre);
   if (tags.track) text("TRCK", String(tags.track));
   if (tags.year) text(major === 4 ? "TDRC" : "TYER", String(tags.year));
   if (typeof tags.lyrics === "string" && tags.lyrics.length > 0) {
@@ -522,7 +522,7 @@ export async function planWavRewrite(
   const newId3 = id3 ? rebuildID3(id3, merged, cover)?.newPrefix : buildID3Tag(3, [], merged, cover);
   if (!newId3) return null;
   const id3Chunk = riffChunk("id3 ", newId3);
-  const newSize = 12 + id3Chunk.length + chunks.reduce((n, p) => n + (p instanceof Uint8Array ? p.length : p.length), 0);
+  const newSize = 12 + id3Chunk.length + chunks.reduce((n, p) => n + p.length, 0);
   if (newSize - 8 > 0xffffffff) return null;
   const newHeader = Uint8Array.from(header);
   new DataView(newHeader.buffer).setUint32(4, newSize - 8, true);
@@ -551,7 +551,9 @@ function rewriteWavInfo(chunk: Uint8Array, tags: SongTags): Uint8Array | null {
     const end = pos + 8 + n + n % 2;
     if (end > 8 + size) return null;
     const value = values[id];
-    parts.push(value ? riffChunk(id, concat([new TextEncoder().encode(String(value)), new Uint8Array(1)])) : chunk.slice(pos, end));
+    if (value !== "{null}") {
+      parts.push(value ? riffChunk(id, concat([new TextEncoder().encode(String(value)), new Uint8Array(1)])) : chunk.slice(pos, end));
+    }
     pos = end;
   }
   return riffChunk("LIST", concat(parts));

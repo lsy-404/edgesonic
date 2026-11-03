@@ -54,7 +54,8 @@ function buildDb(): DatabaseSync {
 async function main() {
   const db = buildDb();
   db.exec("UPDATE song_instances SET storage_uri='r2://music/a.wav', suffix='wav', content_type='audio/wav' WHERE id='inst-a'");
-  const input = Buffer.alloc(48); input.write('RIFF'); input.writeUInt32LE(40,4); input.write('WAVEfmt ',8); input.writeUInt32LE(16,16); input.writeUInt16LE(1,20); input.writeUInt16LE(1,22); input.writeUInt32LE(8000,24); input.writeUInt32LE(16000,28); input.writeUInt16LE(2,32); input.writeUInt16LE(16,34); input.write('data',36); input.writeUInt32LE(4,40); input.set([1,2,3,4],44);
+  const audioSize = 81 * 1024 * 1024;
+  const input = Buffer.alloc(44 + audioSize); input.write('RIFF'); input.writeUInt32LE(input.length - 8,4); input.write('WAVEfmt ',8); input.writeUInt32LE(16,16); input.writeUInt16LE(1,20); input.writeUInt16LE(1,22); input.writeUInt32LE(8000,24); input.writeUInt32LE(16000,28); input.writeUInt16LE(2,32); input.writeUInt16LE(16,34); input.write('data',36); input.writeUInt32LE(audioSize,40); input.set([1,2,3,4],input.length - 4);
   let data = Uint8Array.from(input);
   (globalThis as any).FixedLengthStream = class { readable: ReadableStream; writable: WritableStream; constructor() { const t = new TransformStream(); this.readable=t.readable; this.writable=t.writable; } };
   const bucket = {
@@ -70,6 +71,26 @@ async function main() {
   assert.equal(result.results[0].files[0].written,true);
   assert.equal(parseTags(data)?.title,'星尘');
   assert.deepEqual([...data.slice(-4)],[1,2,3,4]);
+  let sourceCancelled = false;
+  const failingBucket = {
+    ...bucket,
+    async get(_key: string, options: any) {
+      const part = input.subarray(options.range.offset, options.range.offset + options.range.length);
+      if (part.length < 1024) return { body: new Blob([part]).stream(), arrayBuffer: async () => Uint8Array.from(part).buffer };
+      return { body: new ReadableStream({ pull(controller) { controller.enqueue(new Uint8Array(1024)); }, cancel() { sourceCancelled = true; } }) };
+    },
+    async put(_key: string, body: ReadableStream) {
+      const reader = body.getReader();
+      for (let i = 0; i < 4; i++) await reader.read();
+      throw new Error('simulated storage failure');
+    },
+    async head() { return { size:input.length, etag:'stable', httpMetadata:{contentType:'audio/wav'}, customMetadata:{} }; },
+  };
+  const failed = await app.fetch(new Request('http://test/tag/batchWrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:['sg-a'],patch:{title:'Next'}})}), { DB:d1(db), MUSIC_BUCKET:failingBucket });
+  const failedResult: any = await failed.json();
+  assert.equal(failedResult.results[0].files[0].written, false);
+  assert.match(failedResult.results[0].files[0].reason, /simulated storage failure/);
+  assert.equal(sourceCancelled, true);
   console.log('WAV batch endpoint: passed');
 }
 main().catch(error => { console.error(error); process.exitCode=1; });

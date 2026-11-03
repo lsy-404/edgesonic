@@ -64,7 +64,7 @@ function libraryLyricsForFile(master: { lyrics: string | null; lyrics_rich: stri
 const HEAD_FETCH = 512 * 1024;
 const MAX_REWRITE_BYTES = 80 * 1024 * 1024; // whole file is buffered for the rewrite
 const MAX_COVER_BYTES = 500 * 1024;
-const BATCH_MAX = 50; // Workers single-request CPU budget bounds batch fan-out (see findings.md)
+const BATCH_MAX = 50; // Workers single-request CPU budget bounds batch fan-out.
 
 interface SourceRow {
   id: string;
@@ -579,7 +579,7 @@ function cleanInput(t: SongTags): SongTags {
   if (Number.isInteger(track) && track > 0) out.track = track;
   if (Number.isInteger(year) && year > 0) out.year = year;
   // (USLT / VORBIS LYRICS) is handled via rewriteInstance when the instance is
-  // mp3/flac and the source is writable (r2/webdav). D1 sync is always kept.
+  // mp3/flac/wav and the source is writable (r2/webdav). D1 sync is always kept.
   if (typeof t.lyrics === "string") {
     if (isLyricsKeyword(t.lyrics)) {
       out.lyrics = t.lyrics;
@@ -617,11 +617,17 @@ async function rewriteInstance(
       const plan = await planWavRewrite(meta.size, async (offset, length) => new Uint8Array(await (await get(offset, length)).arrayBuffer()), tags, cover);
       if (!plan) return { written: false, reason: "unsupported tag layout" };
       const fixed = new FixedLengthStream(plan.size);
-      const piping = wavStream(plan.parts, async (offset, length) => (await get(offset, length)).body).pipeTo(fixed.writable);
-      const [, result] = await Promise.all([piping, env.MUSIC_BUCKET.put(key, fixed.readable, {
-        onlyIf: { etagMatches: meta.etag }, httpMetadata: meta.httpMetadata, customMetadata: meta.customMetadata,
-      })]);
-      if (!result) return { written: false, reason: "object changed during rewrite" };
+      const abort = new AbortController();
+      const piping = wavStream(plan.parts, async (offset, length) => (await get(offset, length)).body, abort.signal).pipeTo(fixed.writable, { signal: abort.signal });
+      try {
+        await Promise.all([piping, env.MUSIC_BUCKET.put(key, fixed.readable, {
+          onlyIf: { etagMatches: meta.etag }, httpMetadata: meta.httpMetadata, customMetadata: meta.customMetadata,
+        }).then(result => { if (!result) throw new Error("object changed during rewrite"); })]);
+      } catch (error) {
+        abort.abort();
+        void piping.catch(() => {});
+        throw error;
+      }
       return { written: true, newSize: plan.size };
     }
     const headObj = await env.MUSIC_BUCKET.get(key, { range: { offset: 0, length: HEAD_FETCH } });
@@ -709,16 +715,26 @@ async function rewriteInstance(
   return { written: false, reason: "read-only source" };
 }
 
-function wavStream(parts: import("../../utils/tagwrite").WavPart[], get: (offset: number, length: number) => Promise<ReadableStream<Uint8Array>>): ReadableStream<Uint8Array> {
+function wavStream(parts: import("../../utils/tagwrite").WavPart[], get: (offset: number, length: number) => Promise<ReadableStream<Uint8Array>>, signal: AbortSignal): ReadableStream<Uint8Array> {
   let index = 0;
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   return new ReadableStream<Uint8Array>({
+    start(controller) {
+      signal.addEventListener("abort", () => {
+        void reader?.cancel().catch(() => {});
+        controller.error(signal.reason);
+      }, { once: true });
+    },
     async pull(controller) {
       try {
         while (index < parts.length) {
           const part = parts[index];
           if (part instanceof Uint8Array) { index++; controller.enqueue(part); return; }
-          reader ??= (await get(part.offset, part.length)).getReader();
+          if (!reader) {
+            const body = await get(part.offset, part.length);
+            if (signal.aborted) { await body.cancel(); return; }
+            reader = body.getReader();
+          }
           const next = await reader.read();
           if (!next.done) { controller.enqueue(next.value); return; }
           reader = undefined; index++;
