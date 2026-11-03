@@ -1,4 +1,5 @@
 import { resolve, search } from "../../shared/scrape/lrc";
+import { proxyFetch } from "../../shared/scrape/transport";
 
 let failures = 0;
 function assert(condition: boolean, message: string) {
@@ -32,7 +33,10 @@ globalThis.fetch = async (input) => {
   throw new Error(`unexpected fetch: ${url}`);
 };
 
-const proxy = async () => { throw new Error("proxy should not be used"); };
+const proxy = async (request: { source: "lrc"; intent: "search" | "detail"; query?: string; songId?: string }) => {
+  if (request.intent === "search") assert(request.query === "First Song Producer", "search forwards the query required by the Worker");
+  return { ok: true, data: await proxyFetch(request.source, request.intent, request) };
+};
 
 void (async () => {
   try {

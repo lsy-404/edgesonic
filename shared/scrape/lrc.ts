@@ -4,7 +4,6 @@ import type { ScrapeResult } from "./types";
 import type { ProxyFn } from "./netease";
 
 const SOURCE = "lrc" as const;
-const API = "https://lrc.leisiyu.dev/api";
 
 interface LrcSong {
   title?: string;
@@ -56,23 +55,14 @@ function matches(album: LrcAlbum, song: LrcSong, query: string): boolean {
   return tokens.length > 0 && tokens.every((token) => haystack.includes(token));
 }
 
-async function fetchJson<T>(url: string, proxyFetch: ProxyFn, intent: "search" | "detail", songId?: string): Promise<T> {
-  let proxyError = "unknown";
-  try {
-    const proxied = await proxyFetch({ source: SOURCE, intent, ...(songId ? { songId } : {}) }) as { ok?: boolean; data?: T; error?: string };
-    if (proxied?.ok && proxied.data != null) return proxied.data;
-    proxyError = proxied?.error || "invalid proxy response";
-  } catch (error) { proxyError = error instanceof Error ? error.message : String(error); }
-  if (proxyFetch.allowDirectFallback === false) throw new Error(`lrc ${intent}: ${proxyError}`);
-  try {
-    const response = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return await response.json() as T;
-  } catch (error) { throw new Error(`lrc ${intent}: ${proxyError}; direct fallback: ${error instanceof Error ? error.message : String(error)}`); }
+async function fetchJson<T>(proxyFetch: ProxyFn, request: { intent: "search" | "detail"; query?: string; songId?: string }): Promise<T> {
+  const proxied = await proxyFetch({ source: SOURCE, ...request }) as { ok?: boolean; data?: T; error?: string };
+  if (proxied?.ok && proxied.data != null) return proxied.data;
+  throw new Error(`lrc ${request.intent}: ${proxied?.error || "invalid proxy response"}`);
 }
 
 export async function search(query: string, proxyFetch: ProxyFn): Promise<ScrapeResult[]> {
-  const data = await fetchJson<LrcAlbumsResponse>(`${API}/albums.json`, proxyFetch, "search");
+  const data = await fetchJson<LrcAlbumsResponse>(proxyFetch, { intent: "search", query });
   const rows: ScrapeResult[] = [];
   for (const album of data.albums || []) {
     if (!album.slug) continue;
@@ -110,7 +100,7 @@ function lyricsToLrc(lines: LrcSong["lyrics"]): string | undefined {
 export async function resolve(result: ScrapeResult, proxyFetch: ProxyFn): Promise<ScrapeResult> {
   const raw = result.raw as { slug?: string; songTitle?: string } | undefined;
   if (!raw?.slug || !raw.songTitle) return result;
-  const detail = await fetchJson<LrcAlbum>(`${API}/albums/${encodeURIComponent(raw.slug)}.json`, proxyFetch, "detail", raw.slug);
+  const detail = await fetchJson<LrcAlbum>(proxyFetch, { intent: "detail", songId: raw.slug });
   const song = (detail.songs || []).find((candidate) => candidate.title === raw.songTitle);
   return {
     ...result,
