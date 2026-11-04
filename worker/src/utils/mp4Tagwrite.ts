@@ -60,18 +60,20 @@ function editIlst(old: Uint8Array | undefined, tags: SongTags, cover?: TagWriteC
   const updates = new Map(fields.filter(([, v]) => v !== undefined));
   if (cover) updates.set("covr", "cover");
   const output: Uint8Array[] = [];
-  for (const entry of previous) if (!updates.has(entry.type)) output.push(raw(old!, entry));
+  for (const entry of previous) {
+    if (!updates.has(entry.type) && !(entry.type === "gnre" && updates.has("\xa9gen"))) output.push(raw(old!, entry));
+  }
   for (const [type, value] of updates) {
     if (value === "{null}" || value === "" || value === undefined) continue;
     if (type === "trkn" || type === "disk") {
       if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > 65535) throw new Error("invalid track number");
-      const number = new Uint8Array(8);
+      const number = new Uint8Array(type === "disk" ? 6 : 8);
       const entry = previous.find(x => x.type === type);
       if (entry) {
         const children = boxes(old!, entry.start + entry.header, entry.end);
         const data = one(children, "data");
-        if (!data || data.end - data.start < data.header + 16) throw new Error("invalid track metadata");
-        number.set(old!.subarray(data.start + data.header + 8, data.start + data.header + 16));
+        if (!data || data.end - data.start < data.header + 14) throw new Error("invalid track metadata");
+        number.set(old!.subarray(data.start + data.header + 8, Math.min(data.end, data.start + data.header + 8 + number.length)));
       }
       new DataView(number.buffer).setUint16(2, Number(value));
       output.push(makeBox(type, dataBox(0, number)));

@@ -31,14 +31,17 @@ async function main() {
       run("ffmpeg", ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=400:duration=0.4", "-c:a", codec, "-metadata", "title=Original", "-metadata", "comment=retain custom metadata", "-metadata", "track=2/9", "-metadata", "disc=1/3", ...(fast ? ["-movflags", "+faststart"] : []), "-y", source]);
       const original = readFileSync(source);
       const first = await rewrite(original, { title: "星尘", artist: "歌手", albumArtist: "专辑艺人", album: "唱片", year: 2025, genre: "流行", lyrics: "歌词内容", track: 4, disc: 2 }, cover);
-      const second = await rewrite(first, { title: "新的标题" });
-      const third = await rewrite(second, { title: "新的标题" });
+      const diskIndex = first.indexOf(Buffer.from("disk"));
+      assert(diskIndex > 0);
+      assert.equal(first.readUInt32BE(diskIndex + 4), 22, "disk data uses a six-byte pair");
+      const second = await rewrite(first, { title: "新的标题", disc: 3 });
+      const third = await rewrite(second, { title: "新的标题", disc: 3 });
       assert.equal(second.length, third.length, "repeated writes stay stable");
       writeFileSync(out, third);
       const info = await parseBuffer(third, { path: out });
       assert.equal(info.common.title, "新的标题"); assert.equal(info.common.artist, "歌手");
       assert.equal(info.common.albumartist, "专辑艺人"); assert.equal(info.common.album, "唱片");
-      assert.deepEqual(info.common.track, { no: 4, of: 9 }); assert.deepEqual(info.common.disk, { no: 2, of: 3 });
+      assert.deepEqual(info.common.track, { no: 4, of: 9 }); assert.deepEqual(info.common.disk, { no: 3, of: 3 });
       assert.equal(info.common.picture?.[0].format, "image/png");
       const probe = JSON.parse(run("ffprobe", ["-v", "error", "-show_format", "-of", "json", out]).toString());
       assert.equal(probe.format.tags.title, "新的标题");
@@ -48,6 +51,17 @@ async function main() {
       assert.deepEqual(pcm(out), pcm(source), "decoded audio unchanged");
       const cleared = await rewrite(third, { title: "{null}" });
       assert.equal((await parseBuffer(cleared, { path: out })).common.title, undefined);
+      const oldGenre = await rewrite(original, { genre: "XY" });
+      const genreIndex = oldGenre.indexOf(Buffer.from([0xa9, 0x67, 0x65, 0x6e]));
+      assert(genreIndex > 0);
+      oldGenre.write("gnre", genreIndex, "ascii");
+      oldGenre.writeUInt32BE(0, genreIndex + 12);
+      oldGenre.writeUInt16BE(18, genreIndex + 20);
+      assert((await parseBuffer(oldGenre, { path: out })).common.genre?.length);
+      const changedGenre = await rewrite(oldGenre, { genre: "流行" });
+      assert.deepEqual((await parseBuffer(changedGenre, { path: out })).common.genre, ["流行"]);
+      const clearedGenre = await rewrite(oldGenre, { genre: "{null}" });
+      assert.equal((await parseBuffer(clearedGenre, { path: out })).common.genre, undefined);
     }
     for (const kind of ["stco", "co64"]) {
       const ftyp = box("ftyp", Buffer.from("M4A \0\0\0\0M4A "));
