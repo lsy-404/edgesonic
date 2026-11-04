@@ -389,7 +389,7 @@ async function applyTagsToSong(
   }
 
   // --- D1 relink (same id derivation as scanTags so edits and scans converge) ---
-  // Cover-only edits skip D1 mutation entirely — there is no field to relink.
+  // Cover-only edits preserve the existing artist and album links.
   if (!Object.keys(tags).length && cover) {
     if (editedCover) await saveLibraryCover(env, master.id, master.album_id, editedCover);
     const instances = await queries.getSongInstances(master.id);
@@ -609,8 +609,7 @@ function cleanInput(t: SongTags): SongTags {
   if (Number.isInteger(track) && track > 0) out.track = track;
   if (Number.isInteger(disc) && disc > 0) out.disc = disc;
   if (Number.isInteger(year) && year > 0) out.year = year;
-  // (USLT / VORBIS LYRICS) is handled via rewriteInstance when the instance is
-  // mp3/flac/wav and the source is writable (r2/webdav). D1 sync is always kept.
+  // Embedded lyrics use the supported format writer after the library is saved.
   if (typeof t.lyrics === "string") {
     if (isLyricsKeyword(t.lyrics)) {
       out.lyrics = t.lyrics;
