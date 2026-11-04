@@ -1,1 +1,0 @@
-guarded apply/rollback and read-only preflight generated for 25 exact candidates

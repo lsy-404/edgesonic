@@ -28,3 +28,4 @@ dist/
 # --- 原有 ---
 !/docs
 !/test
+/agents
