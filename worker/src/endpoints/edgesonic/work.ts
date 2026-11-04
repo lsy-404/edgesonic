@@ -120,7 +120,10 @@ async function applyQueuedMetadata(
       throw error;
     }
   }
-  return applyMetadataResult(db, instanceId, tags, tags, { scanIdentity: true });
+  const manual = await db.prepare(
+    "SELECT 1 AS present FROM kv_store kv JOIN song_instances si ON kv.key = 'metadata:manual:' || si.master_id JOIN song_masters sm ON sm.id = si.master_id WHERE si.id = ? AND kv.value = CAST(sm.created_at AS TEXT)",
+  ).bind(instanceId).first<{ present: number }>();
+  return applyMetadataResult(db, instanceId, tags, tags, { scanIdentity: true, preserveLogical: !!manual });
 }
 
 const APPLY_PENDING = "metadata_apply:pending";

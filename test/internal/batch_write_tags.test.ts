@@ -64,6 +64,7 @@ function makeD1(sqlite: DatabaseSync): any {
 function buildDb() {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(`
+    CREATE TABLE kv_store (key TEXT PRIMARY KEY, value TEXT, updated_at INTEGER);
     CREATE TABLE users (
       username TEXT PRIMARY KEY,
       master_password TEXT NOT NULL,
@@ -115,6 +116,8 @@ function buildDb() {
       compilation INTEGER DEFAULT 0,
       participants TEXT,
       lyrics TEXT,
+      lyrics_rich TEXT,
+      cover_r2_key TEXT,
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
     );
@@ -184,7 +187,7 @@ function buildDb() {
 // ---------------------------------------------------------------------------
 // Hono harness injecting session auth (skips real Subsonic auth)
 // ---------------------------------------------------------------------------
-function makeApp(sqlite: DatabaseSync) {
+function makeApp(sqlite: DatabaseSync, bucket?: unknown) {
   const app = new Hono<{ Bindings: any; Variables: any }>();
   app.use("*", async (c, next) => {
     c.set("user", { username: "alice", level: 2, enabled: 1, password: "x" });
@@ -192,7 +195,7 @@ function makeApp(sqlite: DatabaseSync) {
     return next();
   });
   app.route("/tag", tagEditRoutes);
-  const env = { DB: makeD1(sqlite), MUSIC_BUCKET: undefined };
+  const env = { DB: makeD1(sqlite), MUSIC_BUCKET: bucket };
   return {
     async post(url: string, body: unknown) {
       const req = new Request(`http://test${url}`, {
@@ -207,6 +210,30 @@ function makeApp(sqlite: DatabaseSync) {
 
 // ---------------------------------------------------------------------------
 async function main() {
+console.log("unsupported files retain edited library metadata and cover:");
+{
+  const sqlite = buildDb();
+  sqlite.exec("UPDATE albums SET genre = 'Existing', year = 2000 WHERE id = 'al-old'; UPDATE song_instances SET suffix = 'ogg' WHERE master_id = 'sg-1'; UPDATE song_masters SET lyrics_rich = 'old rich' WHERE id = 'sg-1'");
+  const stored = new Map<string, Uint8Array>();
+  const bucket = { put: async (key: string, data: Uint8Array) => { stored.set(key, data); } };
+  const { post } = makeApp(sqlite, bucket);
+  const response = await post("/tag/batchWrite", { ids: ["sg-1"], patch: { title: "Edited", year: 2025, disc: 2, lyrics: "New lyrics" }, coverData: "AQID", coverMime: "image/png" });
+  const body = await response.json() as any;
+  const row = sqlite.prepare("SELECT sm.title, sm.disc, sm.lyrics, sm.lyrics_rich, sm.cover_r2_key, a.year, a.genre, a.cover_r2_key AS album_cover FROM song_masters sm JOIN albums a ON a.id = sm.album_id WHERE sm.id = 'sg-1'").get() as any;
+  assert(body.succeeded === 1 && body.results[0].files[0].written === false, "library succeeds when the original format is unsupported");
+  assert(row.title === "Edited" && row.disc === 2 && row.lyrics === "New lyrics" && row.lyrics_rich === null, "edited song fields are retained");
+  assert(row.year === 2025 && row.genre === "Existing", "year update preserves existing album genre");
+  assert(row.cover_r2_key === row.album_cover && stored.has(row.album_cover), "edited cover remains in the library");
+  assert((sqlite.prepare("SELECT tag_scanned FROM song_instances WHERE id = 'inst-1'").get() as any).tag_scanned === 1, "edited instance is marked scanned");
+  const coverOnly = await post("/tag/write", { id: "sg-1", tags: {}, coverData: "BAUG", coverMime: "image/png" });
+  const coverBody = await coverOnly.json() as any;
+  const key = (sqlite.prepare("SELECT cover_r2_key FROM song_masters WHERE id = 'sg-1'").get() as any).cover_r2_key;
+  assert(coverBody.ok && !coverBody.files[0].written && stored.get(key)?.[0] === 4, "cover-only edits survive an unsupported file");
+  sqlite.exec("UPDATE song_masters SET lyrics_rich = 'old rich' WHERE id = 'sg-1'");
+  await post("/tag/write", { id: "sg-1", tags: { lyrics: "{null}" } });
+  const cleared = sqlite.prepare("SELECT lyrics, lyrics_rich FROM song_masters WHERE id = 'sg-1'").get() as any;
+  assert(cleared.lyrics === null && cleared.lyrics_rich === null, "clearing lyrics also removes stale rich lyrics");
+}
 console.log("happy path: 3 ids, single field patch:");
 {
   const sqlite = buildDb();

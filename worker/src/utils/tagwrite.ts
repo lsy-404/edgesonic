@@ -73,7 +73,7 @@ export function rebuildTagPrefix(head: Uint8Array, suffix: string, tags: SongTag
 
 // --- ID3v2 ---
 
-const REPLACED_FRAMES = new Set(["TIT2", "TPE1", "TPE2", "TALB", "TCON", "TRCK", "TYER", "TDRC", "USLT"]);
+const REPLACED_FRAMES = new Set(["TIT2", "TPE1", "TPE2", "TALB", "TCON", "TRCK", "TPOS", "TYER", "TDRC", "USLT"]);
 
 function rebuildID3(buf: Uint8Array, tags: SongTags, cover?: TagWriteCover): PrefixRewrite | null {
   const major = buf[3];
@@ -131,6 +131,7 @@ function frameValueProvided(id: string, tags: SongTags): boolean {
     case "TALB": return !!tags.album;
     case "TCON": return !!tags.genre;
     case "TRCK": return !!tags.track;
+    case "TPOS": return !!tags.disc;
     case "TYER": case "TDRC": return !!tags.year;
     case "USLT": return typeof tags.lyrics === "string" && tags.lyrics.length > 0;
     default: return false;
@@ -192,6 +193,7 @@ function buildID3Tag(major: 3 | 4 | number, kept: Array<{ id: string; f1: number
   if (tags.album && tags.album !== "{null}") text("TALB", tags.album);
   if (tags.genre && tags.genre !== "{null}") text("TCON", tags.genre);
   if (tags.track) text("TRCK", String(tags.track));
+  if (tags.disc) text("TPOS", String(tags.disc));
   if (tags.year) text(major === 4 ? "TDRC" : "TYER", String(tags.year));
   if (typeof tags.lyrics === "string" && tags.lyrics.length > 0) {
     frames.push(buildUSLTFrame(major, tags.lyrics));
@@ -272,7 +274,7 @@ function writeFrameSize(buf: Uint8Array, off: number, size: number, major: numbe
 
 // --- FLAC ---
 
-const REPLACED_COMMENTS = new Set(["TITLE", "ARTIST", "ALBUM", "ALBUMARTIST", "GENRE", "TRACKNUMBER", "DATE", "YEAR", "LYRICS"]);
+const REPLACED_COMMENTS = new Set(["TITLE", "ARTIST", "ALBUM", "ALBUMARTIST", "GENRE", "TRACKNUMBER", "DISCNUMBER", "DATE", "YEAR", "LYRICS"]);
 
 function rebuildFLAC(buf: Uint8Array, tags: SongTags, cover?: TagWriteCover): PrefixRewrite | null {
   // Walk metadata blocks; keep everything but VORBIS_COMMENT verbatim.
@@ -429,6 +431,7 @@ function buildVorbisComment(old: Uint8Array | null, tags: SongTags): Uint8Array 
   if (tags.albumArtist) add("ALBUMARTIST", tags.albumArtist);
   if (tags.genre) add("GENRE", tags.genre);
   if (tags.track) add("TRACKNUMBER", String(tags.track));
+  if (tags.disc) add("DISCNUMBER", String(tags.disc));
   if (tags.year) add("DATE", String(tags.year));
   if (typeof tags.lyrics === "string" && tags.lyrics.length > 0) add("LYRICS", tags.lyrics);
 
@@ -451,6 +454,7 @@ function commentValueProvided(key: string, tags: SongTags): boolean {
     case "ALBUMARTIST": return !!tags.albumArtist;
     case "GENRE": return !!tags.genre;
     case "TRACKNUMBER": return !!tags.track;
+    case "DISCNUMBER": return !!tags.disc;
     case "DATE": case "YEAR": return !!tags.year;
     case "LYRICS": return typeof tags.lyrics === "string" && tags.lyrics.length > 0;
     default: return false;

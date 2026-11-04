@@ -27,6 +27,7 @@ function d1(sqlite: DatabaseSync): any {
 function buildDb(): DatabaseSync {
   const db = new DatabaseSync(":memory:");
   db.exec(`
+    CREATE TABLE kv_store (key TEXT PRIMARY KEY, value TEXT, updated_at INTEGER);
     CREATE TABLE artists (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT, image_r2_key TEXT, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE albums (id TEXT PRIMARY KEY, name TEXT NOT NULL, sort_name TEXT, year INTEGER, genre TEXT, cover_r2_key TEXT, song_count INTEGER DEFAULT 0, duration INTEGER DEFAULT 0, size INTEGER DEFAULT 0, compilation INTEGER DEFAULT 0, created_at INTEGER, updated_at INTEGER);
     CREATE TABLE song_masters (id TEXT PRIMARY KEY, album_id TEXT NOT NULL, artist_id TEXT NOT NULL, album_artist_id TEXT, title TEXT NOT NULL, sort_title TEXT, track INTEGER, disc INTEGER, duration INTEGER, genre TEXT, compilation INTEGER DEFAULT 0, participants TEXT, lyrics TEXT, lyrics_rich TEXT, created_at INTEGER, updated_at INTEGER);
@@ -91,6 +92,18 @@ async function main() {
   assert.equal(failedResult.results[0].files[0].written, false);
   assert.match(failedResult.results[0].files[0].reason, /simulated storage failure/);
   assert.equal(sourceCancelled, true);
+  const box = (type: string, body: Uint8Array) => {
+    const out = Buffer.alloc(body.length + 8); out.writeUInt32BE(out.length); out.write(type, 4); out.set(body, 8); return out;
+  };
+  const mp4Input = Buffer.concat([box("ftyp", Buffer.from("M4A \0\0\0\0M4A ")), box("mdat", Buffer.from([1, 2, 3, 4])), box("moov", new Uint8Array())]);
+  data = Uint8Array.from(mp4Input);
+  db.exec("UPDATE song_instances SET storage_uri='r2://music/a.m4a', suffix='m4a', content_type='audio/mp4' WHERE id='inst-a'");
+  const mp4 = await app.fetch(new Request('http://test/tag/batchWrite', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ids:['sg-a'],patch:{title:'M4A edited', disc:2}}) }), { DB:d1(db), MUSIC_BUCKET:bucket });
+  const mp4Result: any = await mp4.json();
+  assert.equal(mp4Result.results[0].files[0].written, true);
+  assert.ok(Buffer.from(data).includes(Buffer.from('M4A edited')));
+  assert.ok(Buffer.from(data).includes(Buffer.from([1, 2, 3, 4])));
+  assert.equal((db.prepare("SELECT disc FROM song_masters WHERE id='sg-a'").get() as any).disc, 2);
   console.log('WAV batch endpoint: passed');
 }
 main().catch(error => { console.error(error); process.exitCode=1; });

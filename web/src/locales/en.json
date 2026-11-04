@@ -476,8 +476,8 @@
     "fieldGenre": "Genre",
     "fieldYear": "Year",
     "fieldTrack": "Track #",
-    "editHint": "Changes update the library immediately and are written back into mp3/flac files on R2 and WebDAV sources.",
-    "editSaved": "Saved. Tags written to {written}/{total} file(s).",
+    "editHint": "Changes are saved to the library. MP3, FLAC, WAV and M4A files on R2 and WebDAV are updated when possible.",
+    "editSaved": "Saved to the library. Written to {written}/{total} original file(s).",
     "editFailed": "Save failed",
     "select": "Select",
     "selected": "{n} selected",
@@ -565,7 +565,7 @@
       "exportHint": "Export the album cover to cover.jpg in the song's directory",
       "current": "Current cover · click or drop to replace"
     },
-    "batchSaved": "Batch saved: {succeeded} ok / {failed} failed",
+    "batchSaved": "Library: {succeeded} saved / {failed} failed. Original files not written: {fileFailures}",
     "batchFailed": "Batch save failed"
   },
   "scrape": {

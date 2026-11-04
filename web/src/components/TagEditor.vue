@@ -158,8 +158,10 @@ function buildPatch(): Record<string, string | number> {
       if (Number.isInteger(n) && n > 0) patch.track = n;
     }
   }
-  // disc / comment intentionally stripped — backend doesn't accept them yet.
-  // lyrics is forwarded above (keyword-aware).
+  if (!isKeyword(form.disc.trim()) && wantField("disc", form.disc)) {
+    const n = parseInt(form.disc, 10);
+    if (Number.isInteger(n) && n > 0) patch.disc = n;
+  }
 
   return patch;
 }
@@ -507,7 +509,7 @@ function blobToBase64(blob: Blob): Promise<string> {
           </div>
           <input v-if="isBatch" type="checkbox" v-model="apply.disc" class="apply-check" :title="t('tagEditor.applyField')" />
           <div class="form-group" style="flex:1">
-            <label class="form-label">{{ t("tagEditor.fieldDisc") }} <span class="future-tag">{{ t("tagEditor.uiOnly") }}</span></label>
+            <label class="form-label">{{ t("tagEditor.fieldDisc") }}</label>
             <input v-model="form.disc" class="form-input" inputmode="numeric" :disabled="isBatch && !apply.disc" />
           </div>
         </div>

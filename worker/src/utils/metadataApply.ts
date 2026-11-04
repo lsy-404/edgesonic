@@ -84,7 +84,7 @@ export async function applyMetadataResult(
   instanceId: string,
   common: MetaCommon | undefined | null,
   format: MetaFormat | undefined | null,
-  options: { scanIdentity?: boolean } = {},
+  options: { scanIdentity?: boolean; preserveLogical?: boolean } = {},
 ): Promise<ApplyResult> {
   if (!instanceId || typeof instanceId !== "string") {
     return { updated: false, reason: "missing instanceId" };
@@ -98,13 +98,15 @@ export async function applyMetadataResult(
      FROM song_instances si LEFT JOIN song_masters sm ON sm.id = si.master_id WHERE si.id = ?`,
   ).bind(instanceId).first<{ id: string; master_id: string; size: number | null; storage_uri: string; suffix: string; album_id: string | null; title: string }>();
   if (!inst) return { updated: false, reason: "instance not found" };
-  const logicalPath = await sourceFolderLogicalPath(db, instanceId);
-  if (!tags.title && hasReadableLogicalTrackTitle(logicalPath)) tags.title = inst.title || undefined;
-  tags = recoverMetadataFromLogicalPath(logicalPath, tags);
-  if (!tags.album && inst.album_id === "pending-uploads") {
-    tags.album = await sourceFolderAlbumName(db, instanceId) ?? undefined;
+  if (!options.preserveLogical) {
+    const logicalPath = await sourceFolderLogicalPath(db, instanceId);
+    if (!tags.title && hasReadableLogicalTrackTitle(logicalPath)) tags.title = inst.title || undefined;
+    tags = recoverMetadataFromLogicalPath(logicalPath, tags);
+    if (!tags.album && inst.album_id === "pending-uploads") {
+      tags.album = await sourceFolderAlbumName(db, instanceId) ?? undefined;
+    }
   }
-  const hasLogical =
+  const hasLogical = !options.preserveLogical &&
     !!(tags.title || tags.artist || tags.album || tags.albumArtist ||
        tags.genre || tags.year || tags.track || tags.disc);
 
@@ -138,7 +140,7 @@ export async function applyMetadataResult(
   }
 
   // Embedded lyrics fill empty values without replacing user or sidecar lyrics.
-  if (tags.lyrics) {
+  if (!options.preserveLogical && tags.lyrics) {
     await db.prepare(
       "UPDATE song_masters SET lyrics = COALESCE(NULLIF(lyrics, ''), ?), updated_at = ? WHERE id = ?",
     ).bind(tags.lyrics, Math.floor(Date.now() / 1000), inst.master_id).run();
@@ -151,7 +153,7 @@ export async function applyMetadataResult(
     masterSets.push("duration = ?");
     masterBinds.push(tags.duration);
   }
-  if (tags.genre) {
+  if (!options.preserveLogical && tags.genre) {
     masterSets.push("genre = COALESCE(genre, ?)");
     masterBinds.push(tags.genre);
   }

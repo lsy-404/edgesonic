@@ -65,6 +65,8 @@ function makeD1(sqlite: DatabaseSync): any {
 function buildDb(): DatabaseSync {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(`
+    CREATE TABLE kv_store (key TEXT PRIMARY KEY, value TEXT, updated_at INTEGER);
+    CREATE TABLE storage_entries (instance_id TEXT, kind TEXT, path TEXT);
     CREATE TABLE users (
       username TEXT PRIMARY KEY, master_password TEXT NOT NULL,
       level INTEGER DEFAULT 1, enabled INTEGER DEFAULT 1,
@@ -147,6 +149,7 @@ async function main() {
   console.log("happy path: two masters, original instances rescanned, transcoded skipped:");
   {
     const sqlite = buildDb();
+    sqlite.exec("INSERT INTO kv_store VALUES ('metadata:manual:sg-1', '0', 1)");
     const { post } = makeApp(sqlite);
     const r = await post("/tag/rescan", { ids: ["sg-1", "sg-2"] });
     assert(r.status === 200, `200 status (got ${r.status})`);
@@ -161,6 +164,7 @@ async function main() {
     assert(byId.get("inst-1") === 0, "inst-1 (original) reset to tag_scanned=0");
     assert(byId.get("inst-2") === 0, "inst-2 (original) reset to tag_scanned=0");
     assert(byId.get("inst-2t") === 1, "inst-2t (transcoded) NOT touched — still tag_scanned=1");
+    assert(!sqlite.prepare("SELECT key FROM kv_store WHERE key = 'metadata:manual:sg-1'").get(), "explicit rescan clears manual edit marker");
 
     const queue = sqlite.prepare("SELECT id, status, payload FROM work_queue ORDER BY id").all() as Array<{ id: string; status: string; payload: string }>;
     assert(queue.length === 2, `2 work_queue rows created (got ${queue.length})`);

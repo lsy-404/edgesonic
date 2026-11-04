@@ -28,6 +28,7 @@ import { createQueries } from "../../db/queries";
 
 type Queries = ReturnType<typeof createQueries>;
 import { requiredPrefixLen, rebuildTagPrefix, planWavRewrite } from "../../utils/tagwrite";
+import { planMp4Rewrite } from "../../utils/mp4Tagwrite";
 import type { TagWriteCover } from "../../utils/tagwrite";
 import { encodePath } from "../storage/scan";
 import type { SongTags } from "../../utils/tags";
@@ -211,14 +212,14 @@ tagEditRoutes.post("/rescan", permissionMiddleware("edit_tags"), async (c) => {
     return c.json({ ok: false, error: `Batch size exceeds limit (${BATCH_MAX})` }, 400);
   }
 
-  const targets: Array<{ instanceId: string; uri: string; suffix: string; size: number }> = [];
+  const targets: Array<{ masterId: string; instanceId: string; uri: string; suffix: string; size: number }> = [];
   let skipped = 0;
   for (const masterId of body.ids) {
     const instances = await queries.getSongInstances(masterId);
     const originals = instances.filter((i) => i.source_type === "original");
     if (originals.length === 0) { skipped++; continue; }
     for (const inst of originals) {
-      targets.push({ instanceId: inst.id, uri: inst.storage_uri, suffix: inst.suffix, size: inst.size ?? 0 });
+      targets.push({ masterId, instanceId: inst.id, uri: inst.storage_uri, suffix: inst.suffix, size: inst.size ?? 0 });
     }
   }
   if (targets.length === 0) {
@@ -240,8 +241,10 @@ tagEditRoutes.post("/rescan", permissionMiddleware("edit_tags"), async (c) => {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const resetStmts = targets.map((t) =>
-    db.prepare("UPDATE song_instances SET tag_scanned = 0, updated_at = ? WHERE id = ?").bind(now, t.instanceId));
+  const resetStmts = targets.flatMap((t) => [
+    db.prepare("UPDATE song_instances SET tag_scanned = 0, updated_at = ? WHERE id = ?").bind(now, t.instanceId),
+    db.prepare("DELETE FROM kv_store WHERE key = ?").bind(`metadata:manual:${t.masterId}`),
+  ]);
   for (let i = 0; i < resetStmts.length; i += 80) {
     await db.batch(resetStmts.slice(i, i + 80));
   }
@@ -276,6 +279,8 @@ async function applyTagsToSong(
   cover?: TagWriteCover,
   coverKeyword?: string,
 ): Promise<ApplyResult> {
+  tags = { ...tags };
+  const editedCover = cover;
   let master = await queries.getSongMaster(idOrInstanceId);
   if (!master) {
     const inst = await queries.getSongInstance(idOrInstanceId);
@@ -364,8 +369,11 @@ async function applyTagsToSong(
   // `{write}` is a file operation, while `{null}` only clears the library
   // value. Both are valid without any ordinary tag fields.
   if (!Object.keys(tags).length && !cover && lyricsKeyword === KW_NULL) {
-    await db.prepare("UPDATE song_masters SET lyrics = NULL, updated_at = ? WHERE id = ?")
-      .bind(Math.floor(Date.now() / 1000), master.id).run();
+    const now = Math.floor(Date.now() / 1000);
+    await db.batch([
+      db.prepare("UPDATE song_masters SET lyrics = NULL, lyrics_rich = NULL, updated_at = ? WHERE id = ?").bind(now, master.id),
+      db.prepare("INSERT INTO kv_store (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at").bind(`metadata:manual:${master.id}`, String(master.created_at), now),
+    ]);
     return { ok: true, masterId: master.id, albumId: master.album_id, artistId: master.artist_id, files: sidecarFiles };
   }
   if (!Object.keys(tags).length && !cover && lyricsKeyword === KW_WRITE) {
@@ -383,6 +391,7 @@ async function applyTagsToSong(
   // --- D1 relink (same id derivation as scanTags so edits and scans converge) ---
   // Cover-only edits skip D1 mutation entirely — there is no field to relink.
   if (!Object.keys(tags).length && cover) {
+    if (editedCover) await saveLibraryCover(env, master.id, master.album_id, editedCover);
     const instances = await queries.getSongInstances(master.id);
     const files: FileResult[] = [];
     for (const inst of instances) {
@@ -400,8 +409,8 @@ async function applyTagsToSong(
 
   const curArtist = await db.prepare("SELECT name FROM artists WHERE id = ?")
     .bind(master.artist_id).first<{ name: string }>();
-  const curAlbum = await db.prepare("SELECT name, compilation FROM albums WHERE id = ?")
-    .bind(master.album_id).first<{ name: string; compilation: number }>();
+  const curAlbum = await db.prepare("SELECT name, compilation, year, genre, cover_r2_key FROM albums WHERE id = ?")
+    .bind(master.album_id).first<{ name: string; compilation: number; year: number | null; genre: string | null; cover_r2_key: string | null }>();
 
   // album/albumArtist/genre) the keyword has already been preserved by
   // cleanInput as the literal token; we translate it to an empty string here
@@ -456,31 +465,33 @@ async function applyTagsToSong(
 
   await db.batch([
     ...artistInsertStatements(db, [...artistCredits, ...albumArtistCredits], now),
-    db.prepare("INSERT OR IGNORE INTO albums (id, name, sort_name, year, genre, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .bind(albumId, albumName, albumName.toLowerCase(), tags.year ?? null, genreValue ?? null, now, now),
+    db.prepare("INSERT OR IGNORE INTO albums (id, name, sort_name, year, genre, cover_r2_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(albumId, albumName, albumName.toLowerCase(), tags.year ?? curAlbum?.year ?? null, genreValue ?? curAlbum?.genre ?? null, curAlbum?.cover_r2_key ?? null, now, now),
     db.prepare(
       `UPDATE song_masters SET
          album_id = ?, artist_id = ?,
          album_artist_id = CASE WHEN ? THEN ? ELSE album_artist_id END,
          title = ?, sort_title = ?,
-         track = COALESCE(?, track), genre = COALESCE(?, genre),
-         lyrics = COALESCE(?, lyrics), updated_at = ?
+         track = COALESCE(?, track), disc = COALESCE(?, disc), genre = COALESCE(?, genre),
+         lyrics = COALESCE(?, lyrics), lyrics_rich = CASE WHEN ? THEN NULL ELSE lyrics_rich END, updated_at = ?
        WHERE id = ?`
-    ).bind(albumId, artistId, tags.albumArtist !== undefined, albumArtist?.id ?? null, title, title.toLowerCase(), tags.track ?? null, genreValue ?? null, tags.lyrics ?? null, now, master.id),
+    ).bind(albumId, artistId, tags.albumArtist !== undefined, albumArtist?.id ?? null, title, title.toLowerCase(), tags.track ?? null, tags.disc ?? null, genreValue ?? null, tags.lyrics ?? null, tags.lyrics !== undefined && !lyricsKeyword, now, master.id),
     ...(artistChanged ? songArtistStatements(db, master.id, artistCredits) : []),
     // manual edits win over future scans
     db.prepare("UPDATE song_instances SET tag_scanned = 1 WHERE master_id = ?").bind(master.id),
+    db.prepare("INSERT INTO kv_store (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at").bind(`metadata:manual:${master.id}`, String(master.created_at), now),
   ]);
   if (lyricsNull) {
     // explicit UPDATE. This is the only field whose "clear" semantics map
     // to SQL NULL (string fields use '' via the relink path above).
-    await db.prepare("UPDATE song_masters SET lyrics = NULL, updated_at = ? WHERE id = ?")
+    await db.prepare("UPDATE song_masters SET lyrics = NULL, lyrics_rich = NULL, updated_at = ? WHERE id = ?")
       .bind(now, master.id).run();
   }
-  if (tags.year || genreValue) {
-    await db.prepare("UPDATE albums SET year = COALESCE(?, year), genre = ?, updated_at = ? WHERE id = ?")
+  if (tags.year !== undefined || genreValue !== undefined) {
+    await db.prepare("UPDATE albums SET year = COALESCE(?, year), genre = COALESCE(?, genre), updated_at = ? WHERE id = ?")
       .bind(tags.year ?? null, genreValue ?? null, now, albumId).run();
   }
+  if (editedCover) await saveLibraryCover(env, master.id, albumId, editedCover);
 
   // refresh aggregates for both the new and the vacated album
   for (const aid of new Set([albumId, oldAlbumId])) {
@@ -514,6 +525,25 @@ async function applyTagsToSong(
   }
 
   return { ok: true, masterId: master.id, albumId, artistId, files };
+}
+
+async function saveLibraryCover(env: Env, masterId: string, albumId: string, cover: TagWriteCover): Promise<void> {
+  const key = `covers/${albumId}/edit-${crypto.randomUUID()}`;
+  await env.MUSIC_BUCKET.put(key, cover.data, { httpMetadata: { contentType: cover.mime } });
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    await env.DB.batch([
+      env.DB.prepare("UPDATE albums SET cover_r2_key = ?, updated_at = ? WHERE id = ?").bind(key, now, albumId),
+      env.DB.prepare("UPDATE song_masters SET cover_r2_key = ?, updated_at = ? WHERE id = ?").bind(key, now, masterId),
+    ]);
+  } catch (error) {
+    try {
+      const reference = await env.DB.prepare("SELECT 1 AS present WHERE EXISTS (SELECT 1 FROM albums WHERE cover_r2_key = ?) OR EXISTS (SELECT 1 FROM song_masters WHERE cover_r2_key = ?)")
+        .bind(key, key).first<{ present: number }>();
+      if (!reference) await env.MUSIC_BUCKET.delete(key);
+    } catch { /* Keep the object if its reference cannot be checked. */ }
+    throw error;
+  }
 }
 
 async function loadSources(db: D1Database): Promise<Map<string, SourceRow>> {
@@ -575,8 +605,9 @@ function cleanInput(t: SongTags): SongTags {
   else if (t.albumArtist?.trim()) out.albumArtist = t.albumArtist.trim();
   if (t.genre === KW_NULL) out.genre = KW_NULL;
   else if (t.genre?.trim()) out.genre = t.genre.trim();
-  const track = Number(t.track), year = Number(t.year);
+  const track = Number(t.track), disc = Number(t.disc), year = Number(t.year);
   if (Number.isInteger(track) && track > 0) out.track = track;
+  if (Number.isInteger(disc) && disc > 0) out.disc = disc;
   if (Number.isInteger(year) && year > 0) out.year = year;
   // (USLT / VORBIS LYRICS) is handled via rewriteInstance when the instance is
   // mp3/flac/wav and the source is writable (r2/webdav). D1 sync is always kept.
@@ -602,11 +633,11 @@ async function rewriteInstance(
   tags: SongTags,
   cover?: TagWriteCover,
 ): Promise<{ written: boolean; reason?: string; newSize?: number }> {
-  if (suffix !== "mp3" && suffix !== "flac" && suffix !== "wav") return { written: false, reason: `format .${suffix} not rewritable` };
+  if (suffix !== "mp3" && suffix !== "flac" && suffix !== "wav" && suffix !== "m4a" && suffix !== "mp4") return { written: false, reason: `format .${suffix} not rewritable` };
 
   if (uri.startsWith("r2://")) {
     const key = uri.substring(5);
-    if (suffix === "wav") {
+    if (suffix === "wav" || suffix === "m4a" || suffix === "mp4") {
       const meta = await env.MUSIC_BUCKET.head(key);
       if (!meta) return { written: false, reason: "object not found" };
       const get = async (offset: number, length: number) => {
@@ -614,11 +645,12 @@ async function rewriteInstance(
         if (!obj || !("body" in obj)) throw new Error("object changed during rewrite");
         return obj;
       };
-      const plan = await planWavRewrite(meta.size, async (offset, length) => new Uint8Array(await (await get(offset, length)).arrayBuffer()), tags, cover);
+      const planner = suffix === "wav" ? planWavRewrite : planMp4Rewrite;
+      const plan = await planner(meta.size, async (offset, length) => new Uint8Array(await (await get(offset, length)).arrayBuffer()), tags, cover);
       if (!plan) return { written: false, reason: "unsupported tag layout" };
       const fixed = new FixedLengthStream(plan.size);
       const abort = new AbortController();
-      const piping = wavStream(plan.parts, async (offset, length) => (await get(offset, length)).body, abort.signal).pipeTo(fixed.writable, { signal: abort.signal });
+      const piping = rewriteStream(plan.parts, async (offset, length) => (await get(offset, length)).body, abort.signal).pipeTo(fixed.writable, { signal: abort.signal });
       try {
         await Promise.all([piping, env.MUSIC_BUCKET.put(key, fixed.readable, {
           onlyIf: { etagMatches: meta.etag }, httpMetadata: meta.httpMetadata, customMetadata: meta.customMetadata,
@@ -681,8 +713,9 @@ async function rewriteInstance(
     const whole = new Uint8Array(await resp.arrayBuffer());
     if (whole.length > MAX_REWRITE_BYTES) return { written: false, reason: "file too large to rewrite" };
 
-    if (suffix === "wav") {
-      const plan = await planWavRewrite(whole.length, async (offset, length) => whole.slice(offset, offset + length), tags, cover);
+    if (suffix === "wav" || suffix === "m4a" || suffix === "mp4") {
+      const planner = suffix === "wav" ? planWavRewrite : planMp4Rewrite;
+      const plan = await planner(whole.length, async (offset, length) => whole.slice(offset, offset + length), tags, cover);
       if (!plan) return { written: false, reason: "unsupported tag layout" };
       const out = new Uint8Array(plan.size);
       let offset = 0;
@@ -690,7 +723,7 @@ async function rewriteInstance(
         const bytes = part instanceof Uint8Array ? part : whole.subarray(part.offset, part.offset + part.length);
         out.set(bytes, offset); offset += bytes.length;
       }
-      const put = await fetch(url, { method: "PUT", headers: { Authorization: auth, "Content-Type": contentType || "audio/wav" }, body: out });
+      const put = await fetch(url, { method: "PUT", headers: { Authorization: auth, "Content-Type": contentType || (suffix === "wav" ? "audio/wav" : "audio/mp4") }, body: out });
       if (!put.ok) return { written: false, reason: `PUT failed: HTTP ${put.status}` };
       return { written: true, newSize: out.length };
     }
@@ -715,7 +748,7 @@ async function rewriteInstance(
   return { written: false, reason: "read-only source" };
 }
 
-function wavStream(parts: import("../../utils/tagwrite").WavPart[], get: (offset: number, length: number) => Promise<ReadableStream<Uint8Array>>, signal: AbortSignal): ReadableStream<Uint8Array> {
+function rewriteStream(parts: import("../../utils/tagwrite").WavPart[], get: (offset: number, length: number) => Promise<ReadableStream<Uint8Array>>, signal: AbortSignal): ReadableStream<Uint8Array> {
   let index = 0;
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   return new ReadableStream<Uint8Array>({

@@ -62,6 +62,7 @@ function makeD1(sqlite: DatabaseSync, beforeRun?: (query: string) => Promise<voi
 function buildDb() {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(`
+    CREATE TABLE kv_store (key TEXT PRIMARY KEY, value TEXT, updated_at INTEGER);
     CREATE TABLE work_queue (
       id TEXT PRIMARY KEY,
       task_type TEXT NOT NULL,
@@ -122,6 +123,7 @@ function buildDb() {
       genre TEXT,
       compilation INTEGER DEFAULT 0,
       participants TEXT,
+      lyrics TEXT,
       created_at INTEGER DEFAULT 0,
       updated_at INTEGER DEFAULT 0
     );
@@ -235,6 +237,20 @@ function makeApp(sqlite: DatabaseSync, user: { username: string; level: number }
 
 // ---------------------------------------------------------------------------
 async function main() {
+
+console.log("queued metadata preserves manual edits and refreshes physical properties:");
+{
+  const sqlite = buildDb();
+  sqlite.exec("UPDATE song_masters SET title = 'Manual', lyrics = 'Manual lyrics' WHERE id = 'sg-1'; INSERT INTO kv_store SELECT 'metadata:manual:sg-1', CAST(created_at AS TEXT), 1 FROM song_masters WHERE id = 'sg-1'");
+  seedClaimed(sqlite, "wt-manual", "metadata", { instanceId: "inst-1" });
+  const { post } = makeApp(sqlite, { username: "alice", level: 2 });
+  const response = await post("/edgesonic/work/submit", { id: "wt-manual", result: { instanceId: "inst-1", tags: { title: "Old", artist: "Old", lyrics: "Old lyrics", duration: 210, sampleRate: 48000 } } });
+  const body = await response.json() as any;
+  const master = sqlite.prepare("SELECT title, artist_id, lyrics, duration FROM song_masters WHERE id = 'sg-1'").get() as any;
+  const instance = sqlite.prepare("SELECT sample_rate FROM song_instances WHERE id = 'inst-1'").get() as any;
+  assert(body.applied?.ok && master.title === "Manual" && master.artist_id === "ar-old" && master.lyrics === "Manual lyrics", "queued tags do not replace manual values");
+  assert(master.duration === 210 && instance.sample_rate === 48000, "physical properties are refreshed");
+}
 
 console.log("work/submit (metadata, success) → tag_scanned=1 + relink + physical params:");
 {
