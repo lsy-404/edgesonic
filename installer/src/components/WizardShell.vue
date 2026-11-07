@@ -156,7 +156,7 @@ const themeLabel = computed(() => t(`common.theme${themeMode.value.charAt(0).toU
   background: var(--subtle-secondary);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background var(--fast-duration, 0.167s) var(--fast-out-slow-in, ease), color var(--fast-duration, 0.167s);
+  transition: background var(--fluent-fast) var(--fluent-ease), color var(--fluent-fast);
 }
 
 .icon-toggle:hover {

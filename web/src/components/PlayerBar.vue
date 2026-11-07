@@ -404,7 +404,7 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onDocumentPoin
 .pb-progress-thumb::after {
   content: ""; position: absolute; inset: 4px; border-radius: 50%;
   background: var(--accent-base, var(--color-accent-primary));
-  transform: scale(.86); transition: transform var(--fast-duration) var(--fast-out-slow-in);
+  transform: scale(.86); transition: transform var(--fluent-fast) var(--fluent-ease);
 }
 .pb-progress-thumb-custom {
   border: none; border-radius: 0; background: transparent; box-shadow: none;

@@ -120,7 +120,6 @@ onBeforeUnmount(unbindViewportListeners);
   --fluent-control-pressed: var(--color-bg-primary);
   --fluent-border: var(--color-border-subtle);
   --fluent-fast: 160ms;
-  --fluent-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 .list-options-item {
   display: flex;

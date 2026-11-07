@@ -13,7 +13,7 @@
     "@clamber_l/crypto": "0.1.12",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@lucide/vue": "^1.41.0",
-    "@platform-kit/fluent": "https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.2.10/platform-kit-fluent-0.2.10.tgz",
+    "@platform-kit/fluent": "https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.3.2/platform-kit-fluent-0.3.2.tgz",
     "@vitejs/plugin-vue": "^6.0.7",
     "hls.js": "^1.7.3",
     "music-metadata": "^11.13.0",

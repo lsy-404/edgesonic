@@ -27,7 +27,7 @@
     "@clamber_l/crypto": "0.1.12",
     "jose": "6.2.12",
     "openid-client": "6.8.8",
-    "@lsypkg/fluent": "https://github.com/lsy-404/platform-kit/releases/download/v0.6.4/platform-kit-fluent-0.2.3.tgz",
+    "@lsypkg/fluent": "https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.3.2/platform-kit-fluent-0.3.2.tgz",
     "vite-node": "6.0.0"
   },
   "packageManager": "pnpm@10.34.6",

@@ -145,14 +145,8 @@
   --fluent-panel-radius: var(--ContentDialogCornerRadius);
   --fluent-font: var(--ContentControlThemeFontFamily);
   --fluent-shadow: 0 8px 28px rgb(0 0 0 / 0.2);
-  --fluent-fast: var(--fast-duration, 160ms);
-  --fluent-ease: var(--fast-out-slow-in, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
-@media (prefers-reduced-motion: reduce) {
-  :root,
-  .edgesonic-fluent-theme { --fluent-fast: 0ms; }
-}
 
 body { background: var(--app-bg); color: var(--text-primary); font-family: var(--ContentControlThemeFontFamily); }
 
@@ -161,7 +155,7 @@ body { background: var(--app-bg); color: var(--text-primary); font-family: var(-
 button, .btn-primary, .btn-secondary, .btn-danger {
   min-height: 32px; border-radius: var(--ControlCornerRadius); font-family: var(--ContentControlThemeFontFamily);
   font-weight: 400; letter-spacing: 0; text-transform: none;
-  transition: background var(--fast-duration) var(--fast-out-slow-in), border-color var(--fast-duration) var(--fast-out-slow-in), color var(--fast-duration) var(--fast-out-slow-in), box-shadow var(--fast-duration) var(--fast-out-slow-in), transform var(--fast-duration) var(--fast-out-slow-in);
+  transition: background var(--fluent-fast) var(--fluent-ease), border-color var(--fluent-fast) var(--fluent-ease), color var(--fluent-fast) var(--fluent-ease), box-shadow var(--fluent-fast) var(--fluent-ease), transform var(--fluent-fast) var(--fluent-ease);
 }
 button.btn-primary, button.btn-secondary, button.btn-danger { border-style: solid; border-width: 1px; box-shadow: inset 0 1px rgba(255, 255, 255, 0.14); }
 button.btn-primary { background: var(--accent-base); border-color: var(--accent-base); color: var(--accent-text); }
@@ -177,7 +171,7 @@ button.btn-primary:disabled, button.btn-secondary:disabled, button.btn-danger:di
 .form-input, .form-select, .form-textarea {
   min-height: 32px; border-radius: var(--ControlCornerRadius); border-color: var(--ctrl-border); background: var(--ctrl-fill-default);
   color: var(--text-primary); font-family: var(--ContentControlThemeFontFamily);
-  transition: border-color var(--fast-duration) var(--fast-out-slow-in), background var(--fast-duration) var(--fast-out-slow-in);
+  transition: border-color var(--fluent-fast) var(--fluent-ease), background var(--fluent-fast) var(--fluent-ease);
 }
 .form-input:hover, .form-select:hover, .form-textarea:hover { background: var(--ctrl-fill-secondary); }
 .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent-base); box-shadow: 0 0 0 1px var(--accent-base); }
@@ -200,7 +194,7 @@ button.btn-primary:disabled, button.btn-secondary:disabled, button.btn-danger:di
 /* Native controls remain semantic HTML, with the same Fluent states as the component set. */
 .edgesonic-fluent-theme :where(button:not(.fluent-button), .btn-primary, .btn-secondary, .btn-danger, .seg-btn, .ctx-item, .view-tab, .page-btn) {
   border-radius: var(--ControlCornerRadius);
-  transition: background var(--fast-duration) var(--fast-out-slow-in), border-color var(--fast-duration) var(--fast-out-slow-in), color var(--fast-duration) var(--fast-out-slow-in), box-shadow var(--fast-duration) var(--fast-out-slow-in), transform var(--fast-duration) var(--fast-out-slow-in);
+  transition: background var(--fluent-fast) var(--fluent-ease), border-color var(--fluent-fast) var(--fluent-ease), color var(--fluent-fast) var(--fluent-ease), box-shadow var(--fluent-fast) var(--fluent-ease), transform var(--fluent-fast) var(--fluent-ease);
 }
 .edgesonic-fluent-theme :where(button:not(.fluent-button), .btn-primary, .btn-secondary, .btn-danger, .seg-btn, .ctx-item, .view-tab, .page-btn):focus-visible {
   outline: 2px solid var(--accent-base);
@@ -217,7 +211,7 @@ button.btn-primary:disabled, button.btn-secondary:disabled, button.btn-danger:di
   border-radius: var(--ControlCornerRadius);
   background: var(--ctrl-fill-default);
   color: var(--text-primary);
-  transition: background var(--fast-duration) var(--fast-out-slow-in), border-color var(--fast-duration) var(--fast-out-slow-in), box-shadow var(--fast-duration) var(--fast-out-slow-in);
+  transition: background var(--fluent-fast) var(--fluent-ease), border-color var(--fluent-fast) var(--fluent-ease), box-shadow var(--fluent-fast) var(--fluent-ease);
 }
 .edgesonic-fluent-theme :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select):hover:not(:disabled):not([readonly]) { background: var(--ctrl-fill-secondary); }
 .edgesonic-fluent-theme :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select):focus-visible {

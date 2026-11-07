@@ -196,7 +196,6 @@ onBeforeUnmount(() => {
   --fluent-control-pressed: var(--color-bg-primary);
   --fluent-border: var(--color-border-subtle);
   --fluent-fast: 160ms;
-  --fluent-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 .player-volume__popup-header { display: flex; justify-content: space-between; margin-bottom: 0.6rem; color: var(--color-text-primary); font-size: var(--fs-sm); }
 .player-volume__popup-slider {

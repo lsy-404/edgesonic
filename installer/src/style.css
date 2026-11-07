@@ -174,7 +174,7 @@ code {
   border-bottom-width: 2px;
   background: var(--ctrl-fill-default);
   color: var(--text-primary);
-  transition: border-color var(--fast-duration, 0.167s) var(--fast-out-slow-in, ease), background var(--fast-duration, 0.167s);
+  transition: border-color var(--fluent-fast) var(--fluent-ease), background var(--fluent-fast);
 }
 
 .field input:hover,
@@ -262,7 +262,7 @@ code {
   cursor: pointer;
   background: var(--ctrl-fill-default);
   color: var(--text-primary);
-  transition: background var(--fast-duration, 0.167s) var(--fast-out-slow-in, ease);
+  transition: background var(--fluent-fast) var(--fluent-ease);
 }
 
 .btn:hover {
@@ -281,7 +281,7 @@ code {
   backdrop-filter: blur(20px);
   cursor: pointer;
   margin-bottom: 12px;
-  transition: border-color var(--fast-duration, 0.167s), box-shadow var(--fast-duration, 0.167s);
+  transition: border-color var(--fluent-fast), box-shadow var(--fluent-fast);
 }
 
 .card-option:hover {

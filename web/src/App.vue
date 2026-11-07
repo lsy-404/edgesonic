@@ -269,7 +269,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <FluentTheme :mode="fluentThemeMode" class="edgesonic-fluent-theme">
+  <FluentTheme curve="easy-ease-max" :mode="fluentThemeMode" class="edgesonic-fluent-theme">
   <template v-if="!isBare">
     <component :is="activeThemeDef?.background" v-if="activeThemeDef?.background" />
     <div v-else-if="activeThemeDef?.mountBackground" ref="bgHostEl" aria-hidden="true"></div>

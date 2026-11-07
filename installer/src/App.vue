@@ -48,7 +48,7 @@ watch(
 </script>
 
 <template>
-  <FluentTheme :mode="themeMode === 'auto' ? 'system' : themeMode">
+  <FluentTheme curve="easy-ease-max" :mode="themeMode === 'auto' ? 'system' : themeMode">
     <WizardShell :step="Math.min(wizard.step, TOTAL_STEPS)" :total="TOTAL_STEPS">
       <Transition :name="transitionName">
         <component :is="current" :key="wizard.step" />
