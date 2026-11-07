@@ -102,7 +102,7 @@ const banner = useUpdateBanner();
   padding: 0.45rem 0.9rem;
   border-radius: 2px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--fluent-fast) var(--fluent-ease);
 }
 .update-banner-btn-ghost {
   background: transparent;
@@ -126,7 +126,7 @@ const banner = useUpdateBanner();
 /* slide-down transition */
 .banner-slide-enter-active,
 .banner-slide-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform var(--fluent-normal) var(--fluent-ease), opacity var(--fluent-normal) var(--fluent-ease);
 }
 .banner-slide-enter-from,
 .banner-slide-leave-to {

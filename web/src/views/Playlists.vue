@@ -671,7 +671,7 @@ onBeforeUnmount(() => {
 .back-link { cursor: pointer; color: var(--color-accent-primary); background: none; border: 0; padding: 0; font: inherit; }
 .back-link:hover { color: var(--color-text-primary); }
 .playlist-detail-sheet { position: fixed; z-index: 80; top: var(--nav-h); left: var(--sidebar-w); right: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); overflow: auto; padding: 24px; background: var(--color-bg-secondary); border-top: 1px solid var(--color-border-subtle); border-radius: 8px 8px 0 0; }
-.playlist-detail-enter-active, .playlist-detail-leave-active { transition: transform .24s ease, opacity .18s ease; }
+.playlist-detail-enter-active, .playlist-detail-leave-active { transition: transform var(--fluent-normal) var(--fluent-ease), opacity var(--fluent-fast) var(--fluent-ease); }
 .playlist-detail-enter-from, .playlist-detail-leave-to { transform: translateY(100%); opacity: 0; }
 @media (max-width: 960px) { .playlist-detail-sheet { left: 0; bottom: calc(var(--player-h) + var(--bottom-nav-space, 0px)); } }
 @media (prefers-reduced-motion: reduce) { .playlist-detail-enter-active, .playlist-detail-leave-active { transition: none; } }

@@ -154,8 +154,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 .detail-sheet-enter-active,
 .detail-sheet-leave-active {
   transition:
-    transform 0.24s ease,
-    opacity 0.18s ease;
+    transform var(--fluent-normal) var(--fluent-ease),
+    opacity var(--fluent-fast) var(--fluent-ease);
 }
 .detail-sheet-enter-from,
 .detail-sheet-leave-to {

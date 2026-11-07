@@ -396,7 +396,7 @@ h1 { font-size: 1.1rem; font-weight: 600; margin: 0; }
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  transition: border-color var(--fluent-fast) var(--fluent-ease), background-color var(--fluent-fast) var(--fluent-ease), color var(--fluent-fast) var(--fluent-ease);
 }
 .toggle:hover:not(:disabled) { border-color: var(--color-accent-primary); }
 .toggle.on { border-color: #3fbf6f; background: color-mix(in srgb, #3fbf6f 14%, var(--color-bg-secondary)); color: #3fbf6f; }

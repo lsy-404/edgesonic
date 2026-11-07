@@ -2756,7 +2756,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
   border-bottom: 1px solid var(--color-border-subtle);
   overflow: hidden;
 }
-.album-cover img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; }
+.album-cover img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--fluent-normal) var(--fluent-ease); }
 .album-card:hover .album-cover img { transform: scale(1.05); }
 .album-cover-placeholder { font-size: 2rem; color: var(--color-text-muted); }
 
@@ -2822,7 +2822,7 @@ onUnmounted(() => window.removeEventListener("click", onWindowClick));
   border-left: 2px solid var(--color-accent-dim);
   background: var(--color-bg-tertiary);
   opacity: 1;
-  transition: opacity 0.4s ease;
+  transition: opacity var(--fluent-normal) var(--fluent-ease);
 }
 .songs-hint.faded { opacity: 0.5; }
 

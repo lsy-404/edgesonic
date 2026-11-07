@@ -2057,7 +2057,7 @@ function cloneStatusClass(status: CloneProgress["status"]): string {
   width: 1.25rem;
   height: 1.25rem;
   color: var(--color-accent-primary);
-  transition: transform 0.18s ease;
+  transition: transform var(--fluent-fast) var(--fluent-ease);
 }
 .settings-section.open > .section-header .section-caret { transform: rotate(180deg); }
 .section-body { padding: 1rem 1.1rem 1.2rem; background: var(--color-bg-primary); border-top: 1px solid var(--color-border-subtle); }

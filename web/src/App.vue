@@ -533,10 +533,10 @@ onBeforeUnmount(() => {
 .sidebar-scroll { position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; display: flex; flex-direction: column; gap: 28px; padding: 20px 12px; }
 .nav-group { position: relative; display: flex; flex-direction: column; gap: 4px; }
 .nav-group-label { color: var(--color-text-muted); font-size: 12px; font-weight: 600; padding: 0 14px 6px; }
-.side-link { position: relative; display: flex; align-items: center; gap: 14px; min-height: 40px; padding: 8px 14px; box-sizing: border-box; border-radius: 4px; color: var(--color-text-secondary); font-size: 14px; text-decoration: none; transition: background 160ms ease, color 160ms ease; }
+.side-link { position: relative; display: flex; align-items: center; gap: 14px; min-height: 40px; padding: 8px 14px; box-sizing: border-box; border-radius: 4px; color: var(--color-text-secondary); font-size: 14px; text-decoration: none; transition: background var(--fluent-fast) var(--fluent-ease), color var(--fluent-fast) var(--fluent-ease); }
 .side-link:hover { color: var(--color-text-primary); background: var(--color-bg-tertiary); }
 .side-link.active { color: var(--color-text-primary); background: transparent; font-weight: 600; }
-.sidebar-selection { position: absolute; top: 0; pointer-events: none; border-radius: 4px; background: var(--navigation-selection-fill); transition: transform 260ms cubic-bezier(.16, 1, .3, 1), height 260ms ease, opacity 120ms ease; }
+.sidebar-selection { position: absolute; top: 0; pointer-events: none; border-radius: 4px; background: var(--navigation-selection-fill); transition: transform var(--fluent-normal) var(--fluent-ease), height var(--fluent-normal) var(--fluent-ease), opacity var(--fluent-faster) var(--fluent-ease); }
 .sidebar-selection::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 2px; background: var(--color-accent-primary); }
 @media (prefers-reduced-motion: reduce) { .sidebar-selection { transition: none; } }
 .side-link.active .es-icon { color: var(--color-accent-primary); }
@@ -553,8 +553,8 @@ onBeforeUnmount(() => {
   scrollbar-gutter: stable;
 }
 .page-view { min-width: 0; min-height: 100%; }
-.page-next-enter-active, .page-previous-enter-active { transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease; }
-.page-next-leave-active, .page-previous-leave-active { transition: transform 160ms cubic-bezier(0.4, 0, 1, 1), opacity 140ms ease; }
+.page-next-enter-active, .page-previous-enter-active { transition: transform var(--fluent-normal) var(--fluent-ease), opacity var(--fluent-fast) var(--fluent-ease); }
+.page-next-leave-active, .page-previous-leave-active { transition: transform var(--fluent-fast) var(--fluent-ease), opacity var(--fluent-faster) var(--fluent-ease); }
 .page-next-enter-from, .page-previous-leave-to { transform: translateX(48px); opacity: 0; }
 .page-next-leave-to, .page-previous-enter-from { transform: translateX(-48px); opacity: 0; }
 @media (max-width: 1150px) {

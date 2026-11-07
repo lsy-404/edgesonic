@@ -316,7 +316,7 @@ const dependencies: Array<{ name: string; version: string; license: string; url:
   border-radius: 8px;
   padding: 1.5rem;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: all var(--fluent-fast) var(--fluent-ease);
   color: inherit;
 }
 
@@ -395,7 +395,7 @@ const dependencies: Array<{ name: string; version: string; license: string; url:
   text-decoration: none;
   color: inherit;
   border-bottom: 1px solid var(--color-border-subtle);
-  transition: background-color 0.2s ease;
+  transition: background-color var(--fluent-fast) var(--fluent-ease);
 }
 
 .dependency-row:hover {

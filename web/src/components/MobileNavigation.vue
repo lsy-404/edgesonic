@@ -224,13 +224,13 @@ onBeforeUnmount(() => {
 }
 .navigation-sheet-enter-active {
   transition:
-    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 220ms ease;
+    transform var(--fluent-normal) var(--fluent-ease),
+    opacity var(--fluent-normal) var(--fluent-ease);
 }
 .navigation-sheet-leave-active {
   transition:
-    transform 200ms cubic-bezier(0.4, 0, 1, 1),
-    opacity 160ms ease;
+    transform var(--fluent-fast) var(--fluent-ease),
+    opacity var(--fluent-fast) var(--fluent-ease);
 }
 .navigation-sheet-enter-from,
 .navigation-sheet-leave-to {

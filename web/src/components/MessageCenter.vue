@@ -276,7 +276,7 @@ onBeforeUnmount(() => {
 .message-center-count { position: absolute; top: -0.38rem; right: -0.42rem; min-width: 1.05rem; padding: 0 0.22rem; border-radius: 999px; background: var(--color-accent-primary); color: var(--color-text-inverse); font: 700 0.62rem/1.1 var(--font-mono); }
 .message-center-backdrop { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / 70%); }
 .message-center-panel { position: fixed; z-index: 1200; top: 0; right: 0; bottom: 0; height: 100dvh; max-height: 100dvh; box-sizing: border-box; display: flex; width: min(31rem, 100vw); flex-direction: column; padding: max(1.25rem, env(safe-area-inset-top, 0px)) 1.25rem max(1.25rem, env(safe-area-inset-bottom, 0px)); overflow: hidden; border-left: 1px solid var(--color-border-subtle); background: var(--color-bg-primary); box-shadow: -1.1rem 0 2.7rem rgb(0 0 0 / 30%); }
-.message-drawer-enter-active, .message-drawer-leave-active { transition: transform 160ms ease, opacity 160ms ease; }
+.message-drawer-enter-active, .message-drawer-leave-active { transition: transform var(--fluent-fast) var(--fluent-ease), opacity var(--fluent-fast) var(--fluent-ease); }
 .message-drawer-enter-from, .message-drawer-leave-to { opacity: 0; transform: translateX(1.5rem); }
 .message-center-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-shrink: 0; }
 .message-center-header h2, .message-modal h2 { margin: 0; font-size: 1.15rem; }

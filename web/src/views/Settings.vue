@@ -3077,7 +3077,7 @@ onMounted(() => {
   width: 1.25rem;
   height: 1.25rem;
   color: var(--color-accent-primary);
-  transition: transform 0.18s ease;
+  transition: transform var(--fluent-fast) var(--fluent-ease);
 }
 .settings-section.open > .section-header .section-caret { transform: rotate(180deg); }
 .section-side { display: flex; align-items: center; gap: 0.7rem; }
@@ -3119,7 +3119,7 @@ onMounted(() => {
   width: 1rem;
   height: 1rem;
   color: var(--color-accent-primary);
-  transition: transform 0.18s ease;
+  transition: transform var(--fluent-fast) var(--fluent-ease);
 }
 .sub-section.open .sub-section-caret { transform: rotate(180deg); }
 .sub-section-body { padding: 0.75rem 1rem 0.9rem; background: var(--color-bg-primary); border-top: 1px solid var(--color-border-subtle); }
@@ -3271,7 +3271,7 @@ onMounted(() => {
 .cache-usage-fill {
   height: 100%;
   background: var(--color-accent-primary);
-  transition: width 0.3s ease;
+  transition: width var(--fluent-normal) var(--fluent-ease);
 }
 .cache-cap-select { max-width: 160px; }
 
