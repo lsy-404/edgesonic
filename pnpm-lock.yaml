@@ -697,7 +697,7 @@ packages:
     resolution: {integrity: sha512-Nm4s/jB+4FpFsPhWGEC4h7rzksesmtnMXomo6rCMcg/b8zLQuOziRgkCS1fxDCXOlJB/6Q8oABOZ/OP6RIPj9A==}
 
   '@platform-kit/fluent@https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.3.2/platform-kit-fluent-0.3.2.tgz':
-    resolution: {tarball: https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.3.2/platform-kit-fluent-0.3.2.tgz}
+    resolution: {integrity: sha512-+N2aFf73F0wzAbKghXfzXKtawHxDTUEc0vElBJAh1M47UbSQJYDRLcMxqO1E8pL5jh5UjU4M1Z4lur8bWhrHwQ==, tarball: https://github.com/lsy-404/platform-kit/releases/download/fluent-v0.3.2/platform-kit-fluent-0.3.2.tgz}
     version: 0.3.2
     peerDependencies:
       vue: ^3.5.0
