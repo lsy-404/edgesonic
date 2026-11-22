@@ -14,7 +14,8 @@ const REFRESH_MS = 60 * 60 * 1000;
 const PROBE_PORT_BASE = 20000;
 // Bilibili answers HTTP 412 to data-center exits, so only routes that pass this request are used.
 const PROBE_URL = "https://www.bilibili.com/video/BV1xx411c7mD";
-const PROXIED_SUFFIXES = ["bilibili.com", "bilibili.tv", "b23.tv", "bilivideo.com", "bilivideo.cn", "biliapi.net", "hdslb.com", "akamaized.net"];
+// Only the site and API reject Cloudflare egress; media CDNs are fetched directly.
+const PROXIED_SUFFIXES = ["bilibili.com", "bilibili.tv", "b23.tv", "biliapi.net"];
 
 let child = null;
 let ready = null;

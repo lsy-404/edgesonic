@@ -11,8 +11,8 @@ import { ensureProxy, proxiedFetch, proxiedHost } from "./proxy.js";
 const ROOT = path.join(os.tmpdir(), "edgesonic-media");
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const MAX_SESSIONS = 12;
-// Video encodes share the single slot; audio-only and subtitle work is light enough to run beside them.
-const MAX_ACTIVE_JOBS = { video: 1, light: 2 };
+// Video encodes share the single CPU slot; stream copies are network-bound, and audio or subtitle work is light.
+const MAX_ACTIVE_JOBS = { video: 1, copy: 3, light: 2 };
 const MAX_REMOTE_VIDEO_HEIGHT = 720;
 const MAX_ACTIVE_UPLOADS = 2;
 const MAX_ACTIVE_SEARCHES = 2;
@@ -887,6 +887,11 @@ function sendNativeRange(req, res, session) {
   res.type("video/mp4").set("Cache-Control", "no-store").sendFile(fileName, { root: session.dir }, (error) => { if (error && !res.headersSent) publicError(res, 404, "media file unavailable"); });
 }
 
+function hlsJobPool(session, variant, options) {
+  if (options.audioOnly) return "light";
+  try { return canCopyVideo(session, selectedSource(session, options.audioTrack), variant) ? "copy" : "video"; } catch { return "video"; }
+}
+
 function canCopyVideo(session, selected, variant) {
   if (!selected.video?.codec?.startsWith("avc1") || variant.rate !== defaultVideoBitrate(session)) return false;
   return !variant.size || (Math.abs(variant.size.width - session.width) <= 1 && Math.abs(variant.size.height - session.height) <= 1);
@@ -970,7 +975,7 @@ function ensureHlsVariant(session, variant, options) {
 }
 
 async function generateHlsVariant(session, variant, options, outDir, state) {
-  const job = createJob(session, options.audioOnly ? "light" : "video");
+  const job = createJob(session, hlsJobPool(session, variant, options));
   job.kind = "hls";
   state.job = job;
   let child;

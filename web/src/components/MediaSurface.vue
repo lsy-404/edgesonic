@@ -125,7 +125,11 @@ watch([media, () => props.session.id, () => props.audioOnly], async ([element, s
   if (props.session.transport === "file") {
     element.src = props.session.sourceUrl || "";
   } else if (Hls.isSupported()) {
-    const instance = new Hls({ startPosition: Math.max(0, resumeTime) });
+    const instance = new Hls({
+      startPosition: Math.max(0, resumeTime),
+      // The first playlist can wait for a free transcoding slot on the media container.
+      manifestLoadPolicy: { default: { maxTimeToFirstByteMs: Infinity, maxLoadTimeMs: 60_000, timeoutRetry: { maxNumRetry: 2, retryDelayMs: 0, maxRetryDelayMs: 0 }, errorRetry: { maxNumRetry: 1, retryDelayMs: 1000, maxRetryDelayMs: 8000 } } },
+    });
     hls = instance;
     instance.on(Hls.Events.ERROR, (_event, data) => {
       if (!data.fatal || generation !== hlsGeneration) return;
