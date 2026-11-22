@@ -109,6 +109,7 @@ watch([media, () => props.session.id, () => props.audioOnly], async ([element, s
   resumeAfterReload = sessionId === activeSessionId ? !element.paused : props.startPlaying;
   resumeTime = sessionId === activeSessionId ? element.currentTime : props.initialTime;
   activeSessionId = sessionId;
+  lastHeartbeatAt = Date.now();
   releaseHls();
   const generation = hlsGeneration;
   hlsError.value = "";
@@ -129,6 +130,7 @@ watch([media, () => props.session.id, () => props.audioOnly], async ([element, s
     instance.on(Hls.Events.ERROR, (_event, data) => {
       if (!data.fatal || generation !== hlsGeneration) return;
       if (data.response?.code === 404 || data.response?.code === 410) { reportExpired(); return; }
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) { void reportIfExpired(); return; }
       hlsError.value = "This stream could not be played in this browser.";
     });
     instance.attachMedia(element);
@@ -208,14 +210,19 @@ function reportExpired() {
   const element = media.value;
   emit("expired", element && element.readyState ? element.currentTime : resumeTime);
 }
+async function reportIfExpired(): Promise<boolean> {
+  const sessionId = props.session.id;
+  const status = await fetch(mediaManifestUrl(sessionId, props.audioOnly), { method: "HEAD", credentials: "same-origin", signal: AbortSignal.timeout(15_000) })
+    .then((response) => response.status, () => 0);
+  if (sessionId !== props.session.id) return true;
+  if (status === 404 || status === 410) { reportExpired(); return true; }
+  hlsError.value = "This stream could not be played in this browser.";
+  return false;
+}
 async function onError() {
   const code = media.value?.error?.code;
   if (props.session.transport === "hls" && !hls && (code === MediaError.MEDIA_ERR_NETWORK || code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED)) {
-    const sessionId = props.session.id;
-    const status = await fetch(mediaManifestUrl(sessionId, props.audioOnly), { method: "HEAD", credentials: "same-origin", signal: AbortSignal.timeout(15_000) })
-      .then((response) => response.status, () => 0);
-    if (sessionId !== props.session.id) return;
-    if (status === 404 || status === 410) { reportExpired(); return; }
+    if (await reportIfExpired()) return;
   }
   if (!hlsError.value) hlsError.value = "The media session could not be loaded.";
   emit("error", hlsError.value);
