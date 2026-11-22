@@ -32,8 +32,8 @@ function outbound(uri, index) {
   const address = url.hostname.replace(/^\[|\]$/g, "");
   const port = Number(url.port);
   const id = decodeURIComponent(url.username);
-  if (!address || !Number.isInteger(port) || !id) return null;
-  const user = { id, encryption: "none", ...(query.get("flow") ? { flow: query.get("flow") } : {}) };
+  if (!address || !Number.isInteger(port) || port < 1 || port > 65535 || !id) return null;
+  const user = { id, encryption: query.get("encryption") || "none", ...(query.get("flow") ? { flow: query.get("flow") } : {}) };
   const streamSettings = { network: query.get("type") || "tcp", security: query.get("security") || "none" };
   if (streamSettings.security === "tls") {
     streamSettings.tlsSettings = { serverName: query.get("sni") || address, fingerprint: query.get("fp") || "chrome", ...(query.get("alpn") ? { alpn: query.get("alpn").split(",") } : {}) };
@@ -82,32 +82,61 @@ function waitForPort(timeoutMs) {
   });
 }
 
+function stopChild() {
+  const current = child;
+  child = null;
+  configText = "";
+  if (!current || current.exitCode !== null || current.signalCode !== null) return Promise.resolve();
+  return new Promise((resolve) => {
+    current.removeAllListeners("exit");
+    current.once("exit", () => resolve());
+    current.kill("SIGTERM");
+    setTimeout(() => current.kill("SIGKILL"), 5000).unref();
+  });
+}
+
 async function start() {
   const next = await buildConfig();
-  if (child && next === configText) return;
-  configText = next;
+  if (child && next === configText) return waitForPort(10000);
+  await stopChild();
   await mkdir(CONFIG_DIR, { recursive: true });
   const file = path.join(CONFIG_DIR, "config.json");
   await writeFile(file, next, { mode: 0o600 });
-  if (child) { child.removeAllListeners("exit"); child.kill("SIGTERM"); child = null; }
   const process_ = spawn("xray", ["run", "-config", file], { stdio: ["ignore", "ignore", "inherit"] });
   child = process_;
-  process_.once("exit", (code) => {
+  configText = next;
+  const exited = new Promise((_, reject) => {
+    process_.once("error", (error) => reject(new Error(`proxy failed to launch: ${error.code || error.message}`)));
+    process_.once("exit", (code) => reject(new Error(`proxy exited with code ${code}`)));
+  });
+  exited.catch(() => {
     if (child !== process_) return;
-    console.error("media proxy exited", code);
+    console.error("media proxy stopped");
     child = null;
+    configText = "";
     ready = null;
     setTimeout(() => ensureProxy().catch((error) => console.error("media proxy restart failed", error.message)), 2000).unref();
   });
-  await waitForPort(10000);
+  try {
+    await Promise.race([waitForPort(10000), exited]);
+  } catch (error) {
+    if (child === process_) await stopChild();
+    throw error;
+  }
+}
+
+function track(promise) {
+  const current = promise.catch((error) => {
+    if (ready === current) ready = null;
+    throw new Error(error.message.startsWith("proxy ") ? error.message : `proxy ${error.message}`);
+  });
+  ready = current;
+  return current;
 }
 
 export async function ensureProxy() {
   if (!proxyConfigured) return null;
-  if (!ready) {
-    ready = start().catch((error) => { ready = null; throw error; });
-  }
-  await ready;
+  await (ready || track(start()));
   return PROXY_URL;
 }
 
@@ -124,7 +153,15 @@ export async function proxiedFetch(input, init = {}) {
 if (proxyConfigured) {
   ensureProxy().catch((error) => console.error("media proxy unavailable", error.message));
   setInterval(() => {
-    if (!child) return;
-    ready = start().catch((error) => { console.error("media proxy refresh failed", error.message); });
+    const previous = ready;
+    if (!child || !previous) return;
+    const refreshed = previous.catch(() => {}).then(start).catch((error) => {
+      console.error("media proxy refresh failed", error.message);
+      if (child) return;
+      if (ready === refreshed) ready = null;
+      throw error;
+    });
+    ready = refreshed;
+    refreshed.catch(() => {});
   }, REFRESH_MS).unref();
 }

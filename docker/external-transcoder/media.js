@@ -192,7 +192,7 @@ function run(command, args, options = {}) {
 }
 
 function extractorFailure(detail) {
-  if (/^proxy /.test(detail)) return "media proxy unavailable";
+  if (/^proxy |ProxyError|Unable to connect to proxy|Tunnel connection failed/i.test(detail)) return "media proxy unavailable";
   if (!detail.startsWith("ERROR:")) return "unable to resolve media";
   if (/HTTP Error 412|Precondition Failed/i.test(detail)) return "provider rejected the request (HTTP 412)";
   if (/HTTP Error 403|Forbidden/i.test(detail)) return "provider rejected the request (HTTP 403)";
