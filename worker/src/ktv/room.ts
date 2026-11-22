@@ -136,7 +136,14 @@ function advance(room: Room): void {
   room.playback = { playing: true, position: 0, updatedAt: Date.now() };
 }
 
+// The media container resolves at most two links at a time.
+const MAX_PREPARING = 2;
+const PREPARE_GIVE_UP_MS = 10 * 60_000;
+
 export class KtvRoom implements DurableObject {
+  // In-flight preparations are lost when the object restarts; queued items still marked resolving are picked up again.
+  private preparing = new Set<string>();
+
   constructor(private ctx: DurableObjectState, private env: Env) {
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS room_state (id INTEGER PRIMARY KEY CHECK(id = 1), value TEXT NOT NULL)");
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
@@ -234,6 +241,7 @@ export class KtvRoom implements DurableObject {
       }
       if (!await this.enabled(room.owner)) { this.close(); throw new RoomError("Room is closed", 410); }
       room = this.active();
+      this.pumpPreparing(room);
       if (url.pathname === "/preview" && request.method === "GET") {
         if (url.searchParams.get("invite") !== room.invite) throw new RoomError("Room is unavailable", 404);
         return Response.json({ ok: true, room: snapshot(room) }, { headers: { "Cache-Control": "no-store" } });
@@ -395,7 +403,7 @@ export class KtvRoom implements DurableObject {
         };
         room.queue.push(item);
         this.save(room);
-        this.ctx.waitUntil(this.prepare(item, room.controller, room.owner, room.mediaMode, room.allowEmbeddedVideo));
+        this.pumpPreparing(room);
         break;
       }
       case "comment": {
@@ -416,8 +424,37 @@ export class KtvRoom implements DurableObject {
     return Response.json({ ok: true, room: snapshot(latest), ...(person.host ? { inviteUrl: this.inviteUrl(latest) } : {}) });
   }
 
+  private pumpPreparing(room: Room): void {
+    const waiting = room.queue
+      .filter((item) => item.status === "resolving" && !this.preparing.has(item.id))
+      .sort((left, right) => left.sequence - right.sequence);
+    for (const item of waiting) {
+      if (this.preparing.size >= MAX_PREPARING) return;
+      this.preparing.add(item.id);
+      const task = this.prepare({ ...item }, room.controller, room.owner, room.mediaMode, room.allowEmbeddedVideo)
+        .finally(() => {
+          this.preparing.delete(item.id);
+          const latest = this.read();
+          if (latest && latest.controller === room.controller) this.pumpPreparing(latest);
+        });
+      this.ctx.waitUntil(task);
+    }
+  }
+
+  private async resolveWithRetry(url: string, owner: string, requestedAt: number) {
+    for (;;) {
+      try {
+        return await resolveExternalMedia(this.env, url, AbortSignal.timeout(90_000), owner);
+      } catch (error) {
+        if (!(error instanceof MediaLoaderError) || error.status !== 429 || Date.now() - requestedAt > PREPARE_GIVE_UP_MS) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    }
+  }
+
   private async prepare(item: QueueItem, controller: string, owner: string, mode: "full" | "compatible", allowEmbeddedVideo: boolean): Promise<void> {
     try {
+      if (Date.now() - item.requestedAt > PREPARE_GIVE_UP_MS) throw new Error("Media preparation timed out");
       let title = "";
       let artist: string | undefined;
       let duration: number | null = null;
@@ -443,7 +480,7 @@ export class KtvRoom implements DurableObject {
           item.listenOnly = false;
           if (!title) title = ref.title;
         } else {
-          const session = await resolveExternalMedia(this.env, ref.url, AbortSignal.timeout(90_000), owner);
+          const session = await this.resolveWithRetry(ref.url, owner, item.requestedAt);
           if (!title) { title = session.title; duration = session.duration; }
           await requestMedia(this.env, `/media/sessions/${session.id}`, { method: "DELETE" }).then((response) => response.body?.cancel()).catch(() => undefined);
         }
