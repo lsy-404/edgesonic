@@ -11,12 +11,16 @@ const LISTEN_PORT = 10809;
 const PROXY_URL = `http://127.0.0.1:${LISTEN_PORT}`;
 const CONFIG_DIR = path.join(os.tmpdir(), "edgesonic-proxy");
 const REFRESH_MS = 60 * 60 * 1000;
+const PROBE_PORT_BASE = 20000;
+// Bilibili answers HTTP 412 to data-center exits, so only routes that pass this request are used.
+const PROBE_URL = "https://www.bilibili.com/video/BV1xx411c7mD";
 const PROXIED_SUFFIXES = ["bilibili.com", "bilibili.tv", "b23.tv", "bilivideo.com", "bilivideo.cn", "biliapi.net", "hdslb.com", "akamaized.net"];
 
 let child = null;
 let ready = null;
 let dispatcher = null;
 let configText = "";
+let usableTags = null;
 
 export const proxyConfigured = Boolean(SUBSCRIPTION);
 
@@ -43,10 +47,10 @@ function outbound(uri, index) {
   if (streamSettings.network === "xhttp") {
     streamSettings.xhttpSettings = { host: query.get("host") || "", path: query.get("path") || "/", mode: query.get("mode") || "auto" };
   } else if (streamSettings.network !== "tcp") return null;
-  return { tag: `node-${index}`, protocol: "vless", settings: { vnext: [{ address, port, users: [user] }] }, streamSettings };
+  return { tag: `node-${index}-`, protocol: "vless", settings: { vnext: [{ address, port, users: [user] }] }, streamSettings };
 }
 
-async function buildConfig() {
+async function fetchRoutes() {
   const target = new URL(SUBSCRIPTION);
   target.searchParams.set("format", "uri");
   const response = await fetch(target, { headers: { Accept: "text/plain" }, signal: AbortSignal.timeout(15000) });
@@ -54,16 +58,42 @@ async function buildConfig() {
   const outbounds = (await response.text()).split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
     .map((line, index) => { try { return outbound(line, index); } catch { return null; } }).filter(Boolean);
   if (!outbounds.length) throw new Error("proxy subscription has no usable routes");
+  return outbounds;
+}
+
+function renderConfig(outbounds, selected) {
   return JSON.stringify({
     log: { loglevel: "warning" },
-    inbounds: [{ tag: "http-in", listen: "127.0.0.1", port: LISTEN_PORT, protocol: "http" }],
+    inbounds: [
+      { tag: "http-in", listen: "127.0.0.1", port: LISTEN_PORT, protocol: "http" },
+      ...outbounds.map((route, index) => ({ tag: `probe-${index}`, listen: "127.0.0.1", port: PROBE_PORT_BASE + index, protocol: "http" })),
+    ],
     outbounds: [...outbounds, { tag: "block", protocol: "blackhole" }],
-    observatory: { subjectSelector: ["node-"], probeUrl: "https://www.gstatic.com/generate_204", probeInterval: "5m", enableConcurrency: true },
+    observatory: { subjectSelector: selected, probeUrl: "https://www.gstatic.com/generate_204", probeInterval: "5m", enableConcurrency: true },
     routing: {
-      balancers: [{ tag: "exit", selector: ["node-"], strategy: { type: "leastPing" } }],
-      rules: [{ type: "field", inboundTag: ["http-in"], balancerTag: "exit" }],
+      balancers: [{ tag: "exit", selector: selected, strategy: { type: "leastPing" } }],
+      rules: [
+        ...outbounds.map((route, index) => ({ type: "field", inboundTag: [`probe-${index}`], outboundTag: route.tag })),
+        { type: "field", inboundTag: ["http-in"], balancerTag: "exit" },
+      ],
     },
   });
+}
+
+async function probeRoutes(outbounds) {
+  const results = await Promise.all(outbounds.map(async (route, index) => {
+    const agent = new ProxyAgent(`http://127.0.0.1:${PROBE_PORT_BASE + index}`);
+    try {
+      const response = await undiciFetch(PROBE_URL, { dispatcher: agent, redirect: "manual", headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" }, signal: AbortSignal.timeout(20000) });
+      await response.body?.cancel();
+      return response.status < 400 || response.status === 404 ? route.tag : null;
+    } catch {
+      return null;
+    } finally {
+      await agent.close().catch(() => {});
+    }
+  }));
+  return results.filter(Boolean);
 }
 
 function waitForPort(timeoutMs) {
@@ -95,8 +125,7 @@ function stopChild() {
   });
 }
 
-async function start() {
-  const next = await buildConfig();
+async function launch(next) {
   if (child && next === configText) return waitForPort(10000);
   await stopChild();
   await mkdir(CONFIG_DIR, { recursive: true });
@@ -123,6 +152,17 @@ async function start() {
     if (child === process_) await stopChild();
     throw error;
   }
+}
+
+async function start() {
+  const outbounds = await fetchRoutes();
+  const all = outbounds.map((route) => route.tag);
+  const previous = usableTags?.filter((tag) => all.includes(tag));
+  await launch(renderConfig(outbounds, previous?.length ? previous : all));
+  const usable = await probeRoutes(outbounds);
+  if (!usable.length) console.error("media proxy: no route passed the Bilibili probe");
+  usableTags = usable.length ? usable : all;
+  await launch(renderConfig(outbounds, usableTags));
 }
 
 function track(promise) {
