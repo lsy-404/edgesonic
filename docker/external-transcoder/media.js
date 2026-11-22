@@ -11,7 +11,9 @@ import { ensureProxy, proxiedFetch, proxiedHost } from "./proxy.js";
 const ROOT = path.join(os.tmpdir(), "edgesonic-media");
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 const MAX_SESSIONS = 12;
-const MAX_ACTIVE_JOBS = 1;
+// Video encodes share the single slot; audio-only and subtitle work is light enough to run beside them.
+const MAX_ACTIVE_JOBS = { video: 1, light: 2 };
+const MAX_REMOTE_VIDEO_HEIGHT = 720;
 const MAX_ACTIVE_UPLOADS = 2;
 const MAX_ACTIVE_SEARCHES = 2;
 const MAX_SEARCH_QUERY_LENGTH = 200;
@@ -263,8 +265,14 @@ function getSession(req, res) {
   return session;
 }
 
-function createJob(session) {
-  const job = { child: null, session, controller: new AbortController() };
+function poolHasRoom(pool) {
+  let active = 0;
+  for (const job of activeJobs) if (job.pool === pool) active += 1;
+  return active < MAX_ACTIVE_JOBS[pool];
+}
+
+function createJob(session, pool = "video") {
+  const job = { child: null, session, pool, controller: new AbortController() };
   session.jobs.add(job);
   return job;
 }
@@ -279,8 +287,10 @@ function activateJob(job) {
 }
 
 function drainJobWaiters() {
-  while (activeJobs.size < MAX_ACTIVE_JOBS && jobWaiters.length) {
-    const job = jobWaiters.shift();
+  for (;;) {
+    const index = jobWaiters.findIndex((waiting) => poolHasRoom(waiting.pool));
+    if (index < 0) return;
+    const [job] = jobWaiters.splice(index, 1);
     job.waiterCleanup?.();
     job.waiterCleanup = null;
     if (job.finished || job.controller.signal.aborted) {
@@ -295,7 +305,7 @@ function drainJobWaiters() {
 
 function waitForJobSlot(job) {
   if (job.controller.signal.aborted) return Promise.reject(new Error("media job cancelled"));
-  if (activeJobs.size < MAX_ACTIVE_JOBS && jobWaiters.length === 0) {
+  if (poolHasRoom(job.pool) && !jobWaiters.some((waiting) => waiting.pool === job.pool)) {
     job.active = true;
     activeJobs.add(job);
     return Promise.resolve();
@@ -317,9 +327,9 @@ function waitForJobSlot(job) {
   });
 }
 
-function acquireJob(session, res) {
-  if (activeJobs.size >= MAX_ACTIVE_JOBS || jobWaiters.length > 0) { publicError(res, 429, "media workers busy"); return null; }
-  const job = createJob(session);
+function acquireJob(session, res, pool = "video") {
+  if (!poolHasRoom(pool) || jobWaiters.some((waiting) => waiting.pool === pool)) { publicError(res, 429, "media workers busy"); return null; }
+  const job = createJob(session, pool);
   activateJob(job);
   return job;
 }
@@ -466,8 +476,26 @@ function mapAudioFormats(info) {
     const format = list[0];
     return { id: `audio-${language}`, ...(language !== "und" ? { language } : {}), title: language === "und" ? (format.format_note || "Original audio") : language, url: format.url, headers: cleanHeaders(format.http_headers || info.http_headers) };
   });
-  const video = formats.filter((f) => f.vcodec && f.vcodec !== "none").sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)) || Number(b.acodec === "none") - Number(a.acodec === "none") || (b.tbr || 0) - (a.tbr || 0))[0];
-  return { video: video && { url: video.url, width: video.width || null, height: video.height || null, headers: cleanHeaders(video.http_headers || info.http_headers) }, audioTracks };
+  const video = pickVideoFormat(formats.filter((f) => f.vcodec && f.vcodec !== "none"));
+  return { video: video && { url: video.url, width: video.width || null, height: video.height || null, codec: String(video.vcodec), headers: cleanHeaders(video.http_headers || info.http_headers) }, audioTracks };
+}
+
+// H.264 at or below the cap can be packaged without re-encoding; larger or other codecs need libx264.
+function pickVideoFormat(formats) {
+  const height = (format) => format.height || 0;
+  const rank = (format) => [
+    Number(height(format) <= MAX_REMOTE_VIDEO_HEIGHT),
+    Number(String(format.vcodec).startsWith("avc1")),
+    height(format) <= MAX_REMOTE_VIDEO_HEIGHT ? height(format) : -height(format),
+    Number(format.acodec === "none"),
+    format.tbr || 0,
+  ];
+  return formats.sort((a, b) => {
+    const left = rank(a);
+    const right = rank(b);
+    for (let index = 0; index < left.length; index += 1) if (left[index] !== right[index]) return right[index] - left[index];
+    return 0;
+  })[0];
 }
 
 function sourceProvider(source) {
@@ -859,6 +887,11 @@ function sendNativeRange(req, res, session) {
   res.type("video/mp4").set("Cache-Control", "no-store").sendFile(fileName, { root: session.dir }, (error) => { if (error && !res.headersSent) publicError(res, 404, "media file unavailable"); });
 }
 
+function canCopyVideo(session, selected, variant) {
+  if (!selected.video?.codec?.startsWith("avc1") || variant.rate !== defaultVideoBitrate(session)) return false;
+  return !variant.size || (variant.size.width === session.width && variant.size.height === session.height);
+}
+
 function hlsArguments(session, variant, options, outDir) {
   const selected = selectedSource(session, options.audioTrack);
   const args = [...(options.audioOnly ? ffmpegAudioInputs(session, selected) : ffmpegInputs(session, selected))];
@@ -866,8 +899,11 @@ function hlsArguments(session, variant, options, outDir) {
     args.push("-map", selected.video ? "0:a:0" : `0:${selected.audio?.id || "a:0"}`, "-vn", "-sn", "-dn", "-c:a", "aac", "-b:a", `${variant.rate}k`);
   } else {
     args.push(...sourceMaps(selected, session));
-    if (options.size) args.push("-vf", `scale=${options.size.width}:${options.size.height}:force_original_aspect_ratio=decrease`);
-    args.push("-c:v", "libx264", "-preset", "veryfast", "-threads", "1", "-force_key_frames", "expr:gte(t,n_forced*4)", "-flags", "+cgop", "-b:v", `${variant.rate}k`, "-maxrate", `${variant.rate}k`, "-bufsize", `${variant.rate * 2}k`, "-c:a", "aac", "-b:a", "128k");
+    if (canCopyVideo(session, selected, variant)) args.push("-c:v", "copy", "-c:a", "aac", "-b:a", "128k");
+    else {
+      if (options.size) args.push("-vf", `scale=${options.size.width}:${options.size.height}:force_original_aspect_ratio=decrease`);
+      args.push("-c:v", "libx264", "-preset", "veryfast", "-threads", "1", "-force_key_frames", "expr:gte(t,n_forced*4)", "-flags", "+cgop", "-b:v", `${variant.rate}k`, "-maxrate", `${variant.rate}k`, "-bufsize", `${variant.rate * 2}k`, "-c:a", "aac", "-b:a", "128k");
+    }
   }
   args.push("-f", "hls", "-hls_time", "4", "-hls_list_size", "0", "-hls_segment_type", "fmp4", "-hls_fmp4_init_filename", "init.mp4", "-hls_segment_filename", path.join(outDir, "seg-%05d.m4s"), path.join(outDir, "index.m3u8"));
   return args;
@@ -934,16 +970,17 @@ function ensureHlsVariant(session, variant, options) {
 }
 
 async function generateHlsVariant(session, variant, options, outDir, state) {
-  const job = createJob(session);
+  const job = createJob(session, options.audioOnly ? "light" : "video");
   job.kind = "hls";
   state.job = job;
   let child;
   let playlistReady = false;
   let timedOut = false;
   let diskExceeded = false;
-  const deadline = Date.now() + 45000;
+  let deadline = Infinity;
   try {
     await waitForJobSlot(job);
+    deadline = Date.now() + 45000;
     if (job.controller.signal.aborted || !sessions.has(session.id)) throw new Error("media job cancelled");
     await mkdir(outDir, { recursive: true });
     if (job.controller.signal.aborted || !sessions.has(session.id)) throw new Error("media job cancelled");
@@ -1022,7 +1059,7 @@ async function serveCaption(req, res, session) {
   const format = String(req.query.format || "vtt").toLowerCase();
   const id = String(req.query.track || "");
   if (!["vtt", "srt"].includes(format)) return publicError(res, 400, "unsupported caption format");
-  const job = acquireJob(session, res);
+  const job = acquireJob(session, res, "light");
   if (!job) return;
   cancelOnDisconnect(req, res, job);
   let input;
@@ -1051,7 +1088,7 @@ async function serveCaption(req, res, session) {
 
 async function serveDanmaku(req, res, session) {
   if (!session.danmaku) return res.type("application/xml").send("<?xml version=\"1.0\" encoding=\"UTF-8\"?><i></i>");
-  const job = acquireJob(session, res);
+  const job = acquireJob(session, res, "light");
   if (!job) return;
   cancelOnDisconnect(req, res, job);
   try {

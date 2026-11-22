@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<{
 }>(), { audioOnly: false, muted: false, syncTime: undefined, syncPlaying: undefined, initialTime: 0, startPlaying: false, controlsVisible: true, comments: () => [] });
 const { t } = useI18n();
 const emit = defineEmits<{
-  time: [value: number]; duration: [value: number]; playing: [value: boolean]; ended: []; error: [message: string]; autoplayBlocked: [];
+  time: [value: number]; duration: [value: number]; playing: [value: boolean]; ended: []; error: [message: string]; autoplayBlocked: []; expired: [position: number];
 }>();
 const media = ref<HTMLVideoElement | null>(null);
 const hlsError = ref("");
@@ -35,6 +35,7 @@ let danmakuController: AbortController | null = null;
 let danmakuRequestId = 0;
 let danmakuSessionId = "";
 let lastHeartbeatAt = 0;
+let expiredSessionId = "";
 const captionOptions = computed(() => props.session.captions ?? []);
 const embeddedUrl = computed(() => {
   if (props.session.transport !== "iframe" || !props.session.sourceUrl) return "";
@@ -126,7 +127,9 @@ watch([media, () => props.session.id, () => props.audioOnly], async ([element, s
     const instance = new Hls({ startPosition: Math.max(0, resumeTime) });
     hls = instance;
     instance.on(Hls.Events.ERROR, (_event, data) => {
-      if (data.fatal && generation === hlsGeneration) hlsError.value = "This stream could not be played in this browser.";
+      if (!data.fatal || generation !== hlsGeneration) return;
+      if (data.response?.code === 404 || data.response?.code === 410) { reportExpired(); return; }
+      hlsError.value = "This stream could not be played in this browser.";
     });
     instance.attachMedia(element);
     instance.loadSource(url);
@@ -195,7 +198,21 @@ async function restoreInitialTime() {
 function onEnded() { emit("ended"); }
 function onPlay() { emit("playing", true); }
 function onPause() { emit("playing", false); }
-function onError() { if (!hlsError.value) hlsError.value = "The media session could not be loaded."; emit("error", hlsError.value); }
+// The media container forgets sessions when it sleeps or restarts; the parent prepares a new one.
+function reportExpired() {
+  if (expiredSessionId === props.session.id) {
+    hlsError.value = "This stream could not be played in this browser.";
+    return;
+  }
+  expiredSessionId = props.session.id;
+  const element = media.value;
+  emit("expired", element && element.readyState ? element.currentTime : resumeTime);
+}
+function onError() {
+  if (props.session.transport === "hls" && !hls) { reportExpired(); return; }
+  if (!hlsError.value) hlsError.value = "The media session could not be loaded.";
+  emit("error", hlsError.value);
+}
 async function togglePlayback(): Promise<void> {
   if (!media.value) return;
   if (media.value.paused) {

@@ -89,19 +89,49 @@ async function playVideo(video: VideoSummary, audioOnly = false) {
   finally { if (generation === playbackGeneration) preparing.value = false; }
 }
 
+let lastRecoveryAt = 0;
+let temporaryUrl = "";
+async function recoverExpiredSession(position: number) {
+  const video = selectedVideo.value;
+  const url = video ? "" : temporaryUrl;
+  if (Date.now() - lastRecoveryAt < 60_000 || (!video && !url)) {
+    error.value = "Video playback is unavailable.";
+    return;
+  }
+  lastRecoveryAt = Date.now();
+  const generation = ++playbackGeneration;
+  const playing = mediaPlaying.value;
+  preparing.value = true;
+  error.value = "";
+  session.value = null;
+  try {
+    const result = video ? await getVideoPlayback(video.id) : await resolveExternalVideo(url);
+    if (generation !== playbackGeneration) {
+      void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
+      return;
+    }
+    mediaTime.value = position;
+    mediaPlaying.value = playing;
+    session.value = result.session;
+  } catch (cause) { if (generation === playbackGeneration) error.value = cause instanceof Error ? cause.message : "Video playback is unavailable."; }
+  finally { if (generation === playbackGeneration) preparing.value = false; }
+}
+
 async function resolveTemporary() {
   if (!externalUrl.value.trim()) return;
   const generation = ++playbackGeneration;
   preparing.value = true;
   error.value = "";
   try {
-    const result = await resolveExternalVideo(externalUrl.value.trim());
+    const url = externalUrl.value.trim();
+    const result = await resolveExternalVideo(url);
     if (generation !== playbackGeneration) {
       void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
       return;
     }
     if (player.playing) player.toggle();
     selectedVideo.value = null;
+    temporaryUrl = url;
     session.value = result.session;
     previewAudioOnly.value = false;
     mediaTime.value = 0;
@@ -249,7 +279,7 @@ onMounted(() => { void loadSources(); void loadVideos(); });
             <div><div class="mono-label">{{ t("videos.preview") }}</div><h2>{{ session.title }}</h2></div>
             <button class="btn-secondary btn-sm" :disabled="!previewAudioOnly && !session.audioTracks.length" @click="previewAudioOnly = !previewAudioOnly">{{ previewAudioOnly ? t("videos.watch") : t("videos.listen") }}</button>
           </div>
-          <MediaSurface :session="session" :audio-only="previewAudioOnly" :initial-time="mediaTime" :start-playing="mediaPlaying" @time="mediaTime = $event" @playing="mediaPlaying = $event" @error="error = $event" @autoplay-blocked="mediaPlaying = false" />
+          <MediaSurface :session="session" :audio-only="previewAudioOnly" :initial-time="mediaTime" :start-playing="mediaPlaying" @time="mediaTime = $event" @playing="mediaPlaying = $event" @error="error = $event" @expired="recoverExpiredSession" @autoplay-blocked="mediaPlaying = false" />
           <p v-if="!session.audioTracks.length" class="feature-desc">{{ t("media.audioTrackUnavailable") }}</p>
         </section>
 

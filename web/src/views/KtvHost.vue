@@ -327,15 +327,47 @@ async function loadCurrentMedia(item: KtvQueueItem | null) {
   if (!item.videoId && !item.externalUrl) return;
   mediaLoading.value = true;
   try {
-    const result = item.videoId
-      ? await getVideoPlayback(item.videoId, room.value?.mediaMode)
-      : await resolveExternalVideo(item.externalUrl!, room.value?.mediaMode);
+    const result = await prepareItemMedia(item);
     if (generation !== itemGeneration) {
       if (result.session.transport === "hls") void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
       return;
     }
     mediaSession.value = result.session;
     mediaDuration.value = result.session.duration ?? item.duration ?? 0;
+  } catch (cause) {
+    if (generation === itemGeneration) mediaError.value = cause instanceof Error ? cause.message : t("ktv.playbackError");
+  } finally { if (generation === itemGeneration) mediaLoading.value = false; }
+}
+
+function prepareItemMedia(item: KtvQueueItem) {
+  return item.videoId
+    ? getVideoPlayback(item.videoId, room.value?.mediaMode)
+    : resolveExternalVideo(item.externalUrl!, room.value?.mediaMode);
+}
+
+let lastRecovery = { itemId: "", at: 0 };
+async function recoverExpiredMedia(position: number) {
+  const item = current.value;
+  if (!item || (!item.videoId && !item.externalUrl)) return;
+  if (lastRecovery.itemId === item.id && Date.now() - lastRecovery.at < 60_000) {
+    mediaError.value = t("ktv.playbackError");
+    return;
+  }
+  lastRecovery = { itemId: item.id, at: Date.now() };
+  const generation = ++itemGeneration;
+  const playing = mediaPlaying.value;
+  mediaSession.value = null;
+  mediaError.value = "";
+  mediaLoading.value = true;
+  try {
+    const result = await prepareItemMedia(item);
+    if (generation !== itemGeneration) {
+      if (result.session.transport === "hls") void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
+      return;
+    }
+    mediaTime.value = position;
+    mediaPlaying.value = playing;
+    mediaSession.value = result.session;
   } catch (cause) {
     if (generation === itemGeneration) mediaError.value = cause instanceof Error ? cause.message : t("ktv.playbackError");
   } finally { if (generation === itemGeneration) mediaLoading.value = false; }
@@ -590,6 +622,7 @@ onBeforeUnmount(() => {
               @playing="updateMediaPlaying"
               @ended="currentAudio || iframeTransport ? undefined : perform({ action: 'next', currentId: current.id })"
               @error="mediaError = $event"
+              @expired="recoverExpiredMedia"
               @autoplay-blocked="autoplayBlocked = true"
             />
             <div v-else-if="mediaLoading" class="media-placeholder">{{ t("common.loading") }}</div>
