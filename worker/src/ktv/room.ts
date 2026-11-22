@@ -2,7 +2,7 @@
 
 import type { KtvAction, KtvComment, KtvQueueItem, KtvQueueMode, KtvRoomSnapshot, KtvSelection } from "../../../shared/ktv";
 import { createQueries } from "../db/queries";
-import { requestMedia, resolveExternalMedia } from "../media/loader";
+import { MediaLoaderError, requestMedia, resolveExternalMedia } from "../media/loader";
 import { videoReference } from "../media/references";
 import { accountCookies } from "../media/accounts";
 import { getVideo, listVideos } from "../media/videos";
@@ -455,13 +455,13 @@ export class KtvRoom implements DurableObject {
       Object.assign(pending, { externalUrl: item.externalUrl, listenOnly: item.listenOnly, title, artist, duration, status: "queued" });
       if (room.autoplay) advance(room);
       this.save(room);
-    } catch {
+    } catch (error) {
       const room = this.read();
       if (!room || room.controller !== controller) return;
       const pending = room.queue.find((candidate) => candidate.id === item.id);
       if (!pending) return;
       pending.status = "failed";
-      pending.error = "Media could not be prepared. Remove this request and try again.";
+      pending.error = `${error instanceof MediaLoaderError ? error.message : "Media could not be prepared"}. Remove this request and try again.`;
       if (room.autoplay) advance(room);
       this.save(room);
     }

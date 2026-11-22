@@ -6,6 +6,7 @@ import { chmod, mkdir, mkdtemp, readdir, rm, stat, unlink, writeFile } from "nod
 import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
+import { ensureProxy, proxiedFetch, proxiedHost } from "./proxy.js";
 
 const ROOT = path.join(os.tmpdir(), "edgesonic-media");
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
@@ -113,7 +114,7 @@ async function resolveShortUrl(value) {
   let current = new URL(value);
   for (let i = 0; i < 6; i += 1) {
     if (!isSecureVideoUrl(current) || !allowedHost(current.hostname, BILI_HOSTS)) throw new Error("unsupported URL");
-    const response = await fetch(current, { method: "GET", redirect: "manual", headers: { Range: "bytes=0-0" }, signal: AbortSignal.timeout(8000) });
+    const response = await proxiedFetch(current, { method: "GET", redirect: "manual", headers: { Range: "bytes=0-0" }, signal: AbortSignal.timeout(8000) });
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("location");
       await response.body?.cancel();
@@ -172,7 +173,9 @@ function run(command, args, options = {}) {
     const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"], ...spawnOptions });
     onChild?.(child);
     const timeout = setTimeout(() => child.kill("SIGKILL"), timeoutMs).unref();
-    child.stderr.resume();
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => { stderr = (stderr + chunk).slice(-4096); });
     let stdout = Buffer.alloc(0);
     let overflow = false;
     child.stdout.on("data", (chunk) => {
@@ -180,8 +183,23 @@ function run(command, args, options = {}) {
       stdout = Buffer.concat([stdout, chunk]);
     });
     child.on("error", () => { clearTimeout(timeout); reject(new Error("media tool unavailable")); });
-    child.on("close", (code) => { clearTimeout(timeout); code === 0 && !overflow ? resolve(stdout) : reject(new Error("media processing failed")); });
+    child.on("close", (code) => {
+      clearTimeout(timeout);
+      if (code === 0 && !overflow) return resolve(stdout);
+      reject(Object.assign(new Error("media processing failed"), { stderr }));
+    });
   });
+}
+
+function extractorFailure(detail) {
+  if (/^proxy /.test(detail)) return "media proxy unavailable";
+  if (!detail.startsWith("ERROR:")) return "unable to resolve media";
+  if (/HTTP Error 412|Precondition Failed/i.test(detail)) return "provider rejected the request (HTTP 412)";
+  if (/HTTP Error 403|Forbidden/i.test(detail)) return "provider rejected the request (HTTP 403)";
+  if (/geo|region|country/i.test(detail)) return "video is not available in the media server region";
+  if (/sign in|login|cookies|confirm you/i.test(detail)) return "provider requires a signed-in account";
+  if (/deleted|not exist|unavailable|private|removed/i.test(detail)) return "video is unavailable";
+  return "unable to resolve media";
 }
 
 function runJson(command, args, options = {}) {
@@ -359,6 +377,12 @@ function selectedSource(session, audioId) {
   return { video, audio };
 }
 
+function addRemoteInput(args, source) {
+  addHeaderArgs(args, source.headers);
+  if (proxiedHost(new URL(source.url).hostname)) args.push("-http_proxy", "http://127.0.0.1:10809");
+  args.push("-i", source.url);
+}
+
 function addHeaderArgs(args, headers) {
   if (!headers || typeof headers !== "object") return;
   const safe = Object.entries(headers).filter(([key, value]) => /^[A-Za-z0-9-]+$/.test(key) && typeof value === "string" && !/[\r\n]/.test(value));
@@ -367,14 +391,14 @@ function addHeaderArgs(args, headers) {
 
 function ffmpegInputs(session, selected) {
   const args = ["-hide_banner", "-loglevel", "error", "-nostdin", "-threads", "1", "-filter_threads", "1"];
-  if (selected.video) { addHeaderArgs(args, selected.video.headers); args.push("-i", selected.video.url); addHeaderArgs(args, selected.audio.headers); args.push("-i", selected.audio.url); }
+  if (selected.video) { addRemoteInput(args, selected.video); addRemoteInput(args, selected.audio); }
   else args.push("-protocol_whitelist", "file,pipe", "-f", nativeDemuxer(session.file), "-i", session.file);
   return args;
 }
 
 function ffmpegAudioInputs(session, selected) {
   const args = ["-hide_banner", "-loglevel", "error", "-nostdin", "-threads", "1", "-filter_threads", "1"];
-  if (selected.video) { addHeaderArgs(args, selected.audio.headers); args.push("-i", selected.audio.url); }
+  if (selected.video) addRemoteInput(args, selected.audio);
   else args.push("-protocol_whitelist", "file,pipe", "-f", nativeDemuxer(session.file), "-i", session.file);
   return args;
 }
@@ -457,7 +481,7 @@ function safeCaptionTrack(track) {
 
 async function fetchLimited(url, headers, maximum, signal) {
   if (!validExternalUrl(url)) throw new Error("invalid media resource");
-  const response = await fetch(url, { redirect: "manual", headers: headers || {}, signal: signal || AbortSignal.timeout(20000) });
+  const response = await proxiedFetch(url, { redirect: "manual", headers: headers || {}, signal: signal || AbortSignal.timeout(20000) });
   if (response.status < 200 || response.status >= 300) {
     await response.body?.cancel().catch(() => {});
     throw new Error("media resource unavailable");
@@ -488,18 +512,25 @@ async function handleResolve(req, res) {
     if (req.body.cookies != null) {
       try { scopedCookieFile(req.body.cookies, provider); } catch { return publicError(res, 400, "invalid cookies"); }
     }
-    const info = await withCookieFile(req.body.cookies, provider, (cookieFile) => runJson("yt-dlp", ["--ignore-config", "--no-warnings", ...(cookieFile ? ["--cookies", cookieFile] : []), "--no-playlist", "--skip-download", "--write-subs", "--simulate", "--no-progress", "--js-runtimes", "node", "--dump-single-json", source]));
+    const proxy = provider === "bilibili" ? await ensureProxy() : null;
+    const info = await withCookieFile(req.body.cookies, provider, (cookieFile) => runJson("yt-dlp", ["--ignore-config", "--no-warnings", ...(proxy ? ["--proxy", proxy] : []), ...(cookieFile ? ["--cookies", cookieFile] : []), "--no-playlist", "--skip-download", "--write-subs", "--simulate", "--no-progress", "--js-runtimes", "node", "--dump-single-json", source]));
     if (!info || info._type === "playlist" || info.entries || info.is_live || ["is_live", "is_upcoming"].includes(info.live_status) || !info.title) return publicError(res, 400, "unsupported media");
     const sources = mapAudioFormats(info);
-    if (!sources.video || !sources.audioTracks.length) return publicError(res, 422, "video stream unavailable");
+    if (!sources.video || !sources.audioTracks.length) {
+      const hosts = [...new Set((info.formats || []).map((format) => { try { return new URL(format.url).host; } catch { return "invalid"; } }))];
+      console.error("media resolve: no usable stream", provider, JSON.stringify(hosts));
+      return publicError(res, 422, "video stream unavailable");
+    }
     await mkdir(ROOT, { recursive: true });
     const dir = await mkdtemp(path.join(ROOT, "session-"));
     const danmaku = (info.subtitles?.danmaku || []).find((entry) => validDanmakuUrl(entry.url));
     const captions = mapSubtitleTracks(info);
     const session = createRecord({ kind: "remote", dir, title: String(info.title).slice(0, 500), duration: Number.isFinite(info.duration) ? info.duration : null, width: sources.video.width || info.width || null, height: sources.video.height || info.height || null, sources, sourceCaptions: captions, captions: captions.map(safeCaptionTrack), danmaku: danmaku ? { url: danmaku.url, headers: cleanHeaders(info.http_headers) } : null, audioTracks: sources.audioTracks.map(({ url, headers, ...item }) => item) });
     return res.status(201).json(sessionShape(session));
-  } catch {
-    return publicError(res, 422, "unable to resolve media");
+  } catch (error) {
+    const detail = String(error?.stderr || "").split("\n").filter((line) => line.startsWith("ERROR:")).pop() || String(error?.message || "");
+    console.error("media resolve failed", detail.replace(/https?:\/\/\S+/g, "<url>"));
+    return publicError(res, 422, extractorFailure(detail));
   } finally {
     activeResolvers -= 1;
   }
@@ -538,9 +569,10 @@ async function handleSearch(req, res) {
   activeSearches += 1;
   try {
     const prefix = provider === "youtube" ? "ytsearch10:" : "bilisearch10:";
+    const proxyArgs = provider === "bilibili" && await ensureProxy() ? ["--proxy", "http://127.0.0.1:10809"] : [];
     const items = await withCookieFile(cookies, provider, async (cookieFile) => {
       const deadline = Date.now() + 50000;
-      const info = await runJson("yt-dlp", ["--ignore-config", "--no-warnings", "--no-progress", "--skip-download", "--flat-playlist", "--playlist-end", "10", "--dump-single-json", ...(cookieFile ? ["--cookies", cookieFile] : []), "--js-runtimes", "node", `${prefix}${query.trim()}`], { maxOutput: MAX_SEARCH_OUTPUT_BYTES, timeoutMs: 20000 });
+      const info = await runJson("yt-dlp", ["--ignore-config", "--no-warnings", "--no-progress", "--skip-download", "--flat-playlist", "--playlist-end", "10", "--dump-single-json", ...proxyArgs, ...(cookieFile ? ["--cookies", cookieFile] : []), "--js-runtimes", "node", `${prefix}${query.trim()}`], { maxOutput: MAX_SEARCH_OUTPUT_BYTES, timeoutMs: 20000 });
       const candidates = [];
       for (const entry of (Array.isArray(info?.entries) ? info.entries : []).slice(0, 10)) {
         const url = await searchEntryUrl(entry, provider);
@@ -561,7 +593,7 @@ async function handleSearch(req, res) {
             continue;
           }
           try {
-            const detail = await runJson("yt-dlp", ["--ignore-config", "--no-warnings", "--no-progress", "--skip-download", "--no-playlist", ...(cookieFile ? ["--cookies", cookieFile] : []), "--js-runtimes", "node", "--dump-single-json", candidate.url], { maxOutput: MAX_SEARCH_OUTPUT_BYTES, timeoutMs: Math.min(5000, deadline - Date.now()) });
+            const detail = await runJson("yt-dlp", ["--ignore-config", "--no-warnings", "--no-progress", "--skip-download", "--no-playlist", ...proxyArgs, ...(cookieFile ? ["--cookies", cookieFile] : []), "--js-runtimes", "node", "--dump-single-json", candidate.url], { maxOutput: MAX_SEARCH_OUTPUT_BYTES, timeoutMs: Math.min(5000, deadline - Date.now()) });
             const title = typeof detail.title === "string" ? detail.title.trim() : "";
             const duration = Number(detail.duration);
             if (title) results[index] = { url: candidate.url, title: title.slice(0, 500), ...(Number.isFinite(duration) && duration >= 0 ? { duration } : {}) };
@@ -647,7 +679,7 @@ async function handleBilibiliQrCreate(_req, res) {
   if (qrSessions.size + activeQrCreates >= MAX_QR_SESSIONS) return publicError(res, 429, "too many pending QR logins");
   activeQrCreates += 1;
   try {
-    const response = await fetch("https://passport.bilibili.com/x/passport-login/web/qrcode/generate", {
+    const response = await proxiedFetch("https://passport.bilibili.com/x/passport-login/web/qrcode/generate", {
       headers: { Accept: "application/json", Referer: "https://www.bilibili.com/" },
       signal: AbortSignal.timeout(10000),
     });
@@ -672,7 +704,7 @@ async function handleBilibiliQrCreate(_req, res) {
 async function pollBilibiliQr(state) {
   const endpoint = new URL("https://passport.bilibili.com/x/passport-login/web/qrcode/poll");
   endpoint.searchParams.set("qrcode_key", state.key);
-  const response = await fetch(endpoint, {
+  const response = await proxiedFetch(endpoint, {
     headers: { Accept: "application/json", Referer: "https://www.bilibili.com/" },
     signal: AbortSignal.timeout(8000),
   });
@@ -691,7 +723,7 @@ async function pollBilibiliQr(state) {
     const cookieHeader = cookieHeaderFor(cookies, "api.bilibili.com", "/x/web-interface/nav");
     if (cookieHeader) {
       try {
-        const profileResponse = await fetch("https://api.bilibili.com/x/web-interface/nav", {
+        const profileResponse = await proxiedFetch("https://api.bilibili.com/x/web-interface/nav", {
           redirect: "manual",
           headers: { Accept: "application/json", Cookie: cookieHeader, Referer: "https://www.bilibili.com/" },
           signal: AbortSignal.timeout(5000),

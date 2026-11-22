@@ -158,6 +158,8 @@ tag = "v2-ktv"
 new_sqlite_classes = ["KtvRoom"]
 
 # Optional full video playback; omit this container/binding/migration for compatibility mode.
+# Bilibili rejects Cloudflare egress; set the MEDIA_PROXY_SUBSCRIPTION secret to a VLESS
+# subscription URL to route Bilibili requests through those exits.
 [[containers]]
 class_name = "MediaContainer"
 image = "../docker/external-transcoder/Dockerfile"

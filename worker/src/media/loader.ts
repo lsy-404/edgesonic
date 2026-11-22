@@ -41,8 +41,9 @@ export async function requestMedia(env: Env, path: string, init: RequestInit = {
 
 export async function readMediaSession(response: Response): Promise<MediaSession> {
   if (!response.ok) {
-    await response.body?.cancel();
-    throw new MediaLoaderError("Media could not be prepared", response.status >= 400 && response.status < 500 ? response.status : 502);
+    const body = await response.json<{ error?: unknown }>().catch(() => null);
+    const reason = typeof body?.error === "string" && /^[\w ().,'-]{1,120}$/.test(body.error) ? `: ${body.error}` : "";
+    throw new MediaLoaderError(`Media could not be prepared${reason}`, response.status >= 400 && response.status < 500 ? response.status : 502);
   }
   const session = await response.json<MediaSession>();
   if (!session.id || !/^[A-Za-z0-9_-]{16,128}$/.test(session.id)

@@ -18,6 +18,8 @@ interface Env {
   ACCESS?: Fetcher;
   KTV_ROOMS: DurableObjectNamespace;
   MediaContainer?: DurableObjectNamespace<import("../media/container").MediaContainer>;
+  // Optional Worker Secret: VLESS subscription URL the media container uses for Bilibili traffic.
+  MEDIA_PROXY_SUBSCRIPTION?: string;
   // Optional while deployments transition to the Rate Limiting bindings.
   AUTH_RATE_LIMITER?: RateLimit;
   API_RATE_LIMITER?: RateLimit;

@@ -19,7 +19,7 @@ export class MediaContainer extends Container<Env> {
     ctx.blockConcurrencyWhile(async () => {
       this.serviceKey = await ctx.storage.get<string>("service-key") || crypto.randomUUID() + crypto.randomUUID();
       await ctx.storage.put("service-key", this.serviceKey);
-      this.envVars = { SHARED_KEY: this.serviceKey, PORT: "8080" };
+      this.envVars = { SHARED_KEY: this.serviceKey, PORT: "8080", ...(env.MEDIA_PROXY_SUBSCRIPTION ? { MEDIA_PROXY_SUBSCRIPTION: env.MEDIA_PROXY_SUBSCRIPTION } : {}) };
     });
   }
 

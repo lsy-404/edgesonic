@@ -12,7 +12,8 @@
     "node": ">=18"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "undici": "7.30.1"
   },
   "packageManager": "pnpm@10.34.6"
 }
