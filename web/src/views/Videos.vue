@@ -82,6 +82,7 @@ async function playVideo(video: VideoSummary, audioOnly = false) {
       return;
     }
     if (player.playing) player.toggle();
+    activeSource = { videoId: video.id };
     session.value = result.session;
     mediaTime.value = 0;
     mediaPlaying.value = true;
@@ -90,11 +91,10 @@ async function playVideo(video: VideoSummary, audioOnly = false) {
 }
 
 let lastRecoveryAt = 0;
-let temporaryUrl = "";
+let activeSource: { videoId: string } | { url: string } | null = null;
 async function recoverExpiredSession(position: number) {
-  const video = selectedVideo.value;
-  const url = video ? "" : temporaryUrl;
-  if (Date.now() - lastRecoveryAt < 60_000 || (!video && !url)) {
+  const source = activeSource;
+  if (Date.now() - lastRecoveryAt < 60_000 || !source) {
     error.value = "Video playback is unavailable.";
     return;
   }
@@ -105,7 +105,7 @@ async function recoverExpiredSession(position: number) {
   error.value = "";
   session.value = null;
   try {
-    const result = video ? await getVideoPlayback(video.id) : await resolveExternalVideo(url);
+    const result = "videoId" in source ? await getVideoPlayback(source.videoId) : await resolveExternalVideo(source.url);
     if (generation !== playbackGeneration) {
       void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
       return;
@@ -131,7 +131,7 @@ async function resolveTemporary() {
     }
     if (player.playing) player.toggle();
     selectedVideo.value = null;
-    temporaryUrl = url;
+    activeSource = { url };
     session.value = result.session;
     previewAudioOnly.value = false;
     mediaTime.value = 0;

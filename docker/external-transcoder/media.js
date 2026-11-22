@@ -482,7 +482,7 @@ function mapAudioFormats(info) {
 
 // H.264 at or below the cap can be packaged without re-encoding; larger or other codecs need libx264.
 function pickVideoFormat(formats) {
-  const height = (format) => format.height || 0;
+  const height = (format) => Math.min(format.width || format.height || 0, format.height || format.width || 0);
   const rank = (format) => [
     Number(height(format) <= MAX_REMOTE_VIDEO_HEIGHT),
     Number(String(format.vcodec).startsWith("avc1")),
@@ -863,7 +863,7 @@ function cancelOnDisconnect(req, res, job) {
 }
 
 function streamMedia(req, res, session, options) {
-  const job = acquireJob(session, res);
+  const job = acquireJob(session, res, options.format ? "light" : "video");
   if (!job) return;
   cancelOnDisconnect(req, res, job);
   try {
@@ -889,7 +889,7 @@ function sendNativeRange(req, res, session) {
 
 function canCopyVideo(session, selected, variant) {
   if (!selected.video?.codec?.startsWith("avc1") || variant.rate !== defaultVideoBitrate(session)) return false;
-  return !variant.size || (variant.size.width === session.width && variant.size.height === session.height);
+  return !variant.size || (Math.abs(variant.size.width - session.width) <= 1 && Math.abs(variant.size.height - session.height) <= 1);
 }
 
 function hlsArguments(session, variant, options, outDir) {

@@ -208,8 +208,15 @@ function reportExpired() {
   const element = media.value;
   emit("expired", element && element.readyState ? element.currentTime : resumeTime);
 }
-function onError() {
-  if (props.session.transport === "hls" && !hls) { reportExpired(); return; }
+async function onError() {
+  const code = media.value?.error?.code;
+  if (props.session.transport === "hls" && !hls && (code === MediaError.MEDIA_ERR_NETWORK || code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED)) {
+    const sessionId = props.session.id;
+    const status = await fetch(mediaManifestUrl(sessionId, props.audioOnly), { method: "HEAD", credentials: "same-origin", signal: AbortSignal.timeout(15_000) })
+      .then((response) => response.status, () => 0);
+    if (sessionId !== props.session.id) return;
+    if (status === 404 || status === 410) { reportExpired(); return; }
+  }
   if (!hlsError.value) hlsError.value = "The media session could not be loaded.";
   emit("error", hlsError.value);
 }
