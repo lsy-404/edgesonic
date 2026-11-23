@@ -144,13 +144,21 @@ watch([media, () => props.session.id, () => props.audioOnly], async ([element, s
       if (!data.fatal || generation !== hlsGeneration) return;
       if (data.response?.code === 404 || data.response?.code === 410) { reportExpired(); return; }
       if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-        // Segments can time out while the shared container is busy; resume loading while the session still exists.
-        if (await sessionAlive() && generation === hlsGeneration && networkRetries < 5) {
+        // The container can be busy or briefly restarting; keep retrying until the session is reported gone.
+        const status = await manifestStatus(props.session.id);
+        if (generation !== hlsGeneration) return;
+        if (status === 404 || status === 410) { reportExpired(); return; }
+        if (networkRetries < 8) {
           networkRetries += 1;
-          setTimeout(() => { if (generation === hlsGeneration) instance.startLoad(); }, 1000 * networkRetries);
+          const manifestFailed = !instance.levels?.length;
+          setTimeout(() => {
+            if (generation !== hlsGeneration) return;
+            if (manifestFailed) instance.loadSource(url);
+            else instance.startLoad();
+          }, Math.min(10_000, 1000 * 2 ** (networkRetries - 1)));
           return;
         }
-        if (generation === hlsGeneration) void reportIfExpired();
+        hlsError.value = "This stream could not be played in this browser.";
         return;
       }
       if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRecoveries < 2) {
@@ -241,9 +249,6 @@ function reportExpired() {
 function manifestStatus(sessionId: string): Promise<number> {
   return fetch(mediaManifestUrl(sessionId, props.audioOnly), { method: "HEAD", credentials: "same-origin", signal: AbortSignal.timeout(15_000) })
     .then((response) => response.status, () => 0);
-}
-async function sessionAlive(): Promise<boolean> {
-  return (await manifestStatus(props.session.id)) === 200;
 }
 async function reportIfExpired(): Promise<boolean> {
   const sessionId = props.session.id;
