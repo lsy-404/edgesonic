@@ -6,7 +6,7 @@ import { chmod, mkdir, mkdtemp, readdir, rm, stat, unlink, writeFile } from "nod
 import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
-import { ensureProxy, proxiedFetch, proxiedHost } from "./proxy.js";
+import { ensureProxy, fetchThroughProxy, proxiedFetch, proxiedHost, relayUrl } from "./proxy.js";
 
 const ROOT = path.join(os.tmpdir(), "edgesonic-media");
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
@@ -397,6 +397,10 @@ function selectedSource(session, audioId) {
 }
 
 function addRemoteInput(args, source) {
+  if (source.relay) {
+    args.push("-i", relayUrl(source.url, source.headers));
+    return;
+  }
   addHeaderArgs(args, source.headers);
   if (proxiedHost(new URL(source.url).hostname)) args.push("-http_proxy", "http://127.0.0.1:10809");
   args.push("-i", source.url);
@@ -481,24 +485,29 @@ function biliMirrorCandidates(url) {
   return hosts.map((host) => { const next = new URL(parsed); next.hostname = host; return next.toString(); });
 }
 
-async function reachableUrl(url, headers) {
-  const candidates = biliMirrorCandidates(url);
-  if (candidates.length === 1) return url;
-  for (const candidate of candidates) {
-    try {
-      const response = await fetch(candidate, { headers: { ...headers, Range: "bytes=0-0" }, signal: AbortSignal.timeout(6000) });
-      await response.body?.cancel();
-      if (response.ok) return candidate;
-      console.error("media mirror rejected", new URL(candidate).hostname, response.status);
-    } catch (error) {
-      console.error("media mirror unreachable", new URL(candidate).hostname, error?.name || "error");
-    }
+async function probeMedia(fetcher, url, headers) {
+  try {
+    const response = await fetcher(url, { headers: { ...headers, Range: "bytes=0-0" }, signal: AbortSignal.timeout(6000) });
+    await response.body?.cancel();
+    if (!response.ok) console.error("media mirror rejected", new URL(url).hostname, response.status);
+    return response.ok;
+  } catch (error) {
+    console.error("media mirror unreachable", new URL(url).hostname, error?.name || "error");
+    return false;
   }
-  return url;
+}
+
+// Stream URLs can be bound to the resolving exit, so fall back to fetching them through the proxy.
+async function reachableSource(url, headers) {
+  const candidates = biliMirrorCandidates(url);
+  if (candidates.length === 1) return { url };
+  for (const candidate of candidates) if (await probeMedia(fetch, candidate, headers)) return { url: candidate };
+  for (const candidate of candidates.slice(0, 2)) if (await probeMedia(fetchThroughProxy, candidate, headers)) return { url: candidate, relay: true };
+  return { url };
 }
 
 async function pickReachableSources(sources) {
-  const fix = async (entry) => entry && { ...entry, url: await reachableUrl(entry.url, entry.headers) };
+  const fix = async (entry) => entry && { ...entry, ...await reachableSource(entry.url, entry.headers) };
   const [video, ...audioTracks] = await Promise.all([fix(sources.video), ...sources.audioTracks.map(fix)]);
   return { video, audioTracks };
 }

@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { createServer } from "node:http";
+import { Readable } from "node:stream";
 import { mkdir, writeFile } from "node:fs/promises";
 import { connect } from "node:net";
 import os from "node:os";
@@ -189,6 +192,53 @@ export async function proxiedFetch(input, init = {}) {
   if (!(await proxyFor(String(input)))) return fetch(input, init);
   dispatcher ??= new ProxyAgent(PROXY_URL);
   return undiciFetch(input, { ...init, dispatcher });
+}
+
+export async function fetchThroughProxy(input, init = {}) {
+  if (!(await ensureProxy())) throw new Error("proxy not configured");
+  dispatcher ??= new ProxyAgent(PROXY_URL);
+  return undiciFetch(input, { ...init, dispatcher });
+}
+
+// ffmpeg's own proxy support stalls on some CDN hosts, so proxied media is served to it from a loopback relay.
+const RELAY_PORT = 10810;
+const RELAY_TTL_MS = 6 * 60 * 60 * 1000;
+const relays = new Map();
+let relayServer = null;
+
+function startRelay() {
+  if (relayServer) return;
+  relayServer = createServer(async (req, res) => {
+    const entry = relays.get((req.url || "").slice(1));
+    if (!entry || req.socket.remoteAddress !== "127.0.0.1" || !["GET", "HEAD"].includes(req.method)) { res.writeHead(404).end(); return; }
+    const controller = new AbortController();
+    res.once("close", () => controller.abort());
+    try {
+      const headers = { ...entry.headers, ...(req.headers.range ? { Range: req.headers.range } : {}) };
+      const upstream = await fetchThroughProxy(entry.url, { method: req.method, headers, signal: controller.signal });
+      const out = {};
+      for (const name of ["content-type", "content-length", "content-range", "accept-ranges"]) {
+        const value = upstream.headers.get(name);
+        if (value) out[name] = value;
+      }
+      res.writeHead(upstream.status, out);
+      if (!upstream.body || req.method === "HEAD") { res.end(); return; }
+      Readable.fromWeb(upstream.body).on("error", () => res.destroy()).pipe(res);
+    } catch {
+      if (!res.headersSent) res.writeHead(502);
+      res.end();
+    }
+  });
+  relayServer.listen(RELAY_PORT, "127.0.0.1");
+}
+
+export function relayUrl(url, headers) {
+  startRelay();
+  const now = Date.now();
+  for (const [token, entry] of relays) if (entry.expiresAt <= now) relays.delete(token);
+  const token = randomBytes(18).toString("base64url");
+  relays.set(token, { url, headers: headers || {}, expiresAt: now + RELAY_TTL_MS });
+  return `http://127.0.0.1:${RELAY_PORT}/${token}`;
 }
 
 if (proxyConfigured) {
