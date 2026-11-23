@@ -6,7 +6,7 @@ import { chmod, mkdir, mkdtemp, readdir, rm, stat, unlink, writeFile } from "nod
 import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
-import { ensureProxy, fetchThroughProxy, proxiedFetch, proxiedHost, relayUrl } from "./proxy.js";
+import { ensureProxy, fetchThroughProxy, proxiedFetch, proxiedHost, proxyConfigured, relayUrl } from "./proxy.js";
 
 const ROOT = path.join(os.tmpdir(), "edgesonic-media");
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
@@ -1134,11 +1134,22 @@ function masterPlaylist(variants, metadata, audioTrack, audioOnly) {
   return lines.join("\n") + "\n";
 }
 
+function relayRemoteSources(session) {
+  if (!proxyConfigured || session.kind !== "remote" || !session.sources) return false;
+  const entries = [session.sources.video, ...session.sources.audioTracks].filter((entry) => entry && !entry.relay && biliMirrorCandidates(entry.url).length > 1);
+  for (const entry of entries) entry.relay = true;
+  return entries.length > 0;
+}
+
 async function serveHls(req, res, session, options) {
   const variants = validateVariants([].concat(req.query.bitRate || []), session, options, res);
   if (!variants) return;
   try {
-    await Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options)));
+    await Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options))).catch((error) => {
+      // A CDN edge can reject the direct request even after the resolve-time probe passed; retry once via the proxy relay.
+      if (!/HTTP 403/.test(error?.reason || "") || !relayRemoteSources(session)) throw error;
+      return Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options)));
+    });
     res.type("application/vnd.apple.mpegurl").set("Cache-Control", "no-store").send(masterPlaylist(variants, session, options.audioTrack, options.audioOnly));
   } catch (error) {
     if (!res.headersSent) publicError(res, 502, error?.reason || "unable to create HLS stream");
