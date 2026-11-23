@@ -127,6 +127,12 @@ watch([media, () => props.session.id, () => props.audioOnly], async ([element, s
   } else if (Hls.isSupported()) {
     const instance = new Hls({
       startPosition: Math.max(0, resumeTime),
+      // Buffer far ahead so container hiccups and song changes do not stall playback; drop played media to bound memory.
+      maxBufferLength: 120,
+      maxMaxBufferLength: 300,
+      maxBufferSize: 200 * 1000 * 1000,
+      backBufferLength: 30,
+      startFragPrefetch: true,
       // The first playlist can wait for a free transcoding slot on the media container.
       manifestLoadPolicy: { default: { maxTimeToFirstByteMs: Infinity, maxLoadTimeMs: 60_000, timeoutRetry: { maxNumRetry: 2, retryDelayMs: 0, maxRetryDelayMs: 0 }, errorRetry: { maxNumRetry: 1, retryDelayMs: 1000, maxRetryDelayMs: 8000 } } },
     });

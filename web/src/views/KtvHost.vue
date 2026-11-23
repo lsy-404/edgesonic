@@ -12,7 +12,7 @@ import Icon from "../components/Icon.vue";
 import KtvSettingsDialog from "../components/KtvSettingsDialog.vue";
 import MediaSurface from "../components/MediaSurface.vue";
 import { createKtvRoom, getKtvLinks, getKtvRoom, hostStorageKey, ktvRoomAction, openKtvSocket, playerIdentityKey, searchKtvRoom, type KtvSearchAudio, type KtvSearchVideo } from "../lib/ktvApi";
-import { getVideoPlayback, resolveExternalVideo, saveExternalVideo, type MediaSession } from "../lib/videoApi";
+import { getVideoPlayback, resolveExternalVideo, saveExternalVideo, warmMediaSession, type MediaSession } from "../lib/videoApi";
 
 const { t } = useI18n();
 const auth = useAuth();
@@ -254,6 +254,7 @@ function handleClosed() {
   qrData.value = "";
   stageQrData.value = "";
   sessionStorage.removeItem(hostStorageKey);
+  discardPreload();
   mediaSession.value = null;
   if (player.playing) player.toggle();
   restorePreviousPlayer();
@@ -326,8 +327,10 @@ async function loadCurrentMedia(item: KtvQueueItem | null) {
   } else if (player.playing) player.toggle();
   if (!item.videoId && !item.externalUrl) return;
   mediaLoading.value = true;
+  const preloaded = nextPreload?.itemId === item.id && Date.now() - nextPreload.at < PRELOAD_MAX_AGE_MS ? nextPreload.result : null;
+  if (nextPreload?.itemId === item.id) nextPreload = null;
   try {
-    const result = await prepareItemMedia(item);
+    const result = await (preloaded?.catch(() => prepareItemMedia(item)) ?? prepareItemMedia(item));
     if (generation !== itemGeneration) {
       if (result.session.transport === "hls") void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
       return;
@@ -344,6 +347,42 @@ function prepareItemMedia(item: KtvQueueItem) {
     ? getVideoPlayback(item.videoId, room.value?.mediaMode)
     : resolveExternalVideo(item.externalUrl!, room.value?.mediaMode);
 }
+
+// Like the music player, the next request is prepared while the current one plays so switching starts at once.
+const PRELOAD_AFTER_SECONDS = 8;
+const PRELOAD_MAX_AGE_MS = 4 * 60_000;
+type PreparedMedia = Awaited<ReturnType<typeof prepareItemMedia>>;
+let nextPreload: { itemId: string; at: number; result: Promise<PreparedMedia> } | null = null;
+const nextItem = computed(() => {
+  const item = room.value?.queue[0];
+  return item?.status === "queued" && (item.videoId || item.externalUrl) ? item : null;
+});
+
+function discardPreload() {
+  const stale = nextPreload;
+  nextPreload = null;
+  void stale?.result.then((result) => {
+    if (result.session.transport === "hls") void fetch(`/edgesonic/media/${encodeURIComponent(result.session.id)}`, { method: "DELETE" }).catch(() => {});
+  }, () => {});
+}
+
+function preloadNextItem() {
+  const item = nextItem.value;
+  if (!item || !current.value || item.id === current.value.id) return;
+  if (nextPreload?.itemId === item.id && Date.now() - nextPreload.at < PRELOAD_MAX_AGE_MS) return;
+  discardPreload();
+  const listen = item.listenOnly === true;
+  const result = prepareItemMedia(item).then(async (prepared) => {
+    if (prepared.session.transport === "hls") await warmMediaSession(prepared.session.id, listen).catch(() => {});
+    return prepared;
+  });
+  nextPreload = { itemId: item.id, at: Date.now(), result };
+}
+
+watch(() => [currentAudio.value ? player.currentTime : mediaTime.value, nextItem.value?.id] as const, ([position, nextId]) => {
+  if (nextPreload && nextPreload.itemId !== nextId && nextPreload.itemId !== current.value?.id) discardPreload();
+  if (nextId && position >= PRELOAD_AFTER_SECONDS) preloadNextItem();
+});
 
 let lastRecovery = { itemId: "", at: 0 };
 async function recoverExpiredMedia(position: number) {
@@ -515,6 +554,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  discardPreload();
   clearStageControlsTimer();
   document.removeEventListener("fullscreenchange", onFullscreenChange);
   window.removeEventListener("keydown", onStageKeydown);
