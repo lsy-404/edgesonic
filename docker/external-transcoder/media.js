@@ -461,6 +461,39 @@ function mapSubtitleTracks(info) {
   return tracks;
 }
 
+// Bilibili stream paths are signed independently of the host, and some mirrors (notably Akamai) reject our egress.
+const BILIBILI_MIRRORS = ["upos-sz-mirrorcosov.bilivideo.com", "upos-sz-mirrorali.bilivideo.com", "upos-sz-mirrorcos.bilivideo.com", "upos-hz-mirrorakam.akamaized.net"];
+
+function biliMirrorCandidates(url) {
+  let parsed;
+  try { parsed = new URL(url); } catch { return [url]; }
+  if (!/^upos-[a-z0-9-]+\.(?:bilivideo\.com|akamaized\.net)$/.test(parsed.hostname)) return [url];
+  const hosts = [parsed.hostname, ...BILIBILI_MIRRORS.filter((host) => host !== parsed.hostname)];
+  return hosts.map((host) => { const next = new URL(parsed); next.hostname = host; return next.toString(); });
+}
+
+async function reachableUrl(url, headers) {
+  const candidates = biliMirrorCandidates(url);
+  if (candidates.length === 1) return url;
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate, { headers: { ...headers, Range: "bytes=0-0" }, signal: AbortSignal.timeout(6000) });
+      await response.body?.cancel();
+      if (response.ok) return candidate;
+      console.error("media mirror rejected", new URL(candidate).hostname, response.status);
+    } catch (error) {
+      console.error("media mirror unreachable", new URL(candidate).hostname, error?.name || "error");
+    }
+  }
+  return url;
+}
+
+async function pickReachableSources(sources) {
+  const fix = async (entry) => entry && { ...entry, url: await reachableUrl(entry.url, entry.headers) };
+  const [video, ...audioTracks] = await Promise.all([fix(sources.video), ...sources.audioTracks.map(fix)]);
+  return { video, audioTracks };
+}
+
 function mapAudioFormats(info) {
   const formats = (info.formats || []).filter((format) => format.url && validExternalUrl(format.url));
   const audioFormats = formats.filter((f) => f.acodec && f.acodec !== "none");
@@ -571,7 +604,7 @@ async function handleResolve(req, res) {
     const proxy = provider === "bilibili" ? await ensureProxy() : null;
     const info = await withCookieFile(req.body.cookies, provider, (cookieFile) => runJson("yt-dlp", ["--ignore-config", "--no-warnings", ...(proxy ? ["--proxy", proxy] : []), ...(cookieFile ? ["--cookies", cookieFile] : []), "--no-playlist", "--skip-download", "--write-subs", "--simulate", "--no-progress", "--js-runtimes", "node", "--dump-single-json", source]));
     if (!info || info._type === "playlist" || info.entries || info.is_live || ["is_live", "is_upcoming"].includes(info.live_status) || !info.title) return publicError(res, 400, "unsupported media");
-    const sources = mapAudioFormats(info);
+    const sources = provider === "bilibili" ? await pickReachableSources(mapAudioFormats(info)) : mapAudioFormats(info);
     if (!sources.video || !sources.audioTracks.length) {
       const hosts = [...new Set((info.formats || []).map((format) => { try { return new URL(format.url).host; } catch { return "invalid"; } }))];
       console.error("media resolve: no usable stream", provider, JSON.stringify(hosts));
