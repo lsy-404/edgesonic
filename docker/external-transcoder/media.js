@@ -527,11 +527,39 @@ async function fetchLimited(url, headers, maximum, signal) {
   return Buffer.concat(chunks, size);
 }
 
+const MAX_RESOLVERS = 2;
+const RESOLVER_WAIT_MS = 120_000;
+const resolverWaiters = [];
+
+// Resolves beyond the limit wait in FIFO order instead of being rejected.
+function acquireResolver(res) {
+  if (activeResolvers < MAX_RESOLVERS && !resolverWaiters.length) {
+    activeResolvers += 1;
+    return Promise.resolve(true);
+  }
+  return new Promise((resolve) => {
+    const waiter = { grant: () => { cleanup(); resolve(true); } };
+    const cancel = () => { cleanup(); const index = resolverWaiters.indexOf(waiter); if (index >= 0) resolverWaiters.splice(index, 1); resolve(false); };
+    const timer = setTimeout(cancel, RESOLVER_WAIT_MS);
+    const cleanup = () => { clearTimeout(timer); res.off("close", cancel); };
+    res.once("close", cancel);
+    resolverWaiters.push(waiter);
+  });
+}
+
+function releaseResolver() {
+  const next = resolverWaiters.shift();
+  if (next) next.grant();
+  else activeResolvers -= 1;
+}
+
 async function handleResolve(req, res) {
   if (sessions.size + activeResolvers + activeUploads >= MAX_SESSIONS) return publicError(res, 429, "too many media sessions");
   if (!req.body || typeof req.body.url !== "string" || req.body.url.length > 2048 || (req.body.cookies != null && typeof req.body.cookies !== "string")) return publicError(res, 400, "invalid request");
-  if (activeResolvers >= 2) return publicError(res, 429, "media resolver busy");
-  activeResolvers += 1;
+  if (!await acquireResolver(res)) {
+    if (!res.headersSent && !res.writableEnded) publicError(res, 429, "media resolver busy");
+    return;
+  }
   try {
     if (sessions.size + activeResolvers + activeUploads > MAX_SESSIONS) return publicError(res, 429, "too many media sessions");
     let source;
@@ -560,7 +588,7 @@ async function handleResolve(req, res) {
     console.error("media resolve failed", detail.replace(/https?:\/\/\S+/g, "<url>"));
     return publicError(res, 422, extractorFailure(detail));
   } finally {
-    activeResolvers -= 1;
+    releaseResolver();
   }
 }
 
