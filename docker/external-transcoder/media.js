@@ -204,6 +204,15 @@ function extractorFailure(detail) {
   return "unable to resolve media";
 }
 
+function hlsFailure(detail) {
+  const status = /HTTP error (\d{3})|Server returned (\d{3})/i.exec(detail);
+  if (status) return `media source returned HTTP ${status[1] || status[2]}`;
+  if (/Server returned 4\d\d|Forbidden/i.test(detail)) return "media source rejected the request";
+  if (/timed out|Connection refused|Network is unreachable|Connection reset/i.test(detail)) return "media source is unreachable";
+  if (/Invalid data|could not find codec|does not contain any stream/i.test(detail)) return "media source is not playable";
+  return "unable to create HLS stream";
+}
+
 function runJson(command, args, options = {}) {
   return run(command, args, { maxOutput: 32 * 1024 * 1024, ...options }).then((bytes) => JSON.parse(bytes.toString("utf8")));
 }
@@ -1044,15 +1053,17 @@ async function generateHlsVariant(session, variant, options, outDir, state) {
   let timedOut = false;
   let diskExceeded = false;
   let deadline = Infinity;
+  let stderr = "";
   try {
     await waitForJobSlot(job);
     deadline = Date.now() + 45000;
     if (job.controller.signal.aborted || !sessions.has(session.id)) throw new Error("media job cancelled");
     await mkdir(outDir, { recursive: true });
     if (job.controller.signal.aborted || !sessions.has(session.id)) throw new Error("media job cancelled");
-    child = spawn("ffmpeg", hlsArguments(session, variant, { ...options, size: variant.size }, outDir), { stdio: ["ignore", "ignore", "ignore"] });
+    child = spawn("ffmpeg", hlsArguments(session, variant, { ...options, size: variant.size }, outDir), { stdio: ["ignore", "ignore", "pipe"] });
     job.child = child;
     child.once("error", () => {});
+    child.stderr.on("data", (chunk) => { stderr = (stderr + chunk.toString("utf8")).slice(-4000); });
     const closed = new Promise((resolve) => child.once("close", (code, signal) => resolve({ code, signal })));
     let exit = null;
     while (!exit) {
@@ -1083,7 +1094,11 @@ async function generateHlsVariant(session, variant, options, outDir, state) {
         }
       } catch {}
     }
-    if (job.controller.signal.aborted || timedOut || diskExceeded || exit.code !== 0 || !playlistReady) throw new Error("HLS generation failed");
+    if (job.controller.signal.aborted || timedOut || diskExceeded || exit.code !== 0 || !playlistReady) {
+      const detail = stderr.replace(/https?:\/\/\S+/g, "<url>").split("\n").filter(Boolean).slice(-3).join(" | ");
+      console.error("hls generation failed", variant.key, timedOut ? "timeout" : diskExceeded ? "disk" : `exit ${exit.code}`, detail);
+      throw Object.assign(new Error("HLS generation failed"), { reason: timedOut ? "HLS stream took too long to start" : hlsFailure(detail) });
+    }
   } catch (error) {
     child?.kill("SIGKILL");
     if (child) await waitForChild(child);
@@ -1116,8 +1131,8 @@ async function serveHls(req, res, session, options) {
   try {
     await Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options)));
     res.type("application/vnd.apple.mpegurl").set("Cache-Control", "no-store").send(masterPlaylist(variants, session, options.audioTrack, options.audioOnly));
-  } catch {
-    if (!res.headersSent) publicError(res, 502, "unable to create HLS stream");
+  } catch (error) {
+    if (!res.headersSent) publicError(res, 502, error?.reason || "unable to create HLS stream");
   }
 }
 

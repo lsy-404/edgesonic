@@ -66,8 +66,9 @@ export async function mediaArtifactResponse(
     throw new MediaLoaderError("Media artifact is unavailable", 404);
   }
   if (!upstream.ok && upstream.status !== 416) {
-    await upstream.body?.cancel();
-    throw new MediaLoaderError("Media playback failed", upstream.status < 500 ? upstream.status : 502);
+    const body = await upstream.json<{ error?: unknown }>().catch(() => null);
+    const reason = typeof body?.error === "string" && /^[\w ().,'-]{1,120}$/.test(body.error) ? `: ${body.error}` : "";
+    throw new MediaLoaderError(`Media playback failed${reason}`, upstream.status < 500 ? upstream.status : 502);
   }
   const responseHeaders = new Headers({ "Cache-Control": "private, no-store" });
   for (const name of ["Content-Type", "Content-Length", "Content-Range", "Accept-Ranges", "ETag"]) {
