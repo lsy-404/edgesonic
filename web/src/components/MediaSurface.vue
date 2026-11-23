@@ -131,10 +131,28 @@ watch([media, () => props.session.id, () => props.audioOnly], async ([element, s
       manifestLoadPolicy: { default: { maxTimeToFirstByteMs: Infinity, maxLoadTimeMs: 60_000, timeoutRetry: { maxNumRetry: 2, retryDelayMs: 0, maxRetryDelayMs: 0 }, errorRetry: { maxNumRetry: 1, retryDelayMs: 1000, maxRetryDelayMs: 8000 } } },
     });
     hls = instance;
-    instance.on(Hls.Events.ERROR, (_event, data) => {
+    let networkRetries = 0;
+    let mediaRecoveries = 0;
+    instance.on(Hls.Events.FRAG_LOADED, () => { networkRetries = 0; });
+    instance.on(Hls.Events.ERROR, async (_event, data) => {
       if (!data.fatal || generation !== hlsGeneration) return;
       if (data.response?.code === 404 || data.response?.code === 410) { reportExpired(); return; }
-      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) { void reportIfExpired(); return; }
+      if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+        // Segments can time out while the shared container is busy; resume loading while the session still exists.
+        if (await sessionAlive() && generation === hlsGeneration && networkRetries < 5) {
+          networkRetries += 1;
+          setTimeout(() => { if (generation === hlsGeneration) instance.startLoad(); }, 1000 * networkRetries);
+          return;
+        }
+        if (generation === hlsGeneration) void reportIfExpired();
+        return;
+      }
+      if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRecoveries < 2) {
+        mediaRecoveries += 1;
+        if (mediaRecoveries === 2) instance.swapAudioCodec();
+        instance.recoverMediaError();
+        return;
+      }
       hlsError.value = "This stream could not be played in this browser.";
     });
     instance.attachMedia(element);
@@ -214,10 +232,16 @@ function reportExpired() {
   const element = media.value;
   emit("expired", element && element.readyState ? element.currentTime : resumeTime);
 }
+function manifestStatus(sessionId: string): Promise<number> {
+  return fetch(mediaManifestUrl(sessionId, props.audioOnly), { method: "HEAD", credentials: "same-origin", signal: AbortSignal.timeout(15_000) })
+    .then((response) => response.status, () => 0);
+}
+async function sessionAlive(): Promise<boolean> {
+  return (await manifestStatus(props.session.id)) === 200;
+}
 async function reportIfExpired(): Promise<boolean> {
   const sessionId = props.session.id;
-  const status = await fetch(mediaManifestUrl(sessionId, props.audioOnly), { method: "HEAD", credentials: "same-origin", signal: AbortSignal.timeout(15_000) })
-    .then((response) => response.status, () => 0);
+  const status = await manifestStatus(sessionId);
   if (sessionId !== props.session.id) return true;
   if (status === 404 || status === 410) { reportExpired(); return true; }
   hlsError.value = "This stream could not be played in this browser.";
