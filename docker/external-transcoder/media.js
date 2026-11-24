@@ -274,10 +274,23 @@ function getSession(req, res) {
   return session;
 }
 
+function poolFreeSlots(pool) {
+  let active = 0;
+  for (const job of activeJobs) if (job.pool === pool) active += 1;
+  return MAX_ACTIVE_JOBS[pool] - active - jobWaiters.filter((waiting) => waiting.pool === pool).length;
+}
+
 function poolHasRoom(pool) {
   let active = 0;
   for (const job of activeJobs) if (job.pool === pool) active += 1;
   return active < MAX_ACTIVE_JOBS[pool];
+}
+
+// Background packaging yields CPU to resolves and the stream that is playing.
+function setJobPriority(state, background) {
+  state.background = background;
+  const pid = state.job?.child?.pid;
+  if (pid) try { os.setPriority(pid, background ? 19 : 0); } catch {}
 }
 
 function createJob(session, pool = "video") {
@@ -1050,14 +1063,17 @@ async function directorySize(dir) {
   return total;
 }
 
-function ensureHlsVariant(session, variant, options) {
+function ensureHlsVariant(session, variant, options, background = false) {
   const current = session.generatingVariants.get(variant.key);
-  if (current) return current.ready;
+  if (current) {
+    if (!background && current.background) setJobPriority(current, false);
+    return current.ready;
+  }
   const outDir = path.join(session.dir, variant.key);
   try { if (statSync(path.join(outDir, "index.m3u8")).size > 0) return Promise.resolve(); } catch {}
   if (!session.hlsVariantKeys.has(variant.key) && session.hlsVariantKeys.size >= MAX_SESSION_HLS_VARIANTS) return Promise.reject(new Error("too many HLS variants"));
   session.hlsVariantKeys.add(variant.key);
-  const state = {};
+  const state = { background };
   state.ready = new Promise((resolve, reject) => { state.resolve = resolve; state.reject = reject; });
   state.ready.catch(() => {});
   session.generatingVariants.set(variant.key, state);
@@ -1083,6 +1099,7 @@ async function generateHlsVariant(session, variant, options, outDir, state) {
     if (job.controller.signal.aborted || !sessions.has(session.id)) throw new Error("media job cancelled");
     child = spawn("ffmpeg", hlsArguments(session, variant, { ...options, size: variant.size }, outDir), { stdio: ["ignore", "ignore", "pipe"] });
     job.child = child;
+    if (state.background) setJobPriority(state, true);
     child.once("error", () => {});
     child.stderr.on("data", (chunk) => { stderr = (stderr + chunk.toString("utf8")).slice(-4000); });
     const closed = new Promise((resolve) => child.once("close", (code, signal) => resolve({ code, signal })));
@@ -1157,12 +1174,12 @@ async function serveHls(req, res, session, options, prefetch = false) {
   const variants = validateVariants([].concat(req.query.bitRate || []), session, options, res);
   if (!variants) return;
   // Prefetching only packages stream copies so it never takes the encoder or light slots the playing stream needs.
-  if (prefetch && variants.some((variant) => hlsJobPool(session, variant, options) !== "copy")) return res.status(204).end();
+  if (prefetch && (variants.some((variant) => hlsJobPool(session, variant, options) !== "copy") || poolFreeSlots("copy") < 2)) return res.status(204).end();
   try {
-    await Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options))).catch((error) => {
+    await Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options, prefetch))).catch((error) => {
       // A CDN edge can reject or stall the direct request even after the resolve-time probe passed; retry once via the proxy relay.
       if (!/HTTP 403|unreachable/.test(error?.reason || "") || !relayRemoteSources(session)) throw error;
-      return Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options)));
+      return Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options, prefetch)));
     });
     res.type("application/vnd.apple.mpegurl").set("Cache-Control", "no-store").send(masterPlaylist(variants, session, options.audioTrack, options.audioOnly));
   } catch (error) {
