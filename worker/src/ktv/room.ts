@@ -144,6 +144,8 @@ const MAX_PREPARING = 2;
 const PREPARE_GIVE_UP_MS = 10 * 60_000;
 // Upcoming requests keep a packaged media session so playback starts without resolving or encoding.
 const PRELOAD_AHEAD = 2;
+// Longer requests still get a resolved session ahead of time; only requests up to PRELOAD_MAX_SECONDS are packaged early.
+const PRELOAD_SESSION_MAX_SECONDS = 90 * 60;
 const PRELOAD_MAX_SECONDS = 30 * 60;
 const PRELOAD_RETRY_MS = 60_000;
 const PRELOAD_MAX_ATTEMPTS = 3;
@@ -157,7 +159,7 @@ function sessionUsable(session: MediaSession, duration: number | null): boolean 
 function preloadWindow(room: Room): QueueItem[] {
   if (room.mediaMode !== "full") return [];
   return ordered(room).filter((item) => item.status === "queued").slice(0, PRELOAD_AHEAD)
-    .filter((item) => (item.externalUrl || item.videoId) && (item.duration == null || item.duration <= PRELOAD_MAX_SECONDS));
+    .filter((item) => (item.externalUrl || item.videoId) && (item.duration == null || item.duration <= PRELOAD_SESSION_MAX_SECONDS));
 }
 
 export class KtvRoom implements DurableObject {
@@ -497,7 +499,9 @@ export class KtvRoom implements DurableObject {
     const keep = new Set(window.map((item) => item.id));
     let released = false;
     for (const item of room.queue) {
-      if (item.media && (!keep.has(item.id) || !sessionUsable(item.media, item.duration))) { this.releaseMedia(item.media); delete item.media; released = true; }
+      if (item.media && (!keep.has(item.id) || !sessionUsable(item.media, item.duration))) {
+        this.releaseMedia(item.media); delete item.media; released = true;
+      }
     }
     if (released) this.save(room, false);
     for (const id of this.preloadFailures.keys()) if (!keep.has(id)) this.preloadFailures.delete(id);
