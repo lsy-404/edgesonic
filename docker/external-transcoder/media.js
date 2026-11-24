@@ -289,6 +289,7 @@ function poolHasRoom(pool) {
 // Background packaging yields CPU to resolves and the stream that is playing.
 function setJobPriority(state, background) {
   state.background = background;
+  if (state.job) state.job.background = background;
   const pid = state.job?.child?.pid;
   if (pid) try { os.setPriority(pid, background ? 19 : 0); } catch {}
 }
@@ -333,6 +334,11 @@ function waitForJobSlot(job) {
     return Promise.resolve();
   }
   if (job.kind === "hls" && jobWaiters.filter((waiting) => waiting.session === job.session && waiting.kind === "hls").length >= MAX_SESSION_HLS_QUEUED_JOBS) return Promise.reject(new Error("too many queued HLS jobs"));
+  // Playback outranks prefetching: it queues ahead of background jobs and stops one that holds its pool.
+  if (!job.background) {
+    const victim = [...activeJobs].find((active) => active.pool === job.pool && active.background);
+    victim?.controller.abort();
+  }
   return new Promise((resolve, reject) => {
     job.waiterResolve = resolve;
     job.waiterReject = reject;
@@ -344,7 +350,9 @@ function waitForJobSlot(job) {
       reject(new Error("media job cancelled"));
     };
     job.waiterCleanup = () => job.controller.signal.removeEventListener("abort", abort);
-    jobWaiters.push(job);
+    const firstBackground = job.background ? -1 : jobWaiters.findIndex((waiting) => waiting.pool === job.pool && waiting.background);
+    if (firstBackground >= 0) jobWaiters.splice(firstBackground, 0, job);
+    else jobWaiters.push(job);
     job.controller.signal.addEventListener("abort", abort, { once: true });
   });
 }
@@ -1085,6 +1093,7 @@ async function generateHlsVariant(session, variant, options, outDir, state) {
   const job = createJob(session, hlsJobPool(session, variant, options));
   job.kind = "hls";
   state.job = job;
+  job.background = state.background;
   let child;
   let playlistReady = false;
   let timedOut = false;
@@ -1173,8 +1182,11 @@ function relayRemoteSources(session) {
 async function serveHls(req, res, session, options, prefetch = false) {
   const variants = validateVariants([].concat(req.query.bitRate || []), session, options, res);
   if (!variants) return;
-  // Prefetching only packages stream copies so it never takes the encoder or light slots the playing stream needs.
-  if (prefetch && (variants.some((variant) => hlsJobPool(session, variant, options) !== "copy") || poolFreeSlots("copy") < 2)) return res.status(204).end();
+  // Prefetching runs only on idle slots, at low priority, and playback preempts it.
+  if (prefetch && variants.some((variant) => {
+    const pool = hlsJobPool(session, variant, options);
+    return pool === "light" || poolFreeSlots(pool) < (pool === "copy" ? 2 : 1);
+  })) return res.status(204).end();
   try {
     await Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options, prefetch))).catch((error) => {
       // A CDN edge can reject or stall the direct request even after the resolve-time probe passed; retry once via the proxy relay.
