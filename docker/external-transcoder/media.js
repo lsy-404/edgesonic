@@ -502,12 +502,20 @@ async function probeMedia(fetcher, url, headers) {
 }
 
 // Stream URLs can be bound to the resolving exit, so fall back to fetching them through the proxy.
+async function firstReachable(fetcher, candidates, headers) {
+  // Probes run together and the earliest candidate in preference order that answered wins.
+  const results = await Promise.all(candidates.map((candidate) => probeMedia(fetcher, candidate, headers)));
+  const index = results.indexOf(true);
+  return index >= 0 ? candidates[index] : null;
+}
+
 async function reachableSource(url, headers) {
   const candidates = biliMirrorCandidates(url);
   if (candidates.length === 1) return { url };
-  for (const candidate of candidates) if (await probeMedia(fetch, candidate, headers)) return { url: candidate };
-  for (const candidate of candidates.slice(0, 2)) if (await probeMedia(fetchThroughProxy, candidate, headers)) return { url: candidate, relay: true };
-  return { url };
+  const direct = await firstReachable(fetch, candidates, headers);
+  if (direct) return { url: direct };
+  const relayed = await firstReachable(fetchThroughProxy, candidates.slice(0, 2), headers);
+  return relayed ? { url: relayed, relay: true } : { url };
 }
 
 async function pickReachableSources(sources) {
