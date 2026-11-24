@@ -396,7 +396,11 @@ function selectedSource(session, audioId) {
   return { video, audio };
 }
 
+// CDN connections can stall without closing; fail fast and reconnect instead of waiting for the job deadline.
+const REMOTE_INPUT_ARGS = ["-rw_timeout", "15000000", "-reconnect", "1", "-reconnect_on_network_error", "1", "-reconnect_delay_max", "5"];
+
 function addRemoteInput(args, source) {
+  args.push(...REMOTE_INPUT_ARGS);
   if (source.relay) {
     args.push("-i", relayUrl(source.url, source.headers));
     return;
@@ -1148,8 +1152,8 @@ async function serveHls(req, res, session, options, prefetch = false) {
   if (prefetch && variants.some((variant) => hlsJobPool(session, variant, options) !== "copy")) return res.status(204).end();
   try {
     await Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options))).catch((error) => {
-      // A CDN edge can reject the direct request even after the resolve-time probe passed; retry once via the proxy relay.
-      if (!/HTTP 403/.test(error?.reason || "") || !relayRemoteSources(session)) throw error;
+      // A CDN edge can reject or stall the direct request even after the resolve-time probe passed; retry once via the proxy relay.
+      if (!/HTTP 403|unreachable/.test(error?.reason || "") || !relayRemoteSources(session)) throw error;
       return Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options)));
     });
     res.type("application/vnd.apple.mpegurl").set("Cache-Control", "no-store").send(masterPlaylist(variants, session, options.audioTrack, options.audioOnly));

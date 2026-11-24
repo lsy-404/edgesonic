@@ -534,7 +534,10 @@ export class KtvRoom implements DurableObject {
         session = await this.resolveWithRetry(initial.externalUrl, owner, Date.now());
         try { await rememberMediaSession(this.env, owner, session); } catch { this.releaseMedia(session); return false; }
       } else return true;
-    } catch { return false; }
+    } catch (error) {
+      console.warn("ktv preload failed", error instanceof Error ? error.message : "unknown error");
+      return false;
+    }
     return this.attachPrepared(itemId, controller, session);
   }
 
