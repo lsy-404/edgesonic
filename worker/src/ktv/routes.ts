@@ -102,6 +102,7 @@ ktvHostRoutes.get("/rooms/:id", (c) => forward(c, "state", true));
 ktvHostRoutes.get("/rooms/:id/ws", (c) => forward(c, "ws", true));
 ktvHostRoutes.get("/rooms/:id/search", (c) => forward(c, "search", true));
 ktvHostRoutes.get("/rooms/:id/links", (c) => forward(c, "links", true));
+ktvHostRoutes.get("/rooms/:id/media", (c) => forward(c, "media", true));
 ktvHostRoutes.post("/rooms/:id/actions", (c) => forward(c, "actions", true));
 
 ktvPublicRoutes.get("/rooms/:id", (c) => forward(c, "preview", false));

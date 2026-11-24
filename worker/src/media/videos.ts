@@ -442,19 +442,32 @@ export async function prepareVideoMedia(
     if (!video.storageUri) throw new Error("Video file is unavailable");
     const source = await openVideoSource(env, video.storageUri);
     const session = await uploadVideoMedia(env, source.body, video.title, video.suffix || "mp4", signal);
-    await env.DB.prepare("UPDATE videos SET duration = ?, width = ?, height = ? WHERE id = ?")
-      .bind(session.duration, session.width, session.height, video.id).run();
-    if (reuseSession) await rememberVideoSession(env, username, video, session);
-    else await rememberMediaSession(env, username, session);
-    return session;
+    return keepSession(env, session, async () => {
+      await env.DB.prepare("UPDATE videos SET duration = ?, width = ?, height = ? WHERE id = ?")
+        .bind(session.duration, session.width, session.height, video.id).run();
+      if (reuseSession) await rememberVideoSession(env, username, video, session);
+      else await rememberMediaSession(env, username, session);
+    });
   }
   if (!video.externalUrl) throw new Error("External video is unavailable");
   const session = await resolveExternalMedia(env, video.externalUrl, signal, username);
-  await env.DB.prepare("UPDATE videos SET title = ?, duration = ?, width = ?, height = ? WHERE id = ?")
-    .bind(session.title, session.duration, session.width, session.height, video.id).run();
-  if (reuseSession) await rememberVideoSession(env, username, video, session);
-  else await rememberMediaSession(env, username, session);
-  return session;
+  return keepSession(env, session, async () => {
+    await env.DB.prepare("UPDATE videos SET title = ?, duration = ?, width = ?, height = ? WHERE id = ?")
+      .bind(session.title, session.duration, session.width, session.height, video.id).run();
+    if (reuseSession) await rememberVideoSession(env, username, video, session);
+    else await rememberMediaSession(env, username, session);
+  });
+}
+
+// A container session nobody can reach after a failed bookkeeping step would hold a slot until it expires.
+async function keepSession(env: Env, session: MediaSession, record: () => Promise<void>): Promise<MediaSession> {
+  try {
+    await record();
+    return session;
+  } catch (error) {
+    await requestMedia(env, `/media/sessions/${session.id}`, { method: "DELETE" }).then((response) => response.body?.cancel()).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function rawVideoResponse(env: Env, video: Video, request: Request, asAttachment = false): Promise<Response> {

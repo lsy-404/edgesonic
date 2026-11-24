@@ -57,25 +57,4 @@ export function removeVideoLink(videoId: string, audioId: string) {
 export function getVideoPlayback(videoId: string, mode?: "full" | "compatible") { return request<{ ok: true; session: MediaSession }>(`/edgesonic/videos/${encodeURIComponent(videoId)}/playback${mode ? `?mode=${mode}` : ""}`); }
 export function resolveExternalVideo(url: string, mode?: "full" | "compatible") { return request<{ ok: true; session: MediaSession }>("/edgesonic/media/resolve", post({ url, mode })); }
 export const mediaManifestUrl = (sessionId: string, audioOnly = false) => `/edgesonic/media/${encodeURIComponent(sessionId)}/hls.m3u8${audioOnly ? "?audioOnly=1" : ""}`;
-// Requests the first playlist and segments so the media container starts packaging before playback.
-export async function warmMediaSession(sessionId: string, audioOnly = false, segments = 3): Promise<void> {
-  const fetchText = async (url: URL) => {
-    const response = await fetch(url, { credentials: "same-origin" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.text();
-  };
-  const uris = (text: string) => text.split(/\r?\n/).map((line) => line.trim()).flatMap((line) => {
-    if (line.startsWith("#EXT-X-MAP:")) return [/URI="([^"]+)"/.exec(line)?.[1] ?? ""];
-    return line && !line.startsWith("#") ? [line] : [];
-  }).filter(Boolean);
-  const master = new URL(mediaManifestUrl(sessionId, audioOnly), location.href);
-  const variant = uris(await fetchText(master))[0];
-  if (!variant) return;
-  const playlist = new URL(variant, master);
-  const files = uris(await fetchText(playlist)).slice(0, segments + 1);
-  for (const file of files) {
-    const response = await fetch(new URL(file, playlist), { credentials: "same-origin" });
-    await response.body?.cancel();
-  }
-}
 export const captionTrackUrl = (sessionId: string, track: string) => `/edgesonic/media/${encodeURIComponent(sessionId)}/captions?${new URLSearchParams({ track, format: "vtt" })}`;

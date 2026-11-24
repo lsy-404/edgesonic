@@ -1141,9 +1141,11 @@ function relayRemoteSources(session) {
   return entries.length > 0;
 }
 
-async function serveHls(req, res, session, options) {
+async function serveHls(req, res, session, options, prefetch = false) {
   const variants = validateVariants([].concat(req.query.bitRate || []), session, options, res);
   if (!variants) return;
+  // Prefetching only packages stream copies so it never takes the encoder or light slots the playing stream needs.
+  if (prefetch && variants.some((variant) => hlsJobPool(session, variant, options) !== "copy")) return res.status(204).end();
   try {
     await Promise.all(variants.map((variant) => ensureHlsVariant(session, variant, options))).catch((error) => {
       // A CDN edge can reject the direct request even after the resolve-time probe passed; retry once via the proxy relay.
@@ -1225,7 +1227,7 @@ export function registerMediaRoutes(app, authGate) {
     if (req.query.audioTrack != null && !audioTrack) return publicError(res, 400, "unknown audio track");
     const audioOnly = req.query.audioOnly === "1";
     if (audioOnly && session.audioTracks.length === 0) return publicError(res, 422, "audio track unavailable");
-    return serveHls(req, res, session, { audioTrack: audioTrack?.id, audioOnly });
+    return serveHls(req, res, session, { audioTrack: audioTrack?.id, audioOnly }, req.query.prefetch === "1");
   });
   app.get("/media/sessions/:id/file/:variant/:filename", authGate, async (req, res) => {
     const session = getSession(req, res);

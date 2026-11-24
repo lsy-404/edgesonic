@@ -2,10 +2,11 @@
 
 import type { KtvAction, KtvComment, KtvQueueItem, KtvQueueMode, KtvRoomSnapshot, KtvSelection } from "../../../shared/ktv";
 import { createQueries } from "../db/queries";
-import { MediaLoaderError, requestMedia, resolveExternalMedia } from "../media/loader";
+import { MediaLoaderError, requestMedia, resolveExternalMedia, type MediaSession } from "../media/loader";
+import { rememberMediaSession } from "../media/sessions";
 import { videoReference } from "../media/references";
 import { accountCookies } from "../media/accounts";
-import { getVideo, listVideos } from "../media/videos";
+import { getVideo, listVideos, prepareVideoMedia } from "../media/videos";
 import { resolveActivation } from "../utils/activation";
 import { hasPermission } from "../utils/permissions";
 
@@ -21,6 +22,8 @@ interface Participant {
 
 interface QueueItem extends KtvQueueItem {
   sequence: number;
+  // Host-only session prepared ahead of playback; never included in snapshots.
+  media?: MediaSession;
 }
 
 interface Room {
@@ -111,7 +114,7 @@ function ordered(room: Room): QueueItem[] {
 }
 
 function publicItem(item: QueueItem): KtvQueueItem {
-  const { sequence: _sequence, ...value } = item;
+  const { sequence: _sequence, media: _media, ...value } = item;
   return value;
 }
 
@@ -139,10 +142,29 @@ function advance(room: Room): void {
 // The media container resolves at most two links at a time.
 const MAX_PREPARING = 2;
 const PREPARE_GIVE_UP_MS = 10 * 60_000;
+// Upcoming requests keep a packaged media session so playback starts without resolving or encoding.
+const PRELOAD_AHEAD = 2;
+const PRELOAD_MAX_SECONDS = 30 * 60;
+const PRELOAD_RETRY_MS = 60_000;
+const PRELOAD_MAX_ATTEMPTS = 3;
+// A prepared session must outlive the song with margin; the container gives each session a fixed lifetime.
+const PRELOAD_SPARE_SECONDS = 15 * 60;
+
+function sessionUsable(session: MediaSession, duration: number | null): boolean {
+  return session.expiresAt > Date.now() / 1000 + (duration ?? PRELOAD_MAX_SECONDS) + PRELOAD_SPARE_SECONDS;
+}
+
+function preloadWindow(room: Room): QueueItem[] {
+  if (room.mediaMode !== "full") return [];
+  return ordered(room).filter((item) => item.status === "queued").slice(0, PRELOAD_AHEAD)
+    .filter((item) => (item.externalUrl || item.videoId) && (item.duration == null || item.duration <= PRELOAD_MAX_SECONDS));
+}
 
 export class KtvRoom implements DurableObject {
   // In-flight preparations are lost when the object restarts; queued items still marked resolving are picked up again.
   private preparing = new Set<string>();
+  private preloading = new Set<string>();
+  private preloadFailures = new Map<string, { attempts: number; retryAt: number }>();
 
   constructor(private ctx: DurableObjectState, private env: Env) {
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS room_state (id INTEGER PRIMARY KEY CHECK(id = 1), value TEXT NOT NULL)");
@@ -179,6 +201,7 @@ export class KtvRoom implements DurableObject {
 
   private close(): void {
     const closing = this.read();
+    if (closing) for (const item of [...closing.queue, ...(closing.current ? [closing.current] : [])]) this.releaseMedia(item.media);
     if (closing) this.ctx.waitUntil(this.env.DB.prepare("DELETE FROM kv_store WHERE key = ? AND json_extract(value, '$.roomId') = ? AND json_extract(value, '$.generation') = ?").bind(`ktv_invite:${closing.invite}`, closing.id, closing.generation).run());
     this.ctx.storage.sql.exec("DELETE FROM room_state");
     this.broadcast({ type: "closed" });
@@ -242,6 +265,7 @@ export class KtvRoom implements DurableObject {
       if (!await this.enabled(room.owner)) { this.close(); throw new RoomError("Room is closed", 410); }
       room = this.active();
       this.pumpPreparing(room);
+      this.pumpPreloading(room);
       if (url.pathname === "/preview" && request.method === "GET") {
         if (url.searchParams.get("invite") !== room.invite) throw new RoomError("Room is unavailable", 404);
         return Response.json({ ok: true, room: snapshot(room) }, { headers: { "Cache-Control": "no-store" } });
@@ -252,6 +276,17 @@ export class KtvRoom implements DurableObject {
       if (url.pathname === "/state" && request.method === "GET") return Response.json({ ok: true, room: snapshot(room), ...(person.host ? { inviteUrl: this.inviteUrl(room) } : {}) });
       if (url.pathname === "/search" && request.method === "GET") return await this.search(room, url);
       if (url.pathname === "/links" && request.method === "GET") return await this.links(room, url);
+      if (url.pathname === "/media" && request.method === "GET") {
+        if (!person.host) throw new RoomError("Not allowed", 403);
+        const itemId = url.searchParams.get("itemId");
+        const item = room.current?.id === itemId ? room.current : room.queue.find((candidate) => candidate.id === itemId);
+        const media = item?.media;
+        // The host owns the session from here on and releases it itself, so a reload resolves a fresh one.
+        if (item && media) { delete item.media; this.save(room, false); }
+        const session = media && sessionUsable(media, item?.duration ?? null) ? media : null;
+        if (media && !session) this.releaseMedia(media);
+        return Response.json({ ok: true, session }, { headers: { "Cache-Control": "no-store" } });
+      }
       if (url.pathname === "/actions" && request.method === "POST") {
         const action = await this.body(request);
         return await this.action(person.id, action as unknown as KtvAction, room.generation);
@@ -373,17 +408,21 @@ export class KtvRoom implements DurableObject {
         if (!item) throw new RoomError("Request was not found", 404);
         if (!person.host && item.participantId !== person.id) throw new RoomError("You can only remove your own requests", 403);
         room.queue = room.queue.filter((candidate) => candidate.id !== item.id);
+        this.releaseMedia(item.media);
         if (room.autoplay) advance(room);
         this.save(room);
+        this.pumpPreloading(room);
         break;
       }
       case "next":
         if ((room.current?.id ?? null) !== action.currentId) throw new RoomError("Playback has already advanced", 409);
+        this.releaseMedia(room.current?.media);
         room.current = null;
         room.playback = { playing: false, position: 0, updatedAt: Date.now() };
         room.autoplay = true;
         advance(room);
         this.save(room);
+        this.pumpPreloading(room);
         break;
       case "playback":
         if (!room.current || action.currentId !== room.current.id) throw new RoomError("Playback has already advanced", 409);
@@ -441,6 +480,78 @@ export class KtvRoom implements DurableObject {
     }
   }
 
+  private releaseMedia(session: MediaSession | undefined): void {
+    if (!session || session.transport !== "hls") return;
+    this.ctx.waitUntil(requestMedia(this.env, `/media/sessions/${session.id}`, { method: "DELETE" }).then((response) => response.body?.cancel()).catch(() => undefined));
+  }
+
+  // Requesting the playlist starts packaging the whole stream on the container's disk.
+  private warmMedia(session: MediaSession, listenOnly: boolean | undefined): void {
+    if (session.transport !== "hls" || (session.duration != null && session.duration > PRELOAD_MAX_SECONDS)) return;
+    const path = `/media/sessions/${session.id}/hls.m3u8?prefetch=1${listenOnly ? "&audioOnly=1" : ""}`;
+    this.ctx.waitUntil(requestMedia(this.env, path, { signal: AbortSignal.timeout(120_000) }).then((response) => response.body?.cancel()).catch(() => undefined));
+  }
+
+  private pumpPreloading(room: Room): void {
+    const window = preloadWindow(room);
+    const keep = new Set(window.map((item) => item.id));
+    let released = false;
+    for (const item of room.queue) {
+      if (item.media && (!keep.has(item.id) || !sessionUsable(item.media, item.duration))) { this.releaseMedia(item.media); delete item.media; released = true; }
+    }
+    if (released) this.save(room, false);
+    for (const id of this.preloadFailures.keys()) if (!keep.has(id)) this.preloadFailures.delete(id);
+    const now = Date.now();
+    for (const item of window) {
+      const failure = this.preloadFailures.get(item.id);
+      if (item.media || this.preloading.has(item.id) || this.preloading.size >= 1) continue;
+      if (failure && (failure.attempts >= PRELOAD_MAX_ATTEMPTS || failure.retryAt > now)) continue;
+      this.preloading.add(item.id);
+      const task = this.preload(item.id, room.controller, room.owner).then((ok) => {
+        if (ok) { this.preloadFailures.delete(item.id); return; }
+        const attempts = (this.preloadFailures.get(item.id)?.attempts ?? 0) + 1;
+        this.preloadFailures.set(item.id, { attempts, retryAt: Date.now() + PRELOAD_RETRY_MS * attempts });
+      }).finally(() => {
+        this.preloading.delete(item.id);
+        const latest = this.read();
+        if (latest && latest.controller === room.controller) this.pumpPreloading(latest);
+      });
+      this.ctx.waitUntil(task);
+    }
+  }
+
+  private async preload(itemId: string, controller: string, owner: string): Promise<boolean> {
+    const initial = this.read()?.queue.find((candidate) => candidate.id === itemId);
+    if (!initial || initial.status !== "queued") return true;
+    if (initial.media) return true;
+    let session: MediaSession;
+    try {
+      if (initial.videoId) {
+        const video = await getVideo(this.env, initial.videoId);
+        if (!video) return false;
+        session = await prepareVideoMedia(this.env, video, owner, AbortSignal.timeout(120_000), false);
+      } else if (initial.externalUrl) {
+        session = await this.resolveWithRetry(initial.externalUrl, owner, Date.now());
+        try { await rememberMediaSession(this.env, owner, session); } catch { this.releaseMedia(session); return false; }
+      } else return true;
+    } catch { return false; }
+    return this.attachPrepared(itemId, controller, session);
+  }
+
+  private attachPrepared(itemId: string, controller: string, session: MediaSession): boolean {
+    const room = this.read();
+    const item = room && room.controller === controller ? room.queue.find((candidate) => candidate.id === itemId) : undefined;
+    if (!room || !item || item.media || !preloadWindow(room).some((candidate) => candidate.id === itemId)) {
+      this.releaseMedia(session);
+      return true;
+    }
+    if (!sessionUsable(session, item.duration)) { this.releaseMedia(session); return false; }
+    item.media = session;
+    this.save(room, false);
+    this.warmMedia(session, item.listenOnly);
+    return true;
+  }
+
   private async resolveWithRetry(url: string, owner: string, requestedAt: number) {
     for (;;) {
       try {
@@ -453,6 +564,7 @@ export class KtvRoom implements DurableObject {
   }
 
   private async prepare(item: QueueItem, controller: string, owner: string, mode: "full" | "compatible", allowEmbeddedVideo: boolean): Promise<void> {
+    let prepared: MediaSession | null = null;
     try {
       if (Date.now() - item.requestedAt > PREPARE_GIVE_UP_MS) throw new Error("Media preparation timed out");
       let title = "";
@@ -482,17 +594,29 @@ export class KtvRoom implements DurableObject {
         } else {
           const session = await this.resolveWithRetry(ref.url, owner, item.requestedAt);
           if (!title) { title = session.title; duration = session.duration; }
-          await requestMedia(this.env, `/media/sessions/${session.id}`, { method: "DELETE" }).then((response) => response.body?.cancel()).catch(() => undefined);
+          prepared = session;
         }
       }
+      if (prepared) {
+        const session = prepared;
+        await rememberMediaSession(this.env, owner, session).catch(() => { prepared = null; this.releaseMedia(session); });
+      }
+      // Status, prepared session and autoplay change together so no request sees the item without its session.
       const room = this.active();
-      if (room.controller !== controller) return;
-      const pending = room.queue.find((candidate) => candidate.id === item.id);
-      if (!pending) return;
+      const pending = room.controller === controller ? room.queue.find((candidate) => candidate.id === item.id) : undefined;
+      if (!pending) { this.releaseMedia(prepared ?? undefined); return; }
       Object.assign(pending, { externalUrl: item.externalUrl, listenOnly: item.listenOnly, title, artist, duration, status: "queued" });
+      const session = prepared;
+      prepared = null;
+      const keepSession = session && !pending.media && sessionUsable(session, duration) && preloadWindow(room).some((candidate) => candidate.id === pending.id);
+      if (session && keepSession) pending.media = session;
       if (room.autoplay) advance(room);
       this.save(room);
+      if (session && keepSession) { if (room.current?.id !== pending.id) this.warmMedia(session, pending.listenOnly); }
+      else if (session) this.releaseMedia(session);
+      this.pumpPreloading(room);
     } catch (error) {
+      this.releaseMedia(prepared ?? undefined);
       const room = this.read();
       if (!room || room.controller !== controller) return;
       const pending = room.queue.find((candidate) => candidate.id === item.id);

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { KtvAction, KtvQueueMode, KtvMediaMode, KtvRoomSnapshot } from "../../../shared/ktv";
+import type { MediaSession } from "./videoApi";
 
 export interface KtvSettings { enabled: boolean; mode: KtvQueueMode; mediaMode: KtvMediaMode; allowEmbeddedVideo: boolean; canUseContainer: boolean }
 export interface KtvRoomResult { room: KtvRoomSnapshot; inviteUrl?: string }
@@ -44,6 +45,9 @@ export function searchKtvRoom(roomId: string, auth: { kind: "controller"; token:
 }
 export function getKtvLinks(roomId: string, controllerToken: string, audioId: string) {
   return request<{ ok: true; links: Array<{ audioId: string; videoId: string; audioTitle: string; videoTitle: string; offsetMs: number }> }>(`/edgesonic/ktv/rooms/${encodeURIComponent(roomId)}/links?${new URLSearchParams({ audioId })}`, { headers: { "X-KTV-Controller": controllerToken } });
+}
+export function getKtvPreparedMedia(roomId: string, controllerToken: string, itemId: string) {
+  return request<{ ok: true; session: MediaSession | null }>(`/edgesonic/ktv/rooms/${encodeURIComponent(roomId)}/media?${new URLSearchParams({ itemId })}`, { headers: { "X-KTV-Controller": controllerToken } });
 }
 export function getParticipantKtvLinks(roomId: string, participantToken: string, audioId: string) {
   return request<{ ok: true; links: Array<{ audioId: string; videoId: string; audioTitle: string; videoTitle: string; offsetMs: number }> }>(`/ktv/rooms/${encodeURIComponent(roomId)}/links?${new URLSearchParams({ audioId })}`, { headers: { Authorization: `Bearer ${participantToken}` } });
